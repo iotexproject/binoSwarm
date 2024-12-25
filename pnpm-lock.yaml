@@ -123,9 +123,6 @@ importers:
       '@elizaos/client-farcaster':
         specifier: workspace:*
         version: link:../packages/client-farcaster
-      '@elizaos/client-lens':
-        specifier: workspace:*
-        version: link:../packages/client-lens
       '@elizaos/client-slack':
         specifier: workspace:*
         version: link:../packages/client-slack
@@ -195,30 +192,15 @@ importers:
       '@elizaos/plugin-intiface':
         specifier: workspace:*
         version: link:../packages/plugin-intiface
-      '@elizaos/plugin-multiversx':
-        specifier: workspace:*
-        version: link:../packages/plugin-multiversx
-      '@elizaos/plugin-near':
-        specifier: workspace:*
-        version: link:../packages/plugin-near
-      '@elizaos/plugin-nft-generation':
-        specifier: workspace:*
-        version: link:../packages/plugin-nft-generation
       '@elizaos/plugin-node':
         specifier: workspace:*
         version: link:../packages/plugin-node
-      '@elizaos/plugin-solana':
-        specifier: workspace:*
-        version: link:../packages/plugin-solana
       '@elizaos/plugin-starknet':
         specifier: workspace:*
         version: link:../packages/plugin-starknet
       '@elizaos/plugin-story':
         specifier: workspace:*
         version: link:../packages/plugin-story
-      '@elizaos/plugin-sui':
-        specifier: workspace:*
-        version: link:../packages/plugin-sui
       '@elizaos/plugin-tee':
         specifier: workspace:*
         version: link:../packages/plugin-tee
@@ -42514,9 +42496,6 @@ snapshots:
       unist-util-is: 6.0.0
       unist-util-visit-parents: 6.0.1
 
-  universal-github-app-jwt@2.2.0: {}
-
-  universal-user-agent@6.0.1: {}
   universal-github-app-jwt@2.2.0: {}
 
   universal-user-agent@6.0.1: {}
