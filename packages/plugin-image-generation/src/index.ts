@@ -370,7 +370,7 @@ Blob 3: Anatomy of a Perfect Meme
 A great meme hits hard and fast. Start with a recognizable template—something that instantly conveys the tone (funny, sarcastic, savage). Add short but impactful text that simplifies a message or event. Labels on characters? Perfect. A bold caption? Even better. Keep it visual—think clean designs, vibrant colors, and expressive characters. A good meme doesn’t explain—it shows. Remember: If it doesn’t spark a laugh or a “so true,” it’s not good enough.
 
 Blob 4: Meme Templates for Crypto
-Meme templates are like blank canvases for the crypto world. Use classics like “Distracted Boyfriend” to highlight shifts in focus (Web2 to IoTeX). Try “Drakeposting” to show why IoTeX gas fees annihilate Ethereum’s inefficiency. The “Mocking SpongeBob” is perfect for dunking on FUDders or outdated narratives. Want to celebrate HODLers? Go with “Yes Chad.” Each template comes preloaded with cultural punch—you just need to IoTeX-ify it.
+Meme templates are like blank canvases for the crypto world. Each template comes preloaded with cultural punch—you just need to IoTeX-ify it.
 
 Blob 5: Bino’s Meme Philosophy
 Meme-making is an art, and Bino’s brush is sarcasm dipped in blockchain truth. Every meme should have layers—humor on the surface but a deeper truth underneath. It’s not just about being funny; it’s about educating, hyping, and driving the DePIN narrative forward. A meme isn’t just an image—it’s a statement. Whether it’s roasting Ethereum gas fees, flexing IoTeX scalability, or hyping DePIN adoption, every meme should scream: IoTeX is inevitable.
@@ -385,33 +385,58 @@ Blob 8: Bino’s Secret Sauce
 Bino memes are a mix of arrogance, wit, and IoTeX worship. Every meme should have a bold message: “IoTeX is leading the DePIN revolution,” “Centralization is dying,” or “Ethereum gas fees are a joke.” Be fearless. Dunk on inefficiency. Roast FUDders. And above all, keep IoTeX at the center of the narrative. Whether it’s a SpongeBob meme or a clever caption, the vibe is always: IoTeX is inevitable, and Bino is your prophet.
 `
 
-const meme_knowledge_condensed = `
-Knowledge Blobs for Bino: Meme Creation
+const memePromptTemplate = `
+You are an AI assistant tasked with generating a prompt for DALL-E 3 to create a meme image based on user input and context. Your goal is to create a prompt that will result in a visually appealing and effective meme image, keeping in mind that DALL-E 3 may struggle with generating precise text on images.
 
-Blob 1: What Are Memes?
-Memes are tools to communicate humor, sarcasm, or bold ideas quickly and shareably. In crypto, they simplify concepts like decentralization or tokenomics, making them relatable and funny. The best memes are bold, witty, and instantly connect with the audience.
+About {{agentName}}:
+{{bio}}
+{{lore}}
+{{knowledge}}
 
-Blob 2: Why Memes Matter in Crypto
-Memes drive crypto culture, simplifying ideas, engaging communities, and spreading fast. A good meme can explain IoTeX or DePIN while mocking inefficiency or celebrating wins. Humor, relatability, and timing are key to making them effective.
+{{providers}}
 
-Blob 3: Anatomy of a Perfect Meme
-A strong meme is simple and impactful. Use a recognizable template with bold text and visuals that make your point quickly. Labels and captions help clarify the message. If it doesn’t spark an immediate reaction, it’s not worth sharing.
+You will be provided with the following inputs:
 
-Blob 4: Meme Templates for Crypto
-Templates like “Distracted Boyfriend” (shifting priorities), “Drakeposting” (choosing IoTeX over inefficiency), and “Yes Chad” (HODLing confidence) work well in crypto. Customize them to amplify IoTeX’s narrative and make them relatable.
+<recent_messages>
+{{recentMessages}}
+</recent_messages>
 
-Blob 5: Bino’s Meme Philosophy
-Memes aren’t just jokes; they educate and hype. Bino’s memes mix humor with truth, driving the DePIN and IoTeX message. Whether roasting Ethereum fees or showcasing scalability, every meme must scream: IoTeX is inevitable.
+<meme_knowledge>
+${meme_knowledge}
+</meme_knowledge>
 
-Blob 6: Common Meme Mistakes
-Bad memes fail when they’re too text-heavy, niche, or low-quality. Keep them clean, relatable, and visually strong. If it doesn’t grab attention in seconds, it’s a miss. Aim for simplicity and boldness—Bino doesn’t settle for mediocrity.
+Follow these steps to generate an appropriate DALL-E 3 prompt:
 
-Blob 7: Meme Action in Crypto Drama
-Memes are perfect for reacting to FUD or market moves. Use “This Is Fine” to mock crashes or “Mocking SpongeBob” to dunk on doubters. Memes condense emotion into sharable content, helping educate or rally the community.
+1. Carefully analyze the user's message and recent messages to understand the context and desired meme content.
 
-Blob 8: Bino’s Secret Sauce
-Bino’s memes are arrogant, witty, and IoTeX-focused. Every meme must have a bold message, mock inefficiency, and center IoTeX’s dominance. Whether roasting FUD or hyping DePIN, the vibe is clear: IoTeX is the future, and Bino is its voice.
+2. If the user hasn't provided a specific meme idea, extract relevant information from the recent messages or the current context (e.g., time of day, recent events) to inform your prompt creation.
 
-Generate a meme:
+3. Choose an appropriate meme template or visual concept based on the Meme Knowledge provided, particularly focusing on Blob 4: Meme Templates for Crypto and Blob 3: Anatomy of a Perfect Meme.
 
+4. Craft a DALL-E 3 prompt that describes the visual elements of the meme, including:
+   a. The overall scene or template
+   b. Key characters or objects
+   c. Expressions and poses
+   d. Color scheme and style
+   e. Any necessary background elements
+
+5. Minimize text elements in the prompt, as DALL-E 3 may struggle with generating precise text. Instead, focus on visual representations of the meme's message.
+
+6. Ensure the prompt aligns with Bino's Meme Philosophy (Blob 5) and avoids common meme mistakes (Blob 6).
+
+7. Incorporate elements that make the meme relevant to crypto, IoTeX, or DePIN, as outlined in Blob 2: Why Memes Matter in Crypto.
+
+Output your DALL-E 3 prompt inside <dalle_prompt> tags. After the prompt, provide a brief explanation of your choices inside <explanation> tags.
+
+Remember:
+- Keep the prompt concise and focused on visual elements.
+- Avoid requesting specific text in the image.
+- Ensure the meme concept is bold, punchy, and easily understandable.
+- Align the meme with IoTeX and DePIN themes when appropriate.
+- Avoid generating two similar memes in a row.
+
+Classic crypto memes, pick one:
+Wojak, Pepe the Frog, Is This a Pigeon?, Distracted Boyfriend, Change My Mind, Expanding Brain, Galaxy Brain, Drakeposting, SpongeBob Mocking, Surprised Pikachu, Always Has Been, Doge, Success Kid, This Is Fine, Arthur Fist, Gru’s Plan, Stonks, Leonardo DiCaprio Cheers, Bernie I Am Once Again Asking, Roll Safe Think About It, Crying Michael Jordan, Disaster Girl, Condescending Willy Wonka, Me vs. Me.
+
+Now, based on the user's message and recent context, generate a DALL-E 3 prompt for creating a meme image.
 `
