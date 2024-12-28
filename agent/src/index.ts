@@ -346,6 +346,7 @@ function initializeDatabase(dataDir: string) {
         const db = new PostgresDatabaseAdapter({
             connectionString: process.env.POSTGRES_URL,
             parseInputs: true,
+            max: 50
         });
 
         // Test the connection
