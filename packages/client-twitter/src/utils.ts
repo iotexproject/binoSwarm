@@ -312,7 +312,7 @@ function splitTweetContent(content: string, maxLength: number): string[] {
 
 function splitParagraph(paragraph: string, maxLength: number): string[] {
     // eslint-disable-next-line
-    const sentences = paragraph.match(/[^\.!\?]+[\.!\?]+|[^\.!\?]+$/g) || [
+    const sentences = paragraph?.match(/[^\.!\?]+[\.!\?]+|[^\.!\?]+$/g) || [
         paragraph,
     ];
     const chunks: string[] = [];

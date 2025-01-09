@@ -36,7 +36,7 @@ export const parseShouldRespondFromText = (
 export const booleanFooter = `Respond with only a YES or a NO.`;
 
 export const parseBooleanFromText = (text: string): boolean | null => {
-    const match = text.match(/\b(YES|NO)\b/i);
+    const match = text?.match(/\b(YES|NO)\b/i);
     return match ? match[0].toUpperCase() === "YES" : null;
 };
 
@@ -63,7 +63,7 @@ export function parseJsonArrayFromText(text: string) {
     let jsonData = null;
 
     // First try to parse with the original JSON format
-    const jsonBlockMatch = text.match(jsonBlockPattern);
+    const jsonBlockMatch = text?.match(jsonBlockPattern);
 
     if (jsonBlockMatch) {
         try {
@@ -78,7 +78,7 @@ export function parseJsonArrayFromText(text: string) {
     // If that fails, try to find an array pattern
     if (!jsonData) {
         const arrayPattern = /\[\s*['"][^'"]*['"]\s*\]/;
-        const arrayMatch = text.match(arrayPattern);
+        const arrayMatch = text?.match(arrayPattern);
 
         if (arrayMatch) {
             try {
@@ -113,7 +113,7 @@ export function parseJSONObjectFromText(
 ): Record<string, any> | null {
     let jsonData = null;
 
-    const jsonBlockMatch = text.match(jsonBlockPattern);
+    const jsonBlockMatch = text?.match(jsonBlockPattern);
 
     if (jsonBlockMatch) {
         try {
@@ -124,7 +124,7 @@ export function parseJSONObjectFromText(
         }
     } else {
         const objectPattern = /{[\s\S]*?}/;
-        const objectMatch = text.match(objectPattern);
+        const objectMatch = text?.match(objectPattern);
 
         if (objectMatch) {
             try {

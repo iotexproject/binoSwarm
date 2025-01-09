@@ -593,7 +593,7 @@ export class TwitterPostClient {
 
     private extractPostContent(text: string) {
         const postPattern = /<post>\s*([\s\S]*?)\s*<\/post>/;
-        const match = text.match(postPattern);
+        const match = text?.match(postPattern);
 
         if (match) {
             return match[1].trim(); // Extract and trim the content inside <post> tags

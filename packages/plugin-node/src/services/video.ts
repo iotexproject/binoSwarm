@@ -139,7 +139,7 @@ export class VideoService extends Service implements IVideoService {
         runtime: IAgentRuntime
     ): Promise<Media> {
         const videoId =
-            url.match(
+            url?.match(
                 /(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^\/&?]+)/ // eslint-disable-line
             )?.[1] || "";
         const videoUuid = this.getVideoId(videoId);

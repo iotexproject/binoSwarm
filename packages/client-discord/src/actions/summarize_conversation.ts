@@ -78,8 +78,8 @@ const getDateRange = async (
                 // TODO: parse start and end into timestamps
                 const startIntegerString = (
                     parsedResponse.start as string
-                ).match(/\d+/)?.[0];
-                const endIntegerString = (parsedResponse.end as string).match(
+                )?.match(/\d+/)?.[0];
+                const endIntegerString = (parsedResponse.end as string)?.match(
                     /\d+/
                 )?.[0];
 
@@ -91,10 +91,10 @@ const getDateRange = async (
                     day: 86400 * 1000,
                 };
 
-                const startMultiplier = (parsedResponse.start as string).match(
+                const startMultiplier = (parsedResponse.start as string)?.match(
                     /second|minute|hour|day/
                 )?.[0];
-                const endMultiplier = (parsedResponse.end as string).match(
+                const endMultiplier = (parsedResponse.end as string)?.match(
                     /second|minute|hour|day/
                 )?.[0];
 

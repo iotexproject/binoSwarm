@@ -599,7 +599,7 @@ export class LlamaService extends Service {
 
         if (useGrammar) {
             // extract everything between ```json and ```
-            let jsonString = response.match(/```json(.*?)```/s)?.[1].trim();
+            let jsonString = response?.match(/```json(.*?)```/s)?.[1].trim();
             if (!jsonString) {
                 // try parsing response as JSON
                 try {

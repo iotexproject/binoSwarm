@@ -618,7 +618,7 @@ export class MessageManager {
 
         // TODO: Move to attachments manager
         const urlRegex = /(https?:\/\/[^\s]+)/g;
-        const urls = processedContent.match(urlRegex) || [];
+        const urls = processedContent?.match(urlRegex) || [];
 
         for (const url of urls) {
             if (
