@@ -2,8 +2,9 @@ import { ActionResponse } from "./types.ts";
 const jsonBlockPattern = /```json\n([\s\S]*?)\n```/;
 
 export const messageCompletionFooter = `\nResponse format should be formatted in a JSON block like this:
+generatePreActionResponse is usually false if action will return it's own response, but if it's a casual chat with action like [CONTINUE], [NONE] etc, it's usually true
 \`\`\`json
-{ "user": "{{agentName}}", "text": "string", "action": "string" }
+{ "user": "{{agentName}}", "text": "string", "action": "string", "generatePreActionResponse": "boolean" }
 \`\`\``;
 
 export const shouldRespondFooter = `The available options are [RESPOND], [IGNORE], or [STOP]. Choose the most appropriate option.

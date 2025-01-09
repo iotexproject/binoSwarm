@@ -1107,6 +1107,7 @@ export async function generateMessageResponse({
 
             // try parsing the response as JSON, if null then try again
             const parsedContent = parseJSONObjectFromText(response) as Content;
+            elizaLogger.info(JSON.stringify(parsedContent, null, 2));
             if (!parsedContent) {
                 elizaLogger.debug("parsedContent is null, retrying");
                 continue;

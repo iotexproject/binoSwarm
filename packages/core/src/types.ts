@@ -29,6 +29,9 @@ export interface Content {
 
     /** Additional dynamic properties */
     [key: string]: unknown;
+
+    /** Whether to generate a response before executing the associated action */
+    generatePreActionResponse?: boolean;
 }
 
 /**

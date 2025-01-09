@@ -1,7 +1,7 @@
 import { v4 } from "uuid";
 
 // Import the entire module as default
-import pg from "pg";
+import pg, { PoolConfig } from "pg";
 type Pool = pg.Pool;
 
 import {
@@ -43,7 +43,7 @@ export class PostgresDatabaseAdapter
     private readonly jitterMax: number = 1000; // 1 second
     private readonly connectionTimeout: number = 5000; // 5 seconds
 
-    constructor(connectionConfig: any) {
+    constructor(connectionConfig: PoolConfig) {
         super({
             //circuitbreaker stuff
             failureThreshold: 5,

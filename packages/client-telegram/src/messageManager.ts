@@ -376,9 +376,9 @@ export class MessageManager {
         return (
             isReplyToBot ||
             isMentioned ||
-            (!this.runtime.character.clientConfig?.telegram
-                ?.shouldRespondOnlyToMentions &&
-                hasUsername)
+            (!message.chat.type || message.chat.type === 'private' ||
+            (!this.runtime.character.clientConfig?.telegram?.shouldRespondOnlyToMentions &&
+            hasUsername))
         );
     }
 
