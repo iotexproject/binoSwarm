@@ -1148,9 +1148,14 @@ export class MessageManager {
             return;
         }
 
-        const startCommandPhotoId = "https://i.ibb.co/8NTkybQ/ggs2banner.jpg";
 
         try {
+            if (this.runtime.character.name !== "GoatedAgent") {
+                await ctx.sendMessage("Welcome to " + ctx.botInfo?.username + "! Let's the DePIN revolution begin!");
+                return;
+            }
+
+            const startCommandPhotoId = "https://i.ibb.co/8NTkybQ/ggs2banner.jpg";
             await ctx.sendPhoto(startCommandPhotoId, {
                 caption:
                     '\n👋 Welcome to GOAT Earn\n' +
