@@ -28,6 +28,7 @@ export const depinProjects: Action = {
         "PROJECT_DETAILS",
     ],
     description: "Analyzes DePINScan projects",
+    suppressInitialMessage: true,
     validate: async (_runtime: IAgentRuntime) => {
         return true;
     },

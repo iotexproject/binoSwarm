@@ -1,9 +1,18 @@
+import {
+    State,
+    IAgentRuntime,
+    composeContext,
+    generateText,
+    ModelClass,
+} from "@elizaos/core";
 import axios from "axios";
 
-export async function askQuickSilver(
-    content: string
-): Promise<string> {
-    const response = await axios.post("https://quicksilver.iotex.ai/ask", {
+import { quicksilverResponseTemplate } from "../template";
+import { parseTagContent } from "../helpers/parsers";
+
+export async function askQuickSilver(content: string): Promise<string> {
+    const url = process.env.QUICKSILVER_URL || "https://quicksilver.iotex.ai";
+    const response = await axios.post(url + "/ask", {
         q: content,
     });
 
@@ -14,4 +23,24 @@ export async function askQuickSilver(
     }
 }
 
+export async function adaptQSResponse(
+    state: State,
+    runtime: IAgentRuntime,
+    qsResponse: string
+) {
+    state.qsResponse = qsResponse;
+    const context = composeContext({
+        state,
+        template:
+            // @ts-ignore
+            runtime.character.templates?.quicksilverResponseTemplate ||
+            quicksilverResponseTemplate,
+    });
+    const response = await generateText({
+        runtime,
+        context,
+        modelClass: ModelClass.SMALL,
+    });
 
+    return parseTagContent(response, "quicksilver_response");
+}

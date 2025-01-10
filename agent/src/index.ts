@@ -331,16 +331,16 @@ function initializeDatabase(dataDir: string) {
             max: 15,
         });
 
-        // Test the connection
-        db.init()
-            .then(() => {
-                elizaLogger.success(
-                    "Successfully connected to PostgreSQL database"
-                );
-            })
-            .catch((error) => {
-                elizaLogger.error("Failed to connect to PostgreSQL:", error);
-            });
+        // // Test the connection
+        // db.init()
+        //     .then(() => {
+        //         elizaLogger.success(
+        //             "Successfully connected to PostgreSQL database"
+        //         );
+        //     })
+        //     .catch((error) => {
+        //         elizaLogger.error("Failed to connect to PostgreSQL:", error);
+        //     });
 
         return db;
     } else {
@@ -554,7 +554,7 @@ async function startAgent(
         db = initializeDatabase(dataDir) as IDatabaseAdapter &
             IDatabaseCacheAdapter;
 
-        await db.init();
+        // await db.init();
 
         const cache = initializeCache(
             process.env.CACHE_STORE ?? CacheStore.DATABASE,

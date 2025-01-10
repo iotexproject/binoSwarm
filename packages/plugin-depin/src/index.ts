@@ -2,7 +2,7 @@ import type { Plugin } from "@elizaos/core";
 
 import { depinDataProvider } from "./providers/depinData";
 import { depinProjects } from "./actions/depinProjects";
-import { currentWeather } from "./actions/currentWeather";
+import { weather } from "./actions/weather";
 import { recentNews } from "./actions/recentNews";
 export const depinPlugin: Plugin = {
     name: "depin",
@@ -10,7 +10,7 @@ export const depinPlugin: Plugin = {
     providers: [depinDataProvider],
     evaluators: [],
     services: [],
-    actions: [depinProjects, currentWeather, recentNews],
+    actions: [depinProjects, weather, recentNews],
 };
 
 export default depinPlugin;

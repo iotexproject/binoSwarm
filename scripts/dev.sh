@@ -74,7 +74,7 @@ if [ ! -d "$PACKAGES_DIR" ]; then
 fi
 
 # List of working folders to watch (relative to $PACKAGES_DIR)
-WORKING_FOLDERS=("plugin-depin-iotex") # Core is handled separately
+WORKING_FOLDERS=("plugin-depin") # Core is handled separately
 
 # Initialize an array to hold package-specific commands
 COMMANDS=()

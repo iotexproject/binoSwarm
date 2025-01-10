@@ -6,12 +6,14 @@ import {
     HandlerCallback,
 } from "@elizaos/core";
 
-import { askQuickSilver } from "../services/quicksilver";
+import { adaptQSResponse, askQuickSilver } from "../services/quicksilver";
+import { extractNewsQuery } from "../helpers/extractors";
 
 export const recentNews: Action = {
     name: "NEWS",
     similes: [],
     description: "Provide real time news",
+    suppressInitialMessage: true,
     validate: async (_runtime: IAgentRuntime) => {
         return true;
     },
@@ -33,17 +35,26 @@ export const recentNews: Action = {
         ],
     ],
     handler: async (
-        _runtime: IAgentRuntime,
+        runtime: IAgentRuntime,
         message: Memory,
-        _state: State,
+        state: State,
         _options: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {
+        if (!state) {
+            state = (await runtime.composeState(message)) as State;
+        } else {
+            state = await runtime.updateRecentMessageState(state);
+        }
+
         try {
-            const news = await askQuickSilver(message.content.text);
+            const query = await extractNewsQuery(state, runtime);
+            const news = await askQuickSilver(query);
+            const adaptedResponse = await adaptQSResponse(state, runtime, news);
+
             if (callback) {
                 callback({
-                    text: news,
+                    text: adaptedResponse,
                     inReplyTo: message.id,
                 });
             }
@@ -61,4 +72,3 @@ export const recentNews: Action = {
         }
     },
 };
-

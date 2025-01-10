@@ -6,17 +6,15 @@ import {
     HandlerCallback,
 } from "@elizaos/core";
 
-import { askQuickSilver } from "../services/quicksilver";
-import { extractLocationQuestion } from "../services/map"
+import { adaptQSResponse, askQuickSilver } from "../services/quicksilver";
+import { extractLocationQuestion } from "../helpers/extractors";
 
-export const currentWeather: Action = {
-    name: "CURRENT_WEATHER",
-    similes: [
-        "WEATHER",
-        "WEATHER_REPORT",
-        "WEATHER_UPDATE",
-    ],
-    description: "Get the current weather for a given location",
+export const weather: Action = {
+    name: "GET_WEATHER",
+    similes: ["WEATHER", "WEATHER_REPORT", "WEATHER_UPDATE"],
+    description:
+        "Get the current weather or weather forecast for a given location",
+    suppressInitialMessage: true,
     validate: async (_runtime: IAgentRuntime) => {
         return true;
     },
@@ -31,7 +29,7 @@ export const currentWeather: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "The current weather in Tokyo is 20°C with clear skies.",
+                    text: "Let me check the weather for you.",
                     action: "CURRENT_WEATHER",
                 },
             },
@@ -46,7 +44,7 @@ export const currentWeather: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "In New York City, it's currently 15°C (feels like 13°C) with 65% humidity. Wind speed is 12 km/h and conditions are partly cloudy with a UV index of 3.",
+                    text: "Let me check the current weather conditions for you.",
                     action: "CURRENT_WEATHER",
                 },
             },
@@ -61,7 +59,7 @@ export const currentWeather: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "London is experiencing light rain with a temperature of 12°C (feels like 10°C). The pressure is 1015 hPa with 78% humidity and wind speeds of 15 km/h.",
+                    text: "I'll check the weather in London for you.",
                     action: "CURRENT_WEATHER",
                 },
             },
@@ -76,7 +74,7 @@ export const currentWeather: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "Dubai is hot at 35°C (feels like 38°C) with clear skies. Humidity is at 45%, UV index is 8, and there's a light breeze at 8 km/h.",
+                    text: "Let me look up the current weather conditions in Dubai.",
                     action: "CURRENT_WEATHER",
                 },
             },
@@ -91,7 +89,7 @@ export const currentWeather: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "In Moscow, the current temperature is -5°C with a range of -8°C to -3°C today. Light snowfall conditions with 85% humidity and wind speed at 20 km/h.",
+                    text: "I'll check today's temperature range in Moscow for you.",
                     action: "CURRENT_WEATHER",
                 },
             },
@@ -106,8 +104,23 @@ export const currentWeather: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "Sydney's current temperature is 26°C (feels like 28°C), ranging from 22°C to 29°C. Clear sky conditions with 60% humidity, UV index of 9, and coastal winds at 15 km/h.",
+                    text: "Let me get you a detailed weather report for Sydney.",
                     action: "CURRENT_WEATHER",
+                },
+            },
+        ],
+        [
+            {
+                user: "user",
+                content: {
+                    text: "What's the weather in Tokyo for the next 3 days?",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "I'll check the weather forecast for Tokyo over the next 3 days.",
+                    action: "WEATHER",
                 },
             },
         ],
@@ -126,10 +139,7 @@ export const currentWeather: Action = {
         }
 
         try {
-            const location = await extractLocationQuestion(
-                state,
-                runtime
-            );
+            const location = await extractLocationQuestion(state, runtime);
             if (!location) {
                 if (callback) {
                     callback({
@@ -141,9 +151,15 @@ export const currentWeather: Action = {
             }
 
             const weather = await askQuickSilver(location);
+            const adaptedResponse = await adaptQSResponse(
+                state,
+                runtime,
+                weather
+            );
+
             if (callback) {
                 callback({
-                    text: weather,
+                    text: adaptedResponse,
                     inReplyTo: message.id,
                 });
             }
@@ -161,4 +177,3 @@ export const currentWeather: Action = {
         }
     },
 };
-
