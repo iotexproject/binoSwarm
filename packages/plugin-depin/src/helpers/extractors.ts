@@ -25,7 +25,7 @@ export async function extractLocationQuestion(
             recentMessages: getLastMessages(state, NUM_RECENT_MESSAGES),
         },
         template:
-            // @ts-ignore
+            // @ts-expect-error: locationExtractionTemplate should be added to character type
             runtime.character.templates?.locationExtractionTemplate ||
             locationExtractionTemplate,
     });
@@ -52,7 +52,7 @@ export async function extractNewsQuery(
             recentMessages: getLastMessages(state, NUM_RECENT_MESSAGES),
         },
         template:
-            // @ts-ignore
+            // @ts-expect-error: newsExtractionTemplate should be added to character type
             runtime.character.templates?.newsExtractionTemplate ||
             newsExtractionTemplate,
     });

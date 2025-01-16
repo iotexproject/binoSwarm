@@ -33,7 +33,6 @@ async function get(
     }
 
     const embedding = await embed(runtime, processed);
-
     const fragments = await runtime.knowledgeManager.searchMemoriesByEmbedding(
         embedding,
         {

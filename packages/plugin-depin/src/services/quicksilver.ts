@@ -32,7 +32,7 @@ export async function adaptQSResponse(
     const context = composeContext({
         state,
         template:
-            // @ts-ignore
+            // @ts-expect-error: quicksilverResponseTemplate should be added to character type
             runtime.character.templates?.quicksilverResponseTemplate ||
             quicksilverResponseTemplate,
     });

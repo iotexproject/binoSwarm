@@ -2,9 +2,8 @@ import { ActionResponse } from "./types.ts";
 const jsonBlockPattern = /```json\n([\s\S]*?)\n```/;
 
 export const messageCompletionFooter = `\nResponse format should be formatted in a JSON block like this:
-generatePreActionResponse is usually false if action will return it's own response, but if it's a casual chat with action like [CONTINUE], [NONE] etc, it's usually true
 \`\`\`json
-{ "user": "{{agentName}}", "text": "string", "action": "string", "generatePreActionResponse": "boolean" }
+{ "user": "{{agentName}}", "text": "string", "action": "string" }
 \`\`\``;
 
 export const shouldRespondFooter = `The available options are [RESPOND], [IGNORE], or [STOP]. Choose the most appropriate option.
@@ -35,9 +34,28 @@ export const parseShouldRespondFromText = (
 
 export const booleanFooter = `Respond with only a YES or a NO.`;
 
+/**
+ * Parses a string to determine its boolean equivalent.
+ *
+ * Recognized affirmative values: "YES", "Y", "TRUE", "T", "1", "ON", "ENABLE".
+ * Recognized negative values: "NO", "N", "FALSE", "F", "0", "OFF", "DISABLE".
+ *
+ * @param {string} text - The input text to parse.
+ * @returns {boolean|null} - Returns `true` for affirmative inputs, `false` for negative inputs, and `null` for unrecognized inputs or null/undefined.
+ */
 export const parseBooleanFromText = (text: string): boolean | null => {
-    const match = text?.match(/\b(YES|NO)\b/i);
-    return match ? match[0].toUpperCase() === "YES" : null;
+    const match = text?.match(/\b(YES|NO|TRUE|FALSE|ON|OFF|ENABLE|DISABLE)\b/i);
+
+    if (match) {
+        const normalizedText = match[0].toUpperCase();
+        const isTrue =
+            normalizedText === "YES" ||
+            normalizedText === "TRUE" ||
+            normalizedText === "ON" ||
+            normalizedText === "ENABLE";
+        return isTrue;
+    }
+    return null;
 };
 
 export const stringArrayFooter = `Respond with a JSON array containing the values in a JSON block formatted for markdown with this structure:
@@ -166,7 +184,7 @@ export const parseActionResponseFromText = (
         like: /\[LIKE\]/,
         retweet: /\[RETWEET\]/,
         quote: /\[QUOTE\]/,
-        reply: /\[REPLY\]/
+        reply: /\[REPLY\]/,
     };
 
     // Update actions based on matches
@@ -176,3 +194,37 @@ export const parseActionResponseFromText = (
 
     return { actions };
 };
+
+/**
+ * Truncate text to fit within the character limit, ensuring it ends at a complete sentence.
+ */
+export function truncateToCompleteSentence(
+    text: string,
+    maxLength: number
+): string {
+    if (text.length <= maxLength) {
+        return text;
+    }
+
+    // Attempt to truncate at the last period within the limit
+    const lastPeriodIndex = text.lastIndexOf(".", maxLength - 1);
+    if (lastPeriodIndex !== -1) {
+        const truncatedAtPeriod = text.slice(0, lastPeriodIndex + 1).trim();
+        if (truncatedAtPeriod.length > 0) {
+            return truncatedAtPeriod;
+        }
+    }
+
+    // If no period, truncate to the nearest whitespace within the limit
+    const lastSpaceIndex = text.lastIndexOf(" ", maxLength - 1);
+    if (lastSpaceIndex !== -1) {
+        const truncatedAtSpace = text.slice(0, lastSpaceIndex).trim();
+        if (truncatedAtSpace.length > 0) {
+            return truncatedAtSpace + "...";
+        }
+    }
+
+    // Fallback: Hard truncate and add ellipsis
+    const hardTruncated = text.slice(0, maxLength - 3).trim();
+    return hardTruncated + "...";
+}

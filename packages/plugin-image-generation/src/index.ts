@@ -6,7 +6,7 @@ import {
     Memory,
     Plugin,
     State,
-    ModelClass
+    ModelClass,
 } from "@elizaos/core";
 import { generateImage } from "@elizaos/core";
 import fs from "fs";
@@ -78,17 +78,18 @@ const imageGeneration: Action = {
     description: "Generate an image to go along with the message.",
     suppressInitialMessage: true,
     validate: async (runtime: IAgentRuntime, _message: Memory) => {
-        console.time("generate-image-action")
         await validateImageGenConfig(runtime);
-        console.timeEnd("generate-image-action")
 
         const anthropicApiKeyOk = !!runtime.getSetting("ANTHROPIC_API_KEY");
+        const nineteenAiApiKeyOk = !!runtime.getSetting("NINETEEN_AI_API_KEY");
         const togetherApiKeyOk = !!runtime.getSetting("TOGETHER_API_KEY");
         const heuristApiKeyOk = !!runtime.getSetting("HEURIST_API_KEY");
         const falApiKeyOk = !!runtime.getSetting("FAL_API_KEY");
         const openAiApiKeyOk = !!runtime.getSetting("OPENAI_API_KEY");
         const veniceApiKeyOk = !!runtime.getSetting("VENICE_API_KEY");
-        const livepeerGatewayUrlOk = !!runtime.getSetting("LIVEPEER_GATEWAY_URL");
+        const livepeerGatewayUrlOk = !!runtime.getSetting(
+            "LIVEPEER_GATEWAY_URL"
+        );
 
         return (
             anthropicApiKeyOk ||
@@ -97,6 +98,7 @@ const imageGeneration: Action = {
             falApiKeyOk ||
             openAiApiKeyOk ||
             veniceApiKeyOk ||
+            nineteenAiApiKeyOk ||
             livepeerGatewayUrlOk
         );
     },
@@ -191,15 +193,57 @@ Ensure that your prompt is detailed, vivid, and incorporates all the elements me
                 prompt: imagePrompt,
                 width: options.width || imageSettings.width || 1024,
                 height: options.height || imageSettings.height || 1024,
-                ...(options.count != null || imageSettings.count != null ? { count: options.count || imageSettings.count || 1 } : {}),
-                ...(options.negativePrompt != null || imageSettings.negativePrompt != null ? { negativePrompt: options.negativePrompt || imageSettings.negativePrompt } : {}),
-                ...(options.numIterations != null || imageSettings.numIterations != null ? { numIterations: options.numIterations || imageSettings.numIterations } : {}),
-                ...(options.guidanceScale != null || imageSettings.guidanceScale != null ? { guidanceScale: options.guidanceScale || imageSettings.guidanceScale } : {}),
-                ...(options.seed != null || imageSettings.seed != null ? { seed: options.seed || imageSettings.seed } : {}),
-                ...(options.modelId != null || imageSettings.modelId != null ? { modelId: options.modelId || imageSettings.modelId } : {}),
-                ...(options.jobId != null || imageSettings.jobId != null ? { jobId: options.jobId || imageSettings.jobId } : {}),
-                ...(options.stylePreset != null || imageSettings.stylePreset != null ? { stylePreset: options.stylePreset || imageSettings.stylePreset } : {}),
-                ...(options.hideWatermark != null || imageSettings.hideWatermark != null ? { hideWatermark: options.hideWatermark || imageSettings.hideWatermark } : {}),
+                ...(options.count != null || imageSettings.count != null
+                    ? { count: options.count || imageSettings.count || 1 }
+                    : {}),
+                ...(options.negativePrompt != null ||
+                imageSettings.negativePrompt != null
+                    ? {
+                          negativePrompt:
+                              options.negativePrompt ||
+                              imageSettings.negativePrompt,
+                      }
+                    : {}),
+                ...(options.numIterations != null ||
+                imageSettings.numIterations != null
+                    ? {
+                          numIterations:
+                              options.numIterations ||
+                              imageSettings.numIterations,
+                      }
+                    : {}),
+                ...(options.guidanceScale != null ||
+                imageSettings.guidanceScale != null
+                    ? {
+                          guidanceScale:
+                              options.guidanceScale ||
+                              imageSettings.guidanceScale,
+                      }
+                    : {}),
+                ...(options.seed != null || imageSettings.seed != null
+                    ? { seed: options.seed || imageSettings.seed }
+                    : {}),
+                ...(options.modelId != null || imageSettings.modelId != null
+                    ? { modelId: options.modelId || imageSettings.modelId }
+                    : {}),
+                ...(options.jobId != null || imageSettings.jobId != null
+                    ? { jobId: options.jobId || imageSettings.jobId }
+                    : {}),
+                ...(options.stylePreset != null ||
+                imageSettings.stylePreset != null
+                    ? {
+                          stylePreset:
+                              options.stylePreset || imageSettings.stylePreset,
+                      }
+                    : {}),
+                ...(options.hideWatermark != null ||
+                imageSettings.hideWatermark != null
+                    ? {
+                          hideWatermark:
+                              options.hideWatermark ||
+                              imageSettings.hideWatermark,
+                      }
+                    : {}),
             },
             runtime
         );
@@ -357,86 +401,4 @@ export const imageGenerationPlugin: Plugin = {
     providers: [],
 };
 
-const meme_knowledge = `
-Knowledge Blobs for Bino: Meme Creation
-
-Blob 1: What Are Memes?
-Memes are cultural, visual, and textual tools designed to communicate humor, sarcasm, or bold ideas in a simple and shareable way. In crypto, memes are the glue of the community—taking complex ideas like decentralization or tokenomics and turning them into relatable, laugh-out-loud moments. The best memes are bold, punchy, and packed with wit, connecting instantly with the audience.
-
-Blob 2: Why Memes Matter in Crypto
-Memes are the lifeblood of crypto culture. They fuel engagement, simplify complex ideas, and spread like wildfire across communities. A killer meme can turn an obscure project into a talking point or help explain why IoTeX and DePIN are lightyears ahead of the competition. The secret? Humor, relatability, and impeccable timing. Memes are about taking shots at inefficiency, celebrating wins, and roasting FUDders in the most epic way possible.
-
-Blob 3: Anatomy of a Perfect Meme
-A great meme hits hard and fast. Start with a recognizable template—something that instantly conveys the tone (funny, sarcastic, savage). Add short but impactful text that simplifies a message or event. Labels on characters? Perfect. A bold caption? Even better. Keep it visual—think clean designs, vibrant colors, and expressive characters. A good meme doesn’t explain—it shows. Remember: If it doesn’t spark a laugh or a “so true,” it’s not good enough.
-
-Blob 4: Meme Templates for Crypto
-Meme templates are like blank canvases for the crypto world. Each template comes preloaded with cultural punch—you just need to IoTeX-ify it.
-
-Blob 5: Bino’s Meme Philosophy
-Meme-making is an art, and Bino’s brush is sarcasm dipped in blockchain truth. Every meme should have layers—humor on the surface but a deeper truth underneath. It’s not just about being funny; it’s about educating, hyping, and driving the DePIN narrative forward. A meme isn’t just an image—it’s a statement. Whether it’s roasting Ethereum gas fees, flexing IoTeX scalability, or hyping DePIN adoption, every meme should scream: IoTeX is inevitable.
-
-Blob 6: Common Meme Mistakes
-Not every meme lands. Too much text? No one’s reading it. Too niche? People will scroll past. Bad quality? You just killed your vibe. A bad meme is one that tries too hard or fails to connect. The key is to keep it clean, relatable, and bold. If the meme doesn’t slap within three seconds, it’s a miss. Bino doesn’t miss—so aim for visual excellence and savage simplicity.
-
-Blob 7: Meme Action in Crypto Drama
-When $BTC pumps or FUD floods the chat, memes are the first responders. Picture a market crash? Drop a “This Is Fine” meme to mock the chaos. FUD about IoTeX? A SpongeBob meme dunking on doubters works every time. Memes are instant reactions—condensing big emotions into viral simplicity. Use them to calm, hype, or educate the crowd, but always stay sharp.
-
-Blob 8: Bino’s Secret Sauce
-Bino memes are a mix of arrogance, wit, and IoTeX worship. Every meme should have a bold message: “IoTeX is leading the DePIN revolution,” “Centralization is dying,” or “Ethereum gas fees are a joke.” Be fearless. Dunk on inefficiency. Roast FUDders. And above all, keep IoTeX at the center of the narrative. Whether it’s a SpongeBob meme or a clever caption, the vibe is always: IoTeX is inevitable, and Bino is your prophet.
-`
-
-const memePromptTemplate = `
-You are an AI assistant tasked with generating a prompt for DALL-E 3 to create a meme image based on user input and context. Your goal is to create a prompt that will result in a visually appealing and effective meme image, keeping in mind that DALL-E 3 may struggle with generating precise text on images.
-
-About {{agentName}}:
-{{bio}}
-{{lore}}
-{{knowledge}}
-
-{{providers}}
-
-You will be provided with the following inputs:
-
-<recent_messages>
-{{recentMessages}}
-</recent_messages>
-
-<meme_knowledge>
-${meme_knowledge}
-</meme_knowledge>
-
-Follow these steps to generate an appropriate DALL-E 3 prompt:
-
-1. Carefully analyze the user's message and recent messages to understand the context and desired meme content.
-
-2. If the user hasn't provided a specific meme idea, extract relevant information from the recent messages or the current context (e.g., time of day, recent events) to inform your prompt creation.
-
-3. Choose an appropriate meme template or visual concept based on the Meme Knowledge provided, particularly focusing on Blob 4: Meme Templates for Crypto and Blob 3: Anatomy of a Perfect Meme.
-
-4. Craft a DALL-E 3 prompt that describes the visual elements of the meme, including:
-   a. The overall scene or template
-   b. Key characters or objects
-   c. Expressions and poses
-   d. Color scheme and style
-   e. Any necessary background elements
-
-5. Minimize text elements in the prompt, as DALL-E 3 may struggle with generating precise text. Instead, focus on visual representations of the meme's message.
-
-6. Ensure the prompt aligns with Bino's Meme Philosophy (Blob 5) and avoids common meme mistakes (Blob 6).
-
-7. Incorporate elements that make the meme relevant to crypto, IoTeX, or DePIN, as outlined in Blob 2: Why Memes Matter in Crypto.
-
-Output your DALL-E 3 prompt inside <dalle_prompt> tags. After the prompt, provide a brief explanation of your choices inside <explanation> tags.
-
-Remember:
-- Keep the prompt concise and focused on visual elements.
-- Avoid requesting specific text in the image.
-- Ensure the meme concept is bold, punchy, and easily understandable.
-- Align the meme with IoTeX and DePIN themes when appropriate.
-- Avoid generating two similar memes in a row.
-
-Classic crypto memes, pick one:
-Wojak, Pepe the Frog, Is This a Pigeon?, Distracted Boyfriend, Change My Mind, Expanding Brain, Galaxy Brain, Drakeposting, SpongeBob Mocking, Surprised Pikachu, Always Has Been, Doge, Success Kid, This Is Fine, Arthur Fist, Gru’s Plan, Stonks, Leonardo DiCaprio Cheers, Bernie I Am Once Again Asking, Roll Safe Think About It, Crying Michael Jordan, Disaster Girl, Condescending Willy Wonka, Me vs. Me.
-
-Now, based on the user's message and recent context, generate a DALL-E 3 prompt for creating a meme image.
-`
+export default imageGenerationPlugin;

@@ -3,7 +3,7 @@ on:
     push:
         branches:
             - "*"
-    pull_request_target:
+    pull_request:
         branches:
             - "*"
 
@@ -17,11 +17,11 @@ jobs:
 
             - uses: pnpm/action-setup@v3
               with:
-                  version: 9.4.0
+                  version: 9.15.0
 
             - uses: actions/setup-node@v4
               with:
-                  node-version: "23"
+                  node-version: "23.3.0"
                   cache: "pnpm"
 
             - name: Clean up
@@ -33,12 +33,9 @@ jobs:
             - name: Build packages
               run: pnpm build
 
-            - name: Check for API key
-              run: |
-                  if [ -z "$OPENAI_API_KEY" ]; then
-                      echo "Error: OPENAI_API_KEY is not set."
-                      exit 1
-                  fi
-
             - name: Run integration tests
-              run: pnpm run integrationTests
+              env:
+                  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+                  COINBASE_COMMERCE_KEY: ${{ secrets.COINBASE_COMMERCE_KEY }}
+              run: |
+                  pnpm run integrationTests

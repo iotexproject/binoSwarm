@@ -25,7 +25,7 @@
         "allowArbitraryExtensions": true,
         "customConditions": [
             "@elizaos/source"
-        ],
+        ]
     },
     "include": [
         "src/**/*"

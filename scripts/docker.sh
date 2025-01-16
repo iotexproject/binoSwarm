@@ -32,8 +32,6 @@ case "$1" in
         PACKAGES=(
             "adapter-postgres"
             "adapter-sqlite"
-            "adapter-sqljs"
-            "adapter-supabase"
             "client-auto"
             "client-direct"
             "client-discord"
@@ -44,7 +42,6 @@ case "$1" in
             "plugin-bootstrap"
             "plugin-image-generation"
             "plugin-node"
-            "plugin-solana"
             "plugin-evm"
             "plugin-tee"
         )

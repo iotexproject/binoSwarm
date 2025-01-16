@@ -32,7 +32,6 @@
         "@elizaos/plugin-image-generation": "workspace:*",
         "@elizaos/plugin-node": "workspace:*",
         "@elizaos/plugin-tee": "workspace:*",
-        "@elizaos/plugin-twitter": "workspace:*",
         "@elizaos/plugin-web-search": "workspace:*",
         "@elizaos/plugin-depin": "workspace:*",
         "readline": "1.3.0",
