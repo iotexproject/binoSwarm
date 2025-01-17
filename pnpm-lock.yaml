@@ -148,6 +148,9 @@ importers:
       '@elizaos/plugin-node':
         specifier: workspace:*
         version: link:../packages/plugin-node
+      '@elizaos/plugin-prediction':
+        specifier: workspace:*
+        version: link:../packages/plugin-prediction
       '@elizaos/plugin-tee':
         specifier: workspace:*
         version: link:../packages/plugin-tee
