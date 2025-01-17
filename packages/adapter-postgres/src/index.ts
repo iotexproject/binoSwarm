@@ -1,7 +1,7 @@
 import { v4 } from "uuid";
 
 // Import the entire module as default
-import pg, { PoolConfig} from "pg";
+import pg, { PoolConfig } from "pg";
 type Pool = pg.Pool;
 
 import {
@@ -11,6 +11,7 @@ import {
     EmbeddingProvider,
     GoalStatus,
     Participant,
+    Prediction,
     RAGKnowledgeItem,
     elizaLogger,
     getEmbeddingConfig,
@@ -1782,6 +1783,30 @@ export class PostgresDatabaseAdapter
                 params.isShared,
             ]
         );
+    }
+
+    async createPrediction(prediction: Prediction): Promise<void> {
+        await this.pool.query(
+            `INSERT INTO predictions (id, creator, statement, deadline, contract_address, status) VALUES ($1, $2, $3, $4, $5)`,
+            [
+                v4(),
+                prediction.creator,
+                prediction.statement,
+                prediction.deadline,
+                prediction.contract_address,
+                prediction.status,
+            ]
+        );
+    }
+
+    async getPredictions(params: {
+        status: "OPEN" | "RESOLVED" | "CLOSED";
+    }): Promise<Prediction[]> {
+        const { rows } = await this.pool.query(
+            `SELECT * FROM predictions WHERE "status" = $1`,
+            [params.status]
+        );
+        return rows;
     }
 }
 

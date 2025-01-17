@@ -125,6 +125,17 @@ export interface Goal {
     objectives: Objective[];
 }
 
+export interface Prediction {
+    id: string;
+    creator: UUID;
+    statement: string;
+    deadline: Date;
+    contract_address: `0x${string}`;
+    status: "OPEN" | "RESOLVED" | "CLOSED";
+    created_at?: Date;
+    outcome?: string;
+}
+
 /**
  * Model size/type classification
  */
@@ -261,8 +272,8 @@ export enum ModelProviderName {
     NINETEEN_AI = "nineteen_ai",
     AKASH_CHAT_API = "akash_chat_api",
     LIVEPEER = "livepeer",
-    DEEPSEEK="deepseek",
-    INFERA="infera"
+    DEEPSEEK = "deepseek",
+    INFERA = "infera",
 }
 
 /**
@@ -1049,6 +1060,10 @@ export interface IDatabaseAdapter {
     createKnowledge(knowledge: RAGKnowledgeItem): Promise<void>;
     removeKnowledge(id: UUID): Promise<void>;
     clearKnowledge(agentId: UUID, shared?: boolean): Promise<void>;
+    getPredictions?(params: {
+        status: "OPEN" | "RESOLVED" | "CLOSED";
+    }): Promise<Prediction[]>;
+    createPrediction?(prediction: Prediction): Promise<void>;
 }
 
 export interface IDatabaseCacheAdapter {
@@ -1086,7 +1101,10 @@ export interface IMemoryManager {
     ): Promise<{ embedding: number[]; levenshtein_score: number }[]>;
 
     getMemoryById(id: UUID): Promise<Memory | null>;
-    getMemoriesByRoomIds(params: { roomIds: UUID[], limit?: number }): Promise<Memory[]>;
+    getMemoriesByRoomIds(params: {
+        roomIds: UUID[];
+        limit?: number;
+    }): Promise<Memory[]>;
     searchMemoriesByEmbedding(
         embedding: number[],
         opts: {
@@ -1377,9 +1395,28 @@ export interface IrysTimestamp {
 }
 
 export interface IIrysService extends Service {
-    getDataFromAnAgent(agentsWalletPublicKeys: string[], tags: GraphQLTag[], timestamp: IrysTimestamp): Promise<DataIrysFetchedFromGQL>;
-    workerUploadDataOnIrys(data: any, dataType: IrysDataType, messageType: IrysMessageType, serviceCategory: string[], protocol: string[], validationThreshold: number[], minimumProviders: number[], testProvider: boolean[], reputation: number[]): Promise<UploadIrysResult>;
-    providerUploadDataOnIrys(data: any, dataType: IrysDataType, serviceCategory: string[], protocol: string[]): Promise<UploadIrysResult>;
+    getDataFromAnAgent(
+        agentsWalletPublicKeys: string[],
+        tags: GraphQLTag[],
+        timestamp: IrysTimestamp
+    ): Promise<DataIrysFetchedFromGQL>;
+    workerUploadDataOnIrys(
+        data: any,
+        dataType: IrysDataType,
+        messageType: IrysMessageType,
+        serviceCategory: string[],
+        protocol: string[],
+        validationThreshold: number[],
+        minimumProviders: number[],
+        testProvider: boolean[],
+        reputation: number[]
+    ): Promise<UploadIrysResult>;
+    providerUploadDataOnIrys(
+        data: any,
+        dataType: IrysDataType,
+        serviceCategory: string[],
+        protocol: string[]
+    ): Promise<UploadIrysResult>;
 }
 
 export interface ITeeLogService extends Service {
