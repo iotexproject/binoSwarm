@@ -1787,14 +1787,15 @@ export class PostgresDatabaseAdapter
 
     async createPrediction(prediction: Prediction): Promise<void> {
         await this.pool.query(
-            `INSERT INTO predictions (id, creator, statement, deadline, contract_address, status) VALUES ($1, $2, $3, $4, $5)`,
+            `INSERT INTO predictions (id, creator, statement, deadline, contract_address, status, smartcontract_id) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [
-                v4(),
+                prediction.id,
                 prediction.creator,
                 prediction.statement,
                 prediction.deadline,
                 prediction.contract_address,
                 prediction.status,
+                prediction.smartcontract_id,
             ]
         );
     }

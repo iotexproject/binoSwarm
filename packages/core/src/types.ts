@@ -134,6 +134,7 @@ export interface Prediction {
     status: "OPEN" | "RESOLVED" | "CLOSED";
     created_at?: Date;
     outcome?: string;
+    smartcontract_id?: string;
 }
 
 /**
