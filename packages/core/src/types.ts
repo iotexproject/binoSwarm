@@ -1065,6 +1065,8 @@ export interface IDatabaseAdapter {
         status: "OPEN" | "RESOLVED" | "CLOSED";
     }): Promise<Prediction[]>;
     createPrediction?(prediction: Prediction): Promise<void>;
+    getReadyActivePredictions?(): Promise<Prediction[]>;
+    resolvePrediction?(predictionId: string, outcome: boolean): Promise<string>;
 }
 
 export interface IDatabaseCacheAdapter {

@@ -1809,6 +1809,25 @@ export class PostgresDatabaseAdapter
         );
         return rows;
     }
+
+    async getReadyActivePredictions(): Promise<Prediction[]> {
+        const currentTime = new Date();
+        const { rows } = await this.pool.query(
+            `SELECT * FROM predictions WHERE "status" = 'OPEN' AND "deadline" < $1`,
+            [currentTime]
+        );
+        return rows;
+    }
+
+    async resolvePrediction(
+        predictionId: string,
+        outcome: boolean
+    ): Promise<void> {
+        await this.pool.query(
+            `UPDATE predictions SET "status" = 'RESOLVED', "outcome" = $2 WHERE "id" = $1`,
+            [predictionId, outcome]
+        );
+    }
 }
 
 export default PostgresDatabaseAdapter;

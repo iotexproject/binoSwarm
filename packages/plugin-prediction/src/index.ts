@@ -1,3 +1,5 @@
+export * from "./helpers/blockchain";
+
 import type { Plugin } from "@elizaos/core";
 
 import { predictionEvaluator } from "./evaluators/prediction";

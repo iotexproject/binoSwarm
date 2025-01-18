@@ -1,3 +1,8 @@
+export * from "./actions/weather";
+export * from "./actions/depinProjects";
+export * from "./actions/recentNews";
+export * from "./services/quicksilver";
+
 import type { Plugin } from "@elizaos/core";
 
 import { depinDataProvider } from "./providers/depinData";
