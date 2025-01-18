@@ -245,6 +245,12 @@ importers:
       '@elizaos/core':
         specifier: workspace:*
         version: link:../core
+      '@elizaos/plugin-depin':
+        specifier: workspace:*
+        version: link:../plugin-depin
+      '@elizaos/plugin-prediction':
+        specifier: workspace:*
+        version: link:../plugin-prediction
       '@types/body-parser':
         specifier: 1.19.5
         version: 1.19.5

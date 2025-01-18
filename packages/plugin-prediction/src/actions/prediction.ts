@@ -15,9 +15,6 @@ import {
 import { predictionsTemplate } from "../templates";
 import { createPrediction } from "../helpers/blockchain";
 
-const BINARY_PREDICTION_CONTRACT_ADDRESS =
-    "0x4Dc3B6d35AdF51B190F81A7dbD3baD892a59Ac60";
-
 export const predictionAction: Action = {
     name: "CREATE_PREDICTION",
     description: "Create a prediction",
@@ -66,8 +63,10 @@ export const predictionAction: Action = {
                     predictionObject
                 );
                 if (callback) {
+                    const contractAddress =
+                        process.env.BINARY_PREDICTION_CONTRACT_ADDRESS;
                     callback({
-                        text: `The prediction has been created.\nPrediction: ${predictionObject.prediction.statement}\nDeadline: ${predictionObject.prediction.deadline}\nContract: ${BINARY_PREDICTION_CONTRACT_ADDRESS}\nPrediction ID: ${predictionId}`,
+                        text: `The prediction has been created.\nPrediction: ${predictionObject.prediction.statement}\nDeadline: ${predictionObject.prediction.deadline}\nContract: ${contractAddress}\nPrediction ID: ${predictionId}`,
                     });
                 }
             }
@@ -213,9 +212,12 @@ async function handleNewPrediction(
     const deadlineTimeToSec =
         new Date(predictionObject.prediction.deadline).getTime() / 1000;
 
+    const smartContractAddr = process.env
+        .BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`;
+
     const smartcontractId = await createPrediction(
         runtime,
-        BINARY_PREDICTION_CONTRACT_ADDRESS,
+        smartContractAddr,
         predictionObject.prediction.statement,
         deadlineTimeToSec
     );
@@ -224,7 +226,7 @@ async function handleNewPrediction(
         creator: message.userId,
         statement: predictionObject.prediction.statement,
         deadline: predictionObject.prediction.deadline,
-        contract_address: BINARY_PREDICTION_CONTRACT_ADDRESS,
+        contract_address: smartContractAddr,
         status: "OPEN",
         smartcontract_id: smartcontractId.toString(),
     });
