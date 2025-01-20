@@ -1302,6 +1302,21 @@ Text: ${attachment.text}
                       )
                     : "",
 
+            // postDirections:
+            //     this.character?.style?.all?.length > 0 ||
+            //     this.character?.style?.post.length > 0
+            //         ? addHeader(
+            //               "# Post Directions for " + this.character.name,
+            //               (() => {
+            //                   const all = this.character?.style?.all || [];
+            //                   const post = this.character?.style?.post || [];
+            //                   return [...all, ...post].join("\n");
+            //               })()
+            //           )
+            //         : "",
+
+            //old logic left in for reference
+            //food for thought. how could we dynamically decide what parts of the character to add to the prompt other than random? rag? prompt the llm to decide?
             postDirections:
                 this.character?.style?.all?.length > 0 ||
                 this.character?.style?.post.length > 0
@@ -1310,31 +1325,15 @@ Text: ${attachment.text}
                           (() => {
                               const all = this.character?.style?.all || [];
                               const post = this.character?.style?.post || [];
-                              return [...all, ...post].join("\n");
+                              const shuffled = [...all, ...post].sort(
+                                  () => 0.5 - Math.random()
+                              );
+                              return shuffled
+                                  .slice(0, conversationLength / 2)
+                                  .join("\n");
                           })()
                       )
                     : "",
-
-            //old logic left in for reference
-            //food for thought. how could we dynamically decide what parts of the character to add to the prompt other than random? rag? prompt the llm to decide?
-            /*
-            postDirections:
-                this.character?.style?.all?.length > 0 ||
-                this.character?.style?.post.length > 0
-                    ? addHeader(
-                            "# Post Directions for " + this.character.name,
-                            (() => {
-                                const all = this.character?.style?.all || [];
-                                const post = this.character?.style?.post || [];
-                                const shuffled = [...all, ...post].sort(
-                                    () => 0.5 - Math.random()
-                                );
-                                return shuffled
-                                    .slice(0, conversationLength / 2)
-                                    .join("\n");
-                            })()
-                        )
-                    : "",*/
             // Agent runtime stuff
             senderName,
             actors:

@@ -9,6 +9,7 @@ export type DepinScanProject = {
     project_name: string;
     slug: string;
     token: string;
+    description: string;
     layer_1: string[];
     categories: string[];
     market_cap: string;

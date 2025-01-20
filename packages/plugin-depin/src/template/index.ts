@@ -5,7 +5,7 @@ About {{agentName}}:
 {{lore}}
 {{knowledge}}
 
-{{providers}}
+{{depinProjects}}
 
 When a user asks a question, follow these steps:
 
@@ -77,7 +77,7 @@ Here are the recent messages from the conversation:
 <recent_messages>
 {{recentMessages}}
 </recent_messages>
-`
+`;
 
 export const locationExtractionTemplate = `
 You are an AI assistant specialized in extracting location information and weather-related queries from user messages. Your task is to analyze a conversation history and identify the most recent valid location mentioned along with a weather-related question about that location.
@@ -206,4 +206,4 @@ Here is the data you will use to answer questions:
 <quicksilver_data>
 {{qsResponse}}
 </quicksilver_data>
-`
+`;

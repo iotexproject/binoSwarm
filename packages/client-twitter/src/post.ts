@@ -495,13 +495,15 @@ export class TwitterPostClient {
                     twitterPostTemplate,
             });
 
-            elizaLogger.debug("generate post prompt:\n" + context);
+            elizaLogger.info("generate post prompt:\n" + context);
 
             const newTweetContent = await generateText({
                 runtime: this.runtime,
                 context,
                 modelClass: ModelClass.SMALL,
             });
+
+            elizaLogger.info("generate tweet content response:\n" + newTweetContent);
 
             // First attempt to clean content using post tags
             let cleanedContent = this.extractPostContent(newTweetContent);
@@ -608,12 +610,14 @@ export class TwitterPostClient {
                 twitterPostTemplate,
         });
 
+        elizaLogger.info("generate post prompt:\n" + context);
+
         const response = await generateText({
             runtime: this.runtime,
             context: options?.context || context,
             modelClass: ModelClass.SMALL,
         });
-        elizaLogger.debug("generate tweet content response:\n" + response);
+        elizaLogger.info("generate tweet content response:\n" + response);
 
         // First clean up any markdown and newlines
         const postContent = this.extractPostContent(response);

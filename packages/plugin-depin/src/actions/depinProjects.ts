@@ -10,6 +10,7 @@ import {
 } from "@elizaos/core";
 
 import { projectsTemplate } from "../template";
+import { DePINScanProvider } from "../providers/depinData";
 
 export const depinProjects: Action = {
     name: "DEPIN_PROJECTS",
@@ -226,6 +227,8 @@ export const depinProjects: Action = {
         } else {
             state = await runtime.updateRecentMessageState(state);
         }
+        const depinDataProvider = new DePINScanProvider(runtime.cacheManager);
+        state.depinProjects = await depinDataProvider.getProjects();
 
         const projectsContext = composeContext({
             state,
@@ -236,7 +239,7 @@ export const depinProjects: Action = {
             const text = await generateText({
                 runtime,
                 context: projectsContext,
-                modelClass: ModelClass.LARGE,
+                modelClass: ModelClass.SMALL,
             });
 
             if (callback) {
