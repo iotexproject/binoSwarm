@@ -15,7 +15,11 @@ import { ClientBase } from "./base.ts";
 import { postActionResponseFooter } from "@elizaos/core";
 import { generateTweetActions } from "@elizaos/core";
 import { IImageDescriptionService, ServiceType } from "@elizaos/core";
-import { buildConversationThread } from "./utils.ts";
+import {
+    buildConversationThread,
+    extractPostContent,
+    removeAnalysisTags,
+} from "./utils.ts";
 import { twitterMessageHandlerTemplate } from "./interactions.ts";
 import { DEFAULT_MAX_TWEET_LENGTH } from "./environment.ts";
 import {
@@ -500,18 +504,21 @@ export class TwitterPostClient {
             const newTweetContent = await generateText({
                 runtime: this.runtime,
                 context,
-                modelClass: ModelClass.SMALL,
+                modelClass: ModelClass.LARGE,
             });
 
-            elizaLogger.info("generate tweet content response:\n" + newTweetContent);
+            elizaLogger.info("generate new tweet content:\n" + newTweetContent);
+
+            // Add removeAnalysisTags here before other cleaning
+            const withoutAnalysisTags = removeAnalysisTags(newTweetContent);
 
             // First attempt to clean content using post tags
-            let cleanedContent = this.extractPostContent(newTweetContent);
+            let cleanedContent = extractPostContent(withoutAnalysisTags);
 
             if (!cleanedContent) {
                 // Try parsing as JSON first
                 try {
-                    const parsedResponse = JSON.parse(newTweetContent);
+                    const parsedResponse = JSON.parse(withoutAnalysisTags);
                     if (parsedResponse.text) {
                         cleanedContent = parsedResponse.text;
                     } else if (typeof parsedResponse === "string") {
@@ -520,11 +527,12 @@ export class TwitterPostClient {
                 } catch (error) {
                     error.linted = true; // make linter happy since catch needs a variable
                     // If not JSON, clean the raw content
-                    cleanedContent = newTweetContent
-                        .replace(/^\s*{?\s*"text":\s*"|"\s*}?\s*$/g, "") // Remove JSON-like wrapper
-                        .replace(/^['"](.*)['"]$/g, "$1") // Remove quotes
-                        .replace(/\\"/g, '"') // Unescape quotes
-                        .replace(/\\n/g, "\n\n") // Unescape newlines, ensures double spaces
+                    cleanedContent = newTweetContent;
+                    cleanedContent = withoutAnalysisTags
+                        .replace(/^\s*{?\s*"text":\s*"|"\s*}?\s*$/g, "")
+                        .replace(/^['"](.*)['"]$/g, "$1")
+                        .replace(/\\"/g, '"')
+                        .replace(/\\n/g, "\n\n")
                         .trim();
                 }
             }
@@ -615,21 +623,28 @@ export class TwitterPostClient {
         const response = await generateText({
             runtime: this.runtime,
             context: options?.context || context,
-            modelClass: ModelClass.SMALL,
+            modelClass: ModelClass.LARGE,
         });
         elizaLogger.info("generate tweet content response:\n" + response);
+        const withoutAnalysisTags = removeAnalysisTags(response);
+        const postContentExtracted = extractPostContent(withoutAnalysisTags);
+        const postContent = postContentExtracted || withoutAnalysisTags;
 
-        // First clean up any markdown and newlines
-        const postContent = this.extractPostContent(response);
         const cleanedResponse = postContent
             .replace(/```json\s*/g, "") // Remove ```json
             .replace(/```\s*/g, "") // Remove any remaining ```
             .replaceAll(/\\n/g, "\n")
             .trim();
 
+        elizaLogger.info(
+            "generate tweet content response cleaned:\n" + cleanedResponse
+        );
         // Try to parse as JSON first
         try {
             const jsonResponse = JSON.parse(cleanedResponse);
+            elizaLogger.info(
+                "generate tweet content response text:\n" + jsonResponse.text
+            );
             if (jsonResponse.text) {
                 return this.trimTweetLength(jsonResponse.text);
             }
@@ -667,17 +682,6 @@ export class TwitterPostClient {
         return (
             text.slice(0, text.lastIndexOf(" ", maxLength - 3)).trim() + "..."
         );
-    }
-
-    private extractPostContent(text: string) {
-        const postPattern = /<post>\s*([\s\S]*?)\s*<\/post>/;
-        const match = text?.match(postPattern);
-
-        if (match) {
-            return match[1].trim(); // Extract and trim the content inside <post> tags
-        }
-
-        return null; // Return null if no <post> tags are found
     }
 
     /**
@@ -1164,14 +1168,17 @@ export class TwitterPostClient {
                     twitterMessageHandlerTemplate,
             });
 
-            if (!replyText) {
+            // Add removeAnalysisTags here before validation
+            const cleanedReplyText = removeAnalysisTags(replyText);
+
+            if (!cleanedReplyText) {
                 elizaLogger.error("Failed to generate valid reply content");
                 return;
             }
 
             if (this.isDryRun) {
                 elizaLogger.info(
-                    `Dry run: reply to tweet ${tweet.id} would have been: ${replyText}`
+                    `Dry run: reply to tweet ${tweet.id} would have been: ${cleanedReplyText}`
                 );
                 executedActions.push("reply (dry run)");
                 return;
@@ -1181,16 +1188,18 @@ export class TwitterPostClient {
 
             let result;
 
-            if (replyText.length > DEFAULT_MAX_TWEET_LENGTH) {
+            elizaLogger.debug("Final reply text to be sent:", cleanedReplyText);
+
+            if (cleanedReplyText.length > DEFAULT_MAX_TWEET_LENGTH) {
                 result = await this.handleNoteTweet(
                     this.client,
-                    replyText,
+                    cleanedReplyText,
                     tweet.id
                 );
             } else {
                 result = await this.sendStandardTweet(
                     this.client,
-                    replyText,
+                    cleanedReplyText,
                     tweet.id
                 );
             }
@@ -1202,7 +1211,7 @@ export class TwitterPostClient {
                 // Cache generation context for debugging
                 await this.runtime.cacheManager.set(
                     `twitter/reply_generation_${tweet.id}.txt`,
-                    `Context:\n${enrichedState}\n\nGenerated Reply:\n${replyText}`
+                    `Context:\n${enrichedState}\n\nGenerated Reply:\n${cleanedReplyText}`
                 );
             } else {
                 elizaLogger.error("Tweet reply creation failed");

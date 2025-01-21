@@ -18,7 +18,13 @@ import {
     ServiceType,
 } from "@elizaos/core";
 import { ClientBase } from "./base";
-import { buildConversationThread, sendTweet, wait } from "./utils.ts";
+import {
+    buildConversationThread,
+    extractPostContent,
+    removeAnalysisTags,
+    sendTweet,
+    wait,
+} from "./utils.ts";
 
 export const twitterMessageHandlerTemplate =
     `
@@ -460,7 +466,9 @@ export class TwitterInteractionClient {
 
         response.inReplyTo = stringId;
 
-        response.text = removeQuotes(response.text);
+        const withoutAnalysisTags = removeAnalysisTags(response.text);
+        const extractedPost = extractPostContent(withoutAnalysisTags);
+        response.text = removeQuotes(extractedPost || withoutAnalysisTags);
 
         if (response.text) {
             if (this.isDryRun) {

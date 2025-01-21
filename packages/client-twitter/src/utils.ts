@@ -412,19 +412,19 @@ function deduplicateMentions(paragraph: string) {
     }
 
     // Extract mentions from the match groups
-    let mentions = matches.slice(0, 1)[0].trim().split(' ')
+    let mentions = matches.slice(0, 1)[0].trim().split(" ");
 
     // Deduplicate mentions
     mentions = [...new Set(mentions)];
 
     // Reconstruct the string with deduplicated mentions
-    const uniqueMentionsString = mentions.join(' ');
+    const uniqueMentionsString = mentions.join(" ");
 
     // Find where the mentions end in the original string
     const endOfMentions = paragraph.indexOf(matches[0]) + matches[0].length;
 
     // Construct the result by combining unique mentions with the rest of the string
-    return uniqueMentionsString + ' ' + paragraph.slice(endOfMentions);
+    return uniqueMentionsString + " " + paragraph.slice(endOfMentions);
 }
 
 function restoreUrls(
@@ -454,4 +454,19 @@ function splitParagraph(paragraph: string, maxLength: number): string[] {
     const restoredChunks = restoreUrls(splittedChunks, placeholderMap);
 
     return restoredChunks;
+}
+
+export function removeAnalysisTags(text: string) {
+    return text.replace(/<.*analysis.*>\s*([\s\S]*?)\s*<\/.*analysis.*>/g, "");
+}
+
+export function extractPostContent(text: string) {
+    const postPattern = /<post>\s*([\s\S]*?)\s*<\/post>/;
+    const match = text?.match(postPattern);
+
+    if (match) {
+        return match[1].trim(); // Extract and trim the content inside <post> tags
+    }
+
+    return null; // Return null if no <post> tags are found
 }

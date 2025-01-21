@@ -1,21 +1,22 @@
 import { Provider, IAgentRuntime, Memory, State } from "@elizaos/core";
 
-import { askQuickSilver } from "../services/quicksilver";
+import { getLatLngMapbox } from "../services/map";
+import { getWeather } from "../services/weather";
 
 export const weatherDataProvider: Provider = {
     async get(
-        _runtime: IAgentRuntime,
+        runtime: IAgentRuntime,
         _message: Memory,
         _state?: State
     ): Promise<string | null> {
         const randomCity =
             usCities[Math.floor(Math.random() * usCities.length)];
-        const weather = await askQuickSilver(
-            `What is the current weather in ${randomCity}?`
-        );
+        const coordinates = await getLatLngMapbox(runtime, randomCity);
+        const weather = await getWeather(runtime, coordinates);
+
         return `
             #### **Current Weather for ${randomCity}**
-            ${weather}
+            ${JSON.stringify(weather)}
         `;
     },
 };

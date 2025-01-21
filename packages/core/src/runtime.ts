@@ -1226,6 +1226,7 @@ Text: ${attachment.text}
             agentId: this.agentId,
             agentName,
             bio,
+            system: this.character.system,
             lore,
             adjective:
                 this.character.adjectives &&

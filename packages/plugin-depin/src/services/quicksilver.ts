@@ -4,6 +4,7 @@ import {
     composeContext,
     generateText,
     ModelClass,
+    elizaLogger,
 } from "@elizaos/core";
 import axios from "axios";
 
@@ -30,17 +31,26 @@ export async function adaptQSResponse(
 ) {
     state.qsResponse = qsResponse;
     const context = composeContext({
-        state,
+        state: {
+            ...state,
+            recentMessages: state.recentMessages
+                .split("\n")
+                .slice(-10)
+                .join("\n"),
+        },
         template:
             // @ts-expect-error: quicksilverResponseTemplate should be added to character type
             runtime.character.templates?.quicksilverResponseTemplate ||
             quicksilverResponseTemplate,
     });
+    elizaLogger.info(context);
     const response = await generateText({
         runtime,
         context,
         modelClass: ModelClass.SMALL,
     });
+
+    elizaLogger.info(response);
 
     return parseTagContent(response, "quicksilver_response");
 }
