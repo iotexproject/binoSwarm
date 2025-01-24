@@ -18,13 +18,7 @@ import {
     ServiceType,
 } from "@elizaos/core";
 import { ClientBase } from "./base";
-import {
-    buildConversationThread,
-    extractPostContent,
-    removeAnalysisTags,
-    sendTweet,
-    wait,
-} from "./utils.ts";
+import { buildConversationThread, sendTweet, wait } from "./utils.ts";
 
 export const twitterMessageHandlerTemplate =
     `
@@ -434,7 +428,7 @@ export class TwitterInteractionClient {
         const shouldRespond = await generateShouldRespond({
             runtime: this.runtime,
             context: shouldRespondContext,
-            modelClass: ModelClass.MEDIUM,
+            modelClass: ModelClass.SMALL,
         });
 
         // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
@@ -459,16 +453,9 @@ export class TwitterInteractionClient {
             modelClass: ModelClass.LARGE,
         });
 
-        const removeQuotes = (str: string) =>
-            str.replace(/^['"](.*)['"]$/, "$1");
-
         const stringId = stringToUuid(tweet.id + "-" + this.runtime.agentId);
 
         response.inReplyTo = stringId;
-
-        const withoutAnalysisTags = removeAnalysisTags(response.text);
-        const extractedPost = extractPostContent(withoutAnalysisTags);
-        response.text = removeQuotes(extractedPost || withoutAnalysisTags);
 
         if (response.text) {
             if (this.isDryRun) {

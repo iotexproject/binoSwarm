@@ -52,5 +52,5 @@ export async function adaptQSResponse(
 
     elizaLogger.info(response);
 
-    return parseTagContent(response, "quicksilver_response");
+    return parseTagContent(response, "response");
 }

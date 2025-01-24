@@ -1,4 +1,4 @@
-import { composeContext, getModelSettings } from "@elizaos/core";
+import { composeContext, getModelSettings, parseTagContent } from "@elizaos/core";
 import { generateText, splitChunks, trimTokens } from "@elizaos/core";
 import { getActorDetails } from "@elizaos/core";
 import { parseJSONObjectFromText } from "@elizaos/core";
@@ -33,13 +33,13 @@ The "start" and "end" are the range of dates that the user wants to summarize, r
 If you aren't sure, you can use a default range of "0 minutes ago" to "2 hours ago" or more. Better to err on the side of including too much than too little.
 
 Your response must be formatted as a JSON block with this structure:
-\`\`\`json
+<response>
 {
   "objective": "<What the user wants to summarize>",
   "start": "0 minutes ago",
   "end": "2 hours ago"
 }
-\`\`\`
+</response>
 `;
 
 const getDateRange = async (
@@ -62,7 +62,8 @@ const getDateRange = async (
         });
         console.log("response", response);
         // try parsing to a json object
-        const parsedResponse = parseJSONObjectFromText(response) as {
+        const extractedResponse = parseTagContent(response, "response");
+        const parsedResponse = parseJSONObjectFromText(extractedResponse) as {
             objective: string;
             start: string | number;
             end: string | number;

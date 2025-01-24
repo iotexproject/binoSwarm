@@ -126,5 +126,5 @@ async function getAndAnalyzeForecast(
         context: weatherContext,
         modelClass: ModelClass.LARGE,
     });
-    return parseTagContent(weatherText, "weather_forecast_analysis");
+    return parseTagContent(weatherText, "response");
 }

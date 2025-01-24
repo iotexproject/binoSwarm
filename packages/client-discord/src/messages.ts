@@ -1,4 +1,8 @@
-import { composeContext, composeRandomUser } from "@elizaos/core";
+import {
+    composeContext,
+    composeRandomUser,
+    parseTagContent,
+} from "@elizaos/core";
 import { generateMessageResponse, generateShouldRespond } from "@elizaos/core";
 import {
     Content,
@@ -1242,13 +1246,15 @@ export class MessageManager {
                 composeRandomUser(discordShouldRespondTemplate, 2),
         });
 
-        const response = await generateShouldRespond({
+        const rawResponse = await generateShouldRespond({
             runtime: this.runtime,
             context: shouldRespondContext,
             modelClass: ModelClass.SMALL,
         });
 
-        if (response === "RESPOND") {
+        const parsedResponse = parseTagContent(rawResponse, "response");
+
+        if (parsedResponse === "RESPOND") {
             if (channelState) {
                 channelState.previousContext = {
                     content: message.content,
@@ -1257,15 +1263,15 @@ export class MessageManager {
             }
 
             return true;
-        } else if (response === "IGNORE") {
+        } else if (parsedResponse === "IGNORE") {
             return false;
-        } else if (response === "STOP") {
+        } else if (parsedResponse === "STOP") {
             delete this.interestChannels[message.channelId];
             return false;
         } else {
             console.error(
                 "Invalid response from response generateText:",
-                response
+                parsedResponse
             );
             return false;
         }
@@ -1273,7 +1279,7 @@ export class MessageManager {
 
     private async _generateResponse(
         message: Memory,
-        state: State,
+        _state: State,
         context: string
     ): Promise<Content> {
         const { userId, roomId } = message;
@@ -1281,7 +1287,7 @@ export class MessageManager {
         const response = await generateMessageResponse({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.LARGE,
+            modelClass: ModelClass.SMALL,
         });
 
         if (!response) {

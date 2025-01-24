@@ -455,18 +455,3 @@ function splitParagraph(paragraph: string, maxLength: number): string[] {
 
     return restoredChunks;
 }
-
-export function removeAnalysisTags(text: string) {
-    return text.replace(/<.*analysis.*>\s*([\s\S]*?)\s*<\/.*analysis.*>/g, "");
-}
-
-export function extractPostContent(text: string) {
-    const postPattern = /<post>\s*([\s\S]*?)\s*<\/post>/;
-    const match = text?.match(postPattern);
-
-    if (match) {
-        return match[1].trim(); // Extract and trim the content inside <post> tags
-    }
-
-    return null; // Return null if no <post> tags are found
-}

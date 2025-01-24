@@ -2,14 +2,19 @@ import { ActionResponse } from "./types.ts";
 const jsonBlockPattern = /```json\n([\s\S]*?)\n```/;
 
 export const messageCompletionFooter = `\nResponse format should be formatted in a JSON block like this:
-\`\`\`json
+<response>
 { "user": "{{agentName}}", "text": "string", "action": "string" }
-\`\`\``;
+</response>
+`;
 
 export const shouldRespondFooter = `The available options are [RESPOND], [IGNORE], or [STOP]. Choose the most appropriate option.
 If {{agentName}} is talking too much, you can choose [IGNORE]
 
-Your response must include one of the options.`;
+Your response must include one of the options. Respond in the following format:
+<response>
+[RESPOND|IGNORE|STOP]
+</response>
+`;
 
 export const parseShouldRespondFromText = (
     text: string
@@ -59,12 +64,12 @@ export const parseBooleanFromText = (text: string): boolean | null => {
 };
 
 export const stringArrayFooter = `Respond with a JSON array containing the values in a JSON block formatted for markdown with this structure:
-\`\`\`json
+<response>
 [
   'value',
   'value'
 ]
-\`\`\`
+</response>
 
 Your response must include the JSON block.`;
 
@@ -106,6 +111,14 @@ export function parseJsonArrayFromText(text: string) {
             } catch (e) {
                 console.error("Error parsing JSON:", e);
             }
+        }
+    }
+
+    if (!jsonData) {
+        try {
+            jsonData = JSON.parse(text);
+        } catch (e) {
+            console.error("Error parsing JSON:", e);
         }
     }
 
@@ -154,6 +167,16 @@ export function parseJSONObjectFromText(
         }
     }
 
+    // try brute force
+    if (!jsonData) {
+        try {
+            jsonData = JSON.parse(text);
+        } catch (e) {
+            console.error("Error parsing JSON:", e);
+            return null;
+        }
+    }
+
     if (
         typeof jsonData === "object" &&
         jsonData !== null &&
@@ -167,7 +190,11 @@ export function parseJSONObjectFromText(
     }
 }
 
-export const postActionResponseFooter = `Choose any combination of [LIKE], [RETWEET], [QUOTE], and [REPLY] that are appropriate. Each action must be on its own line. Your response must only include the chosen actions.`;
+export const postActionResponseFooter = `Choose any combination of [LIKE], [RETWEET], [QUOTE], and [REPLY] that are appropriate. Each action must be on its own line. Your response must only include the chosen actions in the format:
+<response>
+[LIKE|RETWEET|QUOTE|REPLY]
+</response>
+`;
 
 export const parseActionResponseFromText = (
     text: string
@@ -228,3 +255,13 @@ export function truncateToCompleteSentence(
     const hardTruncated = text.slice(0, maxLength - 3).trim();
     return hardTruncated + "...";
 }
+
+export function parseTagContent(text: string, tag: string) {
+    const pattern = new RegExp(`<${tag}>\\s*([\\s\\S]*?)\\s*<\\/${tag}>`);
+    const match = text?.match(pattern);
+    if (match && match[1].trim()) {
+        return match[1].trim();
+    }
+    return null;
+}
+

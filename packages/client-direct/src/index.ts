@@ -253,7 +253,7 @@ export class DirectClient {
                 const response = await generateMessageResponse({
                     runtime: runtime,
                     context,
-                    modelClass: ModelClass.LARGE,
+                    modelClass: ModelClass.SMALL,
                 });
 
                 if (!response) {
@@ -519,7 +519,7 @@ export class DirectClient {
                 const response = await generateMessageResponse({
                     runtime: runtime,
                     context,
-                    modelClass: ModelClass.LARGE,
+                    modelClass: ModelClass.SMALL,
                 });
 
                 // save response to memory

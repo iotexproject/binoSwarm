@@ -34,7 +34,7 @@ TASK: Analyze the conversation and update the status of the goals based on the n
 - If those goal is still in progress, do not include the status field.
 
 Response format should be:
-\`\`\`json
+<response>
 [
   {
     "id": <goal uuid>, // required
@@ -45,7 +45,8 @@ Response format should be:
     ] // NOTE: If updating objectives, include the entire objectives array including unchanged fields.
   }
 ]
-\`\`\``;
+</response>
+`;
 
 async function handler(
     runtime: IAgentRuntime,
@@ -53,49 +54,46 @@ async function handler(
     state: State | undefined,
     options: { [key: string]: unknown } = { onlyInProgress: true }
 ): Promise<Goal[]> {
-    // Fetch existing goals
     let goalsData = await getGoals({
         runtime,
         roomId: message.roomId,
         onlyInProgress: options.onlyInProgress as boolean,
     });
 
-    // Compose state and context for generating new goals
     state = (await runtime.composeState(message)) as State;
     const context = composeContext({
         state,
         template: runtime.character.templates?.goalsTemplate || goalsTemplate,
     });
 
-    // Request generateText from OpenAI to analyze conversation and suggest goal updates
     const updates = await generateObjectArray({
         runtime,
         context,
-        modelClass: ModelClass.LARGE,
+        modelClass: ModelClass.SMALL,
     });
 
-    // Re-fetch goals to ensure database sync
     goalsData = await getGoals({
         runtime,
         roomId: message.roomId,
         onlyInProgress: true,
     });
 
-    // Apply updates to existing goals and collect new goals
     const updatedGoals = [];
     const newGoals = [];
 
     for (const update of updates || []) {
-        const existingGoal = goalsData.find((goal: Goal) => goal.id === update.id);
+        const existingGoal = goalsData.find(
+            (goal: Goal) => goal.id === update.id
+        );
 
         if (existingGoal) {
-            // Update existing goal
             const objectives = existingGoal.objectives;
 
             if (update.objectives) {
                 for (const objective of objectives) {
                     const updatedObjective = update.objectives.find(
-                        (o: Objective) => o.description === objective.description
+                        (o: Objective) =>
+                            o.description === objective.description
                     );
                     if (updatedObjective) {
                         objective.completed = updatedObjective.completed;
@@ -112,31 +110,29 @@ async function handler(
                 ],
             });
         } else {
-            // Create new goal if not found in existing data
             newGoals.push({
                 ...update,
                 userId: message.userId,
-                roomId: message.roomId, // Ensure new goals are associated with the correct room
-                createdAt: new Date().toISOString(), // Add creation timestamp
+                roomId: message.roomId,
+                createdAt: new Date().toISOString(),
             });
         }
     }
 
-    // Update existing goals in the database
     for (const goal of updatedGoals) {
-        const id = goal.id;
-        if (goal.id) delete goal.id; // Remove ID for the update payload
-        await runtime.databaseAdapter.updateGoal({ ...goal, id });
-    }
+        for (const goal of updatedGoals) {
+            const id = goal.id;
+            if (goal.id) delete goal.id;
+            await runtime.databaseAdapter.updateGoal({ ...goal, id });
+        }
 
-    // Create new goals in the database
-    for (const newGoal of newGoals) {
-        if (newGoal.id) delete newGoal.id;
-        await runtime.databaseAdapter.createGoal(newGoal);
-    }
+        for (const newGoal of newGoals) {
+            if (newGoal.id) delete newGoal.id;
+            await runtime.databaseAdapter.createGoal(newGoal);
+        }
 
-    // Return both updated and newly created goals
-    return [...updatedGoals, ...newGoals];
+        return [...updatedGoals, ...newGoals];
+    }
 }
 
 export const goalEvaluator: Evaluator = {

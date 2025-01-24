@@ -6,6 +6,7 @@ import {
     IAgentRuntime,
     Memory,
     ModelClass,
+    parseTagContent,
     State,
 } from "@elizaos/core";
 
@@ -239,12 +240,13 @@ export const depinProjects: Action = {
             const text = await generateText({
                 runtime,
                 context: projectsContext,
-                modelClass: ModelClass.SMALL,
+                modelClass: ModelClass.LARGE,
             });
 
+            const extractedResponse = parseTagContent(text, "response");
             if (callback) {
                 callback({
-                    text,
+                    text: extractedResponse,
                     inReplyTo: message.id,
                 });
             }

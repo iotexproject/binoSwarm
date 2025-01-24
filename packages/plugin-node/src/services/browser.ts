@@ -1,4 +1,4 @@
-import { generateText, IBrowserService, trimTokens } from "@elizaos/core";
+import { generateText, IBrowserService, parseTagContent, trimTokens } from "@elizaos/core";
 import { parseJSONObjectFromText } from "@elizaos/core";
 import { Service } from "@elizaos/core";
 import { settings } from "@elizaos/core";
@@ -23,12 +23,13 @@ async function generateSummary(
   """
 
   Respond with a JSON object in the following format:
-  \`\`\`json
+  <response>
   {
     "title": "Generated Title",
     "summary": "Generated summary and/or description of the text"
   }
-  \`\`\``;
+  </response>
+  `;
 
     const response = await generateText({
         runtime,
@@ -36,7 +37,8 @@ async function generateSummary(
         modelClass: ModelClass.SMALL,
     });
 
-    const parsedResponse = parseJSONObjectFromText(response);
+    const extractedResponse = parseTagContent(response, "response");
+    const parsedResponse = parseJSONObjectFromText(extractedResponse);
 
     if (parsedResponse) {
         return {

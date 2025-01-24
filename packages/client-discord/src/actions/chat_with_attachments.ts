@@ -1,4 +1,4 @@
-import { composeContext, getModelSettings } from "@elizaos/core";
+import { composeContext, getModelSettings, parseTagContent } from "@elizaos/core";
 import { generateText, trimTokens } from "@elizaos/core";
 import { models } from "@elizaos/core";
 import { parseJSONObjectFromText } from "@elizaos/core";
@@ -32,12 +32,12 @@ The "objective" is a detailed description of what the user wants to summarize ba
 The "attachmentIds" is an array of attachment IDs that the user wants to summarize. If not specified, default to including all attachments from the conversation.
 
 Your response must be formatted as a JSON block with this structure:
-\`\`\`json
+<response>
 {
   "objective": "<What the user wants to summarize>",
   "attachmentIds": ["<Attachment ID 1>", "<Attachment ID 2>", ...]
 }
-\`\`\`
+</response>
 `;
 
 const getAttachmentIds = async (
@@ -60,7 +60,8 @@ const getAttachmentIds = async (
         });
         console.log("response", response);
         // try parsing to a json object
-        const parsedResponse = parseJSONObjectFromText(response) as {
+        const extractedResponse = parseTagContent(response, "response");
+        const parsedResponse = parseJSONObjectFromText(extractedResponse) as {
             objective: string;
             attachmentIds: string[];
         } | null;

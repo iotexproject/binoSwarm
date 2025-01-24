@@ -21,7 +21,7 @@ import { elizaLogger } from "./index.ts";
 import knowledge from "./knowledge.ts";
 import { MemoryManager } from "./memory.ts";
 import { formatActors, formatMessages, getActorDetails } from "./messages.ts";
-import { parseJsonArrayFromText } from "./parsing.ts";
+import { parseJsonArrayFromText, parseTagContent } from "./parsing.ts";
 import { formatPosts } from "./posts.ts";
 import { getProviders } from "./providers.ts";
 import { RAGKnowledgeManager } from "./ragknowledge.ts";
@@ -858,8 +858,9 @@ export class AgentRuntime implements IAgentRuntime {
             verifiableInferenceAdapter: this.verifiableInferenceAdapter,
         });
 
+        const extractedReponse = parseTagContent(result, "response");
         const evaluators = parseJsonArrayFromText(
-            result
+            extractedReponse
         ) as unknown as string[];
 
         for (const evaluator of this.evaluators) {

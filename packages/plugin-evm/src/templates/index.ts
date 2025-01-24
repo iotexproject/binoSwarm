@@ -39,14 +39,14 @@ Before providing the final JSON output, show your reasoning process inside <anal
 
 After your analysis, provide the final output in a JSON markdown block. All fields except 'token' are required. The JSON should have this structure:
 
-\`\`\`json
+<response>
 {
     "fromChain": string,
     "amount": string,
     "toAddress": string,
     "token": string | null
 }
-\`\`\`
+</response>
 
 Remember:
 - The chain name must be a string and must exactly match one of the supported chains.
@@ -72,7 +72,7 @@ Extract the following information about the requested token bridge:
 
 Respond with a JSON markdown block containing only the extracted values:
 
-\`\`\`json
+<response>
 {
     "token": string | null,
     "fromChain": "ethereum" | "abstract" | "base" | "sepolia" | "bsc" | "arbitrum" | "avalanche" | "polygon" | "optimism" | "cronos" | "gnosis" | "fantom" | "klaytn" | "celo" | "moonbeam" | "aurora" | "harmonyOne" | "moonriver" | "arbitrumNova" | "mantle" | "linea" | "scroll" | "filecoin" | "taiko" | "zksync" | "canto" | "alienx" | null,
@@ -80,7 +80,7 @@ Respond with a JSON markdown block containing only the extracted values:
     "amount": string | null,
     "toAddress": string | null
 }
-\`\`\`
+</response>
 `;
 
 export const swapTemplate = `Given the recent messages and wallet information below:
@@ -97,7 +97,7 @@ Extract the following information about the requested token swap:
 
 Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined:
 
-\`\`\`json
+<response>
 {
     "inputToken": string | null,
     "outputToken": string | null,
@@ -105,5 +105,5 @@ Respond with a JSON markdown block containing only the extracted values. Use nul
     "chain": "ethereum" | "abstract" | "base" | "sepolia" | "bsc" | "arbitrum" | "avalanche" | "polygon" | "optimism" | "cronos" | "gnosis" | "fantom" | "klaytn" | "celo" | "moonbeam" | "aurora" | "harmonyOne" | "moonriver" | "arbitrumNova" | "mantle" | "linea" | "scroll" | "filecoin" | "taiko" | "zksync" | "canto" | "alienx" | null,
     "slippage": number | null
 }
-\`\`\`
+</response>
 `;

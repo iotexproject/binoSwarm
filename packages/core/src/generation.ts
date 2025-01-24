@@ -31,6 +31,7 @@ import {
     parseJSONObjectFromText,
     parseShouldRespondFromText,
     parseActionResponseFromText,
+    parseTagContent,
 } from "./parsing.ts";
 import settings from "./settings.ts";
 import {
@@ -1035,6 +1036,7 @@ export async function generateText({
             }
         }
 
+        elizaLogger.info("Response:", response);
         return response;
     } catch (error) {
         elizaLogger.error("Error in generateText:", error);
@@ -1078,8 +1080,8 @@ export async function generateShouldRespond({
                 modelClass,
             });
 
-            elizaLogger.debug("Received response from generateText:", response);
-            const parsedResponse = parseShouldRespondFromText(response.trim());
+            const extractedResponse = parseTagContent(response, "response");
+            const parsedResponse = parseShouldRespondFromText(extractedResponse);
             if (parsedResponse) {
                 elizaLogger.debug("Parsed response:", parsedResponse);
                 return parsedResponse;
@@ -1250,7 +1252,8 @@ export async function generateObjectDeprecated({
                 context,
                 modelClass,
             });
-            const parsedResponse = parseJSONObjectFromText(response);
+            const extractedResponse = parseTagContent(response, "response");
+            const parsedResponse = parseJSONObjectFromText(extractedResponse);
             if (parsedResponse) {
                 return parsedResponse;
             }
@@ -1286,7 +1289,8 @@ export async function generateObjectArray({
                 modelClass,
             });
 
-            const parsedResponse = parseJsonArrayFromText(response);
+            const extractedResponse = parseTagContent(response, "response");
+            const parsedResponse = parseJsonArrayFromText(extractedResponse);
             if (parsedResponse) {
                 return parsedResponse;
             }
@@ -1336,8 +1340,10 @@ export async function generateMessageResponse({
                 modelClass,
             });
 
+            const responseText = parseTagContent(response, "response");
+
             // try parsing the response as JSON, if null then try again
-            const parsedContent = parseJSONObjectFromText(response) as Content;
+            const parsedContent = parseJSONObjectFromText(responseText) as Content;
             if (!parsedContent) {
                 elizaLogger.debug("parsedContent is null, retrying");
                 continue;
@@ -2274,7 +2280,8 @@ export async function generateTweetActions({
                 "Received response from generateText for tweet actions:",
                 response
             );
-            const { actions } = parseActionResponseFromText(response.trim());
+            const parsedResponse = parseTagContent(response, "response");
+            const { actions } = parseActionResponseFromText(parsedResponse);
             if (actions) {
                 console.debug("Parsed tweet actions:", actions);
                 return actions;

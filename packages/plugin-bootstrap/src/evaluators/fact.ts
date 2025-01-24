@@ -43,13 +43,14 @@ Recent Messages:
 {{recentMessages}}
 
 Response should be a JSON object array inside a JSON markdown block. Correct response format:
-\`\`\`json
+<response>
 [
   {"claim": string, "type": enum<fact|opinion|status>, in_bio: boolean, already_known: boolean },
   {"claim": string, "type": enum<fact|opinion|status>, in_bio: boolean, already_known: boolean },
   ...
 ]
-\`\`\``;
+</response>
+`;
 
 async function handler(runtime: IAgentRuntime, message: Memory) {
     const state = await runtime.composeState(message);
@@ -64,7 +65,7 @@ async function handler(runtime: IAgentRuntime, message: Memory) {
     const facts = await generateObjectArray({
         runtime,
         context,
-        modelClass: ModelClass.LARGE,
+        modelClass: ModelClass.SMALL,
     });
 
     const factsManager = new MemoryManager({

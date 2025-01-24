@@ -25,6 +25,11 @@ Remember to be precise, especially when discussing token prices or other numeric
 Now, please answer the user question, based on some recent messages:
 
 {{recentMessages}}
+
+Output in the following format:
+<response>
+[Your answer to the user's question]
+</response>
 `;
 
 export const newsExtractionTemplate = `
@@ -60,9 +65,9 @@ It's OK for this section to be quite long, as thorough analysis will lead to a b
 
 After your analysis, provide the extracted news query in the following format:
 
-<extracted_query>
+<response>
 [The refined news query]
-</extracted_query>
+</response>
 
 The extracted query should be a clear, concise question or statement that can be used to search for relevant news articles. For example:
 - "Latest developments in the California wildfires"
@@ -70,7 +75,7 @@ The extracted query should be a clear, concise question or statement that can be
 - "Breakthrough in renewable energy technology"
 - "Updates on international peace negotiations"
 
-Remember, the goal is to provide a clear, specific query that can be used to fetch relevant news articles. Do not include any explanation or additional text outside of the news_query_analysis and extracted_query tags.
+Remember, the goal is to provide a clear, specific query that can be used to fetch relevant news articles. Do not include any explanation or additional text outside of the news_query_analysis and response tags.
 
 Here are the recent messages from the conversation:
 
@@ -114,9 +119,9 @@ It's OK for this section to be quite long, as a thorough analysis will lead to a
 
 After your analysis, provide the extracted location and weather question in the following format:
 
-<extracted_location>
+<response>
 [The refined weather question about the location and the location itself]
-</extracted_location>
+</response>
 
 The extracted information should be formatted as a string that could be used as a query for a weather service. Should be in the language of the user. For example:
 - "How cold is it in New York City?"
@@ -125,7 +130,7 @@ The extracted information should be formatted as a string that could be used as 
 - "Is it windy in front of Sydney Opera House, Australia?"
 - "Will it rain in Tokyo tomorrow?"
 
-Remember, the goal is to provide a clear, specific question (in the user's language) and location that can be used to query a weather provider. Do not include any explanation or additional text outside of the location_and_weather_analysis and extracted_location tags.`;
+Remember, the goal is to provide a clear, specific question (in the user's language) and location that can be used to query a weather provider. Do not include any explanation or additional text outside of the location_and_weather_analysis and response tags.`;
 
 export const locationExtractionTemplate = `
 You are an AI assistant specialized in extracting location information from user messages. Your primary task is to identify and extract a valid location name that can be used to query the Mapbox API for latitude and longitude coordinates.
@@ -153,15 +158,15 @@ Before providing your final answer, wrap your analysis inside <location_analysis
 3. If there are multiple locations in the latest message, explain your reasoning for choosing one over the others.
 4. Identify the most recently mentioned valid location and justify your choice.
 After your analysis, provide the extracted location in the following format:
-<extracted_location>
+<response>
 [Insert the extracted location here, or "No valid location found" if no valid location is present]
-</extracted_location>
+</response>
 The extracted location should be formatted as a string that could be used as a query for a mapping service. For example:
 - "New York City"
 - "221B Baker Street, London"
 - "Eiffel Tower, Paris"
 - "Sydney Opera House, Australia"
-Remember, the goal is to provide a clear, specific location that can be used to find geographic coordinates. Do not include any explanation or additional text outside of the location_analysis and extracted_location tags.
+Remember, the goal is to provide a clear, specific location that can be used to find geographic coordinates. Do not include any explanation or additional text outside of the location_analysis and response tags.
 `;
 
 export const quicksilverResponseTemplate = `
@@ -212,9 +217,9 @@ Before providing your final answer, wrap your thought process in <thought_proces
 
 Present your final answer in the following format:
 
-<quicksilver_response>
+<response>
 [Your extremely concise response to the user's question, written in the style of your assigned persona]
-</quicksilver_response>
+</response>
 
 Example output structure (using generic content):
 
@@ -235,9 +240,9 @@ Example output structure (using generic content):
 - Revision for conciseness: [Notes on how to make it more concise]
 </thought_process>
 
-<quicksilver_response>
+<response>
 [Extremely concise, persona-appropriate response]
-</quicksilver_response>
+</response>
 
 Remember to provide a helpful, accurate response in the same language as the user's question based solely on the provided quicksilver data, focusing on the user's specific question. Your final response should be as short as possible while still addressing the question and maintaining your character's persona.
 
@@ -307,9 +312,9 @@ Before providing your final answer, wrap your analysis process inside <analysis>
 - Consider how your persona's traits might influence the response
 
 Present your final answer in the following format:
-<weather_analysis>
+<response>
 [Your response to the user's question, written in the style of your assigned persona]
-</weather_analysis>
+</response>
 
 Example output structure (using generic content):
 <weather_analysis_process>
@@ -327,9 +332,9 @@ Example output structure (using generic content):
 
 Remember to stay in character and provide a helpful, accurate response based solely on the provided weather data, focusing on the user's specific question and in users language.
 
-<weather_analysis>
+<response>
 [Direct answer to the user's question about the specific weather parameter]
-</weather_analysis>
+</response>
 `;
 
 export const weatherForecastTemplate = `
@@ -395,9 +400,9 @@ Before providing your final answer, wrap your thought process in <weather_query_
 - Provide a step-by-step plan for answering the question in character
 Present your final answer in the following format:
 
-<weather_analysis>
+<response>
 [Your response to the user's question, written in the style of your assigned persona]
-</weather_analysis>
+</response>
 
 Example output structure (using generic content):
 <weather_query_analysis>
@@ -418,7 +423,7 @@ Example output structure (using generic content):
 
 Remember to stay in character and provide a helpful, accurate response based solely on the provided weather data, focusing on the user's specific question and in users language.
 
-<weather_forecast_analysis>
+<response>
 [Direct answer to the user's question about the specific weather parameter]
-</weather_forecast_analysis>
+</response>
 `;

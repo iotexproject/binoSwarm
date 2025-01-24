@@ -33,7 +33,7 @@ export async function extractLocationAndCoordinates(
         context: locationExtractionContext,
         modelClass: ModelClass.SMALL,
     });
-    const parsedLocation = parseTagContent(location, "extracted_location");
+    const parsedLocation = parseTagContent(location, "response");
     elizaLogger.log("Extracted location is: ", parsedLocation);
     return getLatLngMapbox(runtime, parsedLocation);
 }
@@ -60,7 +60,7 @@ export async function extractLocationQuestion(
 
     elizaLogger.log("Extracted location is: ", location);
 
-    const parsedLocation = parseTagContent(location, "extracted_location");
+    const parsedLocation = parseTagContent(location, "response");
 
     elizaLogger.log("Extracted location is: ", parsedLocation);
 

@@ -1,4 +1,4 @@
-import { composeContext } from "@elizaos/core";
+import { composeContext, parseTagContent } from "@elizaos/core";
 import { generateText } from "@elizaos/core";
 import { parseJSONObjectFromText } from "@elizaos/core";
 import {
@@ -24,10 +24,11 @@ export const mediaAttachmentIdTemplate = `# Messages we are transcribing
 The "attachmentId" is the ID of the media file attachment that the user wants transcribed. If not specified, return null.
 
 Your response must be formatted as a JSON block with this structure:
-\`\`\`json
+<response>
 {
   "attachmentId": "<Attachment ID>"
 }
+</response>
 \`\`\`
 `;
 
@@ -50,8 +51,8 @@ const getMediaAttachmentId = async (
             modelClass: ModelClass.SMALL,
         });
         console.log("response", response);
-
-        const parsedResponse = parseJSONObjectFromText(response) as {
+        const extractedResponse = parseTagContent(response, "response");
+        const parsedResponse = parseJSONObjectFromText(extractedResponse) as {
             attachmentId: string;
         } | null;
 

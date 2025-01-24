@@ -9,17 +9,14 @@ import {
     TemplateType,
     UUID,
     truncateToCompleteSentence,
+    parseTagContent,
 } from "@elizaos/core";
 import { elizaLogger } from "@elizaos/core";
 import { ClientBase } from "./base.ts";
 import { postActionResponseFooter } from "@elizaos/core";
 import { generateTweetActions } from "@elizaos/core";
 import { IImageDescriptionService, ServiceType } from "@elizaos/core";
-import {
-    buildConversationThread,
-    extractPostContent,
-    removeAnalysisTags,
-} from "./utils.ts";
+import { buildConversationThread } from "./utils.ts";
 import { twitterMessageHandlerTemplate } from "./interactions.ts";
 import { DEFAULT_MAX_TWEET_LENGTH } from "./environment.ts";
 import {
@@ -52,7 +49,13 @@ const twitterPostTemplate = `
 # Task: Generate a post in the voice and style and perspective of {{agentName}} @{{twitterUserName}}.
 Write a post that is {{adjective}} about {{topic}} (without mentioning {{topic}} directly), from the perspective of {{agentName}}. Do not add commentary or acknowledge this request, just write the post.
 Your response should be 1, 2, or 3 sentences (choose the length at random).
-Your response should not contain any questions. Brief, concise statements only. The total character count MUST be less than {{maxTweetLength}}. No emojis. Use \\n\\n (double spaces) between statements if there are multiple statements in your response.`;
+Your response should not contain any questions. Brief, concise statements only. The total character count MUST be less than {{maxTweetLength}}. No emojis. Use \\n\\n (double spaces) between statements if there are multiple statements in your response.
+
+Respond with the post in the following format:
+<response>
+New post
+</response>
+`;
 
 export const twitterActionTemplate =
     `
@@ -509,40 +512,13 @@ export class TwitterPostClient {
 
             elizaLogger.info("generate new tweet content:\n" + newTweetContent);
 
-            // Add removeAnalysisTags here before other cleaning
-            const withoutAnalysisTags = removeAnalysisTags(newTweetContent);
-
-            // First attempt to clean content using post tags
-            let cleanedContent = extractPostContent(withoutAnalysisTags);
-
-            if (!cleanedContent) {
-                // Try parsing as JSON first
-                try {
-                    const parsedResponse = JSON.parse(withoutAnalysisTags);
-                    if (parsedResponse.text) {
-                        cleanedContent = parsedResponse.text;
-                    } else if (typeof parsedResponse === "string") {
-                        cleanedContent = parsedResponse;
-                    }
-                } catch (error) {
-                    error.linted = true; // make linter happy since catch needs a variable
-                    // If not JSON, clean the raw content
-                    cleanedContent = newTweetContent;
-                    cleanedContent = withoutAnalysisTags
-                        .replace(/^\s*{?\s*"text":\s*"|"\s*}?\s*$/g, "")
-                        .replace(/^['"](.*)['"]$/g, "$1")
-                        .replace(/\\"/g, '"')
-                        .replace(/\\n/g, "\n\n")
-                        .trim();
-                }
-            }
+            let cleanedContent = parseTagContent(newTweetContent, "response");
 
             if (!cleanedContent) {
                 elizaLogger.error(
                     "Failed to extract valid content from response:",
                     {
                         rawResponse: newTweetContent,
-                        attempted: "JSON parsing",
                     }
                 );
                 return;
@@ -581,7 +557,7 @@ export class TwitterPostClient {
                     await this.sendForApproval(
                         cleanedContent,
                         roomId,
-                        newTweetContent
+                        cleanedContent
                     );
                     elizaLogger.log("Tweet sent for approval");
                 } else {
@@ -591,7 +567,7 @@ export class TwitterPostClient {
                         this.client,
                         cleanedContent,
                         roomId,
-                        newTweetContent,
+                        cleanedContent,
                         this.twitterUsername
                     );
                 }
@@ -626,15 +602,7 @@ export class TwitterPostClient {
             modelClass: ModelClass.LARGE,
         });
         elizaLogger.info("generate tweet content response:\n" + response);
-        const withoutAnalysisTags = removeAnalysisTags(response);
-        const postContentExtracted = extractPostContent(withoutAnalysisTags);
-        const postContent = postContentExtracted || withoutAnalysisTags;
-
-        const cleanedResponse = postContent
-            .replace(/```json\s*/g, "") // Remove ```json
-            .replace(/```\s*/g, "") // Remove any remaining ```
-            .replaceAll(/\\n/g, "\n")
-            .trim();
+        const cleanedResponse = parseTagContent(response, "response");
 
         elizaLogger.info(
             "generate tweet content response cleaned:\n" + cleanedResponse
@@ -1168,8 +1136,7 @@ export class TwitterPostClient {
                     twitterMessageHandlerTemplate,
             });
 
-            // Add removeAnalysisTags here before validation
-            const cleanedReplyText = removeAnalysisTags(replyText);
+            const cleanedReplyText = parseTagContent(replyText, "response");
 
             if (!cleanedReplyText) {
                 elizaLogger.error("Failed to generate valid reply content");
@@ -1183,8 +1150,6 @@ export class TwitterPostClient {
                 executedActions.push("reply (dry run)");
                 return;
             }
-
-            elizaLogger.debug("Final reply text to be sent:", replyText);
 
             let result;
 

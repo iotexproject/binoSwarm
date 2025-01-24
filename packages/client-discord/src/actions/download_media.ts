@@ -1,5 +1,5 @@
 import path from "path";
-import { composeContext } from "@elizaos/core";
+import { composeContext, parseTagContent } from "@elizaos/core";
 import { parseJSONObjectFromText } from "@elizaos/core";
 import {
     Action,
@@ -22,11 +22,11 @@ export const mediaUrlTemplate = `# Messages we are searching for a media URL
 The "mediaUrl" is the URL of the media file that the user wants downloaded. If not specified, return null.
 
 Your response must be formatted as a JSON block with this structure:
-\`\`\`json
+<response>
 {
   "mediaUrl": "<Media URL>"
 }
-\`\`\`
+</response>
 `;
 
 const getMediaUrl = async (
@@ -50,7 +50,8 @@ const getMediaUrl = async (
             modelClass: ModelClass.SMALL,
         });
 
-        const parsedResponse = parseJSONObjectFromText(response) as {
+        const extractedResponse = parseTagContent(response, "response");
+        const parsedResponse = parseJSONObjectFromText(extractedResponse) as {
             mediaUrl: string;
         } | null;
 
