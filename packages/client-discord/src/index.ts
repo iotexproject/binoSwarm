@@ -93,14 +93,14 @@ export class DiscordClient extends EventEmitter {
         // );
 
         // Handle voice events with the voice manager
-        this.client.on(
-            "voiceStateUpdate",
-            this.voiceManager.handleVoiceStateUpdate.bind(this.voiceManager)
-        );
-        this.client.on(
-            "userStream",
-            this.voiceManager.handleUserStream.bind(this.voiceManager)
-        );
+        // this.client.on(
+        //     "voiceStateUpdate",
+        //     this.voiceManager.handleVoiceStateUpdate.bind(this.voiceManager)
+        // );
+        // this.client.on(
+        //     "userStream",
+        //     this.voiceManager.handleUserStream.bind(this.voiceManager)
+        // );
 
         // Handle a new message with the message manager
         this.client.on(
