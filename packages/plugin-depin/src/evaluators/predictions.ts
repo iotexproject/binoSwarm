@@ -49,10 +49,10 @@ export const predictionEvaluator: Evaluator = {
         "EXTRACT_BETS",
     ],
     validate: async (
-        runtime: IAgentRuntime,
-        message: Memory
+        _runtime: IAgentRuntime,
+        _message: Memory
     ): Promise<boolean> => {
-        return true;
+        return !!process.env.BINARY_PREDICTION_CONTRACT_ADDRESS;
     },
     description:
         "Extract predictions and forecasts about future events from the conversation, including any associated stakes or bets.",
@@ -175,11 +175,17 @@ async function handleNewPrediction(
     const smartContractAddr = process.env
         .BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`;
 
+    const network = process.env.PREDICTION_NETWORK;
+    if (network !== "iotexTestnet" && network !== "iotex") {
+        throw new Error("Invalid network");
+    }
+
     const smartcontractId = await createPrediction(
         runtime,
         smartContractAddr,
         predictionObject.prediction.statement,
-        deadlineTimeToSec
+        deadlineTimeToSec,
+        network
     );
     await runtime.databaseAdapter.createPrediction({
         id: v4(),

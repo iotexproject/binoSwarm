@@ -30,6 +30,11 @@ export class PredictionResolver extends Service {
             return;
         }
 
+        const network = process.env.PREDICTION_NETWORK;
+        if (network !== "iotexTestnet" && network !== "iotex") {
+            throw new Error("Invalid network");
+        }
+
         // start a loop that runs every x seconds
         this.interval = setInterval(async () => {
             elizaLogger.debug("running prediction resolver...");
@@ -48,7 +53,8 @@ export class PredictionResolver extends Service {
                 const hash = await resolvePrediction(
                     this.runtime,
                     Number(prediction.smartcontract_id),
-                    outcome
+                    outcome,
+                    network
                 );
 
                 if (hash) {

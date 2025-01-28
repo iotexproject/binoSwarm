@@ -1,24 +1,24 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import { initWalletProvider } from "@elizaos/plugin-evm";
 import { encodeFunctionData } from "viem";
-import { iotex } from "viem/chains";
+import { iotex, iotexTestnet } from "viem/chains";
 
 import { predictionAbi } from "./predictionAbi";
 
 export const resolvePrediction = async (
     runtime: IAgentRuntime,
     predictionId: number,
-    outcome: boolean
+    outcome: boolean,
+    network: "iotex" | "iotexTestnet"
 ) => {
     const contractAddress = process.env
         .BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`;
-    const network = "iotex";
     const walletProvider = await initWalletProvider(runtime);
     const publicClient = walletProvider.getPublicClient(network);
     const account = walletProvider.getAddress();
 
     await publicClient.simulateContract({
-        chain: iotex,
+        chain: network === "iotex" ? iotex : iotexTestnet,
         address: contractAddress,
         abi: predictionAbi,
         account,
@@ -53,9 +53,9 @@ export const createPrediction = async (
     runtime: IAgentRuntime,
     address: `0x${string}`,
     statement: string,
-    deadline: number
+    deadline: number,
+    network: "iotex" | "iotexTestnet"
 ) => {
-    const network = "iotex";
     const walletProvider = await initWalletProvider(runtime);
     const publicClient = walletProvider.getPublicClient(network);
     const account = walletProvider.getAddress();
@@ -66,7 +66,7 @@ export const createPrediction = async (
         functionName: "predictionCount",
     });
     await publicClient.simulateContract({
-        chain: iotex,
+        chain: network === "iotex" ? iotex : iotexTestnet,
         address,
         abi: predictionAbi,
         account,
