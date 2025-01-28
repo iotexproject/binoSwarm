@@ -845,7 +845,7 @@ export class MessageManager {
     // Main handler for incoming messages
     public async handleMessage(ctx: Context): Promise<void> {
         if (!ctx.message || !ctx.from) {
-            return; // Exit if no message or sender info
+            return;
         }
 
         if (
@@ -1007,21 +1007,16 @@ export class MessageManager {
         try {
             // Convert IDs to UUIDs
             const userId = stringToUuid(ctx.from.id.toString()) as UUID;
-
-            // Get user name
             const userName =
                 ctx.from.username || ctx.from.first_name || "Unknown User";
-
-            // Get chat ID
             const chatId = stringToUuid(
                 ctx.chat?.id.toString() + "-" + this.runtime.agentId
             ) as UUID;
-
-            // Get agent ID
             const agentId = this.runtime.agentId;
-
-            // Get room ID
             const roomId = chatId;
+            const messageId = stringToUuid(
+                message.message_id.toString() + "-" + roomId.toString()
+            ) as UUID;
 
             // Ensure connection
             await this.runtime.ensureConnection(
@@ -1031,11 +1026,6 @@ export class MessageManager {
                 userName,
                 "telegram"
             );
-
-            // Get message ID
-            const messageId = stringToUuid(
-                message.message_id.toString() + "-" + this.runtime.agentId
-            ) as UUID;
 
             // Handle images
             const imageInfo = await this.processImage(message);
@@ -1054,7 +1044,7 @@ export class MessageManager {
                 : messageText;
 
             if (!fullText) {
-                return; // Skip if no content
+                return;
             }
 
             // Create content
@@ -1066,7 +1056,7 @@ export class MessageManager {
                         ? stringToUuid(
                               message.reply_to_message.message_id.toString() +
                                   "-" +
-                                  this.runtime.agentId
+                                  roomId.toString()
                           )
                         : undefined,
             };
@@ -1082,7 +1072,6 @@ export class MessageManager {
                 embedding: getEmbeddingZeroVector(),
             };
 
-            // Create memory
             await this.runtime.messageManager.createMemory(memory);
 
             // Update state with the new memory
@@ -1111,7 +1100,7 @@ export class MessageManager {
                             id: stringToUuid(
                                 sentMessage.message_id.toString() +
                                     "-" +
-                                    this.runtime.agentId
+                                    roomId.toString()
                             ),
                             agentId,
                             userId: agentId,
@@ -1125,8 +1114,6 @@ export class MessageManager {
                             embedding: getEmbeddingZeroVector(),
                         };
 
-                        // Set action to CONTINUE for all messages except the last one
-                        // For the last message, use the original action from the response content
                         memory.content.action = !isLastMessage
                             ? "CONTINUE"
                             : content.action;
@@ -1157,7 +1144,9 @@ export class MessageManager {
                     context
                 );
 
-                if (!responseContent || !responseContent.text) return;
+                if (!responseContent || !responseContent.text) {
+                    return;
+                }
 
                 // Execute callback to send messages and log memories
                 const responseMessages = await callback(responseContent);
