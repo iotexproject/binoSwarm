@@ -1,19 +1,24 @@
 services:
     tee:
+        image: bino:latest
         command: ["pnpm", "start", "--character=${CHARACTER_FILE}"]
-        build:
-            context: .
-            dockerfile: Dockerfile
         stdin_open: true
         tty: true
         volumes:
             - /var/run/tappd.sock:/var/run/tappd.sock
             - ./characters:/app/characters
+            # If we want to mount a local directory into the container
+            # - type: bind
+            #   source: /root/iotex2-docs
+            #   target: /app/characters/knowledge/iotex2-docs
+            #   bind:
+            #     create_host_path: true
         env_file:
             - .env
         environment:
             - CHARACTER_FILE=${CHARACTER_FILE}
             - NODE_OPTIONS=--max-old-space-size=8192
+            - PORT=${PORT}
         ports:
-            - "3000"
+            - "${PORT}:3000"
         restart: always
