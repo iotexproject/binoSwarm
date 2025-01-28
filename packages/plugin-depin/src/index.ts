@@ -13,6 +13,9 @@ import { weatherDataProvider } from "./providers/weatherDataProvider";
 import { weatherForecast } from "./actions/weatherForecast";
 import { predictionEvaluator } from "./evaluators/predictions";
 import PredictionResolver from "./services/PredictionResolver";
+import { placeBet } from "./actions/placeBet";
+import { prepareBet } from "./actions/prepareBet";
+import { listPredictions } from "./actions/listPredictions";
 
 export const depinPlugin: Plugin = {
     name: "depin",
@@ -20,7 +23,15 @@ export const depinPlugin: Plugin = {
     providers: [depinDataProvider, weatherDataProvider],
     evaluators: [predictionEvaluator],
     services: [new PredictionResolver()],
-    actions: [depinProjects, weather, recentNews, weatherForecast],
+    actions: [
+        depinProjects,
+        weather,
+        recentNews,
+        weatherForecast,
+        placeBet,
+        prepareBet,
+        listPredictions,
+    ],
 };
 
 export default depinPlugin;
