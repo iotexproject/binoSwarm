@@ -1068,7 +1068,9 @@ export async function generateShouldRespond({
     modelClass: ModelClass;
 }): Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
     let retryDelay = 1000;
-    while (true) {
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+    while (retryCount < MAX_RETRIES) {
         try {
             elizaLogger.debug(
                 "Attempting to generate text with context:",
@@ -1081,7 +1083,8 @@ export async function generateShouldRespond({
             });
 
             const extractedResponse = parseTagContent(response, "response");
-            const parsedResponse = parseShouldRespondFromText(extractedResponse);
+            const parsedResponse =
+                parseShouldRespondFromText(extractedResponse);
             if (parsedResponse) {
                 elizaLogger.debug("Parsed response:", parsedResponse);
                 return parsedResponse;
@@ -1103,7 +1106,10 @@ export async function generateShouldRespond({
         elizaLogger.log(`Retrying in ${retryDelay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         retryDelay *= 2;
+        retryCount++;
     }
+
+    throw new Error("generateShouldRespond failed after 5 retries");
 }
 
 /**
@@ -1151,12 +1157,15 @@ export async function generateTrueOrFalse({
     modelClass: ModelClass;
 }): Promise<boolean> {
     let retryDelay = 1000;
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+
     const modelSettings = getModelSettings(runtime.modelProvider, modelClass);
     const stop = Array.from(
         new Set([...(modelSettings.stop || []), ["\n"]])
     ) as string[];
 
-    while (true) {
+    while (retryCount < MAX_RETRIES) {
         try {
             const response = await generateText({
                 stop,
@@ -1173,9 +1182,17 @@ export async function generateTrueOrFalse({
             elizaLogger.error("Error in generateTrueOrFalse:", error);
         }
 
+        elizaLogger.log(
+            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+        );
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         retryDelay *= 2;
+        retryCount++;
     }
+
+    throw new Error(
+        "Failed to generate boolean response after maximum retries"
+    );
 }
 
 /**
@@ -1206,9 +1223,12 @@ export async function generateTextArray({
         elizaLogger.error("generateTextArray context is empty");
         return [];
     }
-    let retryDelay = 1000;
 
-    while (true) {
+    let retryDelay = 1000;
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+
+    while (retryCount < MAX_RETRIES) {
         try {
             const response = await generateText({
                 runtime,
@@ -1224,9 +1244,15 @@ export async function generateTextArray({
             elizaLogger.error("Error in generateTextArray:", error);
         }
 
+        elizaLogger.log(
+            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+        );
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         retryDelay *= 2;
+        retryCount++;
     }
+
+    throw new Error("Failed to generate text array after maximum retries");
 }
 
 export async function generateObjectDeprecated({
@@ -1242,11 +1268,13 @@ export async function generateObjectDeprecated({
         elizaLogger.error("generateObjectDeprecated context is empty");
         return null;
     }
-    let retryDelay = 1000;
 
-    while (true) {
+    let retryDelay = 1000;
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+
+    while (retryCount < MAX_RETRIES) {
         try {
-            // this is slightly different than generateObjectArray, in that we parse object, not object array
             const response = await generateText({
                 runtime,
                 context,
@@ -1261,9 +1289,15 @@ export async function generateObjectDeprecated({
             elizaLogger.error("Error in generateObject:", error);
         }
 
+        elizaLogger.log(
+            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+        );
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         retryDelay *= 2;
+        retryCount++;
     }
+
+    throw new Error("Failed to generate object after maximum retries");
 }
 
 export async function generateObjectArray({
@@ -1279,9 +1313,12 @@ export async function generateObjectArray({
         elizaLogger.error("generateObjectArray context is empty");
         return [];
     }
-    let retryDelay = 1000;
 
-    while (true) {
+    let retryDelay = 1000;
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+
+    while (retryCount < MAX_RETRIES) {
         try {
             const response = await generateText({
                 runtime,
@@ -1298,9 +1335,15 @@ export async function generateObjectArray({
             elizaLogger.error("Error in generateTextArray:", error);
         }
 
+        elizaLogger.log(
+            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+        );
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         retryDelay *= 2;
+        retryCount++;
     }
+
+    throw new Error("Failed to generate object array after maximum retries");
 }
 
 /**
@@ -1329,8 +1372,12 @@ export async function generateMessageResponse({
 
     context = await trimTokens(context, max_context_length, runtime);
     elizaLogger.debug("Context:", context);
-    let retryLength = 1000; // exponential backoff
-    while (true) {
+
+    let retryDelay = 1000;
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+
+    while (retryCount < MAX_RETRIES) {
         try {
             elizaLogger.log("Generating message response..");
 
@@ -1343,21 +1390,28 @@ export async function generateMessageResponse({
             const responseText = parseTagContent(response, "response");
 
             // try parsing the response as JSON, if null then try again
-            const parsedContent = parseJSONObjectFromText(responseText) as Content;
-            if (!parsedContent) {
-                elizaLogger.debug("parsedContent is null, retrying");
-                continue;
+            const parsedContent = parseJSONObjectFromText(
+                responseText
+            ) as Content;
+            if (parsedContent) {
+                return parsedContent;
             }
-
-            return parsedContent;
+            elizaLogger.debug("parsedContent is null, retrying");
         } catch (error) {
             elizaLogger.error("ERROR:", error);
-            // wait for 2 seconds
-            retryLength *= 2;
-            await new Promise((resolve) => setTimeout(resolve, retryLength));
-            elizaLogger.debug("Retrying...");
         }
+
+        elizaLogger.log(
+            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        retryDelay *= 2;
+        retryCount++;
     }
+
+    throw new Error(
+        "Failed to generate message response after maximum retries"
+    );
 }
 
 export const generateImage = async (
@@ -2269,7 +2323,10 @@ export async function generateTweetActions({
     modelClass: ModelClass;
 }): Promise<ActionResponse | null> {
     let retryDelay = 1000;
-    while (true) {
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+
+    while (retryCount < MAX_RETRIES) {
         try {
             const response = await generateText({
                 runtime,
@@ -2285,9 +2342,8 @@ export async function generateTweetActions({
             if (actions) {
                 console.debug("Parsed tweet actions:", actions);
                 return actions;
-            } else {
-                elizaLogger.debug("generateTweetActions no valid response");
             }
+            elizaLogger.debug("generateTweetActions no valid response");
         } catch (error) {
             elizaLogger.error("Error in generateTweetActions:", error);
             if (
@@ -2299,8 +2355,13 @@ export async function generateTweetActions({
                 );
             }
         }
-        elizaLogger.log(`Retrying in ${retryDelay}ms...`);
+        elizaLogger.log(
+            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+        );
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         retryDelay *= 2;
+        retryCount++;
     }
+
+    throw new Error("Failed to generate tweet actions after maximum retries");
 }
