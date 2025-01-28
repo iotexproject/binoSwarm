@@ -547,26 +547,26 @@ export async function generateText({
                 break;
             }
 
-            case ModelProviderName.MISTRAL: {
-                const mistral = createMistral();
+            // case ModelProviderName.MISTRAL: {
+            //     const mistral = createMistral();
 
-                const { text: mistralResponse } = await aiGenerateText({
-                    model: mistral(model),
-                    prompt: context,
-                    system:
-                        runtime.character.system ??
-                        settings.SYSTEM_PROMPT ??
-                        undefined,
-                    temperature: temperature,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
-                });
+            //     const { text: mistralResponse } = await aiGenerateText({
+            //         model: mistral(model),
+            //         prompt: context,
+            //         system:
+            //             runtime.character.system ??
+            //             settings.SYSTEM_PROMPT ??
+            //             undefined,
+            //         temperature: temperature,
+            //         maxTokens: max_response_length,
+            //         frequencyPenalty: frequency_penalty,
+            //         presencePenalty: presence_penalty,
+            //     });
 
-                response = mistralResponse;
-                elizaLogger.debug("Received response from Mistral model.");
-                break;
-            }
+            //     response = mistralResponse;
+            //     elizaLogger.debug("Received response from Mistral model.");
+            //     break;
+            // }
 
             case ModelProviderName.ANTHROPIC: {
                 elizaLogger.debug(
@@ -2007,8 +2007,8 @@ export async function handleProvider(
             });
         case ModelProviderName.GOOGLE:
             return await handleGoogle(options);
-        case ModelProviderName.MISTRAL:
-            return await handleMistral(options);
+        // case ModelProviderName.MISTRAL:
+        //     return await handleMistral(options);
         case ModelProviderName.REDPILL:
             return await handleRedPill(options);
         case ModelProviderName.OPENROUTER:
@@ -2169,30 +2169,30 @@ async function handleGoogle({
     });
 }
 
-/**
- * Handles object generation for Mistral models.
- *
- * @param {ProviderOptions} options - Options specific to Mistral.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
-async function handleMistral({
-    model,
-    schema,
-    schemaName,
-    schemaDescription,
-    mode,
-    modelOptions,
-}: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
-    const mistral = createMistral();
-    return await aiGenerateObject({
-        model: mistral(model),
-        schema,
-        schemaName,
-        schemaDescription,
-        mode,
-        ...modelOptions,
-    });
-}
+// /**
+//  * Handles object generation for Mistral models.
+//  *
+//  * @param {ProviderOptions} options - Options specific to Mistral.
+//  * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
+//  */
+// async function handleMistral({
+//     model,
+//     schema,
+//     schemaName,
+//     schemaDescription,
+//     mode,
+//     modelOptions,
+// }: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
+//     const mistral = createMistral();
+//     return await aiGenerateObject({
+//         model: mistral(model),
+//         schema,
+//         schemaName,
+//         schemaDescription,
+//         mode,
+//         ...modelOptions,
+//     });
+// }
 
 /**
  * Handles object generation for Redpill models.
