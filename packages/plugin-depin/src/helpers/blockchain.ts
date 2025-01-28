@@ -4,6 +4,7 @@ import { encodeFunctionData } from "viem";
 import { iotex, iotexTestnet } from "viem/chains";
 
 import { predictionAbi } from "./predictionAbi";
+import { erc20Abi } from "./erc20abi";
 
 export const resolvePrediction = async (
     runtime: IAgentRuntime,
@@ -103,4 +104,94 @@ export const createPrediction = async (
     } else {
         throw new Error("Prediction creation failed");
     }
+};
+
+export const placeBet = async (
+    runtime: IAgentRuntime,
+    predictionId: number,
+    outcome: boolean,
+    amount: number,
+    bettor: `0x${string}`,
+    network: "iotex" | "iotexTestnet"
+) => {
+    const walletProvider = await initWalletProvider(runtime);
+    const publicClient = walletProvider.getPublicClient(network);
+    const account = walletProvider.getAddress();
+
+    const betAmount = await getBetAmount(amount, bettor, account, publicClient);
+
+    await publicClient.simulateContract({
+        address: process.env
+            .BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`,
+        abi: predictionAbi,
+        account,
+        functionName: "placeBetForAccount",
+        args: [bettor, BigInt(predictionId), outcome, BigInt(betAmount)],
+    });
+
+    const data = encodeFunctionData({
+        abi: predictionAbi,
+        functionName: "placeBetForAccount",
+        args: [bettor, BigInt(predictionId), outcome, BigInt(betAmount)],
+    });
+
+    const walletClient = walletProvider.getWalletClient(network);
+    // @ts-ignore
+    const request = await walletClient.prepareTransactionRequest({
+        to: process.env.BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`,
+        data,
+        account: walletClient.account,
+    });
+    // @ts-ignore
+    const serializedTransaction = await walletClient.signTransaction(request);
+    const hash = await walletClient.sendRawTransaction({
+        serializedTransaction,
+    });
+
+    elizaLogger.info(hash);
+    return hash;
+};
+
+const getBetAmount = async (
+    amount: number,
+    bettor: `0x${string}`,
+    account: `0x${string}`,
+    publicClient: any
+) => {
+    const allowance = await publicClient.readContract({
+        address: process.env.SENTAI_ERC20 as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [bettor, account],
+    });
+
+    if (allowance <= BigInt(0)) {
+        throw new Error("Insufficient allowance");
+    }
+
+    const maxBet = await publicClient.readContract({
+        address: process.env
+            .BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`,
+        abi: predictionAbi,
+        functionName: "maxBet",
+    });
+
+    const minBet = await publicClient.readContract({
+        address: process.env
+            .BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`,
+        abi: predictionAbi,
+        functionName: "minBet",
+    });
+
+    if (amount < minBet) {
+        throw new Error("Bet amount is less than the minimum bet");
+    }
+
+    const betAmount = Math.min(maxBet, amount);
+
+    if (allowance < BigInt(betAmount)) {
+        throw new Error("Insufficient allowance");
+    }
+
+    return betAmount;
 };
