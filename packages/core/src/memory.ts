@@ -176,7 +176,9 @@ export class MemoryManager implements IMemoryManager {
             await this.runtime.databaseAdapter.getMemoryById(memory.id);
 
         if (existingMessage) {
-            elizaLogger.debug("Memory already exists, skipping");
+            elizaLogger.error(
+                `Memory already exists, skipping, memory: ${memory.id}, content: ${memory.content.text}`
+            );
             return;
         }
 
