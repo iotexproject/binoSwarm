@@ -1,7 +1,7 @@
 import { ActionResponse } from "./types.ts";
 const jsonBlockPattern = /```json\n([\s\S]*?)\n```/;
 
-export const messageCompletionFooter = `\nResponse format should be formatted in a JSON block like this:
+export const messageCompletionFooter = `\nResponse format should be formatted in a valid JSON format. Strings must either be a single continuous line or use escaped newlines to handle line breaks.
 <response>
 { "user": "{{agentName}}", "text": "string", "action": "string" }
 </response>
@@ -66,8 +66,8 @@ export const parseBooleanFromText = (text: string): boolean | null => {
 export const stringArrayFooter = `Respond with a JSON array containing the values in a JSON block formatted for markdown with this structure:
 <response>
 [
-  'value',
-  'value'
+  "value",
+  "value"
 ]
 </response>
 
@@ -264,4 +264,3 @@ export function parseTagContent(text: string, tag: string) {
     }
     return null;
 }
-
