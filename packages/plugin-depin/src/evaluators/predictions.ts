@@ -56,7 +56,7 @@ export const predictionEvaluator: Evaluator = {
         return !!process.env.BINARY_PREDICTION_CONTRACT_ADDRESS;
     },
     description:
-        "Extract predictions and forecasts about future events from the conversation, including any associated stakes or bets.",
+        "Extract weather predictions from the conversation, including any associated stakes or bets.",
     handler,
     examples: [
         {
@@ -80,30 +80,6 @@ export const predictionEvaluator: Evaluator = {
   {
     "statement": "It will rain next Tuesday",
     "deadline": "2024-03-26",
-  }
-</response>`,
-        },
-        {
-            context: `Discussion about cryptocurrency prices`,
-            messages: [
-                {
-                    user: "{{user1}}",
-                    content: {
-                        text: "Bitcoin will definitely hit 100k by the end of 2024",
-                    },
-                },
-                {
-                    user: "{{user2}}",
-                    content: {
-                        text: "I'm willing to stake $50 that you're wrong",
-                    },
-                },
-            ] as ActionExample[],
-            outcome: `
-<response>
-  {
-    "statement": "Bitcoin will reach $100,000",
-    "deadline": "2024-12-31"
   }
 </response>`,
         },
@@ -140,7 +116,7 @@ async function evaluatePredictionFromContext(
     state = (await runtime.composeState(message)) as State;
     const formattedPredictions = formatPredictionsAsString({ predictions });
 
-    state.currentPredictions = formattedPredictions;
+    state.existingPredictions = formattedPredictions;
     state.currentTime = new Date().toISOString();
 
     const context = composeContext({

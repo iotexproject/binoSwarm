@@ -32,7 +32,7 @@ export const placeBet: Action = {
             {
                 user: "user",
                 content: {
-                    text: "Here's my approval tx: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+                    text: "BET 123 APPROVED: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
                 },
             },
             {
@@ -63,8 +63,11 @@ export const placeBet: Action = {
                 return false;
             }
 
-            // Verify prediction is still open
-            const betParams = await extractBetParamsFromContext(runtime, state);
+            const betParams = await extractBetParamsFromContext(
+                runtime,
+                state,
+                message.content.text
+            );
             if (!betParams) {
                 if (callback) {
                     callback({
@@ -88,7 +91,7 @@ export const placeBet: Action = {
             }
 
             // Place the bet on the blockchain
-            const betTxHash = await executeBlockchainBet(
+            const betResult = await executeBlockchainBet(
                 runtime,
                 betParams.predictionId,
                 betParams.outcome,
@@ -99,7 +102,7 @@ export const placeBet: Action = {
 
             if (callback) {
                 callback({
-                    text: `Your bet has been placed successfully!\n\nPrediction: "${betParams.statement}"\nYour bet: ${betParams.outcome ? "Yes" : "No"}\nAmount: ${betParams.amount} $SENTAI\nTransaction: ${betTxHash}`,
+                    text: `Your bet has been placed successfully!\n\nPrediction: "${betParams.statement}"\nYour bet: ${betParams.outcome ? "Yes" : "No"}\nAmount: ${betResult.betAmount}\nBettor: ${betResult.bettor}\nTransaction: ${betResult.hash}`,
                     inReplyTo: message.id,
                 });
             }
@@ -143,13 +146,14 @@ interface BetParams {
 
 async function extractBetParamsFromContext(
     runtime: IAgentRuntime,
-    state: State
+    state: State,
+    message: string
 ): Promise<BetParams> {
     const predictions = await runtime.databaseAdapter.getPredictions({
         status: "OPEN",
     });
-    state.currentPredictions = predictions;
-
+    state.existingPredictions = predictions;
+    state.userMessage = message;
     const context = composeContext({
         state,
         template: placeBetTemplate,
@@ -167,15 +171,19 @@ async function extractBetParamsFromContext(
 }
 
 const placeBetTemplate = `
-Extract address, amount, outcome from the context and relate it to one of the predictions:
+Extract bettor address, bet amount, outcome from approved bets and relate it to one of the predictions:
 
-<current_predictions>
-{{currentPredictions}}
-</current_predictions>
+<existing_predictions>
+{{existingPredictions}}
+</existing_predictions>
 
 <recent_messages>
 {{recentMessages}}
 </recent_messages>
+
+<user_message>
+{{userMessage}}
+</user_message>
 
 <example>
 <current_prediction_example>
@@ -200,19 +208,23 @@ Deadline: Fri Jan 31 2025 23:59:59
 3. Prediction: Ethereum gas fees will be under 20 Gwei tomorrow at noon
 Deadline: Sat Jan 18 2025 12:00:00
 </previous_context_with_predictions>
-- BET ON PREDICTION 2, 100 $SENTAI, true, 0x742d35Cc6634C0532925a3b844Bc454e4438f44e
+<recent_messages_example>
+- BET ON PREDICTION 1, 100 $SENTAI, true, 0x742d35Cc6634C0532925a3b844Bc454e4438f44e
+- BetID: 123, 1. 0x742d35Cc6634C0532925a3b844Bc454e4438f44e, 100 $SENTAI, true. Tx data: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+- BET 123 APPROVED: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+</recent_messages_example>
 
 <response>
 {
-  "reasoning": "The user is betting that bitcoin price will exceed $50k by the end of the month with 100 $SENTAI.",
-  "statement": "Bitcoin price will exceed $50k by the end of the month",
+  "reasoning": "The user is betting that it will rain tomorrow in London with 100 $SENTAI and he approved the bet.",
+  "statement": "It will rain tomorrow in London",
   "bettor": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
   "amount": "100",
   "outcome": true,
-  "predictionId": 3
+  "predictionId": 1
 }
 </response>
 </example>
 
-Now extract the bettor, amount, outcome, and predictionId from the context and return it <response> tags.
+Now extract the bettor, amount, outcome, and predictionId from the context and return it in the <response> tags.
 `;

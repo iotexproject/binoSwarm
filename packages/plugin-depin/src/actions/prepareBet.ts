@@ -5,7 +5,6 @@ import {
     State,
     HandlerCallback,
     elizaLogger,
-    composeContext,
     generateText,
     ModelClass,
     parseTagContent,
@@ -15,13 +14,16 @@ import { genTxDataForAllowance } from "../helpers/blockchain";
 
 interface ApprovalParams {
     amount: number;
-    walletAddress: `0x${string}`;
+    address: `0x${string}`;
+    outcome: boolean;
+    predictionId: number;
+    txData?: `0x${string}`;
 }
 
 export const prepareBet: Action = {
-    name: "PREPARE_BET",
-    similes: ["SETUP_BET", "START_BET", "INITIALIZE_BET"],
-    description: "Prepare a bet by generating token approval transaction",
+    name: "APPROVE_BET",
+    similes: ["SETUP_BET", "INITIALIZE_BET", "PREPARE_BET"],
+    description: "Approve and prepare a bet before placing it",
     validate: async (_runtime: IAgentRuntime) => {
         return !!process.env.BINARY_PREDICTION_CONTRACT_ADDRESS;
     },
@@ -30,13 +32,13 @@ export const prepareBet: Action = {
             {
                 user: "user",
                 content: {
-                    text: "BET ON PREDICTION 1, 100 $SENTAI, true, 0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                    text: "PREPARE A BET FOR PREDICTION 1, 100 $SENTAI, true, 0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
                 },
             },
             {
                 user: "assistant",
                 content: {
-                    text: "Let me prepare your bet. I will generate a QR code for you to approve the tokens first:",
+                    text: "Confirm the following bets:",
                     action: "PREPARE_BET",
                 },
             },
@@ -45,18 +47,19 @@ export const prepareBet: Action = {
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: State,
+        _state: State,
         _options: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {
-        state = (await runtime.composeState(message)) as State;
-
         try {
-            const params = await extractBetParamsFromContext(runtime, state);
-            if (!params) {
+            const betParams = await extractBetParamsFromContext(
+                runtime,
+                message.content.text
+            );
+            if (!betParams) {
                 if (callback) {
                     callback({
-                        text: "Invalid bet format. Please use: BET ON PREDICTION <number>, <amount> $SENTAI, <outcome>, <your_wallet_address>",
+                        text: "Valid bet not found, please try again.",
                         inReplyTo: message.id,
                     });
                 }
@@ -68,12 +71,17 @@ export const prepareBet: Action = {
                 throw new Error("Invalid network");
             }
 
-            // Generate approval transaction data
-            const txData = await genTxDataForAllowance(runtime, params.amount);
+            const betWithTx = {
+                txData: genTxDataForAllowance(betParams.amount),
+                address: betParams.address,
+                amount: betParams.amount,
+                predictionId: betParams.predictionId,
+                outcome: betParams.outcome,
+            };
 
             if (callback) {
                 callback({
-                    text: prepareBetResponse(txData),
+                    text: prepareBetResponse(betWithTx),
                     inReplyTo: message.id,
                 });
             }
@@ -94,45 +102,66 @@ export const prepareBet: Action = {
 
 async function extractBetParamsFromContext(
     runtime: IAgentRuntime,
-    state: State
-): Promise<ApprovalParams> {
-    const context = composeContext({
-        state,
-        template: prepareBetTemplate,
-    });
-
+    message: string
+): Promise<ApprovalParams | null> {
     const approvalResponse = await generateText({
         runtime,
-        context,
+        context: prepareBetTemplate(message),
         modelClass: ModelClass.SMALL,
     });
     const withoutTags = parseTagContent(approvalResponse, "response");
 
-    return JSON.parse(withoutTags);
+    const parsed = JSON.parse(withoutTags);
+    if (
+        parsed.address &&
+        parsed.amount &&
+        parsed.outcome !== undefined &&
+        parsed.predictionId
+    ) {
+        return parsed;
+    }
+    return null;
 }
 
-const prepareBetResponse = (txData: string) =>
+const prepareBetResponse = (approvalTxData: ApprovalParams) =>
     `
-Please make a transfer with your wallet to ${process.env.SENTAI_ERC20} with the following data: ${txData}.
-After approval, send the tx hash like this: "APPROVAL HASH <tx_hash> for PREDICTION <prediction_id>"
+🎲 Confirm your bet:
+BetID: ${Math.floor(Math.random() * 900) + 100},
+PredictionId: ${approvalTxData.predictionId},
+Bettor: ${approvalTxData.address},
+Amount: ${approvalTxData.amount} $SENTAI,
+Outcome: ${approvalTxData.outcome}
+
+Please make a transfer with your wallet to $SENTAI contract:
+💰 ${process.env.SENTAI_ERC20}
+
+With the hex data:
+🔐 ${approvalTxData.txData}
+
+After approval, send the tx hash like this: "BET <bet_id> APPROVED: <tx_hash>"
+
+Example:
+"BET 123 APPROVED: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 `;
 
-const prepareBetTemplate = `
-Extract address and amount from the context:
-
-<recent_messages>
-{{recentMessages}}
-</recent_messages>
+const prepareBetTemplate = (message: string) => `
+Extract bet amount and bettor address from the message.
 
 <example>
-- BET ON PREDICTION 1, 100 $SENTAI, true, 0x742d35Cc6634C0532925a3b844Bc454e4438f44e
+BET ON PREDICTION 1, 100 $SENTAI, true, 0x742d35Cc6634C0532925a3b844Bc454e4438f44e
 <response>
 {
+  "predictionId": 1,
   "address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-  "amount": 100
+  "amount": 100,
+  "outcome": true
 }
 </response>
 </example>
 
-Return the JSON object in the <response> tag.
+<user_message>
+${message}
+</user_message>
+
+Return a valid JSON object in the <response> tag.
 `;

@@ -1,6 +1,6 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import { initWalletProvider } from "@elizaos/plugin-evm";
-import { encodeFunctionData, parseEther } from "viem";
+import { encodeFunctionData, formatEther, parseEther } from "viem";
 import { iotex, iotexTestnet } from "viem/chains";
 
 import { predictionAbi } from "./predictionAbi";
@@ -161,25 +161,28 @@ export const placeBet = async (
     });
 
     if (receipt.status === "success") {
-        return hash;
+        return {
+            hash,
+            predictionId,
+            bettor,
+            betAmount: formatEther(betAmount),
+            outcome,
+        };
     } else {
         throw new Error("Bet placement failed");
     }
 };
 
-export const genTxDataForAllowance = async (
-    runtime: IAgentRuntime,
-    amount: number
-) => {
-    const walletProvider = await initWalletProvider(runtime);
-    const account = walletProvider.getAddress();
-
+export const genTxDataForAllowance = (amount: number) => {
     const amountInWei = parseEther(amount.toString());
 
     return encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
-        args: [account, amountInWei],
+        args: [
+            process.env.BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`,
+            amountInWei,
+        ],
     });
 };
 

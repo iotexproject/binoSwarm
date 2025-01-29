@@ -12,7 +12,7 @@ import {
 import { resolvePrediction } from "../helpers/blockchain";
 import { askQuickSilver } from "../services/quicksilver";
 
-const INTERVAL = 15 * 1000; // 15 seconds in milliseconds
+const INTERVAL = 60 * 1000; // 1 minute in milliseconds
 
 export class PredictionResolver extends Service {
     interval: NodeJS.Timeout;
@@ -37,33 +37,41 @@ export class PredictionResolver extends Service {
 
         // start a loop that runs every x seconds
         this.interval = setInterval(async () => {
-            elizaLogger.debug("running prediction resolver...");
-            const predictions =
-                await this.runtime.databaseAdapter.getReadyActivePredictions();
-            predictions.forEach(async (prediction) => {
-                const weather = await getWeather(prediction, this.runtime);
-                elizaLogger.info(weather);
+            try {
+                elizaLogger.debug("running prediction resolver...");
+                const predictions =
+                    await this.runtime.databaseAdapter.getReadyActivePredictions();
+                predictions.forEach(async (prediction) => {
+                    try {
+                        const weather = await getWeather(prediction, this.runtime);
+                        elizaLogger.info(weather);
 
-                const outcome = await getOutcome(
-                    weather,
-                    prediction,
-                    this.runtime
-                );
-                elizaLogger.debug(outcome);
-                const hash = await resolvePrediction(
-                    this.runtime,
-                    Number(prediction.smartcontract_id),
-                    outcome,
-                    network
-                );
+                        const outcome = await getOutcome(
+                            weather,
+                            prediction,
+                            this.runtime
+                        );
+                        elizaLogger.debug(outcome);
+                        const hash = await resolvePrediction(
+                            this.runtime,
+                            Number(prediction.smartcontract_id),
+                            outcome,
+                            network
+                        );
 
-                if (hash) {
-                    await runtime.databaseAdapter.resolvePrediction(
-                        prediction.id,
-                        outcome
-                    );
-                }
-            });
+                        if (hash) {
+                            await runtime.databaseAdapter.resolvePrediction(
+                                prediction.id,
+                                outcome
+                            );
+                        }
+                    } catch (error) {
+                        elizaLogger.error(`Error processing prediction ${prediction.id}:`, error);
+                    }
+                });
+            } catch (error) {
+                elizaLogger.error("Error in prediction resolver:", error);
+            }
         }, INTERVAL);
     }
 }
