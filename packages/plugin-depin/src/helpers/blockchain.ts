@@ -169,28 +169,18 @@ export const placeBet = async (
 
 export const genTxDataForAllowance = async (
     runtime: IAgentRuntime,
-    amount: number,
-    bettor: `0x${string}`,
-    network: "iotex" | "iotexTestnet"
+    amount: number
 ) => {
     const walletProvider = await initWalletProvider(runtime);
     const account = walletProvider.getAddress();
-    const walletClient = walletProvider.getWalletClient(network);
 
     const amountInWei = parseEther(amount.toString());
 
-    const data = encodeFunctionData({
+    return encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
         args: [account, amountInWei],
     });
-    // @ts-ignore no kzg needed
-    const request = await walletClient.prepareTransactionRequest({
-        to: process.env.SENTAI_ERC20 as `0x${string}`,
-        data,
-        account: bettor,
-    });
-    return request;
 };
 
 const getBetAmount = async (

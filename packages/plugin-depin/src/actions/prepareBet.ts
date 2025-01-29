@@ -10,7 +10,6 @@ import {
     ModelClass,
     parseTagContent,
 } from "@elizaos/core";
-import QRCode from "qrcode";
 
 import { genTxDataForAllowance } from "../helpers/blockchain";
 
@@ -23,7 +22,7 @@ export const prepareBet: Action = {
     name: "PREPARE_BET",
     similes: ["SETUP_BET", "START_BET", "INITIALIZE_BET"],
     description: "Prepare a bet by generating token approval transaction",
-    validate: async (runtime: IAgentRuntime) => {
+    validate: async (_runtime: IAgentRuntime) => {
         return !!process.env.BINARY_PREDICTION_CONTRACT_ADDRESS;
     },
     examples: [
@@ -70,28 +69,12 @@ export const prepareBet: Action = {
             }
 
             // Generate approval transaction data
-            const txRequest = await genTxDataForAllowance(
-                runtime,
-                params.amount,
-                params.walletAddress,
-                network
-            );
-
-            // Generate QR code for the transaction
-            const txData = JSON.stringify(txRequest);
-            const qrCode = await QRCode.toDataURL(txData);
+            const txData = await genTxDataForAllowance(runtime, params.amount);
 
             if (callback) {
                 callback({
-                    text: `Please scan this QR code with your wallet to approve ${params.amount} $SENTAI tokens. Raw data: ${txData}. After approval, send the tx hash like this: "APPROVAL HASH <tx_hash> for PREDICTION <prediction_id>"`,
+                    text: prepareBetResponse(txData),
                     inReplyTo: message.id,
-                    media: [
-                        {
-                            type: "image",
-                            url: qrCode,
-                            alt: "Token approval QR code",
-                        },
-                    ],
                 });
             }
 
@@ -128,6 +111,12 @@ async function extractBetParamsFromContext(
     return JSON.parse(withoutTags);
 }
 
+const prepareBetResponse = (txData: string) =>
+    `
+Please make a transfer with your wallet to ${process.env.SENTAI_ERC20} with the following data: ${txData}.
+After approval, send the tx hash like this: "APPROVAL HASH <tx_hash> for PREDICTION <prediction_id>"
+`;
+
 const prepareBetTemplate = `
 Extract address and amount from the context:
 
@@ -144,4 +133,6 @@ Extract address and amount from the context:
 }
 </response>
 </example>
+
+Return the JSON object in the <response> tag.
 `;
