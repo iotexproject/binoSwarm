@@ -16,6 +16,7 @@ async function handler(
     message: Memory,
     state: State | undefined
 ) {
+    state = (await runtime.composeState(message)) as State;
     const predictions = await runtime.databaseAdapter.getPredictions({
         status: "OPEN",
     });
@@ -160,7 +161,7 @@ async function evaluatePredictionFromContext(
     });
     elizaLogger.info(predictionResponse);
 
-    const predictionJson = parseTagContent(predictionResponse, "result");
+    const predictionJson = parseTagContent(predictionResponse, "response");
     return JSON.parse(predictionJson);
 }
 
