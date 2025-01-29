@@ -8,8 +8,7 @@
         "@elizaos/core": "workspace:*",
         "@elizaos/plugin-evm": "workspace:*",
         "axios": "^1.7.9",
-        "tsup": "8.3.5",
-        "@elizaos/plugin-evm": "workspace:*"
+        "tsup": "8.3.5"
     },
     "scripts": {
         "build": "tsup --format esm --dts",
