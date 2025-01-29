@@ -5,6 +5,8 @@ export const messageCompletionFooter = `\nResponse format should be formatted in
 <response>
 { "user": "{{agentName}}", "text": "string", "action": "string" }
 </response>
+
+put the response in the <response> tag.
 `;
 
 export const shouldRespondFooter = `The available options are [RESPOND], [IGNORE], or [STOP]. Choose the most appropriate option.

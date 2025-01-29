@@ -105,16 +105,16 @@ class LocalEmbeddingModelManager {
             // Let fastembed handle tokenization internally
             const embedding = await this.model.queryEmbed(input);
             // Debug the raw embedding
-            elizaLogger.debug("Raw embedding from BGE:", {
-                type: typeof embedding,
-                isArray: Array.isArray(embedding),
-                dimensions: Array.isArray(embedding)
-                    ? embedding.length
-                    : "not an array",
-                sample: Array.isArray(embedding)
-                    ? embedding.slice(0, 5)
-                    : embedding,
-            });
+            // elizaLogger.debug("Raw embedding from BGE:", {
+            //     type: typeof embedding,
+            //     isArray: Array.isArray(embedding),
+            //     dimensions: Array.isArray(embedding)
+            //         ? embedding.length
+            //         : "not an array",
+            //     sample: Array.isArray(embedding)
+            //         ? embedding.slice(0, 5)
+            //         : embedding,
+            // });
             return this.processEmbedding(embedding);
         } catch (error) {
             elizaLogger.error("Embedding generation failed:", error);
