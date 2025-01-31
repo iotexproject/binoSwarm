@@ -16,11 +16,12 @@ import PredictionResolver from "./services/PredictionResolver";
 import { placeBet } from "./actions/placeBet";
 import { prepareBet } from "./actions/prepareBet";
 import { listPredictions } from "./actions/listPredictions";
+import { newsProvider } from "./providers/newsProvider";
 
 export const depinPlugin: Plugin = {
     name: "depin",
     description: "DePIN plugin",
-    providers: [depinDataProvider, weatherDataProvider],
+    providers: [depinDataProvider, weatherDataProvider, newsProvider],
     evaluators: [predictionEvaluator],
     services: [new PredictionResolver()],
     actions: [
