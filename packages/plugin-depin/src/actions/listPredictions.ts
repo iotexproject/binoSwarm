@@ -61,20 +61,20 @@ export const listPredictions: Action = {
 
             // Format predictions into a numbered list
             const formattedPredictions = predictions
-                .map((pred) => `ID: ${pred.smartcontract_id}. ${formatPrediction(pred)}`)
+                .map(
+                    (pred) =>
+                        `ID: ${pred.smartcontract_id}. ${formatPrediction(pred)}`
+                )
                 .join("\n");
 
-            const betText = `
+            const betFooter = `
 You can bet on them by saying
 "PREPARE A BET FOR PREDICTION <number>, <amount> $SENTAI, <outcome>, <your_wallet_address>"
-
-Example:
-"PREPARE A BET FOR PREDICTION 1, 100 $SENTAI, true, 0x732d35Cc6634C0532915a3b844Bc454e4438f43e"
 `;
 
             if (callback) {
                 callback({
-                    text: `🎯 Here are the active predictions:\n${formattedPredictions}\n\n${betText}`,
+                    text: `🎯 Here are the active predictions:\n${formattedPredictions}\n\n${betFooter}`,
                     inReplyTo: message.id,
                 });
             }

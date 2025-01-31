@@ -120,23 +120,20 @@ async function extractBetParamsFromContext(
 
 const prepareBetResponse = (approvalTxData: ApprovalParams) =>
     `
-🎲 Confirm your bet:
+🎲
 BetID: ${Math.floor(Math.random() * 900) + 100},
 PredictionId: ${approvalTxData.predictionId},
 Bettor: ${approvalTxData.address},
 Amount: ${approvalTxData.amount} $SENTAI,
 Outcome: ${approvalTxData.outcome}
 
-Please make a transfer with your wallet to $SENTAI contract:
+Please approve $SENTAI tokens to the prediction market smart contract:
 💰 ${process.env.PREDICTION_TOKEN}
 
 With the hex data:
 🔐 ${approvalTxData.txData}
 
 After approval, send the tx hash like this: "BET <bet_id> APPROVED: <tx_hash>"
-
-Example:
-"BET 123 APPROVED: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 `;
 
 const prepareBetTemplate = (message: string) => `
