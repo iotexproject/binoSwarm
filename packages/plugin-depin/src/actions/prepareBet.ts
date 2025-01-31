@@ -10,7 +10,7 @@ import {
     parseTagContent,
 } from "@elizaos/core";
 
-import { genTxDataForAllowance, getNetwork } from "../helpers/blockchain";
+import { genTxDataForAllowance } from "../helpers/blockchain";
 
 interface ApprovalParams {
     amount: number;
