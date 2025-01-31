@@ -79,7 +79,7 @@ The CURRENT_WEATHER action fetches and analyzes weather data for a given locatio
 graph TD
     U[User]
     subgraph Eliza
-        subgraph DePIN Plugin (Predictions)
+        subgraph DePIN Plugin
             PE[Prediction Evaluator]
             CR[List Predictions Action]
             PB[Place Bets Action]
