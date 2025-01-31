@@ -1,17 +1,13 @@
 import {
     Action,
-    composeContext,
-    generateText,
     HandlerCallback,
     IAgentRuntime,
     Memory,
-    ModelClass,
-    parseTagContent,
     State,
 } from "@elizaos/core";
 
-import { projectsTemplate } from "../template";
-import { DePINScanProvider } from "../providers/depinData";
+import { adaptQSResponse } from "../services/quicksilver";
+import { askQuickSilver } from "../services/quicksilver";
 
 export const depinProjects: Action = {
     name: "DEPIN_PROJECTS",
@@ -45,8 +41,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "The current token price of Render (RNDR) is $9.02.",
-                    action: "DEPIN_TOKENS",
+                    text: "Let me check the current token price of Render for you.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -60,8 +56,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "Helium (HNT) is priced at $3.21, which is lower than Render (RNDR) at $9.02.",
-                    action: "DEPIN_TOKENS",
+                    text: "I'll compare the token prices of Helium and Render for you.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -75,8 +71,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "Sure! Solana (SOL) is $221.91, Render (RNDR) is $9.02, and Helium (HNT) is $3.21.",
-                    action: "DEPIN_TOKENS",
+                    text: "I'll fetch the current prices of all available tokens for you.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -90,8 +86,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "The only token priced above $200 is Solana (SOL) at $221.91.",
-                    action: "DEPIN_TOKENS",
+                    text: "Let me check which tokens are currently priced above $200.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -105,8 +101,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "The market cap of Render (RNDR) is $4,659,773,671.85.",
-                    action: "DEPIN_TOKENS",
+                    text: "I'll look up the current market cap of Render for you.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -120,8 +116,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "Solana (SOL) belongs to the following categories: Chain.",
-                    action: "DEPIN_TOKENS",
+                    text: "I'll check what categories Solana belongs to.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -135,8 +131,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "The fully diluted valuation of Helium (HNT) is $450,000,000.",
-                    action: "DEPIN_TOKENS",
+                    text: "Let me look up the fully diluted valuation of Helium for you.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -150,8 +146,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "The projects running on Solana include Render and Helium.",
-                    action: "DEPIN_TOKENS",
+                    text: "I'll check which projects are currently running on Solana.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -165,8 +161,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "I'm sorry, but I don't have information on the token price for the specified project.",
-                    action: "DEPIN_TOKENS",
+                    text: "Let me check if I can find any information about this project's token price.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -180,8 +176,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "I'm sorry, but I don't have information on the launch date of Solana.",
-                    action: "DEPIN_TOKENS",
+                    text: "I'll look up Solana's launch date for you.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -195,8 +191,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "I currently don't have information on the founder of Render.",
-                    action: "DEPIN_TOKENS",
+                    text: "Let me check who founded Render.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -210,8 +206,8 @@ export const depinProjects: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "I'm sorry, but I don't have data on the total supply of Helium.",
-                    action: "DEPIN_TOKENS",
+                    text: "I'll look up the total supply information for Helium.",
+                    action: "DEPIN_PROJECTS",
                 },
             },
         ],
@@ -228,29 +224,22 @@ export const depinProjects: Action = {
         } else {
             state = await runtime.updateRecentMessageState(state);
         }
-        const depinDataProvider = new DePINScanProvider(runtime.cacheManager);
-        state.depinProjects = await depinDataProvider.getProjects();
-
-        const projectsContext = composeContext({
-            state,
-            template: projectsTemplate,
-        });
 
         try {
-            const text = await generateText({
-                runtime,
-                context: projectsContext,
-                modelClass: ModelClass.LARGE,
-            });
-
-            const extractedResponse = parseTagContent(text, "response");
             if (callback) {
                 callback({
-                    text: extractedResponse,
-                    inReplyTo: message.id,
+                    text: "Collecting data from Quicksilver...",
                 });
             }
 
+            const text = await askQuickSilver(message.content.text);
+            const adaptedResponse = await adaptQSResponse(state, runtime, text);
+            if (callback) {
+                callback({
+                    text: adaptedResponse,
+                    inReplyTo: message.id,
+                });
+            }
             return true;
         } catch (error) {
             console.error("Error in depin project plugin:", error);

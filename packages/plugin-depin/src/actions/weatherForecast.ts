@@ -4,16 +4,11 @@ import {
     Memory,
     State,
     HandlerCallback,
-    ModelClass,
-    composeContext,
-    generateText,
     elizaLogger,
 } from "@elizaos/core";
-import { weatherForecastTemplate } from "../template";
 
-import { getWeatherForecast } from "../services/weather";
-import { extractLocationAndCoordinates } from "../helpers/extractors";
-import { parseTagContent } from "../helpers/parsers";
+import { askQuickSilver } from "../services/quicksilver";
+import { adaptQSResponse } from "../services/quicksilver";
 
 export const weatherForecast: Action = {
     name: "WEATHER_FORECAST",
@@ -25,11 +20,6 @@ export const weatherForecast: Action = {
     ],
     description: "Get the weather forecast for a given location",
     validate: async (runtime: IAgentRuntime) => {
-        const nubilaKey = runtime.getSetting("NUBILA_API_KEY");
-        const mapboxKey = runtime.getSetting("MAPBOX_API_KEY");
-        if (!nubilaKey || !mapboxKey) {
-            return false;
-        }
         return true;
     },
     examples: [
@@ -43,7 +33,7 @@ export const weatherForecast: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "Here's the weather forecast for Tokyo: Tomorrow will be 22°C with partly cloudy skies. The next few days will see temperatures ranging from 18-24°C with a chance of rain on Thursday.",
+                    text: "Let me check the weather forecast for you.",
                     action: "WEATHER_FORECAST",
                 },
             },
@@ -58,7 +48,7 @@ export const weatherForecast: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "Looking at London's forecast: There's a 60% chance of rain on Wednesday with temperatures around 15°C. The rest of the week should be mostly cloudy with occasional showers.",
+                    text: "Let me check the weather forecast for you.",
                     action: "WEATHER_FORECAST",
                 },
             },
@@ -77,18 +67,21 @@ export const weatherForecast: Action = {
             state = await runtime.updateRecentMessageState(state);
         }
         try {
-            const coordinates = await extractLocationAndCoordinates(
-                state,
-                runtime
-            );
-            const forecastAnalysis = await getAndAnalyzeForecast(
+            if (callback) {
+                callback({
+                    text: "Collecting data from Quicksilver...",
+                });
+            }
+
+            const forecastAnalysis = await askQuickSilver(message.content.text);
+            const adaptedResponse = await adaptQSResponse(
                 state,
                 runtime,
-                coordinates
+                forecastAnalysis
             );
             if (callback) {
                 callback({
-                    text: forecastAnalysis,
+                    text: adaptedResponse,
                     inReplyTo: message.id,
                 });
             }
@@ -105,26 +98,3 @@ export const weatherForecast: Action = {
         }
     },
 };
-
-async function getAndAnalyzeForecast(
-    state: State,
-    runtime: IAgentRuntime,
-    coordinates: { lat: number; lon: number }
-) {
-    elizaLogger.log("Looking up the weather for coordinates: ", coordinates);
-    const weather = await getWeatherForecast(runtime, coordinates);
-    state.weatherForecast = JSON.stringify(weather);
-    const weatherContext = composeContext({
-        state,
-        template:
-            // @ts-ignore
-            runtime.character.templates?.weatherForecastTemplate ||
-            weatherForecastTemplate,
-    });
-    const weatherText = await generateText({
-        runtime,
-        context: weatherContext,
-        modelClass: ModelClass.LARGE,
-    });
-    return parseTagContent(weatherText, "response");
-}

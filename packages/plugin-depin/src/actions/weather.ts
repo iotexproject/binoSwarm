@@ -4,16 +4,9 @@ import {
     Memory,
     State,
     HandlerCallback,
-    composeContext,
-    elizaLogger,
-    generateText,
-    ModelClass,
 } from "@elizaos/core";
 
-import { getWeather } from "../services/weather";
-import { currentWeatherTemplate } from "../template";
-import { parseTagContent } from "../helpers/parsers";
-import { extractLocationAndCoordinates } from "../helpers/extractors";
+import { adaptQSResponse, askQuickSilver } from "../services/quicksilver";
 
 export const weather: Action = {
     name: "GET_WEATHER",
@@ -21,12 +14,7 @@ export const weather: Action = {
     description:
         "Get the current weather or weather forecast for a given location",
     suppressInitialMessage: true,
-    validate: async (runtime: IAgentRuntime) => {
-        const nubilaKey = runtime.getSetting("NUBILA_API_KEY");
-        const mapboxKey = runtime.getSetting("MAPBOX_API_KEY");
-        if (!nubilaKey || !mapboxKey) {
-            return false;
-        }
+    validate: async (_runtime: IAgentRuntime) => {
         return true;
     },
     examples: [
@@ -150,30 +138,20 @@ export const weather: Action = {
         }
 
         try {
-            const location = await extractLocationAndCoordinates(
-                state,
-                runtime
-            );
-
-            if (!location) {
-                if (callback) {
-                    callback({
-                        text: `Location is not available for the given location, please try again`,
-                        content: { error: "No valid location found" },
-                    });
-                }
-                return false;
-            }
-
-            const weather = await getAndAnalyzeWeather(
-                state,
-                runtime,
-                location
-            );
-
             if (callback) {
                 callback({
-                    text: weather,
+                    text: "Collecting data from Quicksilver...",
+                });
+            }
+            const weather = await askQuickSilver(message.content.text);
+            const adaptedResponse = await adaptQSResponse(
+                state,
+                runtime,
+                weather
+            );
+            if (callback) {
+                callback({
+                    text: adaptedResponse,
                     inReplyTo: message.id,
                 });
             }
@@ -191,26 +169,3 @@ export const weather: Action = {
         }
     },
 };
-
-async function getAndAnalyzeWeather(
-    state: State,
-    runtime: IAgentRuntime,
-    coordinates: { lat: number; lon: number }
-) {
-    elizaLogger.log("Looking up the weather for coordinates: ", coordinates);
-    const weather = await getWeather(runtime, coordinates);
-    state.weatherData = JSON.stringify(weather);
-    const weatherContext = composeContext({
-        state,
-        template:
-            // @ts-ignore
-            runtime.character.templates?.currentWeatherTemplate ||
-            currentWeatherTemplate,
-    });
-    const weatherText = await generateText({
-        runtime,
-        context: weatherContext,
-        modelClass: ModelClass.LARGE,
-    });
-    return parseTagContent(weatherText, "response");
-}

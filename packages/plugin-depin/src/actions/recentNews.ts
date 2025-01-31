@@ -7,7 +7,6 @@ import {
 } from "@elizaos/core";
 
 import { adaptQSResponse, askQuickSilver } from "../services/quicksilver";
-import { extractNewsQuery } from "../helpers/extractors";
 
 export const recentNews: Action = {
     name: "NEWS",
@@ -28,7 +27,7 @@ export const recentNews: Action = {
             {
                 user: "assistant",
                 content: {
-                    text: "Here are some of the latest news articles related to Trump: Trump invites House Republicans to Mar-a-Lago for strategy meetings.",
+                    text: "Let me check the latest news about Trump.",
                     action: "NEWS",
                 },
             },
@@ -48,8 +47,12 @@ export const recentNews: Action = {
         }
 
         try {
-            const query = await extractNewsQuery(state, runtime);
-            const news = await askQuickSilver(query);
+            if (callback) {
+                callback({
+                    text: "Collecting data from Quicksilver...",
+                });
+            }
+            const news = await askQuickSilver(message.content.text);
             const adaptedResponse = await adaptQSResponse(state, runtime, news);
 
             if (callback) {
