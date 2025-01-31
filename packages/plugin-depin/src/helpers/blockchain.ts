@@ -1,6 +1,6 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import { initWalletProvider, type SupportedChain } from "@elizaos/plugin-evm";
-import { encodeFunctionData, formatEther, parseEther } from "viem";
+import { encodeFunctionData, parseUnits, formatUnits } from "viem";
 import { iotex, iotexTestnet } from "viem/chains";
 import * as viemChains from "viem/chains";
 
@@ -116,6 +116,20 @@ export const createPrediction = async (
     }
 };
 
+const getDecimals = async (
+    runtime: IAgentRuntime,
+    tokenAddress: `0x${string}`,
+    network: SupportedChain
+) => {
+    const walletProvider = await initWalletProvider(runtime);
+    const publicClient = walletProvider.getPublicClient(network);
+    return publicClient.readContract({
+        address: tokenAddress,
+        abi: erc20Abi,
+        functionName: "decimals",
+    });
+};
+
 export const placeBet = async (
     runtime: IAgentRuntime,
     predictionId: number,
@@ -128,7 +142,12 @@ export const placeBet = async (
     const publicClient = walletProvider.getPublicClient(network);
     const account = walletProvider.getAddress();
 
-    const amountInWei = parseEther(amount);
+    const decimals = await getDecimals(
+        runtime,
+        process.env.PREDICTION_TOKEN as `0x${string}`,
+        network
+    );
+    const amountInWei = parseUnits(amount, decimals);
 
     const betAmount = await getBetAmount(
         amountInWei,
@@ -175,7 +194,7 @@ export const placeBet = async (
             hash,
             predictionId,
             bettor,
-            betAmount: formatEther(betAmount),
+            betAmount: formatUnits(betAmount, decimals),
             outcome,
         };
     } else {
@@ -183,8 +202,17 @@ export const placeBet = async (
     }
 };
 
-export const genTxDataForAllowance = (amount: number) => {
-    const amountInWei = parseEther(amount.toString());
+export const genTxDataForAllowance = async (
+    runtime: IAgentRuntime,
+    network: SupportedChain,
+    amount: number
+) => {
+    const decimals = await getDecimals(
+        runtime,
+        process.env.PREDICTION_TOKEN as `0x${string}`,
+        network
+    );
+    const amountInWei = parseUnits(amount.toString(), decimals);
 
     return encodeFunctionData({
         abi: erc20Abi,
