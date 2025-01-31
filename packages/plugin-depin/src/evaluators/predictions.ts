@@ -8,8 +8,9 @@ import {
     Evaluator,
     elizaLogger,
 } from "@elizaos/core";
+
 import { predictionsTemplate } from "../template/predictions";
-import { createPrediction } from "../helpers/blockchain";
+import { createPrediction, getNetwork } from "../helpers/blockchain";
 
 async function handler(
     runtime: IAgentRuntime,
@@ -152,10 +153,7 @@ async function handleNewPrediction(
     const smartContractAddr = process.env
         .BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`;
 
-    const network = process.env.PREDICTION_NETWORK;
-    if (network !== "iotexTestnet" && network !== "iotex") {
-        throw new Error("Invalid network");
-    }
+    const network = getNetwork();
 
     const smartcontractId = await createPrediction(
         runtime,

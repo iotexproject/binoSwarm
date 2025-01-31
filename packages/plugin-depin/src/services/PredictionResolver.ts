@@ -9,8 +9,8 @@ import {
     parseBooleanFromText,
 } from "@elizaos/core";
 
-import { resolvePrediction } from "../helpers/blockchain";
-import { askQuickSilver } from "../services/quicksilver";
+import { getNetwork, resolvePrediction } from "../helpers/blockchain";
+import { askQuickSilver } from "./quicksilver";
 
 const INTERVAL = 60 * 1000; // 1 minute in milliseconds
 
@@ -30,10 +30,7 @@ export class PredictionResolver extends Service {
             return;
         }
 
-        const network = process.env.PREDICTION_NETWORK;
-        if (network !== "iotexTestnet" && network !== "iotex") {
-            throw new Error("Invalid network");
-        }
+        const network = getNetwork();
 
         // start a loop that runs every x seconds
         this.interval = setInterval(async () => {
@@ -43,7 +40,10 @@ export class PredictionResolver extends Service {
                     await this.runtime.databaseAdapter.getReadyActivePredictions();
                 predictions.forEach(async (prediction) => {
                     try {
-                        const weather = await getWeather(prediction, this.runtime);
+                        const weather = await getWeather(
+                            prediction,
+                            this.runtime
+                        );
                         elizaLogger.info(weather);
 
                         const outcome = await getOutcome(
@@ -66,7 +66,10 @@ export class PredictionResolver extends Service {
                             );
                         }
                     } catch (error) {
-                        elizaLogger.error(`Error processing prediction ${prediction.id}:`, error);
+                        elizaLogger.error(
+                            `Error processing prediction ${prediction.id}:`,
+                            error
+                        );
                     }
                 });
             } catch (error) {

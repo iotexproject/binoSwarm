@@ -10,7 +10,7 @@ import {
     parseTagContent,
 } from "@elizaos/core";
 
-import { genTxDataForAllowance } from "../helpers/blockchain";
+import { genTxDataForAllowance, getNetwork } from "../helpers/blockchain";
 
 interface ApprovalParams {
     amount: number;
@@ -66,10 +66,7 @@ export const prepareBet: Action = {
                 return false;
             }
 
-            const network = process.env.PREDICTION_NETWORK;
-            if (network !== "iotexTestnet" && network !== "iotex") {
-                throw new Error("Invalid network");
-            }
+            const network = getNetwork();
 
             const betWithTx = {
                 txData: genTxDataForAllowance(betParams.amount),

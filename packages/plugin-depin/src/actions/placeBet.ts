@@ -11,7 +11,10 @@ import {
     parseTagContent,
 } from "@elizaos/core";
 
-import { placeBet as executeBlockchainBet } from "../helpers/blockchain";
+import {
+    placeBet as executeBlockchainBet,
+    getNetwork,
+} from "../helpers/blockchain";
 
 const extractTxHash = (text: string): string | null => {
     // Match Ethereum/IoTeX transaction hash pattern
@@ -78,10 +81,7 @@ export const placeBet: Action = {
                 return false;
             }
 
-            const network = process.env.PREDICTION_NETWORK;
-            if (network !== "iotexTestnet" && network !== "iotex") {
-                throw new Error("Invalid network");
-            }
+            const network = getNetwork();
 
             if (callback) {
                 callback({

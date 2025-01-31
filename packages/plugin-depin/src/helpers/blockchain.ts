@@ -1,16 +1,26 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
-import { initWalletProvider } from "@elizaos/plugin-evm";
+import { initWalletProvider, type SupportedChain } from "@elizaos/plugin-evm";
 import { encodeFunctionData, formatEther, parseEther } from "viem";
 import { iotex, iotexTestnet } from "viem/chains";
+import * as viemChains from "viem/chains";
 
 import { predictionAbi } from "./predictionAbi";
 import { erc20Abi } from "./erc20abi";
+
+export const getNetwork = (): SupportedChain => {
+    const network = process.env.PREDICTION_NETWORK;
+    const chain = viemChains[network];
+    if (!chain) {
+        throw new Error("Invalid network");
+    }
+    return chain;
+};
 
 export const resolvePrediction = async (
     runtime: IAgentRuntime,
     predictionId: number,
     outcome: boolean,
-    network: "iotex" | "iotexTestnet"
+    network: SupportedChain
 ) => {
     const contractAddress = process.env
         .BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`;
@@ -55,7 +65,7 @@ export const createPrediction = async (
     address: `0x${string}`,
     statement: string,
     deadline: number,
-    network: "iotex" | "iotexTestnet"
+    network: SupportedChain
 ) => {
     const walletProvider = await initWalletProvider(runtime);
     const publicClient = walletProvider.getPublicClient(network);
@@ -112,7 +122,7 @@ export const placeBet = async (
     outcome: boolean,
     amount: string,
     bettor: `0x${string}`,
-    network: "iotex" | "iotexTestnet"
+    network: SupportedChain
 ) => {
     const walletProvider = await initWalletProvider(runtime);
     const publicClient = walletProvider.getPublicClient(network);
