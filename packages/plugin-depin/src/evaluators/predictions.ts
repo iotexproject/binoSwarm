@@ -51,10 +51,23 @@ export const predictionEvaluator: Evaluator = {
         "EXTRACT_BETS",
     ],
     validate: async (
-        _runtime: IAgentRuntime,
+        runtime: IAgentRuntime,
         _message: Memory
     ): Promise<boolean> => {
-        return !!process.env.BINARY_PREDICTION_CONTRACT_ADDRESS;
+        if (!process.env.BINARY_PREDICTION_CONTRACT_ADDRESS) {
+            return false;
+        }
+        const predictions = await runtime.databaseAdapter.getPredictions({
+            status: "OPEN",
+        });
+        try {
+            const maxPredictions = parseInt(
+                process.env.MAX_ONGOING_PREDICTIONS || "20"
+            );
+            return predictions.length < maxPredictions;
+        } catch (error) {
+            return false;
+        }
     },
     description:
         "Extract weather predictions from the conversation, including any associated stakes or bets.",
