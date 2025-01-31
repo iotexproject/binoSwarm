@@ -10,7 +10,7 @@ import {
     parseTagContent,
 } from "@elizaos/core";
 
-import { genTxDataForAllowance, getNetwork } from "../helpers/blockchain";
+import { genTxDataForAllowance } from "../helpers/blockchain";
 
 interface ApprovalParams {
     amount: number;
@@ -65,8 +65,6 @@ export const prepareBet: Action = {
                 }
                 return false;
             }
-
-            const network = getNetwork();
 
             const betWithTx = {
                 txData: genTxDataForAllowance(betParams.amount),
