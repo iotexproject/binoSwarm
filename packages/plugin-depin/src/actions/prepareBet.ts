@@ -128,7 +128,7 @@ Amount: ${approvalTxData.amount} $SENTAI,
 Outcome: ${approvalTxData.outcome}
 
 Please make a transfer with your wallet to $SENTAI contract:
-💰 ${process.env.SENTAI_ERC20}
+💰 ${process.env.PREDICTION_TOKEN}
 
 With the hex data:
 🔐 ${approvalTxData.txData}

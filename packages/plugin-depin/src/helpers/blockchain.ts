@@ -203,7 +203,7 @@ const getBetAmount = async (
     publicClient: any
 ): Promise<bigint> => {
     const allowance = (await publicClient.readContract({
-        address: process.env.SENTAI_ERC20 as `0x${string}`,
+        address: process.env.PREDICTION_TOKEN as `0x${string}`,
         abi: erc20Abi,
         functionName: "allowance",
         args: [bettor, account],
