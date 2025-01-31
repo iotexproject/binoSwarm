@@ -4,8 +4,8 @@ import { encodeFunctionData, formatEther, parseEther } from "viem";
 import { iotex, iotexTestnet } from "viem/chains";
 import * as viemChains from "viem/chains";
 
-import { predictionAbi } from "./predictionAbi";
-import { erc20Abi } from "./erc20abi";
+import { predictionAbi } from "../contracts/predictionAbi";
+import { erc20Abi } from "../contracts/erc20abi";
 
 export const getNetwork = (): SupportedChain => {
     const network = process.env.PREDICTION_NETWORK;
