@@ -10,7 +10,7 @@ export const weatherDataProvider: Provider = {
         _state?: State
     ): Promise<string | null> {
         const randomCity =
-            usCities[Math.floor(Math.random() * usCities.length)];
+            cities[Math.floor(Math.random() * cities.length)];
         const coordinates = await getLatLngMapbox(runtime, randomCity);
         const weather = await getWeather(runtime, coordinates);
 
@@ -21,7 +21,7 @@ export const weatherDataProvider: Provider = {
     },
 };
 
-const usCities = [
+const cities = [
     "New York",
     "Los Angeles",
     "Chicago",
@@ -71,4 +71,27 @@ const usCities = [
     "Tulsa",
     "Tampa",
     "Arlington",
+    "Tokyo",
+    "Hong Kong",
+    "Seoul",
+    "Taipei",
+    "Singapore",
+    "Bangkok",
+    "Mumbai",
+    "New Delhi",
+    "Dubai",
+    "Istanbul",
+    "Tel Aviv",
+    "London",
+    "Paris",
+    "Amsterdam",
+    "Brussels",
+    "Frankfurt",
+    "Zurich",
+    "Rome",
+    "Milan",
+    "Madrid",
+    "Stockholm",
+    "Copenhagen",
+    "Sydney",
 ];
