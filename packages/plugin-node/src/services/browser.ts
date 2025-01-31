@@ -1,4 +1,11 @@
-import { generateText, IBrowserService, parseTagContent, trimTokens } from "@elizaos/core";
+import { v4 as uuidv4 } from "uuid";
+import {
+    generateText,
+    IBrowserService,
+    parseTagContent,
+    trimTokens,
+    UUID,
+} from "@elizaos/core";
 import { parseJSONObjectFromText } from "@elizaos/core";
 import { Service } from "@elizaos/core";
 import { settings } from "@elizaos/core";
@@ -22,6 +29,7 @@ async function generateSummary(
   ${text}
   """
 
+  Include dates, locations, contact information and other details of the events that would be helpful for users to navigate the event.
   Respond with a JSON object in the following format:
   <response>
   {
@@ -34,7 +42,7 @@ async function generateSummary(
     const response = await generateText({
         runtime,
         context: prompt,
-        modelClass: ModelClass.SMALL,
+        modelClass: ModelClass.LARGE,
     });
 
     const extractedResponse = parseTagContent(response, "response");
@@ -139,6 +147,45 @@ export class BrowserService extends Service implements IBrowserService {
         if (this.browser) {
             await this.browser.close();
             this.browser = undefined;
+        }
+    }
+
+    async startContentExtractionFromUrl(
+        url: string,
+        runtime: IAgentRuntime,
+        linkPattern: string
+    ): Promise<void> {
+        await this.initializeBrowser();
+
+        const page = await this.context.newPage();
+        await page.goto(url);
+
+        const eventLinks = await page.$$eval(linkPattern, (anchors) =>
+            anchors.map((a) => a.getAttribute("href"))
+        );
+
+        let content: PageContent;
+
+        for (const link of eventLinks) {
+            const url = new URL(link ?? "", "https://lu.ma").toString();
+            console.log("Visiting", url);
+            content = await this.fetchPageContent(url, runtime);
+            console.log(content.title);
+            console.log(content.description);
+            await runtime.ragKnowledgeManager.createKnowledge({
+                id: uuidv4() as UUID,
+                agentId: runtime.agentId,
+                content: {
+                    text: content.description,
+                    metadata: {
+                        title: content.title,
+                        isMain: true,
+                        isChunk: false,
+                        source: url,
+                        type: "event",
+                    },
+                },
+            });
         }
     }
 

@@ -11,6 +11,7 @@ import {
     TranscriptionService,
     VideoService,
     AwsS3Service,
+    LumaFetcher,
 } from "./services/index.ts";
 import { describeImage } from "./actions/describe-image.ts";
 
@@ -29,6 +30,7 @@ export function createNodePlugin() {
             new TranscriptionService(),
             new VideoService(),
             new AwsS3Service(),
+            new LumaFetcher(),
         ],
         actions: [describeImage],
     } as const satisfies Plugin;

@@ -10,6 +10,8 @@
         "declaration": true
     },
     "include": [
-        "src"
+        "src",
+        "src/services",
+        "../plugin-node/src/services/LumaFetcher.ts"
     ]
 }

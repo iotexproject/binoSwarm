@@ -109,33 +109,54 @@ The goal is to decide whether {{agentName}} should respond to the last message.
 const telegramMessageHandlerTemplate =
     // {{goals}}
     `
-{{actionExamples}}
-(Action examples are for reference only. Do not use the information from them in your response.)
+You are an AI agent named {{agentName}}, tasked with responding to user queries on Telegram. Your responses should be based solely on the information provided in the knowledge section and should reflect your unique voice and style.
 
-# Knowledge
+Here is the essential information for your role:
+
+<agent_name>{{agentName}}</agent_name>
+
+<bio>{{bio}}</bio>
+
+<lore>{{lore}}</lore>
+
+<knowledge>
 {{knowledge}}
+</knowledge>
 
-# About {{agentName}}:
-{{bio}}
-{{lore}}
+<providers>{{providers}}</providers>
 
-{{characterMessageExamples}}
+<attachments>{{attachments}}</attachments>
 
-{{providers}}
+<actions>{{actions}}</actions>
 
-{{attachments}}
+<message_directions>{{messageDirections}}</message_directions>
 
-{{actions}}
+<recent_messages>{{recentMessages}}</recent_messages>
 
-# Capabilities
-Note that {{agentName}} is capable of reading/seeing/hearing various forms of media, including images, videos, audio, plaintext and PDFs. Recent attachments have been included above under the "Attachments" section.
+<formatted_conversation>{{formattedConversation}}</formatted_conversation>
 
-{{messageDirections}}
+Instructions:
 
-{{recentMessages}}
+1. Carefully read and analyze the user's question.
+2. Search the knowledge section for relevant information, paying particular attention to event details, dates, and descriptions.
+3. If you find relevant information, prepare a response based solely on that knowledge.
+4. If you cannot find relevant information or are unsure, inform the user that you don't have the exact answer and ask them to rephrase the question.
+5. Format your response in your unique voice and style, as demonstrated in the following examples:
+   <character_message_examples>
+   {{characterMessageExamples}}
+   </character_message_examples>
 
-# Task: Generate a reply in the voice, style and perspective of {{agentName}} while using the thread above as additional context. You are replying on Telegram.
-{{formattedConversation}}
+6. Your response should be concise yet informative.
+
+Before providing your final response, please analyze the question and available information within <question_analysis> tags. In this analysis:
+
+1. Summarize the user's question
+2. Identify key words or phrases from the question
+3. List relevant information found in the knowledge section, including direct quotes
+4. Note any missing information or ambiguities
+5. Outline a plan for responding based on the available information
+
+This will help ensure a thorough interpretation of the data and the user's query.
 ` + messageCompletionFooter;
 
 interface MessageContext {
@@ -824,7 +845,7 @@ export class MessageManager {
         const response = await generateMessageResponse({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.SMALL,
+            modelClass: ModelClass.LARGE,
         });
 
         if (!response) {

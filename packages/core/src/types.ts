@@ -1471,6 +1471,7 @@ export enum ServiceType {
     TEE_LOG = "tee_log",
     GOPLUS_SECURITY = "goplus_security",
     PREDICTION_RESOLVER = "prediction_resolver",
+    LUMA_FETCHER = "luma_fetcher",
 }
 
 export enum LoggingLevel {
