@@ -19,7 +19,7 @@ export const weatherForecast: Action = {
         "WEATHER_PREDICTION",
     ],
     description: "Get the weather forecast for a given location",
-    validate: async (runtime: IAgentRuntime) => {
+    validate: async (_runtime: IAgentRuntime) => {
         return true;
     },
     examples: [

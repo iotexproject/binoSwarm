@@ -2,6 +2,7 @@ import { Provider, IAgentRuntime, Memory, State } from "@elizaos/core";
 
 import { getLatLngMapbox } from "../services/map";
 import { getWeather } from "../services/weather";
+import { WeatherData } from "../types/depin";
 
 export const weatherDataProvider: Provider = {
     async get(
@@ -9,16 +10,34 @@ export const weatherDataProvider: Provider = {
         _message: Memory,
         _state?: State
     ): Promise<string | null> {
-        const randomCity =
-            cities[Math.floor(Math.random() * cities.length)];
+        const randomCity = cities[Math.floor(Math.random() * cities.length)];
         const coordinates = await getLatLngMapbox(runtime, randomCity);
         const weather = await getWeather(runtime, coordinates);
 
-        return `
-            #### **Current Weather for ${randomCity}**
-            ${JSON.stringify(weather)}
-        `;
+        return formatWeatherData(weather);
     },
+};
+
+const formatWeatherData = (weather: WeatherData) => {
+    return `
+        #### **Current Weather for ${weather.location_name}**
+        Temperature: ${weather.temperature}°C
+        Condition: ${weather.condition}
+        Condition Description: ${weather.condition_desc}
+        Condition Code: ${weather.condition_code}
+        Temperature Min: ${weather.temperature_min}°C
+        Temperature Max: ${weather.temperature_max}°C
+        Feels Like: ${weather.feels_like}°C
+        Pressure: ${weather.pressure} hPa
+        Humidity: ${weather.humidity}%
+        Wind Speed: ${weather.wind_speed} km/h
+        Wind Direction: ${weather.wind_direction}°
+        UV Index: ${weather.uv}
+        Luminance: ${weather.luminance} lx
+        Elevation: ${weather.elevation} m
+        Rain: ${weather.rain} mm
+        Wet Bulb: ${weather.wet_bulb}°C
+    `;
 };
 
 const cities = [
