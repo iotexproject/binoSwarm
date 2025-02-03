@@ -47,7 +47,7 @@ export async function adaptQSResponse(
     const response = await generateText({
         runtime,
         context,
-        modelClass: ModelClass.SMALL,
+        modelClass: ModelClass.LARGE,
     });
 
     elizaLogger.info(response);
