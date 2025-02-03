@@ -1129,14 +1129,15 @@ export class TwitterPostClient {
             );
 
             // Generate and clean the reply content
-            const replyText = await this.generateTweetContent(enrichedState, {
-                template:
-                    this.runtime.character.templates
-                        ?.twitterMessageHandlerTemplate ||
-                    twitterMessageHandlerTemplate,
-            });
-
-            const cleanedReplyText = parseTagContent(replyText, "response");
+            const cleanedReplyText = await this.generateTweetContent(
+                enrichedState,
+                {
+                    template:
+                        this.runtime.character.templates
+                            ?.twitterMessageHandlerTemplate ||
+                        twitterMessageHandlerTemplate,
+                }
+            );
 
             if (!cleanedReplyText) {
                 elizaLogger.error("Failed to generate valid reply content");
