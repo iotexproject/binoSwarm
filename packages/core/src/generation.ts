@@ -10,6 +10,7 @@ import {
     CoreTool,
     GenerateObjectResult,
     StepResult as AIStepResult,
+    Message,
 } from "ai";
 import { Buffer } from "buffer";
 import { createOllama } from "ollama-ai-provider";
@@ -241,6 +242,7 @@ export async function generateText({
     customSystemPrompt,
     verifiableInference = process.env.VERIFIABLE_INFERENCE_ENABLED === "true",
     verifiableInferenceOptions,
+    messages,
 }: {
     runtime: IAgentRuntime;
     context: string;
@@ -253,6 +255,7 @@ export async function generateText({
     verifiableInference?: boolean;
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
     verifiableInferenceOptions?: VerifiableInferenceOptions;
+    messages?: Message[];
 }): Promise<string> {
     if (!context) {
         console.error("generateText context is empty");
@@ -590,6 +593,7 @@ export async function generateText({
                         settings.SYSTEM_PROMPT ??
                         undefined,
                     tools: tools,
+                    messages,
                     onStepFinish: onStepFinish,
                     maxSteps: maxSteps,
                     temperature: temperature,
@@ -1062,10 +1066,12 @@ export async function generateShouldRespond({
     runtime,
     context,
     modelClass,
+    messages,
 }: {
     runtime: IAgentRuntime;
     context: string;
     modelClass: ModelClass;
+    messages?: Message[];
 }): Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
     let retryDelay = 1000;
     let retryCount = 0;
@@ -1080,6 +1086,7 @@ export async function generateShouldRespond({
                 runtime,
                 context,
                 modelClass,
+                messages
             });
 
             const extractedResponse = parseTagContent(response, "response");

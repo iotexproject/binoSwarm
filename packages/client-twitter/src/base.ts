@@ -271,7 +271,7 @@ export class ClientBase extends EventEmitter {
                 const obj = {
                     id: tweet.id,
                     name:
-                        tweet.name ?? tweet?.user_results?.result?.legacy.name,
+                        tweet.name ?? tweet.core?.user_results?.result?.legacy.name,
                     username:
                         tweet.username ??
                         tweet.core?.user_results?.result?.legacy.screen_name,

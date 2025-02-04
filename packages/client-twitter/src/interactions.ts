@@ -429,6 +429,21 @@ export class TwitterInteractionClient {
             runtime: this.runtime,
             context: shouldRespondContext,
             modelClass: ModelClass.SMALL,
+            // @ts-ignore
+            messages: this.runtime.idealOutputs?.twitterShouldRespondTemplate
+                ? [
+                      {
+                          role: "user",
+                          content: [
+                              {
+                                  type: "text",
+                                  // @ts-ignore
+                                  text: this.runtime.idealOutputs?.twitterShouldRespondTemplate,
+                              },
+                          ],
+                      },
+                  ]
+                : undefined,
         });
 
         // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
@@ -465,14 +480,15 @@ export class TwitterInteractionClient {
             } else {
                 try {
                     const callback: HandlerCallback = async (
-                        response: Content
+                        response: Content,
+                        tweetId?: string
                     ) => {
                         const memories = await sendTweet(
                             this.client,
                             response,
                             message.roomId,
                             this.client.twitterConfig.TWITTER_USERNAME,
-                            tweet.id
+                            tweetId || tweet.id
                         );
                         return memories;
                     };
@@ -497,11 +513,16 @@ export class TwitterInteractionClient {
                         );
                     }
 
+                    const responseTweetId =
+                        responseMessages[responseMessages.length - 1]?.content
+                            ?.tweetId;
                     await this.runtime.processActions(
                         message,
                         responseMessages,
                         state,
-                        callback
+                        (response: Content) => {
+                            return callback(response, responseTweetId);
+                        }
                     );
 
                     const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${response.text}`;

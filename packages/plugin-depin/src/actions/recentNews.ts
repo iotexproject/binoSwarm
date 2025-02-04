@@ -47,11 +47,6 @@ export const recentNews: Action = {
         }
 
         try {
-            if (callback) {
-                callback({
-                    text: "Collecting data from Quicksilver...",
-                });
-            }
             const news = await askQuickSilver(message.content.text);
             const adaptedResponse = await adaptQSResponse(state, runtime, news);
 

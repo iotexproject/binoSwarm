@@ -138,11 +138,6 @@ export const weather: Action = {
         }
 
         try {
-            if (callback) {
-                callback({
-                    text: "Collecting data from Quicksilver...",
-                });
-            }
             const weather = await askQuickSilver(message.content.text);
             const adaptedResponse = await adaptQSResponse(
                 state,

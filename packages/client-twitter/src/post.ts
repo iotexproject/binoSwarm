@@ -223,9 +223,6 @@ export class TwitterPostClient {
         }
 
         const generateNewTweetLoop = async () => {
-            // Check for pending tweets first
-            if (this.approvalRequired) await this.handlePendingTweet();
-
             const lastPost = await this.runtime.cacheManager.get<{
                 timestamp: number;
             }>("twitter/" + this.twitterUsername + "/lastPost");
@@ -480,6 +477,7 @@ export class TwitterPostClient {
 
             const topics = this.runtime.character.topics.join(", ");
 
+            const maxTweetLength = this.client.twitterConfig.MAX_TWEET_LENGTH;
             const state = await this.runtime.composeState(
                 {
                     userId: this.runtime.agentId,
@@ -492,6 +490,7 @@ export class TwitterPostClient {
                 },
                 {
                     twitterUserName: this.client.profile.username,
+                    maxTweetLength,
                 }
             );
 
@@ -525,7 +524,6 @@ export class TwitterPostClient {
             }
 
             // Truncate the content to the maximum tweet length specified in the environment settings, ensuring the truncation respects sentence boundaries.
-            const maxTweetLength = this.client.twitterConfig.MAX_TWEET_LENGTH;
             if (maxTweetLength) {
                 cleanedContent = truncateToCompleteSentence(
                     cleanedContent,

@@ -1246,13 +1246,27 @@ export class MessageManager {
                 composeRandomUser(discordShouldRespondTemplate, 2),
         });
 
-        const rawResponse = await generateShouldRespond({
+        const parsedResponse = await generateShouldRespond({
             runtime: this.runtime,
             context: shouldRespondContext,
             modelClass: ModelClass.SMALL,
+            // @ts-ignore
+            messages: this.runtime.idealOutputs?.shouldRespondTemplate
+                ? [
+                      {
+                          role: "user",
+                          content: [
+                              {
+                                  type: "text",
+                                  // @ts-ignore
+                                  text: this.runtime.idealOutputs
+                                      ?.shouldRespondTemplate,
+                              },
+                          ],
+                      },
+                  ]
+                : undefined,
         });
-
-        const parsedResponse = parseTagContent(rawResponse, "response");
 
         if (parsedResponse === "RESPOND") {
             if (channelState) {

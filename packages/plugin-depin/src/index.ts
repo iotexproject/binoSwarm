@@ -5,33 +5,36 @@ export * from "./services/quicksilver";
 
 import type { Plugin } from "@elizaos/core";
 
-import { depinDataProvider } from "./providers/depinData";
-import { depinProjects } from "./actions/depinProjects";
-import { weather } from "./actions/weather";
-import { recentNews } from "./actions/recentNews";
-import { weatherDataProvider } from "./providers/weatherDataProvider";
-import { weatherForecast } from "./actions/weatherForecast";
-import { predictionEvaluator } from "./evaluators/predictions";
-import PredictionResolver from "./services/PredictionResolver";
-import { placeBet } from "./actions/placeBet";
-import { prepareBet } from "./actions/prepareBet";
-import { listPredictions } from "./actions/listPredictions";
-import { newsProvider } from "./providers/newsProvider";
+// import { depinProjects } from "./actions/depinProjects";
+// import { weather } from "./actions/weather";
+// import { recentNews } from "./actions/recentNews";
+// import { weatherForecast } from "./actions/weatherForecast";
+// import { placeBet } from "./actions/placeBet";
+// import { prepareBet } from "./actions/prepareBet";
+// import { listPredictions } from "./actions/listPredictions";
+
+// import { depinDataProvider } from "./providers/depinData";
+// import { weatherDataProvider } from "./providers/weatherDataProvider";
+// import { weatherForecastProvider } from "./providers/weatherForecastProvider";
+
+// import { predictionEvaluator } from "./evaluators/predictions";
+
+// import PredictionResolver from "./services/PredictionResolver";
 
 export const depinPlugin: Plugin = {
     name: "depin",
     description: "DePIN plugin",
-    providers: [depinDataProvider, weatherDataProvider, newsProvider],
-    evaluators: [predictionEvaluator],
-    services: [new PredictionResolver()],
+    providers: [
+        // Add providers here
+    ],
+    evaluators: [
+        // Add evaluators here
+    ],
+    services: [
+        // Add services here
+    ],
     actions: [
-        depinProjects,
-        weather,
-        recentNews,
-        weatherForecast,
-        placeBet,
-        prepareBet,
-        listPredictions,
+        // Add actions here
     ],
 };
 

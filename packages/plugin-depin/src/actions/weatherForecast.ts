@@ -67,12 +67,6 @@ export const weatherForecast: Action = {
             state = await runtime.updateRecentMessageState(state);
         }
         try {
-            if (callback) {
-                callback({
-                    text: "Collecting data from Quicksilver...",
-                });
-            }
-
             const forecastAnalysis = await askQuickSilver(message.content.text);
             const adaptedResponse = await adaptQSResponse(
                 state,

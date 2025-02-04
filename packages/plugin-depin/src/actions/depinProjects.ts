@@ -226,12 +226,6 @@ export const depinProjects: Action = {
         }
 
         try {
-            if (callback) {
-                callback({
-                    text: "Collecting data from Quicksilver...",
-                });
-            }
-
             const text = await askQuickSilver(message.content.text);
             const adaptedResponse = await adaptQSResponse(state, runtime, text);
             if (callback) {
