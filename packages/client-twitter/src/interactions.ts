@@ -429,21 +429,6 @@ export class TwitterInteractionClient {
             runtime: this.runtime,
             context: shouldRespondContext,
             modelClass: ModelClass.SMALL,
-            // @ts-ignore
-            messages: this.runtime.idealOutputs?.twitterShouldRespondTemplate
-                ? [
-                      {
-                          role: "user",
-                          content: [
-                              {
-                                  type: "text",
-                                  // @ts-ignore
-                                  text: this.runtime.idealOutputs?.twitterShouldRespondTemplate,
-                              },
-                          ],
-                      },
-                  ]
-                : undefined,
         });
 
         // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {

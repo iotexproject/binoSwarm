@@ -34,7 +34,7 @@ async function generateSummary(
     "summary": "Generated summary and/or description of the text"
   }
   </response>
-  \`\`\``;
+`;
 
     const response = await generateText({
         runtime,

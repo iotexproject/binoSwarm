@@ -1250,22 +1250,6 @@ export class MessageManager {
             runtime: this.runtime,
             context: shouldRespondContext,
             modelClass: ModelClass.SMALL,
-            // @ts-ignore
-            messages: this.runtime.idealOutputs?.shouldRespondTemplate
-                ? [
-                      {
-                          role: "user",
-                          content: [
-                              {
-                                  type: "text",
-                                  // @ts-ignore
-                                  text: this.runtime.idealOutputs
-                                      ?.shouldRespondTemplate,
-                              },
-                          ],
-                      },
-                  ]
-                : undefined,
         });
 
         if (parsedResponse === "RESPOND") {

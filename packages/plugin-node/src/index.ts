@@ -12,7 +12,7 @@ import {
     VideoService,
     AwsS3Service,
 } from "./services/index.ts";
-import { describeImage } from "./actions/describe-image.ts";
+// import { describeImage } from "./actions/describe-image.ts";
 
 export type NodePlugin = ReturnType<typeof createNodePlugin>;
 
@@ -30,6 +30,6 @@ export function createNodePlugin() {
             new VideoService(),
             new AwsS3Service(),
         ],
-        actions: [describeImage],
+        actions: [],
     } as const satisfies Plugin;
 }

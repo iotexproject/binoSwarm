@@ -43,12 +43,18 @@ export const describeImage: Action = {
             stop: ["\n"],
         });
 
-        if (!isFileLocationResult(fileLocationResultObject?.object)) {
+        if (
+            !isFileLocationResult(
+                fileLocationResultObject?.object ?? fileLocationResultObject
+            )
+        ) {
             elizaLogger.error("Failed to generate file location");
             return false;
         }
 
-        const { fileLocation } = fileLocationResultObject.object;
+        let fileLocation = (fileLocationResultObject?.object as any)
+            ?.fileLocation;
+        fileLocation ??= fileLocationResultObject;
 
         const { description } = await runtime
             .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
