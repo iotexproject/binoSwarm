@@ -709,7 +709,7 @@ export class VoiceManager extends EventEmitter {
             if (!shouldRespond) {
                 return;
             }
-            
+
             const context = composeContext({
                 state,
                 template:
@@ -889,35 +889,37 @@ export class VoiceManager extends EventEmitter {
             return true;
         }
 
+        return false;
+
         // If none of the above conditions are met, use the generateText to decide
-        const shouldRespondContext = composeContext({
-            state,
-            template:
-                this.runtime.character.templates
-                    ?.discordShouldRespondTemplate ||
-                this.runtime.character.templates?.shouldRespondTemplate ||
-                composeRandomUser(discordShouldRespondTemplate, 2),
-        });
+        // const shouldRespondContext = composeContext({
+        //     state,
+        //     template:
+        //         this.runtime.character.templates
+        //             ?.discordShouldRespondTemplate ||
+        //         this.runtime.character.templates?.shouldRespondTemplate ||
+        //         composeRandomUser(discordShouldRespondTemplate, 2),
+        // });
 
-        const response = await generateShouldRespond({
-            runtime: this.runtime,
-            context: shouldRespondContext,
-            modelClass: ModelClass.SMALL,
-        });
+        // const response = await generateShouldRespond({
+        //     runtime: this.runtime,
+        //     context: shouldRespondContext,
+        //     modelClass: ModelClass.SMALL,
+        // });
 
-        if (response === "RESPOND") {
-            return true;
-        } else if (response === "IGNORE") {
-            return false;
-        } else if (response === "STOP") {
-            return false;
-        } else {
-            console.error(
-                "Invalid response from response generateText:",
-                response
-            );
-            return false;
-        }
+        // if (response === "RESPOND") {
+        //     return true;
+        // } else if (response === "IGNORE") {
+        //     return false;
+        // } else if (response === "STOP") {
+        //     return false;
+        // } else {
+        //     console.error(
+        //         "Invalid response from response generateText:",
+        //         response
+        //     );
+        //     return false;
+        // }
     }
 
     private async _shouldIgnore(message: Memory): Promise<boolean> {
