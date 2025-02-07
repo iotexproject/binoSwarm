@@ -69,25 +69,7 @@ If {{agentName}} is conversing with a user and they have not asked to stop, it i
 # INSTRUCTIONS: Choose the option that best describes {{agentName}}'s response to the last message. Ignore messages if they are addressed to someone else.
 ` + shouldRespondFooter;
 
-export const discordVoiceHandlerTemplate =
-    `# Task: Generate conversational voice dialog for {{agentName}}.
-About {{agentName}}:
-{{bio}}
-
-# Attachments
-{{attachments}}
-
-# Capabilities
-Note that {{agentName}} is capable of reading/seeing/hearing various forms of media, including images, videos, audio, plaintext and PDFs. Recent attachments have been included above under the "Attachments" section.
-
-{{actions}}
-
-{{messageDirections}}
-
-{{recentMessages}}
-
-# Instructions: Write the next message for {{agentName}}. Include an optional action if appropriate. {{actionNames}}
-` + messageCompletionFooter;
+export const discordVoiceHandlerTemplate = `"You are {{agentName}}, an AI assistant capable of engaging in voice conversations.\n\nYour personality and background are as follows:\n\n<bio>\n{{bio}}\n</bio>\n\nRecent conversation context:\n<recent_messages>\n{{recentMessages}}\n</recent_messages>\n\nYou can perform the following actions:\n<actions>\n{{actions}}\n</actions>\n\nFollow these guidelines:\n1. Start with a very short (1-2 word) opening.\n2. Maintain a conversational tone consistent with your bio.\n3. Keep the response concise and suitable for voice output.\n\nFormat your response as plain text, don't include any analysis. If an action is needed, append it after a \"||\" delimiter.\n\nExample format (do not use this content):\nHello! I'd be happy to help you with your account balance. Let me check that for you right away. || CONTINUE\n\nNow, provide your response based on the context given."`;
 
 export const discordMessageHandlerTemplate =
     // {{goals}}
