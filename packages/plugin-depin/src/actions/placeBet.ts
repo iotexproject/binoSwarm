@@ -12,16 +12,17 @@ import {
 } from "@elizaos/core";
 
 import {
+    approveAllowance,
     placeBet as executeBlockchainBet,
     getNetwork,
 } from "../helpers/blockchain";
 
-const extractTxHash = (text: string): string | null => {
-    // Match Ethereum/IoTeX transaction hash pattern
-    const regex = /0x[a-fA-F0-9]{64}/;
-    const match = text.match(regex);
-    return match ? match[0] : null;
-};
+// const extractTxHash = (text: string): string | null => {
+//     // Match Ethereum/IoTeX transaction hash pattern
+//     const regex = /0x[a-fA-F0-9]{64}/;
+//     const match = text.match(regex);
+//     return match ? match[0] : null;
+// };
 
 export const placeBet: Action = {
     name: "PLACE_BET",
@@ -35,7 +36,7 @@ export const placeBet: Action = {
             {
                 user: "user",
                 content: {
-                    text: "BET 123 APPROVED: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+                    text: "PLACE BET ON THE PREDICTION 1, 100 $SENTAI, it will rain tomorrow in London",
                 },
             },
             {
@@ -55,16 +56,16 @@ export const placeBet: Action = {
         callback?: HandlerCallback
     ): Promise<boolean> => {
         try {
-            const txHash = extractTxHash(message.content.text);
-            if (!txHash) {
-                if (callback) {
-                    callback({
-                        text: "I couldn't find a valid transaction hash in your message. Please provide the approval transaction hash.",
-                        inReplyTo: message.id,
-                    });
-                }
-                return false;
-            }
+            // const txHash = extractTxHash(message.content.text);
+            // if (!txHash) {
+            //     if (callback) {
+            //         callback({
+            //             text: "I couldn't find a valid transaction hash in your message. Please provide the approval transaction hash.",
+            //             inReplyTo: message.id,
+            //         });
+            //     }
+            //     return false;
+            // }
 
             const betParams = await extractBetParamsFromContext(
                 runtime,
@@ -83,6 +84,12 @@ export const placeBet: Action = {
 
             const network = getNetwork();
 
+            await approveAllowance(
+                runtime,
+                network,
+                Number(betParams.amount)
+            );
+
             if (callback) {
                 callback({
                     text: "Processing your bet...",
@@ -96,13 +103,12 @@ export const placeBet: Action = {
                 betParams.predictionId,
                 betParams.outcome,
                 betParams.amount,
-                betParams.bettor as `0x${string}`,
                 network
             );
 
             if (callback) {
                 callback({
-                    text: `Your bet has been placed successfully!\n\nPrediction: "${betParams.statement}"\nYour bet: ${betParams.outcome ? "Yes" : "No"}\nAmount: ${betResult.betAmount}\nBettor: ${betResult.bettor}\nTransaction: ${betResult.hash}`,
+                    text: `Your bet has been placed successfully!\n\nPrediction: "${betParams.statement}"\nYour bet: ${betParams.outcome ? "Yes" : "No"}\nAmount: ${betResult.betAmount}}`,
                     inReplyTo: message.id,
                 });
             }
@@ -137,7 +143,6 @@ export const placeBet: Action = {
 };
 
 interface BetParams {
-    bettor: `0x${string}`;
     amount: string;
     outcome: boolean;
     predictionId: number;
@@ -211,14 +216,12 @@ Deadline: Sat Jan 18 2025 12:00:00
 <recent_messages_example>
 - BET ON PREDICTION 1, 100 $SENTAI, true, 0x742d35Cc6634C0532925a3b844Bc454e4438f44e
 - BetID: 123, 1. 0x742d35Cc6634C0532925a3b844Bc454e4438f44e, 100 $SENTAI, true. Tx data: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
-- BET 123 APPROVED: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
 </recent_messages_example>
 
 <response>
 {
   "reasoning": "The user is betting that it will rain tomorrow in London with 100 $SENTAI and he approved the bet.",
   "statement": "It will rain tomorrow in London",
-  "bettor": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
   "amount": "100",
   "outcome": true,
   "predictionId": 1

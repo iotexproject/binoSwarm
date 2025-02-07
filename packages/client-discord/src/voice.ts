@@ -735,6 +735,9 @@ export class VoiceManager extends EventEmitter {
         const { roomId } = message;
         let fullResponse = "";
         let firstResponseSent = false;
+        let action = "NONE"; // Default action
+
+        elizaLogger.debug("context: ", context);
 
         try {
             const stream = await client.messages.stream({
@@ -748,15 +751,24 @@ export class VoiceManager extends EventEmitter {
 
             // Helper function to process a complete text block
             const processTextBlock = async (text: string): Promise<void> => {
+                // Check for action delimiter
+                const parts = text.split("||");
+                const processText = parts[0].trim();
+                if (parts.length > 1) {
+                    action = parts[1].trim();
+                }
+
                 console.time("textToSpeech");
                 const responseStream = await this.runtime
                     .getService<ISpeechService>(ServiceType.SPEECH_GENERATION)
-                    .generate(this.runtime, text);
+                    .generate(this.runtime, processText);
                 console.timeEnd("textToSpeech");
 
                 if (responseStream) {
                     if (!firstResponseSent) {
-                        elizaLogger.debug(`First response sent at ms: ${Date.now()}`);
+                        elizaLogger.debug(
+                            `First response sent at ms: ${Date.now()}`
+                        );
                         firstResponseSent = true;
                     }
                     console.time("audioPlayback");
@@ -814,6 +826,7 @@ export class VoiceManager extends EventEmitter {
                     source: "discord",
                     user: this.runtime.character.name,
                     inReplyTo: message.id,
+                    action: action, // Add action to the content
                 },
                 roomId,
                 embedding: getEmbeddingZeroVector(),
@@ -823,6 +836,55 @@ export class VoiceManager extends EventEmitter {
                 await this.runtime.messageManager.createMemory(responseMemory);
                 state = await this.runtime.updateRecentMessageState(state);
                 await this.runtime.evaluate(message, state);
+
+                // Process actions if needed
+                const callback: HandlerCallback = async (content: Content) => {
+                    const newResponseMemory: Memory = {
+                        id: stringToUuid(
+                            message.id + "-voice-response-" + Date.now()
+                        ),
+                        agentId: this.runtime.agentId,
+                        userId: this.runtime.agentId,
+                        content: {
+                            ...content,
+                            user: this.runtime.character.name,
+                            inReplyTo: message.id,
+                        },
+                        roomId,
+                        embedding: getEmbeddingZeroVector(),
+                    };
+
+                    if (newResponseMemory.content.text?.trim()) {
+                        await this.runtime.messageManager.createMemory(
+                            newResponseMemory
+                        );
+                        state =
+                            await this.runtime.updateRecentMessageState(state);
+
+                        const responseStream = await this.runtime
+                            .getService<ISpeechService>(
+                                ServiceType.SPEECH_GENERATION
+                            )
+                            .generate(this.runtime, content.text);
+
+                        if (responseStream) {
+                            await this.playAudioStream(
+                                userId,
+                                responseStream as Readable
+                            );
+                        }
+
+                    }
+                    return [newResponseMemory];
+                };
+
+                await this.runtime.processActions(
+                    message,
+                    [responseMemory],
+                    state,
+                    callback
+                );
+                this.runtime.evaluate(message, state, true);
             }
             console.timeEnd("saveResponseMemory");
 
@@ -866,6 +928,7 @@ export class VoiceManager extends EventEmitter {
         channel: BaseGuildVoiceChannel,
         state: State
     ): Promise<boolean> {
+        return true;
         if (userId === this.client.user?.id) return false;
         const lowerMessage = message.toLowerCase();
         const botName = this.client.user.username.toLowerCase();
@@ -876,6 +939,7 @@ export class VoiceManager extends EventEmitter {
 
         if (
             lowerMessage.includes(botName as string) ||
+            lowerMessage.includes("agent") ||
             lowerMessage.includes(characterName) ||
             lowerMessage.includes(
                 this.client.user?.tag.toLowerCase() as string

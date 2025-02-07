@@ -8,7 +8,11 @@ import {
 } from "@elizaos/core";
 
 const formatPrediction = (prediction: any) => {
-    const deadline = new Date(prediction.deadline).toLocaleString();
+    const deadline = new Date(prediction.deadline).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
 
     return `"${prediction.statement}" (Due: ${deadline})`;
 };
@@ -67,14 +71,9 @@ export const listPredictions: Action = {
                 )
                 .join("\n");
 
-            const betFooter = `
-You can bet on them by saying
-"PREPARE A BET FOR PREDICTION <number>, <amount> $SENTAI, <outcome>, <your_wallet_address>"
-`;
-
             if (callback) {
                 callback({
-                    text: `🎯 Here are the active predictions:\n${formattedPredictions}\n\n${betFooter}`,
+                    text: `🎯 Here are the active predictions:\n${formattedPredictions}`,
                     inReplyTo: message.id,
                 });
             }

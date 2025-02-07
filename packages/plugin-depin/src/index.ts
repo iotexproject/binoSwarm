@@ -6,18 +6,18 @@ export * from "./services/quicksilver";
 import type { Plugin } from "@elizaos/core";
 
 // import { depinProjects } from "./actions/depinProjects";
-// import { weather } from "./actions/weather";
+import { weather } from "./actions/weather";
 // import { recentNews } from "./actions/recentNews";
-// import { weatherForecast } from "./actions/weatherForecast";
-// import { placeBet } from "./actions/placeBet";
+import { weatherForecast } from "./actions/weatherForecast";
+import { placeBet } from "./actions/placeBet";
 // import { prepareBet } from "./actions/prepareBet";
-// import { listPredictions } from "./actions/listPredictions";
+import { listPredictions } from "./actions/listPredictions";
 
 // import { depinDataProvider } from "./providers/depinData";
 // import { weatherDataProvider } from "./providers/weatherDataProvider";
 // import { weatherForecastProvider } from "./providers/weatherForecastProvider";
 
-// import { predictionEvaluator } from "./evaluators/predictions";
+import { predictionEvaluator } from "./evaluators/predictions";
 
 // import PredictionResolver from "./services/PredictionResolver";
 
@@ -28,13 +28,16 @@ export const depinPlugin: Plugin = {
         // Add providers here
     ],
     evaluators: [
-        // Add evaluators here
+        predictionEvaluator,
     ],
     services: [
         // Add services here
     ],
     actions: [
-        // Add actions here
+        weather,
+        weatherForecast,
+        listPredictions,
+        placeBet,
     ],
 };
 

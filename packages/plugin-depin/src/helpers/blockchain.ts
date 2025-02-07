@@ -135,7 +135,6 @@ export const placeBet = async (
     predictionId: number,
     outcome: boolean,
     amount: string,
-    bettor: `0x${string}`,
     network: SupportedChain
 ) => {
     const walletProvider = await initWalletProvider(runtime);
@@ -151,7 +150,7 @@ export const placeBet = async (
 
     const betAmount = await getBetAmount(
         amountInWei,
-        bettor,
+        account,
         account,
         publicClient
     );
@@ -162,13 +161,13 @@ export const placeBet = async (
         abi: predictionAbi,
         account,
         functionName: "placeBetForAccount",
-        args: [bettor, BigInt(predictionId), outcome, betAmount],
+        args: [account, BigInt(predictionId), outcome, betAmount],
     });
 
     const data = encodeFunctionData({
         abi: predictionAbi,
         functionName: "placeBetForAccount",
-        args: [bettor, BigInt(predictionId), outcome, betAmount],
+        args: [account, BigInt(predictionId), outcome, betAmount],
     });
 
     const walletClient = walletProvider.getWalletClient(network);
@@ -193,12 +192,72 @@ export const placeBet = async (
         return {
             hash,
             predictionId,
-            bettor,
+            account,
             betAmount: formatUnits(betAmount, decimals),
             outcome,
         };
     } else {
         throw new Error("Bet placement failed");
+    }
+};
+
+export const approveAllowance = async (
+    runtime: IAgentRuntime,
+    network: SupportedChain,
+    amount: number
+) => {
+    const walletProvider = await initWalletProvider(runtime);
+    const publicClient = walletProvider.getPublicClient(network);
+    const account = walletProvider.getAddress();
+
+    const decimals = await getDecimals(
+        runtime,
+        process.env.PREDICTION_TOKEN as `0x${string}`,
+        network
+    );
+    const amountInWei = parseUnits(amount.toString(), decimals);
+
+    await publicClient.simulateContract({
+        address: process.env.PREDICTION_TOKEN as `0x${string}`,
+        abi: erc20Abi,
+        account,
+        functionName: "approve",
+        args: [
+            process.env.BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`,
+            amountInWei,
+        ],
+    });
+
+    const data = encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [
+            process.env.BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`,
+            amountInWei,
+        ],
+    });
+
+    const walletClient = walletProvider.getWalletClient(network);
+    // @ts-ignore
+    const request = await walletClient.prepareTransactionRequest({
+        to: process.env.PREDICTION_TOKEN as `0x${string}`,
+        data,
+        account: walletClient.account,
+    });
+    // @ts-ignore
+    const serializedTransaction = await walletClient.signTransaction(request);
+    const hash = await walletClient.sendRawTransaction({
+        serializedTransaction,
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({
+        hash,
+    });
+
+    if (receipt.status === "success") {
+        return hash;
+    } else {
+        throw new Error("Allowance approval failed");
     }
 };
 
@@ -234,7 +293,10 @@ const getBetAmount = async (
         address: process.env.PREDICTION_TOKEN as `0x${string}`,
         abi: erc20Abi,
         functionName: "allowance",
-        args: [bettor, process.env.BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`],
+        args: [
+            bettor,
+            process.env.BINARY_PREDICTION_CONTRACT_ADDRESS as `0x${string}`,
+        ],
     })) as bigint;
 
     if (allowance <= BigInt(0)) {
