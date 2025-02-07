@@ -48,6 +48,9 @@ import {
     discordVoiceHandlerTemplate,
 } from "./templates.ts";
 import { getWavHeader } from "./utils.ts";
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic();
 
 // These values are chosen for compatibility with picovoice components
 const DECODE_FRAME_SIZE = 1024;
@@ -580,6 +583,7 @@ export class VoiceManager extends EventEmitter {
         name: string,
         userName: string
     ) {
+        console.time("processTranscription");
         const state = this.userStates.get(userId);
         if (!state || state.buffers.length === 0) return;
         try {
@@ -587,13 +591,16 @@ export class VoiceManager extends EventEmitter {
 
             state.buffers.length = 0; // Clear the buffers
             state.totalLength = 0;
-            // Convert Opus to WAV
-            const wavBuffer = await this.convertOpusToWav(inputBuffer);
-            console.log("Starting transcription...");
 
+            console.time("opusToWav");
+            const wavBuffer = await this.convertOpusToWav(inputBuffer);
+            console.timeEnd("opusToWav");
+
+            console.time("transcription");
             const transcriptionText = await this.runtime
                 .getService<ITranscriptionService>(ServiceType.TRANSCRIPTION)
                 .transcribe(wavBuffer);
+            console.timeEnd("transcription");
 
             function isValidTranscription(text: string): boolean {
                 if (!text || text.includes("[BLANK_AUDIO]")) return false;
@@ -623,6 +630,7 @@ export class VoiceManager extends EventEmitter {
                 error
             );
         }
+        console.timeEnd("processTranscription");
     }
 
     private async handleUserMessage(
@@ -701,7 +709,7 @@ export class VoiceManager extends EventEmitter {
             if (!shouldRespond) {
                 return;
             }
-
+            
             const context = composeContext({
                 state,
                 template:
@@ -711,80 +719,127 @@ export class VoiceManager extends EventEmitter {
                     discordVoiceHandlerTemplate,
             });
 
-            const responseContent = await this._generateResponse(
-                memory,
-                state,
-                context
-            );
-
-            const callback: HandlerCallback = async (content: Content) => {
-                console.log("callback content: ", content);
-                const { roomId } = memory;
-
-                const responseMemory: Memory = {
-                    id: stringToUuid(
-                        memory.id + "-voice-response-" + Date.now()
-                    ),
-                    agentId: this.runtime.agentId,
-                    userId: this.runtime.agentId,
-                    content: {
-                        ...content,
-                        user: this.runtime.character.name,
-                        inReplyTo: memory.id,
-                    },
-                    roomId,
-                    embedding: getEmbeddingZeroVector(),
-                };
-
-                if (responseMemory.content.text?.trim()) {
-                    await this.runtime.messageManager.createMemory(
-                        responseMemory
-                    );
-                    state = await this.runtime.updateRecentMessageState(state);
-
-                    const responseStream = await this.runtime
-                        .getService<ISpeechService>(
-                            ServiceType.SPEECH_GENERATION
-                        )
-                        .generate(this.runtime, content.text);
-
-                    if (responseStream) {
-                        await this.playAudioStream(
-                            userId,
-                            responseStream as Readable
-                        );
-                    }
-
-                    await this.runtime.evaluate(memory, state);
-                } else {
-                    console.warn("Empty response, skipping");
-                }
-                return [responseMemory];
-            };
-
-            const responseMemories = await callback(responseContent);
-
-            const response = responseContent;
-
-            const content = (response.responseMessage ||
-                response.content ||
-                response.message) as string;
-
-            if (!content) {
-                return null;
-            }
-
-            console.log("responseMemories: ", responseMemories);
-
-            await this.runtime.processActions(
-                memory,
-                responseMemories,
-                state,
-                callback
-            );
+            await this._streamResponse(memory, state, context, userId);
         } catch (error) {
             console.error("Error processing transcribed text:", error);
         }
+    }
+
+    private async _streamResponse(
+        message: Memory,
+        state: State,
+        context: string,
+        userId: UUID
+    ): Promise<void> {
+        console.time("streamResponse");
+        const { roomId } = message;
+        let fullResponse = "";
+        let firstResponseSent = false;
+
+        try {
+            const stream = await client.messages.stream({
+                messages: [{ role: "user", content: context }],
+                model: "claude-3-5-haiku-20241022",
+                max_tokens: 1024,
+            });
+
+            let textBuffer = "";
+            let isProcessing = false;
+
+            // Helper function to process a complete text block
+            const processTextBlock = async (text: string): Promise<void> => {
+                console.time("textToSpeech");
+                const responseStream = await this.runtime
+                    .getService<ISpeechService>(ServiceType.SPEECH_GENERATION)
+                    .generate(this.runtime, text);
+                console.timeEnd("textToSpeech");
+
+                if (responseStream) {
+                    if (!firstResponseSent) {
+                        elizaLogger.debug(`First response sent at ms: ${Date.now()}`);
+                        firstResponseSent = true;
+                    }
+                    console.time("audioPlayback");
+                    await this.playAudioStream(
+                        userId,
+                        responseStream as Readable
+                    );
+                    console.timeEnd("audioPlayback");
+                }
+            };
+
+            // Helper function to check and process buffer
+            const processBufferIfReady = async () => {
+                if (isProcessing || !textBuffer) return;
+
+                // Look for complete sentences or logical breaks
+                const match = textBuffer.match(/^(.*?[.!?])\s*(.*)/s);
+                if (match) {
+                    elizaLogger.debug("match: ", match);
+                    isProcessing = true;
+                    const [, completeBlock, remainder] = match;
+                    textBuffer = remainder;
+                    fullResponse += completeBlock;
+
+                    await processTextBlock(completeBlock);
+                    isProcessing = false;
+
+                    // Recursively process more if buffer still has complete blocks
+                    await processBufferIfReady();
+                }
+            };
+
+            // Process the stream
+            for await (const chunk of stream) {
+                if (chunk.type === "content_block_delta") {
+                    textBuffer += chunk.delta.text;
+                    await processBufferIfReady();
+                }
+            }
+
+            // Process any remaining text in buffer
+            if (textBuffer) {
+                fullResponse += textBuffer;
+                await processTextBlock(textBuffer);
+            }
+
+            // Create and save the complete response memory
+            console.time("saveResponseMemory");
+            const responseMemory: Memory = {
+                id: stringToUuid(message.id + "-voice-response-" + Date.now()),
+                agentId: this.runtime.agentId,
+                userId: this.runtime.agentId,
+                content: {
+                    text: fullResponse,
+                    source: "discord",
+                    user: this.runtime.character.name,
+                    inReplyTo: message.id,
+                },
+                roomId,
+                embedding: getEmbeddingZeroVector(),
+            };
+
+            if (responseMemory.content.text?.trim()) {
+                await this.runtime.messageManager.createMemory(responseMemory);
+                state = await this.runtime.updateRecentMessageState(state);
+                await this.runtime.evaluate(message, state);
+            }
+            console.timeEnd("saveResponseMemory");
+
+            // Log the complete interaction
+            console.time("logInteraction");
+            await this.runtime.databaseAdapter.log({
+                body: { message, context, response: fullResponse },
+                userId: message.userId,
+                roomId,
+                type: "response",
+            });
+            console.timeEnd("logInteraction");
+        } catch (error) {
+            console.error("Error in streaming response:", error);
+            throw error;
+        }
+        console.timeEnd("streamResponse");
     }
 
     private async convertOpusToWav(pcmBuffer: Buffer): Promise<Buffer> {
@@ -863,36 +918,6 @@ export class VoiceManager extends EventEmitter {
             );
             return false;
         }
-    }
-
-    private async _generateResponse(
-        message: Memory,
-        state: State,
-        context: string
-    ): Promise<Content> {
-        const { userId, roomId } = message;
-
-        const response = await generateMessageResponse({
-            runtime: this.runtime,
-            context,
-            modelClass: ModelClass.SMALL,
-        });
-
-        response.source = "discord";
-
-        if (!response) {
-            console.error("No response from generateMessageResponse");
-            return;
-        }
-
-        await this.runtime.databaseAdapter.log({
-            body: { message, context, response },
-            userId: userId,
-            roomId,
-            type: "response",
-        });
-
-        return response;
     }
 
     private async _shouldIgnore(message: Memory): Promise<boolean> {
@@ -996,7 +1021,22 @@ export class VoiceManager extends EventEmitter {
             console.log(`No connection for user ${userId}`);
             return;
         }
-        this.cleanupAudioPlayer(this.activeAudioPlayer);
+
+        // Wait for current audio to finish before proceeding
+        if (this.activeAudioPlayer) {
+            await new Promise<void>((resolve) => {
+                const checkState = () => {
+                    if (this.activeAudioPlayer?.state.status === "idle") {
+                        this.cleanupAudioPlayer(this.activeAudioPlayer);
+                        resolve();
+                    } else {
+                        setTimeout(checkState, 100);
+                    }
+                };
+                checkState();
+            });
+        }
+
         const audioPlayer = createAudioPlayer({
             behaviors: {
                 noSubscriber: NoSubscriberBehavior.Pause,
@@ -1012,21 +1052,26 @@ export class VoiceManager extends EventEmitter {
         });
         audioPlayer.play(resource);
 
-        audioPlayer.on("error", (err: any) => {
-            console.log(`Audio player error: ${err}`);
-        });
+        // Return a promise that resolves when audio finishes playing
+        return new Promise<void>((resolve, reject) => {
+            audioPlayer.on("error", (err: any) => {
+                console.log(`Audio player error: ${err}`);
+                reject(err);
+            });
 
-        audioPlayer.on(
-            "stateChange",
-            (_oldState: any, newState: { status: string }) => {
-                if (newState.status == "idle") {
-                    const idleTime = Date.now();
-                    console.log(
-                        `Audio playback took: ${idleTime - audioStartTime}ms`
-                    );
+            audioPlayer.on(
+                "stateChange",
+                (_oldState: any, newState: { status: string }) => {
+                    if (newState.status === "idle") {
+                        const idleTime = Date.now();
+                        console.log(
+                            `Audio playback took: ${idleTime - audioStartTime}ms`
+                        );
+                        resolve();
+                    }
                 }
-            }
-        );
+            );
+        });
     }
 
     cleanupAudioPlayer(audioPlayer: AudioPlayer) {
