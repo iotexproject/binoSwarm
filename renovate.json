@@ -53,10 +53,6 @@
                 "^ffmpeg",
                 "^@types/wav"
             ]
-        },
-        {
-            "groupName": "Solana packages",
-            "matchPackagePatterns": ["^@solana/"]
         }
     ],
     "timezone": "UTC",

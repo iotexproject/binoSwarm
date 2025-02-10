@@ -2,10 +2,7 @@
     "version": "0.1.7",
     "packages": [
         "packages/*",
-        "docs",
-        "agent",
-        "client",
-        "!packages/_examples"
+        "agent"
     ],
     "npmClient": "pnpm"
 }

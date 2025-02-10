@@ -24,7 +24,6 @@ case "$1" in
             "characters:/app/characters"
             ".env:/app/.env"
             "agent:/app/agent"
-            "docs:/app/docs"
             "scripts:/app/scripts"
         )
 
