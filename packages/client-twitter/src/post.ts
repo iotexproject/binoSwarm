@@ -611,7 +611,7 @@ export class TwitterPostClient {
             elizaLogger.info(
                 "generate tweet content response text:\n" + jsonResponse.text
             );
-            if (jsonResponse.text) {
+            if (jsonResponse.text || jsonResponse.text === "") {
                 return this.trimTweetLength(jsonResponse.text);
             }
             if (typeof jsonResponse === "object") {
