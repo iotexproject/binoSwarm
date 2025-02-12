@@ -5,6 +5,8 @@ export * from "./services/quicksilver";
 
 import type { Plugin } from "@elizaos/core";
 
+// import { iotexL1 } from "./actions/iotexL1";
+// import { nuclearOutages } from "./actions/nuclearOutages";
 // import { depinProjects } from "./actions/depinProjects";
 // import { weather } from "./actions/weather";
 // import { recentNews } from "./actions/recentNews";
