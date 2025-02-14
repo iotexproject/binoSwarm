@@ -58,6 +58,8 @@
         "node": "23.3.0"
     },
     "dependencies": {
+        "@elizaos/plugin-iotex": "workspace:*",
+        "@elizaos/plugin-bootstrap": "workspace:*",
         "@deepgram/sdk": "^3.9.0",
         "@vitest/eslint-plugin": "1.0.1",
         "amqplib": "0.10.5",
