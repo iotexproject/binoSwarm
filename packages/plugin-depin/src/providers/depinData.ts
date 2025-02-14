@@ -9,18 +9,15 @@ import {
 import NodeCache from "node-cache";
 import * as path from "path";
 
+import { getRawDataFromQuicksilver } from "../services/quicksilver";
 import type { DepinScanMetrics, DepinScanProject } from "../types/depin";
-
-export const DEPIN_METRICS_URL =
-    "https://gateway1.iotex.io/depinscan/explorer?is_latest=true";
-export const DEPIN_PROJECTS_URL = "https://metrics-api.w3bstream.com/project";
 
 export class DePINScanProvider {
     private cache: NodeCache;
     private cacheKey: string = "depin/metrics";
 
     constructor(private cacheManager: ICacheManager) {
-        this.cache = new NodeCache({ stdTTL: 3600 });
+        this.cache = new NodeCache({ stdTTL: 3600 }); // 1 hour
     }
 
     private async readFromCache<T>(key: string): Promise<T | null> {
@@ -63,13 +60,11 @@ export class DePINScanProvider {
     }
 
     private async fetchDepinscanMetrics(): Promise<DepinScanMetrics> {
-        const res = await fetch(DEPIN_METRICS_URL);
-        return res.json();
+        return getRawDataFromQuicksilver("depin-metrics", { isLatest: true });
     }
 
     private async fetchDepinscanProjects(): Promise<DepinScanProject[]> {
-        const res = await fetch(DEPIN_PROJECTS_URL);
-        return res.json();
+        return getRawDataFromQuicksilver("depin-projects", {});
     }
 
     async getDailyMetrics(): Promise<DepinScanMetrics> {

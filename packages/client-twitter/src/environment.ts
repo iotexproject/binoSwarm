@@ -37,6 +37,7 @@ export const twitterEnvSchema = z.object({
     TWITTER_RETRY_LIMIT: z.number().int(),
     TWITTER_POLL_INTERVAL: z.number().int(),
     TWITTER_TARGET_USERS: z.array(twitterUsernameSchema).default([]),
+    TWITTER_KNOWLEDGE_USERS: z.array(twitterUsernameSchema).default([]),
     // I guess it's possible to do the transformation with zod
     // not sure it's preferable, maybe a readability issue
     // since more people will know js/ts than zod
@@ -171,6 +172,11 @@ export async function validateTwitterConfig(
             TWITTER_TARGET_USERS: parseTargetUsers(
                 runtime.getSetting("TWITTER_TARGET_USERS") ||
                     process.env.TWITTER_TARGET_USERS
+            ),
+
+            TWITTER_KNOWLEDGE_USERS: parseTargetUsers(
+                runtime.getSetting("TWITTER_KNOWLEDGE_USERS") ||
+                    process.env.TWITTER_KNOWLEDGE_USERS
             ),
 
             // int in minutes

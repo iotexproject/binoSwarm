@@ -11,6 +11,25 @@ import axios from "axios";
 import { quicksilverResponseTemplate } from "../template";
 import { parseTagContent } from "../helpers/parsers";
 
+type QuicksilverTool =
+    | "weather-current"
+    | "weather-forecast"
+    | "news"
+    | "depin-metrics"
+    | "depin-projects"
+    | "l1data"
+    | "nuclear";
+
+type ToolParams = {
+    "weather-current": { lat: number; lon: number };
+    "weather-forecast": { lat: number; lon: number };
+    news: Record<string, never>;
+    "depin-metrics": { isLatest?: boolean };
+    "depin-projects": Record<string, never>;
+    l1data: Record<string, never>;
+    nuclear: { start: string; end: string }; // Format: YYYY-MM-DD
+};
+
 export async function askQuickSilver(content: string): Promise<string> {
     const url = process.env.QUICKSILVER_URL || "https://quicksilver.iotex.ai";
     const response = await axios.post(url + "/ask", {
@@ -21,6 +40,28 @@ export async function askQuickSilver(content: string): Promise<string> {
         return response.data.data;
     } else {
         throw new Error("Failed to fetch weather data");
+    }
+}
+
+export async function getRawDataFromQuicksilver<T extends QuicksilverTool>(
+    tool: T,
+    params?: ToolParams[T]
+): Promise<any> {
+    const url = process.env.QUICKSILVER_URL || "https://quicksilver.iotex.ai";
+    const queryParams = new URLSearchParams({ tool });
+
+    if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+            queryParams.append(key, String(value));
+        });
+    }
+
+    const response = await axios.get(`${url}/raw?${queryParams.toString()}`);
+
+    if (response.data?.data) {
+        return response.data.data;
+    } else {
+        throw new Error(`Failed to fetch raw data for tool: ${tool}`);
     }
 }
 

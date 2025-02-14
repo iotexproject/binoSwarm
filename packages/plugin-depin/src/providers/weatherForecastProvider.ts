@@ -1,7 +1,7 @@
 import { Provider, IAgentRuntime, Memory, State } from "@elizaos/core";
 
 import { getLatLngMapbox } from "../services/map";
-import { getWeatherForecast } from "../services/weather";
+import { getRawDataFromQuicksilver } from "../services/quicksilver";
 import { WeatherForecast } from "../types/depin";
 
 export const weatherForecastProvider: Provider = {
@@ -12,7 +12,12 @@ export const weatherForecastProvider: Provider = {
     ): Promise<string | null> {
         const randomCity = cities[Math.floor(Math.random() * cities.length)];
         const coordinates = await getLatLngMapbox(runtime, randomCity);
-        const forecast = await getWeatherForecast(runtime, coordinates);
+
+        // Get weather forecast from Quicksilver using coordinates
+        const forecast = await getRawDataFromQuicksilver("weather-forecast", {
+            lat: coordinates.lat,
+            lon: coordinates.lon,
+        });
 
         return formatWeatherData(forecast);
     },
