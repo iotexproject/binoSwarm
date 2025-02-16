@@ -46,6 +46,8 @@ Response format should be:
   }
 ]
 </response>
+
+Please ensure the JSON is valid and there are no comments in the JSON code.
 `;
 
 async function handler(
