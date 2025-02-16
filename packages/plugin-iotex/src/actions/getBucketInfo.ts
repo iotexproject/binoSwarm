@@ -7,10 +7,14 @@ import {
     composeContext,
     generateObject,
     ModelClass,
+    generateText,
 } from "@elizaos/core";
 
 import { BucketProvider, initBucketProvider } from "../providers/bucket";
-import { getBucketInfoTemplate } from "../templates";
+import {
+    getBucketIDTemplate,
+    summarizeStakingStatusTemplate,
+} from "../templates";
 import { GetBucketInfoParams } from "../types";
 
 export class GetBucketInfoAction {
@@ -60,7 +64,7 @@ export const getBucketInfoAction: Action = {
 
         const context = composeContext({
             state,
-            template: getBucketInfoTemplate,
+            template: getBucketIDTemplate,
         });
 
         const params = await generateObject({
@@ -70,13 +74,12 @@ export const getBucketInfoAction: Action = {
             schema: GetBucketInfoParams,
         });
 
-        console.log("Type of params:", typeof params);
-        console.log("Params keys:", Object.keys(params));
-        console.log("Params object:", params.object);
         const bucketId = params.object?.bucketId;
         console.log("Bucket ID:", bucketId);
 
-        if (!bucketId) {
+        // ensure bucket id is found and it's a positive integer
+
+        if (!bucketId || isNaN(parseInt(bucketId))) {
             const errorMessage = "Bucket ID is required to fetch information.";
             console.error(errorMessage);
             if (callback) {
@@ -90,17 +93,38 @@ export const getBucketInfoAction: Action = {
 
         try {
             const response = await action.getBucketInfo(bucketId);
+            const bucket = response.bucket;
             if (callback) {
                 if (response.success) {
-                    callback({
-                        text: `Bucket Info: ${JSON.stringify(response.bucket)}`,
-                        action: "continue",
+                    await callback({
+                        text: `
+                            Here are the staking bucket details:
+                            **Bucket ID**: ${bucket.id}
+                            **Staked Amount**: ${bucket.stakedAmount} IOTX
+                            **StakeLock**: ${bucket.autoStake ? "Enabled" : "Disabled"}
+                            **Created At**: ${bucket.createdAt}
+                            **Stake Start Time**: ${bucket.stakeStartTime}
+                            **Unstake Start Time**: ${bucket.unstakeStartTime || "Not yet initiated"}
+                            **Staked Duration**: ${bucket.stakedDuration} days
+                            `,
                     });
+                    state = await runtime.updateRecentMessageState(state);
+                    const context2 = composeContext({
+                        state,
+                        template: summarizeStakingStatusTemplate,
+                    });
+                    const summary = await generateText({
+                        runtime,
+                        context: context2,
+                        modelClass: ModelClass.SMALL,
+                    });
+                    callback({ text: summary });
                 } else {
                     callback({
                         text: `Error: ${response.error}`,
                         content: { error: response.error },
                     });
+                    return false;
                 }
             }
             return response.success;
@@ -129,13 +153,6 @@ export const getBucketInfoAction: Action = {
                 user: "assistant",
                 content: {
                     text: "I'll fetch details for bucket ID 12345",
-                    action: "GET_BUCKET_INFO",
-                },
-            },
-            {
-                user: "assistant",
-                content: {
-                    text: "According to on-chain data, bucket ID 12345 has a deposit of 100 IOTX. The stake was created on Jan 1, 2022 with a lock period of 120 days. The bucket is locked because StakeLock is enabled which keeps the lock fixed at 120 days and not counting down.",
                     action: "GET_BUCKET_INFO",
                 },
             },
