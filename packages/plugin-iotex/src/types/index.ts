@@ -5,7 +5,10 @@ export const GetBucketInfoParams = z.object({
     bucketId: z.string().min(1),
 });
 
-// Transaction types
+export const ListBucketsParams = z.object({
+    ownerAddress: z.string().min(1),
+});
+
 export interface Bucket {
     id: number;
     owner: string;
@@ -14,30 +17,4 @@ export interface Bucket {
     updatedAt: string;
     lockPeriod: number;
     StakeLock: boolean;
-}
-
-export interface ListBucketsParams {
-    owner: string;
-}
-
-// Action responses
-
-export interface GetBucketInfoResponse {
-    bucket: Bucket;
-}
-
-export interface ListBucketsResponse {
-    bucketIds: number[];
-}
-
-// Plugin configuration
-export interface EvmPluginConfig {
-    secrets?: {
-        IOTEX_PRIVATE_KEY: string;
-    };
-    testMode?: boolean;
-    multicall?: {
-        batchSize?: number;
-        wait?: number;
-    };
 }

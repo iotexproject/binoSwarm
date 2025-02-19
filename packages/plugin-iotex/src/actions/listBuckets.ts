@@ -13,25 +13,26 @@ import {
 import { IoTeXChainProvider, initIoTeXProvider } from "../providers/iotexchain";
 import {
     getBucketIDTemplate,
+    listBucketsTemplate,
     summarizeStakingStatusTemplate,
 } from "../templates";
-import { GetBucketInfoParams } from "../types";
+import { ListBucketsParams } from "../types";
 
-export class GetBucketInfoAction {
-    constructor(private bucketProvider: IoTeXChainProvider) {}
+export class ListBucketsAction {
+    constructor(private iotexProvider: IoTeXChainProvider) {}
 
-    async getBucketInfo(bucketId: string): Promise<any> {
-        console.log(`Fetching bucket info for ID: ${bucketId}`);
+    async listBuckets(ownerAddress: string): Promise<any> {
+        console.log(`Fetching buckets owned by wallet: ${ownerAddress}`);
         try {
-            const bucketInfo =
-                await this.bucketProvider.fetchBucketInfo(bucketId);
+            const bucketsList =
+                await this.iotexProvider.listBuckets(ownerAddress);
             return {
                 success: true,
-                bucket: bucketInfo,
+                bucketsList: bucketsList,
             };
         } catch (error) {
             console.error(
-                `getBucketInfo: Error fetching bucket info: ${error.message}`
+                `listBuckets: Error fetching buckets: ${error.message}`
             );
             return {
                 success: false,
@@ -41,9 +42,10 @@ export class GetBucketInfoAction {
     }
 }
 
-export const getBucketInfoAction: Action = {
-    name: "get_bucket_info",
-    description: "Retrieve information for a specified IoTeX bucket ID",
+export const listBucketsAction: Action = {
+    name: "list_buckets",
+    description:
+        "List all staking bucket including bucket details owned by a certain IoTeX wallet address",
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
@@ -57,30 +59,29 @@ export const getBucketInfoAction: Action = {
             state = await runtime.updateRecentMessageState(state);
         }
 
-        console.log("Bucket Info action handler invoked.");
+        console.log("List buckets action handler invoked.");
 
-        const bucketProvider = await initIoTeXProvider(runtime);
-        const action = new GetBucketInfoAction(bucketProvider);
+        const iotexProvider = await initIoTeXProvider(runtime);
+        const action = new ListBucketsAction(iotexProvider);
 
         const context = composeContext({
             state,
-            template: getBucketIDTemplate,
+            template: listBucketsTemplate,
         });
 
         const params = await generateObject({
             runtime,
             context,
             modelClass: ModelClass.SMALL,
-            schema: GetBucketInfoParams,
+            schema: ListBucketsParams,
         });
 
-        const bucketId = params.object?.bucketId;
-        console.log("Bucket ID:", bucketId);
+        const ownerAddress = params.object?.ownerAddress;
+        console.log("ownerAddress:", ownerAddress);
 
-        // ensure bucket id is found and it's a positive integer
-
-        if (!bucketId || isNaN(parseInt(bucketId))) {
-            const errorMessage = "Bucket ID is required to fetch information.";
+        if (!ownerAddress) {
+            const errorMessage =
+                "A valid wallet address is required to fetch information.";
             console.error(errorMessage);
             if (callback) {
                 callback({
@@ -92,21 +93,14 @@ export const getBucketInfoAction: Action = {
         }
 
         try {
-            const response = await action.getBucketInfo(bucketId);
-            const bucket = response.bucket;
+            const response = await action.listBuckets(ownerAddress);
+            const bucketsList = response.bucketsList;
             if (callback) {
                 if (response.success) {
                     await callback({
-                        text: `
-                            Here are the staking bucket details:
-                            **Bucket ID**: ${bucket.id}
-                            **Staked Amount**: ${bucket.stakedAmount} IOTX
-                            **StakeLock**: ${bucket.autoStake ? "Enabled" : "Disabled"}
-                            **Created At**: ${bucket.createdAt}
-                            **Stake Start Time**: ${bucket.stakeStartTime}
-                            **Unstake Start Time**: ${bucket.unstakeStartTime || "Not yet initiated"}
-                            **Staked Duration**: ${bucket.stakedDuration} days
-                            `,
+                        text: IoTeXChainProvider.bucketsListToString(
+                            bucketsList
+                        ),
                     });
                     state = await runtime.updateRecentMessageState(state);
                     const context2 = composeContext({
@@ -129,7 +123,7 @@ export const getBucketInfoAction: Action = {
             }
             return response.success;
         } catch (error) {
-            console.error("Error handling bucket info action:", error);
+            console.error("Error handling list buckets action:", error);
             if (callback) {
                 callback({
                     text: `Error: ${error.message}`,
@@ -145,18 +139,37 @@ export const getBucketInfoAction: Action = {
             {
                 user: "user",
                 content: {
-                    text: "Retrieve info for bucket ID 12345",
-                    action: "GET_BUCKET_INFO",
+                    text: "Can you list my staking buckets?",
                 },
             },
             {
                 user: "assistant",
                 content: {
-                    text: "I'll fetch details for bucket ID 12345",
-                    action: "GET_BUCKET_INFO",
+                    text: "Sure, could you please provide your wallet address?",
+                    action: "NONE",
+                },
+            },
+            {
+                user: "user",
+                content: {
+                    text: "Here is my wallet: 0xf76898f6aa5bf236f10b5da22461632bae054b84",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "Great, let me fetch the staking buckets for you...",
+                    action: "LIST_BUCKETS",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "If ound 3 buckets for your wallet. Here are the IDs: 32, 123, 44. Do you want me to fetch details for any of them?",
+                    action: "NONE",
                 },
             },
         ],
     ],
-    similes: ["GET_BUCKET_INFO", "FETCH_BUCKET_DETAILS", "LOOKUP_BUCKET"],
+    similes: ["LIST_BUCKETS", "FETCH_STAKING", "GET_STAKING_BUCKETS"],
 };

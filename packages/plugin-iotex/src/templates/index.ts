@@ -34,5 +34,20 @@ export const summarizeStakingStatusTemplate = `
     - When the bucket is unlocked, the user can stil enable StakeLock, which will reset the lock timer to the StakeDuration value and lcok it from counting down
     - When the bucket is unlocked, the user can initiate the unstaking process, which will take 3 days during which it will not generate any rewards
     - Once the unstaking process is completed the user should manually initiate the "Withdraw" action to get the staked amount back to their wallet
+    `;
 
+export const listBucketsTemplate = `
+    You are an AI assistant specialized in processing questions about IoTeX staking.
+    Your task is to extract the address that should be examined from the converstaion.
+
+    Here are the recent messages from the conversation:
+    <recent_messages>
+        {{recentMessages}}
+    </recent_messages>
+
+    After your analysis, provide the final output in a valid JSON markdown block,
+    without comments.
+
+    The JSON should have this structure:
+    <response> { "ownerAddress": string } </response>
     `;

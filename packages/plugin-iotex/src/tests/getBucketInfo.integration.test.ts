@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll } from "vitest";
 import { GetBucketInfoAction } from "../actions/getBucketInfo";
-import { BucketProvider } from "../providers/bucket";
+import { IoTeXChainProvider } from "../providers/iotexchain";
 import { IAgentRuntime } from "@elizaos/core";
 import bucketAbi from "../abis/BucketABI.json";
 
@@ -18,11 +18,11 @@ const mockRuntime: IAgentRuntime = {
 } as unknown as IAgentRuntime;
 
 describe("Integration Test: GetBucketInfoAction", () => {
-    let bucketProvider: BucketProvider;
+    let bucketProvider: IoTeXChainProvider;
     let getBucketInfoAction: GetBucketInfoAction;
 
     beforeAll(() => {
-        bucketProvider = new BucketProvider(
+        bucketProvider = new IoTeXChainProvider(
             IOTEX_RPC_URL,
             BUCKET_CONTRACT_ADDRESS,
             mockRuntime.cacheManager

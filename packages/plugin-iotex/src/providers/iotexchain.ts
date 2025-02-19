@@ -9,13 +9,14 @@ import {
     elizaLogger,
 } from "@elizaos/core";
 
-import bucketAbi from "../abis/BucketABI.json"; // Ensure ABI is correctly referenced
+// ABI of the Staking Contract
+import bucketAbi from "../abis/BucketABI.json";
 
-export class BucketProvider {
+export class IoTeXChainProvider {
     private provider: ethers.JsonRpcProvider;
     private contract: ethers.Contract;
     private cache: NodeCache;
-    private cacheKey: string = "iotex/buckets";
+    private cacheKey: string = "iotexchain";
     private CACHE_EXPIRY_SEC = 10; // Cache expiry in seconds
 
     constructor(
@@ -38,7 +39,7 @@ export class BucketProvider {
      * @returns - The bucket details from the blockchain.
      */
     async fetchBucketInfo(bucketId: string): Promise<any> {
-        const cacheKey = `${this.cacheKey}/${bucketId}`;
+        const cacheKey = `${this.cacheKey}/bucketsInfo/${bucketId}`;
         const cachedData = await this.getCachedData(cacheKey);
 
         if (cachedData) {
@@ -67,13 +68,17 @@ export class BucketProvider {
                     "ether"
                 ),
                 stakedDuration: Number(bucketInfo.stakedDuration),
-                createdAt: new Date(Number(bucketInfo.createTime) * 1000).toISOString(),
+                createdAt: new Date(
+                    Number(bucketInfo.createTime) * 1000
+                ).toISOString(),
                 stakeStartTime: new Date(
                     Number(bucketInfo.stakeStartTime) * 1000
                 ).toISOString(),
                 unstakeStartTime: bucketInfo.unstakeStartTime
-                    ? new Date(Number(bucketInfo.unstakeStartTime) * 1000).toISOString()
-                    : '',
+                    ? new Date(
+                          Number(bucketInfo.unstakeStartTime) * 1000
+                      ).toISOString()
+                    : "",
                 autoStake: bucketInfo.autoStake,
             };
 
@@ -89,6 +94,69 @@ export class BucketProvider {
             );
             throw new Error("Failed to fetch bucket information");
         }
+    }
+
+    /**
+     * Lists all staking buckets owned by an address.
+     * @param ownerAddress - The address we want to list staking buckets of.
+     * @returns - The list of buckets owned by the address, including each buket settings.
+     */
+    async listBuckets(ownerAddress: string): Promise<any> {
+        const cacheKey = `${this.cacheKey}/bucketsList/${ownerAddress}`;
+        const cachedData = await this.getCachedData(cacheKey);
+
+        if (cachedData) {
+            elizaLogger.log(
+                `Returning cached buckets info for address: ${ownerAddress}`
+            );
+            return cachedData;
+        }
+
+        try {
+            console.log(
+                `Fetching buckets for address: ${ownerAddress} from IoTeX blockchain...`
+            );
+            const bucketsList = await this.contract.bucketsByVoter(
+                ownerAddress,
+                0,
+                100
+            );
+
+            if (!bucketsList || bucketsList.length === 0) {
+                throw new Error(
+                    "This address doesn't seem to have any staking buckets"
+                );
+            }
+
+            console.log(`Buckets for voter ${ownerAddress}:`);
+            console.log(IoTeXChainProvider.bucketsListToString(bucketsList));
+
+            //await this.setCachedData(cacheKey, bucketsList);
+
+            console.log("Buckets info fetched successfully.");
+            return bucketsList;
+        } catch (error) {
+            console.error(`iotexProvider: Error fetching buckets: ${error}`);
+            throw new Error("Failed to fetch buckets");
+        }
+    }
+
+    static bucketsListToString(bucketsList) {
+        if (!bucketsList || bucketsList.length === 0) {
+            return "No staking buckets found.";
+        }
+
+        return bucketsList
+            .map(
+                (bucket, index) =>
+                    `Bucket ${index + 1}: Index=${bucket.index}, ` +
+                    `Staked=${ethers.formatUnits(bucket.stakedAmount, 18)} IOTX, ` +
+                    `Duration=${bucket.stakedDuration} days, ` +
+                    `Candidate=${bucket.candidateAddress}, ` +
+                    `StakeLock=${bucket.autoStake}, ` +
+                    `Owner=${bucket.owner}`
+            )
+            .join("\n");
     }
 
     /**
@@ -124,7 +192,7 @@ export class BucketProvider {
 /**
  * Initializes the IoTeX Bucket Provider for Eliza AI Agent
  */
-export const initBucketProvider = async (runtime: IAgentRuntime) => {
+export const initIoTeXProvider = async (runtime: IAgentRuntime) => {
     const contractAddress = runtime.getSetting(
         "IOTEX_STAKING_CONTRACT_ADDRESS"
     );
@@ -136,7 +204,11 @@ export const initBucketProvider = async (runtime: IAgentRuntime) => {
         );
     }
 
-    return new BucketProvider(rpcUrl, contractAddress, runtime.cacheManager);
+    return new IoTeXChainProvider(
+        rpcUrl,
+        contractAddress,
+        runtime.cacheManager
+    );
 };
 
 /**
@@ -149,7 +221,7 @@ export const bucketProvider: Provider = {
         state?: State
     ): Promise<string | null> {
         try {
-            const provider = await initBucketProvider(runtime);
+            const provider = await initIoTeXProvider(runtime);
             const bucketId = (_message as any)?.content?.bucketId;
 
             if (!bucketId) {
