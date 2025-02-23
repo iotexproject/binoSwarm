@@ -98,11 +98,9 @@ Thread of Tweets You Are Replying To:
 export class TwitterInteractionClient {
     client: ClientBase;
     runtime: IAgentRuntime;
-    private isDryRun: boolean;
     constructor(client: ClientBase, runtime: IAgentRuntime) {
         this.client = client;
         this.runtime = runtime;
-        this.isDryRun = this.client.twitterConfig.TWITTER_DRY_RUN;
     }
 
     async start() {
@@ -678,68 +676,62 @@ Return an array of valid json objects, wrapp in response tags.
         response.inReplyTo = stringId;
 
         if (response.text) {
-            if (this.isDryRun) {
-                elizaLogger.info(
-                    `Dry run: Selected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${response.text}`
-                );
-            } else {
-                try {
-                    const callback: HandlerCallback = async (
-                        response: Content,
-                        tweetId?: string
-                    ) => {
-                        const memories = await sendTweet(
-                            this.client,
-                            response,
-                            message.roomId,
-                            this.client.twitterConfig.TWITTER_USERNAME,
-                            tweetId || tweet.id
-                        );
-                        return memories;
-                    };
+            try {
+                const callback: HandlerCallback = async (
+                    response: Content,
+                    tweetId?: string
+                ) => {
+                    const memories = await sendTweet(
+                        this.client,
+                        response,
+                        message.roomId,
+                        this.client.twitterConfig.TWITTER_USERNAME,
+                        tweetId || tweet.id
+                    );
+                    return memories;
+                };
 
-                    const responseMessages = await callback(response);
+                const responseMessages = await callback(response);
 
-                    state = (await this.runtime.updateRecentMessageState(
-                        state
-                    )) as State;
+                state = (await this.runtime.updateRecentMessageState(
+                    state
+                )) as State;
 
-                    for (const responseMessage of responseMessages) {
-                        if (
-                            responseMessage ===
-                            responseMessages[responseMessages.length - 1]
-                        ) {
-                            responseMessage.content.action = response.action;
-                        } else {
-                            responseMessage.content.action = "CONTINUE";
-                        }
-                        await this.runtime.messageManager.createMemory(
-                            responseMessage
-                        );
+                for (const responseMessage of responseMessages) {
+                    if (
+                        responseMessage ===
+                        responseMessages[responseMessages.length - 1]
+                    ) {
+                        responseMessage.content.action = response.action;
+                    } else {
+                        responseMessage.content.action = "CONTINUE";
                     }
-
-                    const responseTweetId =
-                        responseMessages[responseMessages.length - 1]?.content
-                            ?.tweetId;
-                    await this.runtime.processActions(
-                        message,
-                        responseMessages,
-                        state,
-                        (response: Content) => {
-                            return callback(response, responseTweetId);
-                        }
+                    await this.runtime.messageManager.createMemory(
+                        responseMessage
                     );
-
-                    const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${response.text}`;
-
-                    await this.runtime.cacheManager.set(
-                        `twitter/tweet_generation_${tweet.id}.txt`,
-                        responseInfo
-                    );
-                    await wait();
-                } catch (error) {
-                    elizaLogger.error(`Error sending response tweet: ${error}`);
                 }
+
+                const responseTweetId =
+                    responseMessages[responseMessages.length - 1]?.content
+                        ?.tweetId;
+                await this.runtime.processActions(
+                    message,
+                    responseMessages,
+                    state,
+                    (response: Content) => {
+                        return callback(response, responseTweetId);
+                    }
+                );
+
+                const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${response.text}`;
+
+                await this.runtime.cacheManager.set(
+                    `twitter/tweet_generation_${tweet.id}.txt`,
+                    responseInfo
+                );
+                await wait();
+            } catch (error) {
+                elizaLogger.error(`Error sending response tweet: ${error}`);
             }
         }
     }

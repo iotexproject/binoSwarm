@@ -31,7 +31,8 @@
     },
     "devDependencies": {
         "tsup": "8.3.5",
-        "vitest": "1.2.1"
+        "vitest": "2.1.5",
+        "@vitest/coverage-v8": "2.1.5"
     },
     "scripts": {
         "build": "tsup --format esm --dts",

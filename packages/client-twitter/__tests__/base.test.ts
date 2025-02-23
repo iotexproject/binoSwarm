@@ -11,7 +11,6 @@ describe("Twitter Client Base", () => {
         mockRuntime = {
             env: {
                 TWITTER_USERNAME: "testuser",
-                TWITTER_DRY_RUN: "true",
                 TWITTER_POST_INTERVAL_MIN: "5",
                 TWITTER_POST_INTERVAL_MAX: "10",
                 TWITTER_ACTION_INTERVAL: "5",
@@ -35,7 +34,6 @@ describe("Twitter Client Base", () => {
 
         mockConfig = {
             TWITTER_USERNAME: "testuser",
-            TWITTER_DRY_RUN: true,
             TWITTER_SEARCH_ENABLE: false,
             TWITTER_SPACES_ENABLE: false,
             TWITTER_TARGET_USERS: [],
@@ -54,7 +52,6 @@ describe("Twitter Client Base", () => {
         expect(client).toBeDefined();
         expect(client.twitterConfig).toBeDefined();
         expect(client.twitterConfig.TWITTER_USERNAME).toBe("testuser");
-        expect(client.twitterConfig.TWITTER_DRY_RUN).toBe(true);
     });
 
     it("should initialize with correct tweet length limit", () => {

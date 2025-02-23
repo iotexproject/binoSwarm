@@ -32,12 +32,18 @@
     },
     "devDependencies": {
         "tsup": "8.3.5",
-        "@types/multer": "^1.4.12"
+        "@types/multer": "^1.4.12",
+        "vitest": "2.1.5",
+        "@vitest/coverage-v8": "2.1.5",
+        "supertest": "6.3.4",
+        "@types/supertest": "6.0.2"
     },
     "scripts": {
         "build": "tsup --format esm --dts",
         "dev": "tsup --format esm --dts --watch",
-        "lint": "eslint --fix  --cache ."
+        "lint": "eslint --fix  --cache .",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "peerDependencies": {
         "whatwg-url": "7.1.0"
