@@ -1,6 +1,7 @@
 export * from "./actions/weather";
 export * from "./actions/depinProjects";
 export * from "./actions/recentNews";
+export * from "./actions/sentai";
 export * from "./services/quicksilver";
 
 import type { Plugin } from "@elizaos/core";
@@ -14,6 +15,7 @@ import type { Plugin } from "@elizaos/core";
 // import { placeBet } from "./actions/placeBet";
 // import { prepareBet } from "./actions/prepareBet";
 // import { listPredictions } from "./actions/listPredictions";
+// import { sentai } from "./actions/sentai";
 
 // import { depinDataProvider } from "./providers/depinData";
 // import { weatherDataProvider } from "./providers/weatherDataProvider";
