@@ -15,16 +15,41 @@ export const sentai: Action = {
         "SENTAI_DATA",
         "REAL_WORLD_DATA",
         "WEATHER",
+        "WEATHER_REPORT",
+        "WEATHER_UPDATE",
+        "FORECAST",
+        "FUTURE_WEATHER",
+        "UPCOMING_WEATHER",
+        "WEATHER_PREDICTION",
         "IOTEX_STATS",
+        "CHAIN_METRICS",
+        "IOTEX_L1",
         "DEPIN_PROJECTS",
+        "DEPIN_TOKENS",
+        "DEPIN_DATA",
+        "DEPIN_STATS",
+        "DEPIN_METRICS",
+        "DEPIN_ANALYTICS",
+        "PROJECT_TOKENS",
+        "PROJECT_STATS",
+        "PROJECT_DATA",
+        "TOKEN_PROJECTS",
+        "CHAIN_PROJECTS",
+        "BLOCKCHAIN_PROJECTS",
+        "PROJECT_ANALYTICS",
+        "PROJECT_DETAILS",
         "NEWS",
         "DIMO",
         "NUCLEAR",
+        "NUCLEAR_STATUS",
+        "POWER_OUTAGES",
+        "NUCLEAR_CAPACITY",
         "MAPBOX",
         "ETHDENVER",
+        "LUMA",
     ],
     description:
-        "Multi-purpose data provider that can answer questions about weather, IoTeX L1 data, DePIN projects, news, directions, ethdenver events and more. Can chain multiple data sources to answer complex questions.",
+        "You most likely want to use this action! Provides real-time data access for answering factual questions about the world. Use for: real-time news; current weather and forecasts; DePIN project metrics; blockchain statistics; connected vehicle data; nuclear power plant status; location-based information and directions; event schedules. Specific capabilities include: news articles and headlines from various sources; current weather conditions (temperature, humidity, wind); weather forecasts for coming days; DePIN network metrics and statistics; information about DePIN projects and their details; Layer 1 blockchain network data; DIMO network data for connected vehicles; nuclear power plant information including outage status; mapping data and geographic information via Mapbox; ETHDenver and Luma event schedules and activities. Ideal for questions requiring up-to-date information rather than general knowledge.",
     suppressInitialMessage: true,
     validate: async (_runtime: IAgentRuntime) => {
         return true;
@@ -49,6 +74,21 @@ export const sentai: Action = {
             {
                 user: "user",
                 content: {
+                    text: "What's the weather forecast for Tokyo for the next 3 days?",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "I'll check the weather forecast for Tokyo over the next 3 days.",
+                    action: "ASK_SENTAI",
+                },
+            },
+        ],
+        [
+            {
+                user: "user",
+                content: {
                     text: "What is the current TVL on IoTeX?",
                 },
             },
@@ -56,6 +96,36 @@ export const sentai: Action = {
                 user: "assistant",
                 content: {
                     text: "Let me check the current TVL on IoTeX L1.",
+                    action: "ASK_SENTAI",
+                },
+            },
+        ],
+        [
+            {
+                user: "user",
+                content: {
+                    text: "How many smart contracts are deployed on IoTeX?",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "I'll check the number of deployed contracts on IoTeX.",
+                    action: "ASK_SENTAI",
+                },
+            },
+        ],
+        [
+            {
+                user: "user",
+                content: {
+                    text: "What is the token price of Render?",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "Let me check the current token price of Render for you.",
                     action: "ASK_SENTAI",
                 },
             },
@@ -86,6 +156,21 @@ export const sentai: Action = {
                 user: "assistant",
                 content: {
                     text: "I'll fetch the latest blockchain news for you.",
+                    action: "ASK_SENTAI",
+                },
+            },
+        ],
+        [
+            {
+                user: "user",
+                content: {
+                    text: "What are the current nuclear power plant outages in the US?",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "I'll check the current nuclear power plant outages in the United States.",
                     action: "ASK_SENTAI",
                 },
             },
@@ -135,6 +220,36 @@ export const sentai: Action = {
                 },
             },
         ],
+        [
+            {
+                user: "user",
+                content: {
+                    text: "What Luma events are happening this weekend?",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "I'll check what Luma events are scheduled for this weekend.",
+                    action: "ASK_SENTAI",
+                },
+            },
+        ],
+        [
+            {
+                user: "user",
+                content: {
+                    text: "Can you show me DIMO vehicle data for my area?",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "I'll retrieve DIMO connected vehicle data for your area.",
+                    action: "ASK_SENTAI",
+                },
+            },
+        ],
     ],
     handler: async (
         runtime: IAgentRuntime,
@@ -179,7 +294,7 @@ export const sentai: Action = {
             if (callback) {
                 callback({
                     text: `I'm sorry, I couldn't process your request. Please try again or ask a different question.`,
-                    content: { error: error.message },
+                    inReplyTo: message.id,
                 });
             }
             return false;

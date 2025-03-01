@@ -213,7 +213,7 @@ export const depinDataProvider: Provider = {
                 ${randomProject}
             `;
         } catch (error) {
-            elizaLogger.error("Error in DePIN data provider:", error);
+            elizaLogger.error("Error in DePIN data provider:", error.message);
             return null;
         }
     },
