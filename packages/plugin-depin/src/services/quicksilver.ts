@@ -18,16 +18,30 @@ type QuicksilverTool =
     | "depin-metrics"
     | "depin-projects"
     | "l1data"
-    | "nuclear";
+    | "nuclear"
+    | "mapbox";
+
+type NewsToolParams = {
+    category:
+        | "business"
+        | "entertainment"
+        | "general"
+        | "health"
+        | "science"
+        | "sports"
+        | "technology";
+    q: string;
+};
 
 type ToolParams = {
     "weather-current": { lat: number; lon: number };
     "weather-forecast": { lat: number; lon: number };
-    news: Record<string, never>;
+    news: NewsToolParams;
     "depin-metrics": { isLatest?: boolean };
     "depin-projects": Record<string, never>;
     l1data: Record<string, never>;
     nuclear: { start: string; end: string }; // Format: YYYY-MM-DD
+    mapbox: { location: string };
 };
 
 export async function askQuickSilver(content: string): Promise<string> {

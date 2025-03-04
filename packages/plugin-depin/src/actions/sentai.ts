@@ -8,7 +8,7 @@ import {
 
 import { adaptQSResponse, askQuickSilver } from "../services/quicksilver";
 
-export const sentai: Action = {
+export const askSentai: Action = {
     name: "ASK_SENTAI",
     similes: [
         "SENTAI",

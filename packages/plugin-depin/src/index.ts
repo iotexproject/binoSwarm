@@ -6,11 +6,9 @@ import type { Plugin } from "@elizaos/core";
 // import { placeBet } from "./actions/placeBet";
 // import { prepareBet } from "./actions/prepareBet";
 // import { listPredictions } from "./actions/listPredictions";
-import { sentai } from "./actions/sentai";
+import { askSentai } from "./actions/sentai";
 
-import { depinDataProvider } from "./providers/depinData";
-import { weatherDataProvider } from "./providers/weatherDataProvider";
-import { weatherForecastProvider } from "./providers/weatherForecastProvider";
+import { sentaiProvider } from "./providers/sentai";
 
 // import { predictionEvaluator } from "./evaluators/predictions";
 
@@ -19,20 +17,14 @@ import { weatherForecastProvider } from "./providers/weatherForecastProvider";
 export const depinPlugin: Plugin = {
     name: "depin",
     description: "DePIN plugin",
-    providers: [
-        depinDataProvider,
-        weatherDataProvider,
-        weatherForecastProvider,
-    ],
+    providers: [sentaiProvider],
     evaluators: [
         // Add evaluators here
     ],
     services: [
         // Add services here
     ],
-    actions: [
-        sentai,
-    ],
+    actions: [askSentai],
 };
 
 export default depinPlugin;

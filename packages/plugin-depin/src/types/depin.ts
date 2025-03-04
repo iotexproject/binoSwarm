@@ -3,7 +3,7 @@ export type DepinScanMetrics = {
     total_projects: string;
     market_cap: string;
     total_device: string;
-};
+}[];
 
 export type DepinScanProject = {
     project_name: string;
