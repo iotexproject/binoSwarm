@@ -174,6 +174,11 @@ export async function sendTweet(
     const maxTweetLength = client.twitterConfig.MAX_TWEET_LENGTH;
     const isLongTweet = maxTweetLength > 280;
 
+    if (!content || !content.text) {
+        elizaLogger.error("Cannot send tweet: content or content.text is null");
+        return [];
+    }
+
     const tweetChunks = splitTweetContent(content.text, maxTweetLength);
     const sentTweets: Tweet[] = [];
     let previousTweetId = inReplyTo;
@@ -290,6 +295,10 @@ export async function sendTweet(
 }
 
 function splitTweetContent(content: string, maxLength: number): string[] {
+    if (!content) {
+        return [];
+    }
+
     const paragraphs = content.split("\n\n").map((p) => p.trim());
     const tweets: string[] = [];
     let currentTweet = "";
