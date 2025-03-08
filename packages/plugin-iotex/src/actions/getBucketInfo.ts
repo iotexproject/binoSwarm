@@ -20,11 +20,11 @@ import { GetBucketInfoParams } from "../types";
 export class GetBucketInfoAction {
     constructor(private bucketProvider: IoTeXChainProvider) {}
 
-    async getBucketInfo(bucketId: string): Promise<any> {
-        console.log(`Fetching bucket info for ID: ${bucketId}`);
+    async getBucketInfo(bucketIDs: Number[]): Promise<any> {
+        console.log(`Fetching bucket info for IDs: ${bucketIDs}`);
         try {
             const bucketInfo =
-                await this.bucketProvider.fetchBucketInfo(bucketId);
+                await this.bucketProvider.fetchBucketInfo(bucketIDs);
             return {
                 success: true,
                 bucket: bucketInfo,
@@ -43,7 +43,7 @@ export class GetBucketInfoAction {
 
 export const getBucketInfoAction: Action = {
     name: "get_bucket_info",
-    description: "Retrieve information for a specified IoTeX bucket ID",
+    description: "Retrieve information for an array of IoTeX bucket IDs",
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
@@ -57,7 +57,7 @@ export const getBucketInfoAction: Action = {
             state = await runtime.updateRecentMessageState(state);
         }
 
-        console.log("Bucket Info action handler invoked.");
+        console.log("Buckets Info action handler invoked.");
 
         const bucketProvider = await initIoTeXProvider(runtime);
         const action = new GetBucketInfoAction(bucketProvider);
@@ -74,13 +74,13 @@ export const getBucketInfoAction: Action = {
             schema: GetBucketInfoParams,
         });
 
-        const bucketId = params.object?.bucketId;
-        console.log("Bucket ID:", bucketId);
+        const bucketIDs = params.object?.bucketIDs;
+        console.log("Bucket IDs:", bucketIDs);
 
         // ensure bucket id is found and it's a positive integer
 
-        if (!bucketId || isNaN(parseInt(bucketId))) {
-            const errorMessage = "Bucket ID is required to fetch information.";
+        if (!bucketIDs) {
+            const errorMessage = "Bucket IDs are required to fetch information.";
             console.error(errorMessage);
             if (callback) {
                 callback({
@@ -92,22 +92,24 @@ export const getBucketInfoAction: Action = {
         }
 
         try {
-            const response = await action.getBucketInfo(bucketId);
-            const bucket = response.bucket;
+            const response = await action.getBucketInfo(bucketIDs);
+            const buckets = response.bucket;
             if (callback) {
                 if (response.success) {
                     await callback({
-                        text: `
-                            Here are the staking bucket details:
-                            **Bucket ID**: ${bucket.id}
-                            **Staked Amount**: ${bucket.stakedAmount} IOTX
-                            **StakeLock**: ${bucket.autoStake ? "Enabled" : "Disabled"}
-                            **Created At**: ${bucket.createdAt}
-                            **Stake Start Time**: ${bucket.stakeStartTime}
-                            **Unstake Start Time**: ${bucket.unstakeStartTime || "Not yet initiated"}
-                            **Staked Duration**: ${bucket.stakedDuration} days
-                            `,
-                    });
+                        text:
+                          buckets.map((bucket) => {
+                            return
+                                `**Bucket ID**: ${bucket.id}
+                                **Staked Amount**: ${bucket.stakedAmount} IOTX
+                                **StakeLock**: ${bucket.autoStake ? "Enabled" : "Disabled"}
+                                **Created At**: ${bucket.createdAt}
+                                **Stake Start Time**: ${bucket.stakeStartTime}
+                                **Unstake Start Time**: ${bucket.unstakeStartTime || "Not yet initiated"}
+                                **Staked Duration**: ${bucket.stakedDuration} days`
+                            }).join("\n")}
+                    );
+
                     state = await runtime.updateRecentMessageState(state);
                     const context2 = composeContext({
                         state,

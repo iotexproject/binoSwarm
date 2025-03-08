@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Action parameters
 export const GetBucketInfoParams = z.object({
-    bucketId: z.string().min(1),
+    bucketIDs: z.array(z.number().int()).min(1),
 });
 
 export const ListBucketsParams = z.object({

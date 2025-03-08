@@ -11,6 +11,7 @@ import {
 
 // ABI of the Staking Contract
 import bucketAbi from "../abis/BucketABI.json";
+import { Bucket } from "../types";
 
 export class IoTeXChainProvider {
     private provider: ethers.JsonRpcProvider;
@@ -38,60 +39,49 @@ export class IoTeXChainProvider {
      * @param bucketId - The ID of the bucket to retrieve.
      * @returns - The bucket details from the blockchain.
      */
-    async fetchBucketInfo(bucketId: string): Promise<any> {
-        const cacheKey = `${this.cacheKey}/bucketsInfo/${bucketId}`;
-        const cachedData = await this.getCachedData(cacheKey);
+    async fetchBucketInfo(bucketIDs: number[]): Promise<any[]> {
+        const cacheKey = `${this.cacheKey}/bucketsInfo/${bucketIDs.join(",")}`;
+        const cachedData = await this.getCachedData<any[]>(cacheKey);
 
         if (cachedData) {
-            elizaLogger.log(`Returning cached bucket info for ID: ${bucketId}`);
+            elizaLogger.log(`Returning cached bucket info for IDs: ${bucketIDs}`);
             return cachedData;
         }
 
         try {
-            console.log(
-                `Fetching bucket info for ID: ${bucketId} from IoTeX blockchain...`
-            );
-            const bucketData = await this.contract.bucketsByIndexes([bucketId]);
+            console.log(`Fetching bucket info for IDs: ${bucketIDs} from IoTeX blockchain...`);
 
-            if (!bucketData || bucketData.length === 0) {
-                throw new Error("No bucket data found for this ID");
+            // Fetch all bucket data from the contract
+            const bucketDataArray = await this.contract.bucketsByIndexes(bucketIDs);
+
+            if (!bucketDataArray || bucketDataArray.length === 0) {
+                throw new Error("No bucket data found for these IDs");
             }
 
-            const bucketInfo = bucketData[0]; // Only one bucket is expected
-
-            const formattedBucketInfo = {
-                id: bucketInfo.index.toString(),
-                owner: bucketInfo.owner,
-                candidateAddress: bucketInfo.candidateAddress,
-                stakedAmount: ethers.formatUnits(
-                    bucketInfo.stakedAmount,
-                    "ether"
-                ),
-                stakedDuration: Number(bucketInfo.stakedDuration),
-                createdAt: new Date(
-                    Number(bucketInfo.createTime) * 1000
-                ).toISOString(),
-                stakeStartTime: new Date(
-                    Number(bucketInfo.stakeStartTime) * 1000
-                ).toISOString(),
-                unstakeStartTime: bucketInfo.unstakeStartTime
-                    ? new Date(
-                          Number(bucketInfo.unstakeStartTime) * 1000
-                      ).toISOString()
+            // Format each bucket's data
+            const formattedBuckets = bucketDataArray.map((bucketData: any) => ({
+                id: bucketData.index.toString(),
+                owner: bucketData.owner,
+                candidateAddress: bucketData.candidateAddress,
+                stakedAmount: ethers.formatUnits(bucketData.stakedAmount, "ether"),
+                stakedDuration: Number(bucketData.stakedDuration),
+                createdAt: new Date(Number(bucketData.createTime) * 1000).toISOString(),
+                stakeStartTime: new Date(Number(bucketData.stakeStartTime) * 1000).toISOString(),
+                unstakeStartTime: bucketData.unstakeStartTime
+                    ? new Date(Number(bucketData.unstakeStartTime) * 1000).toISOString()
                     : "",
-                autoStake: bucketInfo.autoStake,
-            };
+                autoStake: bucketData.autoStake,
+            }));
 
-            console.log("Formatted bucket info:", formattedBucketInfo);
+            console.log("Formatted bucket info:", formattedBuckets);
 
-            await this.setCachedData(cacheKey, formattedBucketInfo);
+            // Cache the entire array of bucket info
+            await this.setCachedData(cacheKey, formattedBuckets);
 
             console.log("Bucket info fetched successfully.");
-            return formattedBucketInfo;
+            return formattedBuckets;
         } catch (error) {
-            console.error(
-                `bucketProvider: Error fetching bucket info: ${error}`
-            );
+            console.error(`bucketProvider: Error fetching bucket info: ${error}`);
             throw new Error("Failed to fetch bucket information");
         }
     }
@@ -129,6 +119,10 @@ export class IoTeXChainProvider {
             }
 
             console.log(`Buckets for voter ${ownerAddress}:`);
+
+            // Let's fetch all details for each bucket
+            // this.fetchBucketInfo(bucketsList.map<Number>((b) => b.id));
+
             console.log(IoTeXChainProvider.bucketsListToString(bucketsList));
 
             //await this.setCachedData(cacheKey, bucketsList);
@@ -148,8 +142,8 @@ export class IoTeXChainProvider {
 
         return bucketsList
             .map(
-                (bucket, index) =>
-                    `Bucket ${index + 1}: Index=${bucket.index}, ` +
+                (bucket, _) =>
+                    `Bucket ${bucket.index}: ` +
                     `Staked=${ethers.formatUnits(bucket.stakedAmount, 18)} IOTX, ` +
                     `Duration=${bucket.stakedDuration} days, ` +
                     `Candidate=${bucket.candidateAddress}, ` +
@@ -222,20 +216,23 @@ export const bucketProvider: Provider = {
     ): Promise<string | null> {
         try {
             const provider = await initIoTeXProvider(runtime);
-            const bucketId = (_message as any)?.content?.bucketId;
+            const bucketIDs = (_message as any)?.content?.bucketIDs;
 
-            if (!bucketId) {
-                return "Bucket ID is required to retrieve information.";
+            if (!bucketIDs) {
+                return "Bucket IDs are required to retrieve information.";
             }
 
-            const bucketInfo = await provider.fetchBucketInfo(bucketId);
-            return `Bucket Info:
-            - ID: ${bucketInfo.id}
-            - Owner: ${bucketInfo.owner}
-            - Candidate: ${bucketInfo.candidateAddress}
-            - Staked Amount: ${bucketInfo.stakedAmount} IOTX
-            - Created At: ${bucketInfo.createdAt}
-            - Auto Stake: ${bucketInfo.autoStake ? "Yes" : "No"}`;
+            const bucketsInfo = await provider.fetchBucketInfo(bucketIDs);
+            // Return all buckets info as a string
+            return bucketsInfo
+                .map((bucket) => {
+                    return `Bucket #${bucket.id} Info:
+                        - Owner: ${bucket.owner}
+                        - Candidate: ${bucket.candidateAddress}
+                        - Staked Amount: ${bucket.stakedAmount} IOTX
+                        - Created At: ${bucket.createdAt}
+                        - Auto Stake: ${bucket.autoStake ? "Yes" : "No"}`;
+                }).join("\n");
         } catch (error) {
             console.error("Error in IoTeX Bucket provider:", error);
             return "Failed to retrieve bucket info.";

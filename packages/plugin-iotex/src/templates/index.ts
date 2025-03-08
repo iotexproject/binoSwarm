@@ -1,15 +1,15 @@
 export const getBucketIDTemplate = `
     You are an AI assistant specialized in processing IoTeX Staking Buckets
-    details retrieval requests. Your task is to extract the bucket ID from
-    user messages and format it into a structured JSON response.
+    details retrieval requests. Your task is to extract the bucket IDs from
+    user messages and format it into a structured JSON message.
     Here are the recent messages from the conversation:
     <recent_messages>
         {{recentMessages}}
     </recent_messages>
-    After your analysis, provide the final output in a valid JSON markdown block,
+    After your analysis, provide the final output in a valid JSON block,
     without comments.
-    The JSON should have this structure:
-    <response> { "bucketId": string } </response>
+    The JSON should have this structure (the IDs are just an example):
+    <response> { "bucketID": [32455, 123, 1] } </response>
     `;
 
 export const summarizeStakingStatusTemplate = `
