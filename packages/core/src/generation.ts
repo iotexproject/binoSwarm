@@ -85,7 +85,6 @@ export async function generateText({
     tools = {},
     onStepFinish,
     maxSteps = 1,
-    stop,
     customSystemPrompt,
     messages,
 }: {
@@ -135,7 +134,6 @@ export async function generateText({
         frequencyPenalty: freq,
         presencePenalty: pres,
         experimental_telemetry: tel,
-        stopSequences: stop || settings.stop,
     });
 
     elizaLogger.debug("generateText result:", result.text);
