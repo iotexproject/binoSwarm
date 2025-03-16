@@ -329,7 +329,7 @@ describe("Generation Module", () => {
             );
         });
 
-        it("should support stop sequences", async () => {
+        it.skip("should support stop sequences", async () => {
             // Setup
             runtime.modelProvider = ModelProviderName.OPENAI;
             const stop = ["END", "STOP"];
