@@ -135,7 +135,6 @@ export async function generateText({
         frequencyPenalty: freq,
         presencePenalty: pres,
         experimental_telemetry: tel,
-        stopSequences: stop || settings.stop,
     });
 
     elizaLogger.debug("generateText result:", result.text);
