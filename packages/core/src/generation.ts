@@ -85,7 +85,6 @@ export async function generateText({
     tools = {},
     onStepFinish,
     maxSteps = 1,
-    stop,
     customSystemPrompt,
     messages,
 }: {
