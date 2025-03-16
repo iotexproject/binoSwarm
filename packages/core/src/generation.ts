@@ -57,6 +57,7 @@ type GenerationOptions = {
     verifiableInference?: boolean;
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
     verifiableInferenceOptions?: VerifiableInferenceOptions;
+    customSystemPrompt?: string;
 };
 
 type ModelSettings = {
@@ -137,6 +138,7 @@ export async function generateText({
         stopSequences: stop || settings.stop,
     });
 
+    elizaLogger.debug("generateText result:", result.text);
     return result.text;
 }
 
@@ -328,7 +330,6 @@ export async function generateMessageResponse({
             schemaName: "Content",
             schemaDescription: "Message content structure",
         });
-        elizaLogger.debug("generateMessageResponse result:", result.object);
         return result.object;
     } catch (error) {
         elizaLogger.error("Error in generateMessageResponse:", error);
@@ -819,6 +820,7 @@ export async function generateObject<T>({
     schemaName,
     schemaDescription,
     stop,
+    customSystemPrompt,
 }: GenerationOptions): Promise<GenerateObjectResult<T>> {
     if (!context) {
         throw new Error("generateObject context is empty");
@@ -850,9 +852,11 @@ export async function generateObject<T>({
         schema,
         schemaName,
         schemaDescription,
+        system: customSystemPrompt ?? runtime.character?.system ?? undefined,
         ...modelOptions,
     });
 
+    elizaLogger.debug("generateObject result:", result.object);
     schema.parse(result.object);
     return result;
 }
