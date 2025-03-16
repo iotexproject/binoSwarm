@@ -227,7 +227,7 @@ export async function generateTrueOrFalse({
 
     const modelSettings = getModelSettings(runtime.modelProvider, modelClass);
     const stop = Array.from(
-        new Set([...(modelSettings.stop || []), ["\n"]])
+        new Set([...(modelSettings.stop || []), "\n"])
     ) as string[];
 
     while (retryCount < MAX_RETRIES) {
