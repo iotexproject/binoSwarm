@@ -59,13 +59,11 @@ export const continueAction: Action = {
     description:
         "ONLY use this action when the message necessitates a follow up. Do not use this action when the conversation is finished or the user does not wish to speak (use IGNORE instead). If the last message action was CONTINUE, and the user has not responded. Use sparingly.",
     validate: async (runtime: IAgentRuntime, message: Memory) => {
-        console.time("continue-action");
         const recentMessagesData = await runtime.messageManager.getMemories({
             roomId: message.roomId,
             count: 10,
             unique: false,
         });
-        console.timeEnd("continue-action");
         const agentMessages = recentMessagesData.filter(
             (m: { userId: any }) => m.userId === runtime.agentId
         );

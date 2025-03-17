@@ -51,12 +51,10 @@ export const followRoomAction: Action = {
             return false;
         }
         const roomId = message.roomId;
-        console.time("follow-room-action");
         const userState = await runtime.databaseAdapter.getParticipantUserState(
             roomId,
             runtime.agentId
         );
-        console.timeEnd("follow-room-action");
         return userState !== "FOLLOWED" && userState !== "MUTED";
     },
     handler: async (runtime: IAgentRuntime, message: Memory) => {

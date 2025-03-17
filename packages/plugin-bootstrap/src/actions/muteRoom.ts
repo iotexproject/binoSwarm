@@ -38,12 +38,10 @@ export const muteRoomAction: Action = {
         "Mutes a room, ignoring all messages unless explicitly mentioned. Only do this if explicitly asked to, or if you're annoying people.",
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         const roomId = message.roomId;
-        console.time("muteroom-action");
         const userState = await runtime.databaseAdapter.getParticipantUserState(
             roomId,
             runtime.agentId
         );
-        console.timeEnd("muteroom-action");
         return userState !== "MUTED";
     },
     handler: async (runtime: IAgentRuntime, message: Memory) => {

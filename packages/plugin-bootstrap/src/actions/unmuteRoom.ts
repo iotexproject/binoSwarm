@@ -36,12 +36,10 @@ export const unmuteRoomAction: Action = {
         "Unmutes a room, allowing the agent to consider responding to messages again.",
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         const roomId = message.roomId;
-        console.time("unmute-room-action");
         const userState = await runtime.databaseAdapter.getParticipantUserState(
             roomId,
             runtime.agentId
         );
-        console.timeEnd("unmute-room-action");
         return userState === "MUTED";
     },
     handler: async (runtime: IAgentRuntime, message: Memory) => {
