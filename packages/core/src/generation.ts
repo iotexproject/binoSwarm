@@ -313,8 +313,16 @@ export async function generateMessageResponse({
     modelClass: ModelClass;
 }): Promise<Content> {
     const contentSchema = z.object({
-        responseAnalysis: z.string(),
-        text: z.string().describe("Cleaned up response for the user."),
+        responseAnalysis: z
+            .string()
+            .describe(
+                "Any type of analysis and resoning for response generation comes here."
+            ),
+        text: z
+            .string()
+            .describe(
+                "Cleaned up response for the user. It should not include any analysis, reasoning or action names, it will be directly sent to the user."
+            ),
         user: z.string().describe("Your name as a character."),
         action: z.string().describe("The action to take."),
     });
