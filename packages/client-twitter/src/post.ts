@@ -1,7 +1,6 @@
 import { Tweet } from "agent-twitter-client";
 import {
     composeContext,
-    generateText,
     getEmbeddingZeroVector,
     IAgentRuntime,
     ModelClass,
@@ -9,13 +8,13 @@ import {
     TemplateType,
     UUID,
     truncateToCompleteSentence,
-    parseTagContent,
     elizaLogger,
     generateTweetActions,
     IImageDescriptionService,
     ServiceType,
     State,
     ActionResponse,
+    generateMessageResponse,
 } from "@elizaos/core";
 import {
     Client,
@@ -463,28 +462,14 @@ export class TwitterPostClient {
         );
         elizaLogger.debug("generate new tweet content:\n" + newTweetContent);
 
-        let cleanedContent = this.extractResponse(newTweetContent);
-        cleanedContent = this.truncateNewTweet(maxTweetLength, cleanedContent);
+        let cleanedContent = this.truncateNewTweet(
+            maxTweetLength,
+            newTweetContent
+        );
         cleanedContent = this.fixNewLines(cleanedContent);
         cleanedContent = this.removeQuotes(cleanedContent);
 
         return cleanedContent;
-    }
-
-    private extractResponse(rawResponse: string) {
-        const extractedResponse = parseTagContent(rawResponse, "response");
-
-        if (!extractedResponse) {
-            elizaLogger.error(
-                "Failed to extract valid content from response:",
-                {
-                    rawResponse,
-                }
-            );
-            throw new Error("Failed to extract valid content from response");
-        }
-
-        return extractedResponse;
     }
 
     private async generateNewTweetContent(
@@ -496,11 +481,13 @@ export class TwitterPostClient {
             maxTweetLength
         );
 
-        return generateText({
+        const { text } = await generateMessageResponse({
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
         });
+
+        return text;
     }
 
     private async composeNewTweetContext(roomId: UUID, maxTweetLength: number) {
@@ -546,46 +533,15 @@ export class TwitterPostClient {
                 twitterPostTemplate,
         });
 
-        elizaLogger.info("generate post prompt:\n" + context);
+        elizaLogger.debug("generate post prompt:\n" + context);
 
-        const response = await generateText({
+        const response = await generateMessageResponse({
             runtime: this.runtime,
             context: options?.context || context,
             modelClass: ModelClass.LARGE,
         });
-        elizaLogger.info("generate tweet content response:\n" + response);
-        const cleanedResponse = parseTagContent(response, "response");
 
-        elizaLogger.info(
-            "generate tweet content response cleaned:\n" + cleanedResponse
-        );
-        // Try to parse as JSON first
-        try {
-            const jsonResponse = JSON.parse(cleanedResponse);
-            elizaLogger.info(
-                "generate tweet content response text:\n" + jsonResponse.text
-            );
-            if (jsonResponse.text || jsonResponse.text === "") {
-                return this.trimTweetLength(jsonResponse.text);
-            }
-            if (typeof jsonResponse === "object") {
-                const possibleContent =
-                    jsonResponse.content ||
-                    jsonResponse.message ||
-                    jsonResponse.response;
-                if (possibleContent) {
-                    return this.trimTweetLength(possibleContent);
-                }
-            }
-        } catch (error) {
-            error.linted = true; // make linter happy since catch needs a variable
-
-            // If JSON parsing fails, treat as plain text
-            elizaLogger.debug("Response is not JSON, treating as plain text");
-        }
-
-        // If not JSON or no valid content found, clean the raw text
-        return this.trimTweetLength(cleanedResponse);
+        return this.trimTweetLength(response.text);
     }
 
     // Helper method to ensure tweet length compliance
