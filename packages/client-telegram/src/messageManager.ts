@@ -1165,9 +1165,13 @@ export class MessageManager {
         }
     }
     private initializeCommands(): void {
-        this.bot.command("start", (ctx: Context) =>
-            this.handleStartCommand(ctx)
-        );
+        try {
+            this.bot.command("start", async (ctx: Context) => {
+                await this.handleStartCommand(ctx);
+            });
+        } catch (error) {
+            elizaLogger.error("Error handling start command:", error);
+        }
     }
 
     private async handleStartCommand(ctx: Context): Promise<void> {
