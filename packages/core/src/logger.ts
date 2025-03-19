@@ -1,4 +1,4 @@
-class ElizaLogger {
+export class ElizaLogger {
     constructor() {
         // Check if we're in Node.js environment
         this.isNode =
