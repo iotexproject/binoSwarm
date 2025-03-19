@@ -1,5 +1,6 @@
 import {
     composeContext,
+    elizaLogger,
     generateObject,
     getModelSettings,
 } from "@elizaos/core";
@@ -65,7 +66,7 @@ const getAttachmentIds = async (
             schemaName: "attachmentIds",
             schemaDescription: "The objective and attachment IDs",
         });
-        console.log("response", response);
+        elizaLogger.log("response", response);
         // try parsing to a json object
         const parsedResponse = attachmentIdsSchema.parse(response.object);
         // see if it contains objective and attachmentIds
@@ -157,7 +158,7 @@ const summarizeAction = {
         // 1. extract attachment IDs from the message
         const attachmentData = await getAttachmentIds(runtime, message, state);
         if (!attachmentData) {
-            console.error("Couldn't get attachment IDs from message");
+            elizaLogger.error("Couldn't get attachment IDs from message");
             return;
         }
 
@@ -221,7 +222,7 @@ const summarizeAction = {
         currentSummary = currentSummary + "\n" + summary;
 
         if (!currentSummary) {
-            console.error("No summary found, that's not good!");
+            elizaLogger.error("No summary found, that's not good!");
             return;
         }
 
@@ -242,7 +243,7 @@ ${currentSummary.trim()}
 
             try {
                 // Debug: Log before file operations
-                console.log("Creating summary file:", {
+                elizaLogger.log("Creating summary file:", {
                     filename: summaryFilename,
                     summaryLength: currentSummary.length,
                 });
@@ -253,11 +254,11 @@ ${currentSummary.trim()}
                     currentSummary,
                     "utf8"
                 );
-                console.log("File written successfully");
+                elizaLogger.log("File written successfully");
 
                 // Then cache it
                 await runtime.cacheManager.set(summaryFilename, currentSummary);
-                console.log("Cache set operation completed");
+                elizaLogger.log("Cache set operation completed");
 
                 await callback(
                     {
@@ -266,13 +267,13 @@ ${currentSummary.trim()}
                     },
                     [summaryFilename]
                 );
-                console.log("Callback completed with summary file");
+                elizaLogger.log("Callback completed with summary file");
             } catch (error) {
-                console.error("Error in file/cache process:", error);
+                elizaLogger.error("Error in file/cache process:", error);
                 throw error;
             }
         } else {
-            console.warn(
+            elizaLogger.warn(
                 "Empty response from chat with attachments action, skipping"
             );
         }

@@ -108,14 +108,15 @@ describe("DiscordClient", () => {
             "guildCreate",
             expect.any(Function)
         );
-        expect(discordClient.client.on).toHaveBeenCalledWith(
-            Events.MessageReactionAdd,
-            expect.any(Function)
-        );
-        expect(discordClient.client.on).toHaveBeenCalledWith(
-            Events.MessageReactionRemove,
-            expect.any(Function)
-        );
+        // We disabled reactions for now, too much noise
+        // expect(discordClient.client.on).toHaveBeenCalledWith(
+        //     Events.MessageReactionAdd,
+        //     expect.any(Function)
+        // );
+        // expect(discordClient.client.on).toHaveBeenCalledWith(
+        //     Events.MessageReactionRemove,
+        //     expect.any(Function)
+        // );
         expect(discordClient.client.on).toHaveBeenCalledWith(
             "voiceStateUpdate",
             expect.any(Function)

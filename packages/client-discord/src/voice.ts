@@ -205,7 +205,7 @@ export class VoiceManager extends EventEmitter {
                 this.streams.clear();
                 this.activeMonitors.clear();
             } catch (error) {
-                console.error("Error leaving voice channel:", error);
+                elizaLogger.error("Error leaving voice channel:", error);
             }
         }
 
@@ -309,7 +309,7 @@ export class VoiceManager extends EventEmitter {
                     try {
                         user = await channel.guild.members.fetch(userId);
                     } catch (error) {
-                        console.error("Failed to fetch user:", error);
+                        elizaLogger.error("Failed to fetch user:", error);
                     }
                 }
                 if (user && !user?.user.bot) {
@@ -399,25 +399,25 @@ export class VoiceManager extends EventEmitter {
             opusDecoder as any,
             (err: Error | null) => {
                 if (err) {
-                    console.log(`Opus decoding pipeline error: ${err}`);
+                    elizaLogger.log(`Opus decoding pipeline error: ${err}`);
                 }
             }
         );
         this.streams.set(userId, opusDecoder);
         this.connections.set(userId, connection as VoiceConnection);
         opusDecoder.on("error", (err: any) => {
-            console.log(`Opus decoding error: ${err}`);
+            elizaLogger.log(`Opus decoding error: ${err}`);
         });
         const errorHandler = (err: any) => {
-            console.log(`Opus decoding error: ${err}`);
+            elizaLogger.log(`Opus decoding error: ${err}`);
         };
         const streamCloseHandler = () => {
-            console.log(`voice stream from ${member?.displayName} closed`);
+            elizaLogger.log(`voice stream from ${member?.displayName} closed`);
             this.streams.delete(userId);
             this.connections.delete(userId);
         };
         const closeHandler = () => {
-            console.log(`Opus decoder for ${member?.displayName} closed`);
+            elizaLogger.log(`Opus decoder for ${member?.displayName} closed`);
             opusDecoder.removeListener("error", errorHandler);
             opusDecoder.removeListener("close", closeHandler);
             receiveStream?.removeListener("close", streamCloseHandler);
@@ -453,7 +453,7 @@ export class VoiceManager extends EventEmitter {
             }
         }
 
-        console.log(`Left voice channel: ${channel.name} (${channel.id})`);
+        elizaLogger.log(`Left voice channel: ${channel.name} (${channel.id})`);
     }
 
     stopMonitoringMember(memberId: string) {
@@ -462,12 +462,12 @@ export class VoiceManager extends EventEmitter {
             monitorInfo.monitor.stop();
             this.activeMonitors.delete(memberId);
             this.streams.delete(memberId);
-            console.log(`Stopped monitoring user ${memberId}`);
+            elizaLogger.log(`Stopped monitoring user ${memberId}`);
         }
     }
 
     async handleGuildCreate(guild: Guild) {
-        console.log(`Joined guild ${guild.name}`);
+        elizaLogger.log(`Joined guild ${guild.name}`);
         // this.scanGuild(guild);
     }
 
@@ -524,7 +524,7 @@ export class VoiceManager extends EventEmitter {
         channel: BaseGuildVoiceChannel,
         audioStream: Readable
     ) {
-        console.log(`Starting audio monitor for user: ${userId}`);
+        elizaLogger.log(`Starting audio monitor for user: ${userId}`);
         if (!this.userStates.has(userId)) {
             this.userStates.set(userId, {
                 buffers: [],
@@ -548,7 +548,7 @@ export class VoiceManager extends EventEmitter {
                     channel
                 );
             } catch (error) {
-                console.error(
+                elizaLogger.error(
                     `Error processing buffer for user ${userId}:`,
                     error
                 );
@@ -565,7 +565,7 @@ export class VoiceManager extends EventEmitter {
             },
             async (buffer) => {
                 if (!buffer) {
-                    console.error("Received empty buffer");
+                    elizaLogger.error("Received empty buffer");
                     return;
                 }
                 await processBuffer(buffer);
@@ -589,7 +589,7 @@ export class VoiceManager extends EventEmitter {
             state.totalLength = 0;
             // Convert Opus to WAV
             const wavBuffer = await this.convertOpusToWav(inputBuffer);
-            console.log("Starting transcription...");
+            elizaLogger.log("Starting transcription...");
 
             const transcriptionText = await this.runtime
                 .getService<ITranscriptionService>(ServiceType.TRANSCRIPTION)
@@ -618,7 +618,7 @@ export class VoiceManager extends EventEmitter {
                 );
             }
         } catch (error) {
-            console.error(
+            elizaLogger.error(
                 `Error transcribing audio for user ${userId}:`,
                 error
             );
@@ -718,7 +718,7 @@ export class VoiceManager extends EventEmitter {
             );
 
             const callback: HandlerCallback = async (content: Content) => {
-                console.log("callback content: ", content);
+                elizaLogger.log("callback content: ", content);
                 const { roomId } = memory;
 
                 const responseMemory: Memory = {
@@ -757,7 +757,7 @@ export class VoiceManager extends EventEmitter {
 
                     await this.runtime.evaluate(memory, state);
                 } else {
-                    console.warn("Empty response, skipping");
+                    elizaLogger.warn("Empty response, skipping");
                 }
                 return [responseMemory];
             };
@@ -774,7 +774,7 @@ export class VoiceManager extends EventEmitter {
                 return null;
             }
 
-            console.log("responseMemories: ", responseMemories);
+            elizaLogger.log("responseMemories: ", responseMemories);
 
             await this.runtime.processActions(
                 memory,
@@ -783,7 +783,7 @@ export class VoiceManager extends EventEmitter {
                 callback
             );
         } catch (error) {
-            console.error("Error processing transcribed text:", error);
+            elizaLogger.error("Error processing transcribed text:", error);
         }
     }
 
@@ -800,7 +800,7 @@ export class VoiceManager extends EventEmitter {
 
             return wavBuffer;
         } catch (error) {
-            console.error("Error converting PCM to WAV:", error);
+            elizaLogger.error("Error converting PCM to WAV:", error);
             throw error;
         }
     }
@@ -857,7 +857,7 @@ export class VoiceManager extends EventEmitter {
         } else if (response === "STOP") {
             return false;
         } else {
-            console.error(
+            elizaLogger.error(
                 "Invalid response from response generateText:",
                 response
             );
@@ -975,20 +975,23 @@ export class VoiceManager extends EventEmitter {
             }
 
             if (chosenChannel) {
-                console.log(`Joining channel: ${chosenChannel.name}`);
+                elizaLogger.log(`Joining channel: ${chosenChannel.name}`);
                 await this.joinChannel(chosenChannel);
             } else {
-                console.warn("No suitable voice channel found to join.");
+                elizaLogger.warn("No suitable voice channel found to join.");
             }
         } catch (error) {
-            console.error("Error selecting or joining a voice channel:", error);
+            elizaLogger.error(
+                "Error selecting or joining a voice channel:",
+                error
+            );
         }
     }
 
     async playAudioStream(userId: UUID, audioStream: Readable) {
         const connection = this.connections.get(userId);
         if (connection == null) {
-            console.log(`No connection for user ${userId}`);
+            elizaLogger.log(`No connection for user ${userId}`);
             return;
         }
         this.cleanupAudioPlayer(this.activeAudioPlayer);
@@ -1008,7 +1011,7 @@ export class VoiceManager extends EventEmitter {
         audioPlayer.play(resource);
 
         audioPlayer.on("error", (err: any) => {
-            console.log(`Audio player error: ${err}`);
+            elizaLogger.log(`Audio player error: ${err}`);
         });
 
         audioPlayer.on(
@@ -1016,7 +1019,7 @@ export class VoiceManager extends EventEmitter {
             (_oldState: any, newState: { status: string }) => {
                 if (newState.status == "idle") {
                     const idleTime = Date.now();
-                    console.log(
+                    elizaLogger.log(
                         `Audio playback took: ${idleTime - audioStartTime}ms`
                     );
                 }
@@ -1070,11 +1073,11 @@ export class VoiceManager extends EventEmitter {
                 `Joined voice channel: ${voiceChannel.name}`
             );
         } catch (error) {
-            console.error("Error joining voice channel:", error);
+            elizaLogger.error("Error joining voice channel:", error);
             // Use editReply instead of reply for the error case
             await interaction
                 .editReply("Failed to join the voice channel.")
-                .catch(console.error);
+                .catch(elizaLogger.error);
         }
     }
 
@@ -1090,7 +1093,7 @@ export class VoiceManager extends EventEmitter {
             connection.destroy();
             await interaction.reply("Left the voice channel.");
         } catch (error) {
-            console.error("Error leaving voice channel:", error);
+            elizaLogger.error("Error leaving voice channel:", error);
             await interaction.reply("Failed to leave the voice channel.");
         }
     }

@@ -1,4 +1,4 @@
-class ElizaLogger {
+export class ElizaLogger {
     constructor() {
         // Check if we're in Node.js environment
         this.isNode =
@@ -29,6 +29,34 @@ class ElizaLogger {
     successesTitle = "SUCCESS";
     debugsTitle = "DEBUG";
     assertsTitle = "ASSERT";
+
+    // Add structured logging options
+    useStructuredLogs = true; // Enable JSON structured logging
+    logLabels: Record<string, string> = {}; // Additional labels to include in logs
+
+    // Method to set additional log labels
+    setLogLabels(labels: Record<string, string>) {
+        this.logLabels = { ...this.logLabels, ...labels };
+        return this;
+    }
+
+    #formatStructuredLog(
+        level: string,
+        message: any,
+        additionalData?: Record<string, any>
+    ) {
+        const timestamp = new Date().toISOString();
+        const logObject = {
+            timestamp,
+            level,
+            message:
+                typeof message === "object" ? JSON.stringify(message) : message,
+            ...this.logLabels,
+            ...additionalData,
+        };
+
+        return JSON.stringify(logObject);
+    }
 
     #getColor(foregroundColor = "", backgroundColor = "") {
         if (!this.isNode) {
@@ -146,10 +174,50 @@ class ElizaLogger {
             bg: string;
             icon: string;
             groupTitle: string;
+            level: string;
         }
     ) {
-        const { fg, bg, icon, groupTitle } = options;
+        const { fg, bg, icon, groupTitle, level } = options;
 
+        // Handle structured logging if enabled
+        if (this.useStructuredLogs) {
+            if (strings.length === 1 && typeof strings[0] !== "object") {
+                // Simple message
+                const structuredLog = this.#formatStructuredLog(
+                    level,
+                    strings[0]
+                );
+                console.log(structuredLog);
+            } else if (strings.length === 1 && typeof strings[0] === "object") {
+                // Object log
+                const structuredLog = this.#formatStructuredLog(
+                    level,
+                    "",
+                    strings[0]
+                );
+                console.log(structuredLog);
+            } else {
+                // Multiple entries
+                const message = strings[0] || "";
+                const additionalData = strings
+                    .slice(1)
+                    .reduce((acc, item, index) => {
+                        acc[`data_${index}`] = item;
+                        return acc;
+                    }, {});
+                const structuredLog = this.#formatStructuredLog(
+                    level,
+                    message,
+                    additionalData
+                );
+                console.log(structuredLog);
+            }
+
+            if (this.closeByNewLine) console.log("");
+            return;
+        }
+
+        // Original styling logic for non-structured logging
         if (strings.length > 1) {
             if (this.isNode) {
                 const c = this.#getColor(fg, bg);
@@ -187,6 +255,7 @@ class ElizaLogger {
             bg: "",
             icon: "\u25ce",
             groupTitle: ` ${this.logsTitle}`,
+            level: "info",
         });
     }
 
@@ -196,6 +265,7 @@ class ElizaLogger {
             bg: "",
             icon: "\u26a0",
             groupTitle: ` ${this.warningsTitle}`,
+            level: "warn",
         });
     }
 
@@ -205,6 +275,7 @@ class ElizaLogger {
             bg: "",
             icon: "\u26D4",
             groupTitle: ` ${this.errorsTitle}`,
+            level: "error",
         });
     }
 
@@ -214,16 +285,12 @@ class ElizaLogger {
             bg: "",
             icon: "\u2139",
             groupTitle: ` ${this.informationsTitle}`,
+            level: "info",
         });
     }
 
     debug(...strings) {
         if (!this.verbose) {
-            // for diagnosing verbose logging issues
-            // console.log(
-            //     "[ElizaLogger] Debug message suppressed (verbose=false):",
-            //     ...strings
-            // );
             return;
         }
         this.#logWithStyle(strings, {
@@ -231,6 +298,7 @@ class ElizaLogger {
             bg: "",
             icon: "\u1367",
             groupTitle: ` ${this.debugsTitle}`,
+            level: "debug",
         });
     }
 
@@ -240,6 +308,7 @@ class ElizaLogger {
             bg: "",
             icon: "\u2713",
             groupTitle: ` ${this.successesTitle}`,
+            level: "success",
         });
     }
 
@@ -249,6 +318,7 @@ class ElizaLogger {
             bg: "",
             icon: "\u0021",
             groupTitle: ` ${this.assertsTitle}`,
+            level: "assert",
         });
     }
 
@@ -267,5 +337,6 @@ class ElizaLogger {
 export const elizaLogger = new ElizaLogger();
 elizaLogger.closeByNewLine = true;
 elizaLogger.useIcons = true;
+elizaLogger.useStructuredLogs = true; // Enable structured logging by default
 
 export default elizaLogger;

@@ -74,14 +74,14 @@ export class DePINScanProvider {
         const cacheKey = "depinscanDailyMetrics";
         const cachedData = await this.getCachedData<DepinScanMetrics>(cacheKey);
         if (cachedData) {
-            console.log("Returning cached DePINScan daily metrics");
+            elizaLogger.log("Returning cached DePINScan daily metrics");
             return cachedData;
         }
 
         const metrics = await this.fetchDepinscanMetrics();
 
         this.setCachedData<DepinScanMetrics>(cacheKey, metrics);
-        console.log("DePIN daily metrics cached");
+        elizaLogger.log("DePIN daily metrics cached");
 
         return metrics;
     }
@@ -119,7 +119,7 @@ export class DePINScanProvider {
         const cachedData =
             await this.getCachedData<DepinScanProject[]>(cacheKey);
         if (cachedData) {
-            console.log("Returning cached DePINScan projects");
+            elizaLogger.log("Returning cached DePINScan projects");
             return cachedData;
         }
 
@@ -127,7 +127,7 @@ export class DePINScanProvider {
         const parsedProjects = this.parseProjects(projects);
 
         this.setCachedData<DepinScanProject[]>(cacheKey, parsedProjects);
-        console.log("DePINScan projects cached");
+        elizaLogger.log("DePINScan projects cached");
 
         return parsedProjects;
     }

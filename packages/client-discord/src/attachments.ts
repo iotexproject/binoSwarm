@@ -1,4 +1,4 @@
-import { generateObject, trimTokens } from "@elizaos/core";
+import { generateObject, trimTokens, elizaLogger } from "@elizaos/core";
 import {
     IAgentRuntime,
     IImageDescriptionService,
@@ -168,7 +168,7 @@ export class AttachmentManager {
                 text: transcription || "Audio/video content not available",
             };
         } catch (error) {
-            console.error(
+            elizaLogger.error(
                 `Error processing audio/video attachment: ${error.message}`
             );
             return {
@@ -245,7 +245,9 @@ export class AttachmentManager {
                 text: text,
             };
         } catch (error) {
-            console.error(`Error processing PDF attachment: ${error.message}`);
+            elizaLogger.error(
+                `Error processing PDF attachment: ${error.message}`
+            );
             return {
                 id: attachment.id,
                 url: attachment.url,
@@ -278,7 +280,7 @@ export class AttachmentManager {
                 text: text,
             };
         } catch (error) {
-            console.error(
+            elizaLogger.error(
                 `Error processing plaintext attachment: ${error.message}`
             );
             return {
@@ -310,7 +312,7 @@ export class AttachmentManager {
                 text: description || "Image content not available",
             };
         } catch (error) {
-            console.error(
+            elizaLogger.error(
                 `Error processing image attachment: ${error.message}`
             );
             return this.createFallbackImageMedia(attachment);

@@ -60,24 +60,24 @@ async function handler(
             z.object({
                 id: z.string().describe("The id of the goal"),
                 status: z
-                .enum(["IN_PROGRESS", "DONE", "FAILED"])
-                .optional()
-                .describe("The status of the goal"),
-            objectives: z
-                .array(
-                    z.object({
-                        description: z
-                            .string()
-                            .describe("The description of the objective"),
-                        completed: z
-                            .boolean()
-                            .describe(
-                                "Whether the objective has been completed"
-                            ),
-                    })
-                )
-                .optional()
-                .describe("The objectives of the goal"),
+                    .enum(["IN_PROGRESS", "DONE", "FAILED"])
+                    .optional()
+                    .describe("The status of the goal"),
+                objectives: z
+                    .array(
+                        z.object({
+                            description: z
+                                .string()
+                                .describe("The description of the objective"),
+                            completed: z
+                                .boolean()
+                                .describe(
+                                    "Whether the objective has been completed"
+                                ),
+                        })
+                    )
+                    .optional()
+                    .describe("The objectives of the goal"),
             })
         ),
     });

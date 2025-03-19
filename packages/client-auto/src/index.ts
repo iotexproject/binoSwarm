@@ -23,7 +23,7 @@ export const AutoClientInterface: Client = {
         return client;
     },
     stop: async (_runtime: IAgentRuntime) => {
-        console.warn("Direct client does not support stopping yet");
+        elizaLogger.warn("Direct client does not support stopping yet");
     },
 };
 

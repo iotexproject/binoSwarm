@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { parseTagContent } from "../helpers/parsers";
 
-describe.only("Parsers", () => {
+describe("Parsers", () => {
     describe("Location", () => {
         it("should parse location", () => {
             const location = parseTagContent(

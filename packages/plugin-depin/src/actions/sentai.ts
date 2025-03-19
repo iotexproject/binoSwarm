@@ -4,8 +4,8 @@ import {
     Memory,
     State,
     HandlerCallback,
+    elizaLogger,
 } from "@elizaos/core";
-
 import { adaptQSResponse, askQuickSilver } from "../services/quicksilver";
 
 export const askSentai: Action = {
@@ -290,7 +290,7 @@ export const askSentai: Action = {
 
             return true;
         } catch (error) {
-            console.error("Error in Sentai data provider:", error);
+            elizaLogger.error("Error in Sentai data provider:", error);
             if (callback) {
                 callback({
                     text: `I'm sorry, I couldn't process your request. Please try again or ask a different question.`,

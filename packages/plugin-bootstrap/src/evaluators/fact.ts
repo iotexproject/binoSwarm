@@ -144,11 +144,9 @@ export const factEvaluator: Evaluator = {
 
         message: Memory
     ): Promise<boolean> => {
-        console.time("get-facts-evaluate");
         const messageCount = (await runtime.messageManager.countMemories(
             message.roomId
         )) as number;
-        console.timeEnd("get-facts-evaluate");
 
         const reflectionCount = Math.ceil(runtime.getConversationLength() / 2);
 

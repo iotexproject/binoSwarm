@@ -366,7 +366,7 @@ export class MessageManager {
                 !message.mentions.has(this.client.user.id) &&
                 !hasInterest
             ) {
-                console.log("Ignoring muted room");
+                elizaLogger.log("Ignoring muted room");
                 // Ignore muted rooms unless explicitly mentioned
                 return;
             }
@@ -460,7 +460,7 @@ export class MessageManager {
                         }
                         return memories;
                     } catch (error) {
-                        console.error("Error sending message:", error);
+                        elizaLogger.error("Error sending message:", error);
                         return [];
                     }
                 };
@@ -478,7 +478,7 @@ export class MessageManager {
             }
             await this.runtime.evaluate(memory, state, shouldRespond);
         } catch (error) {
-            console.error("Error handling message:", error);
+            elizaLogger.error("Error handling message:", error);
             if (message.channel.type === ChannelType.GuildVoice) {
                 // For voice channels, use text-to-speech for the error message
                 const errorMessage = "Sorry, I had a glitch. What was that?";
@@ -497,7 +497,7 @@ export class MessageManager {
                 await this.voiceManager.playAudioStream(userId, audioStream);
             } else {
                 // For text channels, send the error message
-                console.error("Error sending message:", error);
+                elizaLogger.error("Error sending message:", error);
             }
         }
     }
@@ -1263,7 +1263,7 @@ export class MessageManager {
             delete this.interestChannels[message.channelId];
             return false;
         } else {
-            console.error(
+            elizaLogger.error(
                 "Invalid response from response generateText:",
                 parsedResponse
             );

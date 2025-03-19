@@ -11,6 +11,7 @@ vi.mock("@elizaos/core", async () => {
             info: vi.fn(),
             warn: vi.fn(),
             error: vi.fn(),
+            log: vi.fn(),
         },
     };
 });

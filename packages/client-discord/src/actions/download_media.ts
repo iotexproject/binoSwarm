@@ -1,5 +1,5 @@
 import path from "path";
-import { composeContext, generateObject } from "@elizaos/core";
+import { composeContext, elizaLogger, generateObject } from "@elizaos/core";
 import {
     Action,
     ActionExample,
@@ -96,7 +96,7 @@ export default {
 
         const mediaUrl = await getMediaUrl(runtime, message, state);
         if (!mediaUrl) {
-            console.error("Couldn't get media URL from messages");
+            elizaLogger.error("Couldn't get media URL from messages");
             return;
         }
 
@@ -126,13 +126,13 @@ export default {
                 break;
             } catch (error) {
                 retries++;
-                console.error(
+                elizaLogger.error(
                     `Error sending message (attempt ${retries}):`,
                     error
                 );
 
                 if (retries === maxRetries) {
-                    console.error(
+                    elizaLogger.error(
                         "Max retries reached. Failed to send message with attachment."
                     );
                     break;

@@ -38,7 +38,9 @@
         "build": "tsup --format esm --dts",
         "dev": "tsup --format esm --dts --watch",
         "lint": "eslint --fix  --cache .",
-        "test": "vitest run"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "test:watch": "vitest"
     },
     "trustedDependencies": {
         "@discordjs/opus": "github:discordjs/opus",

@@ -69,8 +69,7 @@ If {{agentName}} is conversing with a user and they have not asked to stop, it i
 # INSTRUCTIONS: Choose the option that best describes {{agentName}}'s response to the last message. Ignore messages if they are addressed to someone else.
 ` + shouldRespondFooter;
 
-export const discordVoiceHandlerTemplate =
-    `# Task: Generate conversational voice dialog for {{agentName}}.
+export const discordVoiceHandlerTemplate = `# Task: Generate conversational voice dialog for {{agentName}}.
 About {{agentName}}:
 {{bio}}
 

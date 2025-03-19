@@ -9,8 +9,19 @@ if ((CURRENT_NODE_VERSION < REQUIRED_NODE_VERSION)); then
     exit 1
 fi
 
+# Build packages first to ensure dependencies are ready
+echo -e "\033[1mBuilding packages before testing...\033[0m"
+pnpm run build
+if [ $? -ne 0 ]; then
+    echo -e "\033[1;31mBuild failed, cannot proceed with tests\033[0m"
+    exit 1
+fi
+
 # Navigate to the script's directory
 cd "$(dirname "$0")"/..
+
+# Keep track of test failures
+FAILURES=0
 
 # If specific test file provided, run just that
 if [[ "$1" == *".ts" ]]; then
@@ -71,6 +82,7 @@ for package in "${PACKAGES[@]}"; do
                 echo -e "\033[1;32mSuccessfully tested $package with coverage\033[0m\n"
             else
                 echo -e "\033[1;31mCoverage tests failed for $package\033[0m"
+                FAILURES=$((FAILURES + 1))
             fi
         # Otherwise, run regular tests if available
         elif npm run | grep -q " test"; then
@@ -79,6 +91,7 @@ for package in "${PACKAGES[@]}"; do
                 echo -e "\033[1;32mSuccessfully tested $package\033[0m\n"
             else
                 echo -e "\033[1;31mTests failed for $package\033[0m"
+                FAILURES=$((FAILURES + 1))
             fi
         else
             echo "No test script found in $package, skipping tests..."
@@ -91,3 +104,9 @@ for package in "${PACKAGES[@]}"; do
 done
 
 echo -e "\033[1mTest process completed.😎\033[0m"
+
+# Exit with failure if any tests failed
+if [ $FAILURES -gt 0 ]; then
+    echo -e "\033[1;31m$FAILURES package(s) had test failures\033[0m"
+    exit 1
+fi

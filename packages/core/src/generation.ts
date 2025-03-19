@@ -659,7 +659,7 @@ export const generateImage = async (
                 }
                 const base64Images = await Promise.all(
                     result.images.map(async (image) => {
-                        console.log("imageUrl console log", image.url);
+                        elizaLogger.log("imageUrl console log", image.url);
                         let imageUrl;
                         if (image.url.includes("http")) {
                             imageUrl = image.url;
@@ -684,7 +684,7 @@ export const generateImage = async (
                     data: base64Images,
                 };
             } catch (error) {
-                console.error(error);
+                elizaLogger.error(error);
                 return { success: false, error: error };
             }
         } else {
@@ -716,7 +716,7 @@ export const generateImage = async (
             return { success: true, data: base64s };
         }
     } catch (error) {
-        console.error(error);
+        elizaLogger.error(error);
         return { success: false, error: error };
     }
 };
@@ -792,7 +792,7 @@ export async function generateTweetActions({
             const parsedResponse = parseTagContent(response, "response");
             const { actions } = parseActionResponseFromText(parsedResponse);
             if (actions) {
-                console.debug("Parsed tweet actions:", actions);
+                elizaLogger.debug("Parsed tweet actions:", actions);
                 return actions;
             }
             elizaLogger.debug("generateTweetActions no valid response");

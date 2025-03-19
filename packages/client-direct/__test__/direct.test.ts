@@ -23,6 +23,9 @@ vi.mock("@elizaos/core", async () => {
             log: vi.fn(),
             success: vi.fn(),
             error: vi.fn(),
+            warn: vi.fn(),
+            info: vi.fn(),
+            debug: vi.fn(),
         },
         generateMessageResponse: vi.fn(),
         composeContext: vi.fn(),
@@ -230,8 +233,10 @@ describe("DirectClient", () => {
                 });
 
             expect(response.status).toBe(200);
-            expect(response.body).toHaveLength(1);
-            expect(response.body[0].text).toBe("Test response");
+            expect(response.headers["content-type"]).toContain(
+                "text/event-stream"
+            );
+            expect(response.text).toContain('"text":"Test response"');
         });
 
         it("should handle message with action response", async () => {
@@ -258,8 +263,10 @@ describe("DirectClient", () => {
                 });
 
             expect(response.status).toBe(200);
-            expect(response.body).toHaveLength(2);
-            expect(response.body[1]).toEqual(mockActionResponse);
+            expect(response.headers["content-type"]).toContain(
+                "text/event-stream"
+            );
+            expect(response.text).toContain('"text":"Action result"');
         });
 
         it("should handle agent not found", async () => {
@@ -269,8 +276,10 @@ describe("DirectClient", () => {
                     text: "Hello",
                 });
 
-            expect(response.status).toBe(404);
-            expect(response.body).toEqual({ error: "Agent not found" });
+            expect(response.headers["content-type"]).toContain(
+                "text/event-stream"
+            );
+            expect(response.text).toContain('"error":"Agent not found"');
         });
     });
 

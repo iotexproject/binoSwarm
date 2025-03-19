@@ -21,15 +21,21 @@
     "dependencies": {
         "@elizaos/core": "workspace:*",
         "@elizaos/plugin-tee": "workspace:*",
+        "@lifi/sdk": "3.4.1"
+    },
+    "devDependencies": {
         "@lifi/data-types": "5.15.5",
-        "@lifi/sdk": "3.4.1",
         "@lifi/types": "16.3.0",
-        "tsup": "8.3.5"
+        "tsup": "8.3.5",
+        "vitest": "2.1.5",
+        "@vitest/coverage-v8": "2.1.5"
     },
     "scripts": {
         "build": "tsup --format esm --dts",
         "dev": "tsup --format esm --dts --watch",
         "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "test:watch": "vitest",
         "lint": "eslint --fix  --cache ."
     },
     "peerDependencies": {
