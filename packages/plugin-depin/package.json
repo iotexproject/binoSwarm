@@ -15,7 +15,7 @@
         "dev": "tsup --format esm --dts --watch",
         "test": "vitest run",
         "lint": "eslint --fix  --cache .",
-        "coverage": "vitest --coverage"
+        "test:coverage": "vitest run --coverage"
     },
     "peerDependencies": {
         "whatwg-url": "7.1.0"
