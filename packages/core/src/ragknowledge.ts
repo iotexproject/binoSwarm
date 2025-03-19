@@ -251,7 +251,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                     )
                     .slice(0, params.limit || this.defaultRAGMatchCount);
             } catch (error) {
-                console.log(`[RAG Search Error] ${error}`);
+                elizaLogger.error(`[RAG Search Error] ${error}`);
                 return [];
             }
         }

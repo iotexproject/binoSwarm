@@ -153,7 +153,7 @@ export class DiscordClient extends EventEmitter {
             await this.client.application?.commands.set(commands);
             elizaLogger.success("Slash commands registered");
         } catch (error) {
-            console.error("Error registering slash commands:", error);
+            elizaLogger.error("Error registering slash commands:", error);
         }
 
         // Required permissions for the bot
@@ -310,7 +310,7 @@ export class DiscordClient extends EventEmitter {
             try {
                 await reaction.fetch();
             } catch (error) {
-                console.error(
+                elizaLogger.error(
                     "Something went wrong when fetching the message:",
                     error
                 );
@@ -365,12 +365,15 @@ export class DiscordClient extends EventEmitter {
                 embedding: getEmbeddingZeroVector(),
             });
         } catch (error) {
-            console.error("Error creating reaction removal message:", error);
+            elizaLogger.error(
+                "Error creating reaction removal message:",
+                error
+            );
         }
     }
 
     private handleGuildCreate(guild: Guild) {
-        console.log(`Joined guild ${guild.name}`);
+        elizaLogger.log(`Joined guild ${guild.name}`);
         this.voiceManager.scanGuild(guild);
     }
 

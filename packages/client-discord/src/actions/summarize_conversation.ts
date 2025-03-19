@@ -3,7 +3,12 @@ import {
     generateObject,
     getModelSettings,
 } from "@elizaos/core";
-import { generateText, splitChunks, trimTokens } from "@elizaos/core";
+import {
+    generateText,
+    splitChunks,
+    trimTokens,
+    elizaLogger,
+} from "@elizaos/core";
 import { getActorDetails } from "@elizaos/core";
 import {
     Action,
@@ -78,7 +83,7 @@ const getDateRange = async (
             schemaName: "dateRange",
             schemaDescription: "The objective, start and end of the date range",
         });
-        console.log("response", response);
+        elizaLogger.log("response", response);
         // try parsing to a json object
         const parsedResponse = dateRangeSchema.parse(response.object);
         // see if it contains objective, start and end
@@ -123,13 +128,13 @@ const getDateRange = async (
                     startInteger *
                     multipliers[startMultiplier as keyof typeof multipliers];
 
-                console.log("startTime", startTime);
+                elizaLogger.log("startTime", startTime);
 
                 const endTime =
                     endInteger *
                     multipliers[endMultiplier as keyof typeof multipliers];
 
-                console.log("endTime", endTime);
+                elizaLogger.log("endTime", endTime);
 
                 return {
                     objective: parsedResponse.objective,
@@ -222,11 +227,11 @@ const summarizeAction = {
         // 1. extract date range from the message
         const dateRange = await getDateRange(runtime, message, state);
         if (!dateRange) {
-            console.error("Couldn't get date range from message");
+            elizaLogger.error("Couldn't get date range from message");
             return;
         }
 
-        console.log("dateRange", dateRange);
+        elizaLogger.log("dateRange", dateRange);
 
         const { objective, start, end } = dateRange;
 
@@ -298,7 +303,7 @@ const summarizeAction = {
         }
 
         if (!currentSummary) {
-            console.error("No summary found, that's not good!");
+            elizaLogger.error("No summary found, that's not good!");
             return;
         }
 
@@ -326,7 +331,7 @@ ${currentSummary.trim()}
                 [summaryFilename]
             );
         } else {
-            console.warn(
+            elizaLogger.warn(
                 "Empty response from summarize conversation action, skipping"
             );
         }

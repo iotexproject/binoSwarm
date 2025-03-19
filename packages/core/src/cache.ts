@@ -6,6 +6,7 @@ import type {
     IDatabaseCacheAdapter,
     UUID,
 } from "./types";
+import elizaLogger from "./logger";
 
 export interface ICacheAdapter {
     get(key: string): Promise<string | undefined>;
@@ -52,7 +53,7 @@ export class FsCacheAdapter implements ICacheAdapter {
             await fs.mkdir(path.dirname(filePath), { recursive: true });
             await fs.writeFile(filePath, value, "utf8");
         } catch (error) {
-            console.error(error);
+            elizaLogger.error(error);
         }
     }
 

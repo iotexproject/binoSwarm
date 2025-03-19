@@ -118,7 +118,7 @@ export class WalletProvider {
             );
             return balanceFormatted;
         } catch (error) {
-            console.error("Error getting wallet balance:", error);
+            elizaLogger.error("Error getting wallet balance:", error);
             return null;
         }
     }
@@ -133,7 +133,7 @@ export class WalletProvider {
             });
             return formatUnits(balance, 18);
         } catch (error) {
-            console.error("Error getting wallet balance:", error);
+            elizaLogger.error("Error getting wallet balance:", error);
             return null;
         }
     }
@@ -326,7 +326,7 @@ export const evmWalletProvider: Provider = {
             const agentName = state?.agentName || "The agent";
             return `${agentName}'s EVM Wallet Address: ${address}\nBalance: ${balance} ${chain.nativeCurrency.symbol}\nChain ID: ${chain.id}, Name: ${chain.name}`;
         } catch (error) {
-            console.error("Error in EVM wallet provider:", error);
+            elizaLogger.error("Error in EVM wallet provider:", error);
             return null;
         }
     },

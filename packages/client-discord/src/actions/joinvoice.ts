@@ -78,7 +78,7 @@ export default {
         state: State
     ): Promise<boolean> => {
         if (!state) {
-            console.error("State is not available.");
+            elizaLogger.error("State is not available.");
         }
 
         // We normalize data in from voice channels

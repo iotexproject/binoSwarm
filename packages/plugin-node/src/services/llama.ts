@@ -372,7 +372,7 @@ export class LlamaService extends Service {
 
                 file.on("error", (err) => {
                     fs.unlink(this.modelPath, () => {}); // Delete the file async
-                    console.error("File write error:", err.message);
+                    elizaLogger.error("File write error:", err.message);
                     reject(err);
                 });
             });

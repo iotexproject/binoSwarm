@@ -24,6 +24,7 @@ import { NoTextError } from "./errors";
 import { messageHandlerTemplate } from "./templates";
 import { CustomRequest } from "./types";
 import { ISpeechService } from "@elizaos/core";
+import { elizaLogger } from "@elizaos/core";
 
 export async function handleMessage(
     req: express.Request,
@@ -104,7 +105,7 @@ export async function handleMessage(
                         ...content,
                     };
                     const stringifiedMessageData = JSON.stringify(messageData);
-                    console.log(stringifiedMessageData);
+                    elizaLogger.info(stringifiedMessageData);
                     res.write(`data: ${stringifiedMessageData}\n\n`);
                 }
                 return [memory];

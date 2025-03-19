@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ActionResponse } from "./types.ts";
+import elizaLogger from "./logger";
 const jsonBlockPattern = /```json\n([\s\S]*?)\n```/;
 
 export const shouldRespondFooter = `The available options are [RESPOND], [IGNORE], or [STOP]. Choose the most appropriate option.
@@ -96,7 +97,7 @@ export function parseJsonArrayFromText(text: string) {
             );
             jsonData = JSON.parse(normalizedJson);
         } catch (e) {
-            console.error("Error parsing JSON:", e);
+            elizaLogger.error("Error parsing JSON:", e);
         }
     }
 
@@ -114,7 +115,7 @@ export function parseJsonArrayFromText(text: string) {
                 );
                 jsonData = JSON.parse(normalizedJson);
             } catch (e) {
-                console.error("Error parsing JSON:", e);
+                elizaLogger.error("Error parsing JSON:", e);
             }
         }
     }
@@ -123,7 +124,7 @@ export function parseJsonArrayFromText(text: string) {
         try {
             jsonData = JSON.parse(text);
         } catch (e) {
-            console.error("Error parsing JSON:", e);
+            elizaLogger.error("Error parsing JSON:", e);
         }
     }
 
@@ -155,7 +156,7 @@ export function parseJSONObjectFromText(
         try {
             jsonData = JSON.parse(jsonBlockMatch[1]);
         } catch (e) {
-            console.error("Error parsing JSON:", e);
+            elizaLogger.error("Error parsing JSON:", e);
             return null;
         }
     } else {
@@ -166,7 +167,7 @@ export function parseJSONObjectFromText(
             try {
                 jsonData = JSON.parse(objectMatch[0]);
             } catch (e) {
-                console.error("Error parsing JSON:", e);
+                elizaLogger.error("Error parsing JSON:", e);
                 return null;
             }
         }
@@ -177,7 +178,7 @@ export function parseJSONObjectFromText(
         try {
             jsonData = JSON.parse(text);
         } catch (e) {
-            console.error("Error parsing JSON:", e);
+            elizaLogger.error("Error parsing JSON:", e);
             return null;
         }
     }

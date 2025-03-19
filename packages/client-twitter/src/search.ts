@@ -314,10 +314,10 @@ export class TwitterSearchClient {
 
                 await wait();
             } catch (error) {
-                console.error(`Error sending response post: ${error}`);
+                elizaLogger.error(`Error sending response post: ${error}`);
             }
         } catch (error) {
-            console.error("Error engaging with search terms:", error);
+            elizaLogger.error("Error engaging with search terms:", error);
         }
     }
 }

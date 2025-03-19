@@ -62,7 +62,7 @@ class RequestQueue {
             try {
                 await request();
             } catch (error) {
-                console.error("Error processing request:", error);
+                elizaLogger.error("Error processing request:", error);
                 this.queue.unshift(request);
                 await this.exponentialBackoff(this.queue.length);
             }
@@ -99,7 +99,7 @@ export class ClientBase extends EventEmitter {
 
     async cacheTweet(tweet: Tweet): Promise<void> {
         if (!tweet) {
-            console.warn("Tweet is undefined, skipping cache");
+            elizaLogger.warn("Tweet is undefined, skipping cache");
             return;
         }
 
@@ -444,7 +444,7 @@ export class ClientBase extends EventEmitter {
                         )
                 );
 
-                console.log({
+                elizaLogger.log({
                     processingTweets: tweetsToSave
                         .map((tweet) => tweet.id)
                         .join(","),
@@ -759,7 +759,7 @@ export class ClientBase extends EventEmitter {
 
             return profile;
         } catch (error) {
-            console.error("Error fetching Twitter profile:", error);
+            elizaLogger.error("Error fetching Twitter profile:", error);
             throw error;
         }
     }

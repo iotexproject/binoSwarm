@@ -1,3 +1,5 @@
+import { elizaLogger } from "@elizaos/core";
+
 export async function getOrCreateRecommenderInBe(
     recommenderId: string,
     username: string,
@@ -25,15 +27,15 @@ export async function getOrCreateRecommenderInBe(
             const data = await response.json();
             return data;
         } catch (error) {
-            console.error(
+            elizaLogger.error(
                 `Attempt ${attempt} failed: Error getting or creating recommender in backend`,
                 error
             );
             if (attempt < retries) {
-                console.log(`Retrying in ${delayMs} ms...`);
+                elizaLogger.log(`Retrying in ${delayMs} ms...`);
                 await new Promise((resolve) => setTimeout(resolve, delayMs));
             } else {
-                console.error("All attempts failed.");
+                elizaLogger.error("All attempts failed.");
             }
         }
     }

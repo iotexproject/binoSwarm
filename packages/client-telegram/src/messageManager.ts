@@ -459,7 +459,7 @@ export class MessageManager {
                 return { description: `[Image: ${title}\n${description}]` };
             }
         } catch (error) {
-            console.error("❌ Error processing image:", error);
+            elizaLogger.error("❌ Error processing image:", error);
         }
 
         return null;

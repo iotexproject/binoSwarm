@@ -3,7 +3,13 @@ import {
     Message as DiscordMessage,
     TextChannel,
 } from "discord.js";
-import { IAgentRuntime, Memory, Provider, State } from "@elizaos/core";
+import {
+    elizaLogger,
+    IAgentRuntime,
+    Memory,
+    Provider,
+    State,
+} from "@elizaos/core";
 
 const channelStateProvider: Provider = {
     get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
@@ -31,7 +37,7 @@ const channelStateProvider: Provider = {
         const channel = discordMessage.channel;
 
         if (!channel) {
-            console.log("channel is null");
+            elizaLogger.log("channel is null");
             return "";
         }
 

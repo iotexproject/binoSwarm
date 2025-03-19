@@ -1,4 +1,4 @@
-import { composeContext, generateObject } from "@elizaos/core";
+import { composeContext, elizaLogger, generateObject } from "@elizaos/core";
 import {
     Action,
     ActionExample,
@@ -53,7 +53,7 @@ const getMediaAttachmentId = async (
             schemaName: "mediaAttachmentId",
             schemaDescription: "The ID of the media file to transcribe",
         });
-        console.log("response", response);
+        elizaLogger.log("response", response);
         const parsedResponse = mediaAttachmentIdSchema.parse(response.object);
 
         if (parsedResponse?.attachmentId) {
@@ -126,7 +126,7 @@ const transcribeMediaAction = {
             state
         );
         if (!attachmentId) {
-            console.error("Couldn't get media attachment ID from message");
+            elizaLogger.error("Couldn't get media attachment ID from message");
             return;
         }
 
@@ -143,7 +143,9 @@ const transcribeMediaAction = {
             );
 
         if (!attachment) {
-            console.error(`Couldn't find attachment with ID ${attachmentId}`);
+            elizaLogger.error(
+                `Couldn't find attachment with ID ${attachmentId}`
+            );
             return;
         }
 
@@ -182,7 +184,7 @@ ${mediaTranscript.trim()}
                 [transcriptFilename]
             );
         } else {
-            console.warn(
+            elizaLogger.warn(
                 "Empty response from transcribe media action, skipping"
             );
         }

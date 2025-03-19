@@ -1255,7 +1255,7 @@ export class PostgresDatabaseAdapter
                 );
                 return true;
             } catch (error) {
-                console.log("Error adding participant", error);
+                elizaLogger.error("Error adding participant", error);
                 return false;
             }
         }, "addParticpant");
@@ -1270,7 +1270,7 @@ export class PostgresDatabaseAdapter
                 );
                 return true;
             } catch (error) {
-                console.log("Error removing participant", error);
+                elizaLogger.error("Error removing participant", error);
                 return false;
             }
         }, "removeParticipant");

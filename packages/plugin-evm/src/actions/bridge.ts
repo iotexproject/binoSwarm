@@ -1,6 +1,7 @@
 import type { IAgentRuntime, Memory, State } from "@elizaos/core";
 import {
     composeContext,
+    elizaLogger,
     generateObjectDeprecated,
     ModelClass,
 } from "@elizaos/core";
@@ -96,7 +97,7 @@ export const bridgeAction = {
         _options: any,
         callback?: any
     ) => {
-        console.log("Bridge action handler called");
+        elizaLogger.log("Bridge action handler called");
         const walletProvider = await initWalletProvider(runtime);
         const action = new BridgeAction(walletProvider);
 
@@ -135,7 +136,7 @@ export const bridgeAction = {
             }
             return true;
         } catch (error) {
-            console.error("Error in bridge handler:", error.message);
+            elizaLogger.error("Error in bridge handler:", error.message);
             if (callback) {
                 callback({ text: `Error: ${error.message}` });
             }
