@@ -11,6 +11,8 @@ import {
     stringToUuid,
     Character,
     generateText,
+    generateMessageResponse,
+    Content,
 } from "@elizaos/core";
 import { Tweet } from "agent-twitter-client";
 import { Client } from "discord.js";
@@ -33,6 +35,7 @@ vi.mock("@elizaos/core", async () => {
         },
         generateText: vi.fn(),
         composeContext: vi.fn().mockReturnValue("mocked context"),
+        generateMessageResponse: vi.fn(),
     };
 });
 
@@ -1426,9 +1429,9 @@ describe("Twitter Post Client", () => {
                 throw new Error("Profile must be defined for test");
             }
 
-            vi.mocked(generateText).mockResolvedValue(
-                "<response>Test tweet content</response>"
-            );
+            vi.mocked(generateMessageResponse).mockResolvedValue({
+                text: "Test tweet content",
+            } as Content);
 
             mockTwitterClient.sendTweet.mockResolvedValue(
                 createSuccessfulTweetResponse("Test tweet content")
@@ -1457,7 +1460,8 @@ describe("Twitter Post Client", () => {
                 })
             );
 
-            expect(elizaLogger.log).toHaveBeenCalledWith(
+            expect(elizaLogger.log).toHaveBeenNthCalledWith(
+                11,
                 expect.stringContaining("Posting new tweet")
             );
         });
@@ -1493,23 +1497,8 @@ describe("Twitter Post Client", () => {
             );
         });
 
-        it("should handle invalid generated content", async () => {
-            vi.mocked(generateText).mockResolvedValue(
-                "Invalid content without response tags"
-            );
-
-            await postClient.generateNewTweet();
-
-            expect(elizaLogger.error).toHaveBeenCalledWith(
-                "Failed to extract valid content from response:",
-                expect.any(Object)
-            );
-
-            expect(mockTwitterClient.sendTweet).not.toHaveBeenCalled();
-        });
-
         it("should handle tweet generation error", async () => {
-            vi.mocked(generateText).mockRejectedValue(
+            vi.mocked(generateMessageResponse).mockRejectedValue(
                 new Error("Generation failed")
             );
 

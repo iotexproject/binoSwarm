@@ -422,7 +422,6 @@ export class TwitterPostClient {
             );
 
             const newTweetContent = await this.genAndCleanNewTweet(roomId);
-
             if (this.approvalRequired) {
                 await this.sendForApproval(
                     newTweetContent,
