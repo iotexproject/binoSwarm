@@ -43,6 +43,7 @@
         "dev": "tsup --format esm --dts --watch",
         "lint": "eslint --fix  --cache .",
         "test": "vitest run",
+        "test:watch": "vitest",
         "test:coverage": "vitest run --coverage"
     },
     "peerDependencies": {
