@@ -233,7 +233,9 @@ export const memeGeneration: Action = {
         state.availableMemeTemplates = templatesInfo;
 
         const context = composeContext({
-            template: memePromptTemplate,
+            template:
+                runtime.character?.templates?.memePromptTemplate ||
+                memePromptTemplate,
             state,
         });
 

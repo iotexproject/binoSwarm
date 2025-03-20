@@ -758,6 +758,8 @@ export type Character = {
         slackShouldRespondTemplate?: TemplateType;
         imageSystemPrompt?: string;
         memeSystemPrompt?: string;
+        memePromptTemplate?: TemplateType;
+        imagePromptTemplate?: TemplateType;
     };
 
     /** Character biography */
