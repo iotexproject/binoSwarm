@@ -83,7 +83,9 @@ export const imageGeneration: Action = {
         }
 
         const context = composeContext({
-            template: imagePromptTemplate,
+            template:
+                runtime.character?.templates?.imagePromptTemplate ||
+                imagePromptTemplate,
             state,
         });
 
