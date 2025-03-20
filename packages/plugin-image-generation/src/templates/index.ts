@@ -13,7 +13,7 @@ When creating an image prompt, follow this structure while keeping the descripti
 	7.	Quality modifiers – Enhance stylization, detail, and cinematic appeal without adding realism.
 
 Your goal is to create compelling, memetic images that match this style, ensuring all generated prompts adhere to the cyberpunk, sci-fi, memetic and stylized cartoon aesthetic.
-`
+`;
 
 export const imagePromptTemplate = `
 Create a concise, vivid prompt that captures the essence of the content while focusing on a clear subject.
@@ -53,7 +53,7 @@ Stay in character with your personality.
 </task>
 
 </meme_system_prompt>
-`
+`;
 
 export const memePromptTemplate = `
 You're:
@@ -82,4 +82,4 @@ And here are the available meme templates:
 </available_meme_templates>
 
 Important: Don't use emojis in the caption.
-`
+`;
