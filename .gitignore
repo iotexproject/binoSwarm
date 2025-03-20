@@ -51,6 +51,7 @@ tsup.config.bundled_*.mjs
 
 .turbo
 .cursorrules
+.cursor
 .pnpm-store
 
 coverage
