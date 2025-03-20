@@ -49,3 +49,27 @@ export async function saveHeuristImage(
 
     return filepath;
 }
+
+export async function saveImgflipMeme(
+    memeUrl: string,
+    filename: string
+): Promise<string> {
+    const imageDir = path.join(process.cwd(), "generatedImages");
+    if (!fs.existsSync(imageDir)) {
+        fs.mkdirSync(imageDir, { recursive: true });
+    }
+
+    const response = await fetch(memeUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch meme: ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const imageBuffer = Buffer.from(arrayBuffer);
+
+    const filepath = path.join(imageDir, `${filename}.jpeg`);
+
+    fs.writeFileSync(filepath, imageBuffer);
+
+    return filepath;
+}
