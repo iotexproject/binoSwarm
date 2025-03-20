@@ -6,12 +6,14 @@ import {
     elizaLogger,
     HandlerCallback,
     State,
-    generateText,
     ModelClass,
+    composeContext,
+    generateObject,
 } from "@elizaos/core";
+import { z } from "zod";
 
 import { validateImageGenConfig } from "../environment";
-import { imagePromptTemplate } from "../templates";
+import { imagePromptTemplate, imageSystemPrompt } from "../templates";
 import { saveBase64Image, saveHeuristImage } from "../utils";
 
 export const imageGeneration: Action = {
@@ -27,7 +29,8 @@ export const imageGeneration: Action = {
         "DRAW_A",
         "MAKE_A",
     ],
-    description: "Generate an image to go along with the message.",
+    description:
+        "Generate an image to go along with the message. If using this action, don't try to generate a prompt or a discription of the image that yet to be generated, only reply that you're about to generate an image.",
     suppressInitialMessage: true,
     validate: async (runtime: IAgentRuntime, _message: Memory) => {
         await validateImageGenConfig(runtime);
@@ -73,29 +76,50 @@ export const imageGeneration: Action = {
         },
         callback: HandlerCallback
     ) => {
-        elizaLogger.log("Composing state for message:", message);
-        state = (await runtime.composeState(message)) as State;
-        const userId = runtime.agentId;
-        elizaLogger.log("User ID:", userId);
+        if (!state) {
+            state = (await runtime.composeState(message)) as State;
+        } else {
+            state = await runtime.updateRecentMessageState(state);
+        }
 
-        const CONTENT = message.content.text;
-        const IMAGE_SYSTEM_PROMPT = `You are an expert in writing prompts for AI art generation. You excel at creating detailed and creative visual descriptions. Incorporating specific elements naturally. Always aim for clear, descriptive language that generates a creative picture. Your output should only contain the description of the image contents, but NOT an instruction like "create an image that..."`;
-        const STYLE = "futuristic with vibrant colors";
-
-        const imagePrompt = await generateText({
-            runtime,
-            context: imagePromptTemplate(STYLE, CONTENT),
-            modelClass: ModelClass.MEDIUM,
-            customSystemPrompt: IMAGE_SYSTEM_PROMPT,
+        const context = composeContext({
+            template: imagePromptTemplate,
+            state,
         });
 
-        elizaLogger.log("Image prompt received:", imagePrompt);
+        const imagePromptSchema = z.object({
+            analysis: z
+                .string()
+                .describe(
+                    "Analysis, reasoning and steps taken to generate the prompt"
+                ),
+            prompt: z
+                .string()
+                .describe(
+                    "The generated image prompt without any additional text"
+                ),
+        });
+
+        type ImagePrompt = z.infer<typeof imagePromptSchema>;
+
+        const imagePromptRes = await generateObject<ImagePrompt>({
+            runtime,
+            context,
+            modelClass: ModelClass.LARGE,
+            schema: imagePromptSchema,
+            schemaName: "ImagePrompt",
+            schemaDescription: "Image prompt and analysis",
+            customSystemPrompt:
+                runtime.character?.templates?.imageSystemPrompt ||
+                imageSystemPrompt,
+        });
+
+        const imagePrompt = imagePromptRes.object?.prompt;
         const imageSettings = runtime.character?.settings?.imageSettings || {};
         elizaLogger.log("Image settings:", imageSettings);
 
         const res: { image: string; caption: string }[] = [];
 
-        elizaLogger.log("Generating image with prompt:", imagePrompt);
         const images = await generateImage(
             {
                 prompt: imagePrompt,
@@ -231,8 +255,6 @@ export const imageGeneration: Action = {
         }
     },
     examples: [
-        // TODO: We want to generate images in more abstract ways, not just when asked to generate an image
-
         [
             {
                 user: "{{user1}}",
@@ -241,7 +263,7 @@ export const imageGeneration: Action = {
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "Here's an image of a cat",
+                    text: "Let me generate this image for you",
                     action: "GENERATE_IMAGE",
                 },
             },
@@ -254,7 +276,7 @@ export const imageGeneration: Action = {
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "Here's an image of a dog",
+                    text: "Let me generate this image for you",
                     action: "GENERATE_IMAGE",
                 },
             },
@@ -267,7 +289,7 @@ export const imageGeneration: Action = {
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "Here's an image of a cat with a hat",
+                    text: "Let me generate this image for you",
                     action: "GENERATE_IMAGE",
                 },
             },
@@ -280,7 +302,7 @@ export const imageGeneration: Action = {
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "Here's an image of a dog with a hat",
+                    text: "Let me generate this image for you",
                     action: "GENERATE_IMAGE",
                 },
             },
@@ -293,7 +315,7 @@ export const imageGeneration: Action = {
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "Here's an image of a cat with a hat",
+                    text: "Let me generate this image for you",
                     action: "GENERATE_IMAGE",
                 },
             },

@@ -1,62 +1,41 @@
-export const imagePromptTemplate = (
-    style: string,
-    content: string
-) => `
-You are tasked with generating an image prompt based on a content and a specified style.
-Your goal is to create a detailed and vivid image prompt that captures the essence of the
-content while incorporating an appropriate subject based on your analysis of the content.
+export const imageSystemPrompt = `
+You are a professional artist specializing in bold, stylized digital cartoons inspired by cyberpunk and sci-fi aesthetics. Your role is to generate highly detailed and vivid image prompts.
 
-You will be given the following inputs:
-<content>
-${content}
-</content>
-<style>
-${style}
-</style>
+Prompt Generation Guidelines:
 
-A good image prompt consists of the following elements:
+When creating an image prompt, follow this structure while keeping the description within 100-250 words:
+	1.	Main subject – Describe the primary character or focus.
+	2.	Environment – Detail the setting, ensuring it aligns with a cyberpunk/metaverse aesthetic.
+	3.	Lighting – Define the light sources and their impact on the scene.
+	4.	Colors – Specify key colors and their relationships.
+	5.	Mood – Convey the emotional tone of the image.
+	6.	Composition – Describe how elements are arranged to guide the viewer’s eye.
+	7.	Quality modifiers – Enhance stylization, detail, and cinematic appeal without adding realism.
 
-1. Main subject
-2. Detailed description
-3. Style
-4. Lighting
-5. Composition
-6. Quality modifiers
+Your goal is to create compelling, memetic images that match this style, ensuring all generated prompts adhere to the cyberpunk, sci-fi, memetic and stylized cartoon aesthetic.
+`
 
-To generate the image prompt, follow these steps:
+export const imagePromptTemplate = `
+Create a concise, vivid prompt that captures the essence of the content while focusing on a clear subject.
 
-1. Analyze the content text carefully, identifying key themes, emotions, and visual elements mentioned or implied.
+Now analyze the following content and create a prompt:
 
-2. Determine the most appropriate main subject by:
-- Identifying concrete objects or persons mentioned in the content
-- Analyzing the central theme or message
-- Considering metaphorical representations of abstract concepts
-- Selecting a subject that best captures the content's essence
+<recent_messages>
+{{recentMessages}}
+</recent_messages>
 
-3. Determine an appropriate environment or setting based on the content's context and your chosen subject.
+<character_description>
+<bio>
+{{bio}}
+</bio>
 
-4. Decide on suitable lighting that enhances the mood or atmosphere of the scene.
+<lore>
+{{lore}}
+</lore>
 
-5. Choose a color palette that reflects the content's tone and complements the subject.
+<topics_of_interest>
+{{topics}}
+</topics_of_interest>
 
-6. Identify the overall mood or emotion conveyed by the content.
-
-7. Plan a composition that effectively showcases the subject and captures the content's essence.
-
-8. Incorporate the specified style into your description, considering how it affects the overall look and feel of the image.
-
-9. Use concrete nouns and avoid abstract concepts when describing the main subject and elements of the scene.
-
-Construct your image prompt using the following structure:
-
-1. Main subject: Describe the primary focus of the image based on your analysis
-2. Environment: Detail the setting or background
-3. Lighting: Specify the type and quality of light in the scene
-4. Colors: Mention the key colors and their relationships
-5. Mood: Convey the overall emotional tone
-6. Composition: Describe how elements are arranged in the frame
-7. Style: Incorporate the given style into the description
-
-Ensure that your prompt is detailed, vivid, and incorporates all the elements mentioned above while staying true to the content and the specified style.
-LIMIT the image prompt 50 words or less.
-Write a prompt. Only include the prompt and nothing else.`;
+</character_description>
+`;
