@@ -756,6 +756,8 @@ export type Character = {
         discordMessageHandlerTemplate?: TemplateType;
         slackMessageHandlerTemplate?: TemplateType;
         slackShouldRespondTemplate?: TemplateType;
+        imageSystemPrompt?: string;
+        memeSystemPrompt?: string;
     };
 
     /** Character biography */
