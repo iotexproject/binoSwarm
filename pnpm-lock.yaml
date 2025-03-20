@@ -651,15 +651,9 @@ importers:
       '@elizaos/core':
         specifier: workspace:*
         version: link:../core
-      '@vitest/coverage-v8':
-        specifier: 2.1.5
-        version: 2.1.5(vitest@2.1.5(@types/node@22.8.4)(jsdom@25.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(terser@5.39.0))
       tsup:
         specifier: 8.3.5
         version: 8.3.5(jiti@1.21.7)(postcss@8.5.3)(typescript@5.6.3)(yaml@2.7.0)
-      vitest:
-        specifier: 2.1.5
-        version: 2.1.5(@types/node@22.8.4)(jsdom@25.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(terser@5.39.0)
       whatwg-url:
         specifier: 7.1.0
         version: 7.1.0
