@@ -49,7 +49,7 @@ export const askSentai: Action = {
         "LUMA",
     ],
     description:
-        "You most likely want to use this action! Provides real-time data access for answering factual questions about the world. Use for: real-time news; current weather and forecasts; DePIN project metrics; blockchain statistics; connected vehicle data; nuclear power plant status; location-based information and directions; event schedules. Specific capabilities include: news articles and headlines from various sources; current weather conditions (temperature, humidity, wind); weather forecasts for coming days; DePIN network metrics and statistics; information about DePIN projects and their details; Layer 1 blockchain network data; DIMO network data for connected vehicles; nuclear power plant information including outage status; mapping data and geographic information via Mapbox; ETHDenver and Luma event schedules and activities. Ideal for questions requiring up-to-date information rather than general knowledge.",
+        "You most likely want to use this action! Provides real-time data access for answering factual questions about the world. Use for: real-time news; current weather and forecasts; DePIN project metrics; blockchain related questions about wallets, transactions, smart contracts; connected vehicle data; nuclear power plant status; location-based information and directions; event schedules. Specific capabilities include: news articles and headlines from various sources; current weather conditions (temperature, humidity, wind); weather forecasts for coming days; DePIN network metrics and statistics; information about DePIN projects and their details; Layer 1 blockchain network data, Transaction details, Wallet balances, Smart Contract details; DIMO network data for connected vehicles; nuclear power plant information including outage status; mapping data and geographic information via Mapbox; ETHDenver and Luma event schedules and activities. Ideal for questions requiring up-to-date information rather than general knowledge.",
     suppressInitialMessage: true,
     validate: async (_runtime: IAgentRuntime) => {
         return true;
@@ -246,6 +246,21 @@ export const askSentai: Action = {
                 user: "assistant",
                 content: {
                     text: "I'll retrieve DIMO connected vehicle data for your area.",
+                    action: "ASK_SENTAI",
+                },
+            },
+        ],
+        [
+            {
+                user: "user",
+                content: {
+                    text: "Show me details about this transaction on IoTeX mainnet: 65582358d873b93f13da1119e8172c48bbe867d7f1655c65508328519653a340",
+                },
+            },
+            {
+                user: "assistant",
+                content: {
+                    text: "I'll retrieve details about this transaction on IoTeX mainnet.",
                     action: "ASK_SENTAI",
                 },
             },
