@@ -245,10 +245,17 @@ export class MessageManager {
         try {
             const { processedContent, attachments } =
                 await this.processMessageMedia(message);
+            elizaLogger.debug("processMessageMedia", {
+                processedContent,
+                attachments,
+            });
 
             const audioAttachments = message.attachments.filter((attachment) =>
                 attachment.contentType?.startsWith("audio/")
             );
+            elizaLogger.debug("audioAttachments", {
+                audioAttachments,
+            });
             if (audioAttachments.size > 0) {
                 const processedAudioAttachments =
                     await this.attachmentManager.processAttachments(
@@ -259,6 +266,12 @@ export class MessageManager {
 
             const roomId = stringToUuid(channelId + "-" + this.runtime.agentId);
             const userIdUUID = stringToUuid(userId);
+            elizaLogger.debug("ensureConnection", {
+                userIdUUID,
+                roomId,
+                userName,
+                name,
+            });
 
             await this.runtime.ensureConnection(
                 userIdUUID,
@@ -271,6 +284,9 @@ export class MessageManager {
             const messageId = stringToUuid(
                 message.id + "-" + this.runtime.agentId
             );
+            elizaLogger.debug("messageId", {
+                messageId,
+            });
 
             let shouldIgnore = false;
             let shouldRespond = true;
@@ -288,6 +304,9 @@ export class MessageManager {
                       )
                     : undefined,
             };
+            elizaLogger.debug("content", {
+                content,
+            });
 
             const userMessage = {
                 content,
@@ -295,6 +314,9 @@ export class MessageManager {
                 agentId: this.runtime.agentId,
                 roomId,
             };
+            elizaLogger.debug("userMessage", {
+                userMessage,
+            });
 
             const memory: Memory = {
                 id: stringToUuid(message.id + "-" + this.runtime.agentId),
@@ -305,6 +327,9 @@ export class MessageManager {
                 content,
                 createdAt: message.createdTimestamp,
             };
+            elizaLogger.debug("memory", {
+                memory,
+            });
 
             if (content.text) {
                 await this.runtime.messageManager.addEmbeddingToMemory(memory);
@@ -331,6 +356,7 @@ export class MessageManager {
                 }
             }
 
+            elizaLogger.debug("composeState");
             let state = await this.runtime.composeState(userMessage, {
                 discordClient: this.client,
                 discordMessage: message,
@@ -340,6 +366,9 @@ export class MessageManager {
             });
 
             const canSendResult = canSendMessage(message.channel);
+            elizaLogger.debug("canSendResult", {
+                canSendResult,
+            });
             if (!canSendResult.canSend) {
                 return elizaLogger.warn(
                     `Cannot send message to channel ${message.channel}`,
@@ -350,7 +379,9 @@ export class MessageManager {
             if (!shouldIgnore) {
                 shouldIgnore = await this._shouldIgnore(message);
             }
-
+            elizaLogger.debug("shouldIgnore", {
+                shouldIgnore,
+            });
             if (shouldIgnore) {
                 return;
             }
@@ -360,7 +391,9 @@ export class MessageManager {
                     roomId,
                     this.runtime.agentId
                 );
-
+            elizaLogger.debug("agentUserState", {
+                agentUserState,
+            });
             if (
                 agentUserState === "MUTED" &&
                 !message.mentions.has(this.client.user.id) &&
@@ -379,7 +412,9 @@ export class MessageManager {
             ) {
                 shouldRespond = await this._shouldRespond(message, state);
             }
-
+            elizaLogger.debug("shouldRespond", {
+                shouldRespond,
+            });
             if (shouldRespond) {
                 const context = composeContext({
                     state,
@@ -400,6 +435,10 @@ export class MessageManager {
                     stopTyping();
                 });
 
+                elizaLogger.debug("responseContent", {
+                    responseContent,
+                });
+
                 responseContent.text = responseContent.text?.trim();
                 responseContent.inReplyTo = stringToUuid(
                     message.id + "-" + this.runtime.agentId
@@ -418,12 +457,16 @@ export class MessageManager {
                                 message.id + "-" + this.runtime.agentId
                             );
                         }
+                        elizaLogger.debug("sendMessageInChunks");
                         const messages = await sendMessageInChunks(
                             message.channel as TextChannel,
                             content.text,
                             message.id,
                             files
                         );
+                        elizaLogger.debug("messages", {
+                            messages,
+                        });
 
                         const memories: Memory[] = [];
                         for (const m of messages) {
@@ -466,6 +509,9 @@ export class MessageManager {
                 };
 
                 const responseMessages = await callback(responseContent);
+                elizaLogger.debug("responseMessages", {
+                    responseMessages,
+                });
 
                 state = await this.runtime.updateRecentMessageState(state);
 
