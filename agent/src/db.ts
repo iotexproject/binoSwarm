@@ -1,19 +1,21 @@
 import { PostgresDatabaseAdapter } from "@elizaos/adapter-postgres";
 import { SqliteDatabaseAdapter } from "@elizaos/adapter-sqlite";
-import { elizaLogger } from "@elizaos/core";
+import {
+    elizaLogger,
+    IDatabaseAdapter,
+    IDatabaseCacheAdapter,
+} from "@elizaos/core";
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { PoolConfig } from "pg";
 
-export function initializeDatabase(dataDir: string) {
-    if (process.env.POSTGRES_URL) {
-        return initializePostgres();
-    } else {
-        return initializeSqlite(dataDir);
-    }
+export function initializeDatabase(): IDatabaseAdapter & IDatabaseCacheAdapter {
+    return process.env.POSTGRES_URL ? initializePostgres() : initializeSqlite();
 }
-function initializeSqlite(dataDir: string) {
+
+function initializeSqlite() {
+    const dataDir = initDataDir();
     const filePath = getSqlitePath(dataDir);
     elizaLogger.info(`Initializing SQLite database at ${filePath}...`);
 
@@ -21,6 +23,16 @@ function initializeSqlite(dataDir: string) {
     const sqlitedb = new SqliteDatabaseAdapter(database);
     testConnection(sqlitedb);
     return sqlitedb;
+}
+
+function initDataDir() {
+    const dataDir = path.join(__dirname, "../data");
+
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+    }
+
+    return dataDir;
 }
 
 function testConnection(sqlitedb: SqliteDatabaseAdapter) {
