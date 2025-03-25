@@ -9,13 +9,23 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { handlePluginImporting } from "./plugins";
+import { parseArguments } from "./parsing";
 
 const __filename = fileURLToPath(import.meta.url);
-export const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(__filename);
 
-export async function loadCharacters(
-    charactersArg: string
-): Promise<Character[]> {
+export async function parseArgsAndLoadCharacters() {
+    const args = parseArguments();
+    let charactersArg = args.characters || args.character;
+    let characters = [defaultCharacter];
+
+    if (charactersArg) {
+        characters = await loadCharacters(charactersArg);
+    }
+    return characters;
+}
+
+async function loadCharacters(charactersArg: string): Promise<Character[]> {
     const characterPaths = parseCharacterArgs(charactersArg);
     const loadedCharacters: Character[] = [];
 
