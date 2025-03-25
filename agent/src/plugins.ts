@@ -6,20 +6,16 @@ import { createNodePlugin } from "@elizaos/plugin-node";
 import { TEEMode, teePlugin } from "@elizaos/plugin-tee";
 import { webSearchPlugin } from "@elizaos/plugin-web-search";
 
-export function buildPlugins(
-    character: Character,
-    teeMode: string,
-    walletSecretSalt: string
-) {
+export function buildPlugins(character: Character) {
     const nodePlugin = createNodePlugin();
     const plugins = [bootstrapPlugin, nodePlugin];
 
-    loadOptionalPlugins(character, plugins, teeMode, walletSecretSalt);
+    loadOptionalPlugins(character, plugins);
 
     return plugins;
 }
 
-export function getSecret(character: Character, secret: string) {
+function getSecret(character: Character, secret: string) {
     return character.settings?.secrets?.[secret] || process.env[secret];
 }
 
@@ -31,21 +27,32 @@ export async function handlePluginImporting(plugins: string[]) {
     }
 }
 
-function loadOptionalPlugins(
-    character: Character,
-    plugins,
-    teeMode: string,
-    walletSecretSalt: string
-) {
+function loadOptionalPlugins(character: Character, plugins) {
     addWebSearchPlugin(character, plugins);
     addEvmPlugin(character, plugins);
     addImgGenerationPlugin(character, plugins);
-    addTeePlugin(teeMode, walletSecretSalt, plugins);
+    addTeePlugin(character, plugins);
 }
 
-function addTeePlugin(teeMode: string, walletSecretSalt: string, plugins) {
+function addTeePlugin(character: Character, plugins) {
+    const teeMode = getSecret(character, "TEE_MODE") || "OFF";
+    const walletSecretSalt = getSecret(character, "WALLET_SECRET_SALT");
+    validateTEE(teeMode, walletSecretSalt);
+
     if (teeMode !== TEEMode.OFF && walletSecretSalt) {
         plugins.push(teePlugin);
+    }
+}
+
+function validateTEE(teeMode: string, walletSecretSalt: string) {
+    if (
+        teeMode.toLowerCase() !== TEEMode.OFF.toLowerCase() &&
+        !walletSecretSalt
+    ) {
+        elizaLogger.error(
+            "WALLET_SECRET_SALT required when TEE_MODE is enabled"
+        );
+        throw new Error("Invalid TEE configuration");
     }
 }
 

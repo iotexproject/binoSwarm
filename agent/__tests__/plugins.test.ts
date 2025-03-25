@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { buildPlugins, getSecret, handlePluginImporting } from "../src/plugins";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { buildPlugins, handlePluginImporting } from "../src/plugins";
 import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
 import { evmPlugin } from "@elizaos/plugin-evm";
 import { imageGenerationPlugin } from "@elizaos/plugin-image-generation";
 import { createNodePlugin } from "@elizaos/plugin-node";
-import { TEEMode, teePlugin } from "@elizaos/plugin-tee";
+import { teePlugin } from "@elizaos/plugin-tee";
 import { webSearchPlugin } from "@elizaos/plugin-web-search";
-import { elizaLogger, Service } from "@elizaos/core";
+import { elizaLogger, ModelProviderName } from "@elizaos/core";
 
 // Mock all plugin imports
 vi.mock("@elizaos/plugin-bootstrap", () => ({
@@ -41,6 +41,9 @@ vi.mock("@elizaos/core", () => ({
         info: vi.fn(),
         error: vi.fn(),
     },
+    ModelProviderName: {
+        OPENAI: "OPENAI",
+    },
 }));
 
 describe("Plugin Management", () => {
@@ -53,8 +56,23 @@ describe("Plugin Management", () => {
 
     describe("buildPlugins", () => {
         const mockCharacter = {
+            bio: ["test"],
+            lore: ["test"],
+            modelProvider: ModelProviderName.OPENAI,
+            name: "test",
+            messageExamples: [],
+            postExamples: [],
+            topics: [],
+            adjectives: [],
             settings: {
                 secrets: {},
+            },
+            clients: [],
+            plugins: [],
+            style: {
+                all: [],
+                chat: [],
+                post: [],
             },
         };
 
@@ -63,39 +81,32 @@ describe("Plugin Management", () => {
         });
 
         it("should always include bootstrap and node plugins", () => {
-            // @ts-expect-error: mocking the character
-            const result = buildPlugins(mockCharacter, TEEMode.OFF, "");
+            const result = buildPlugins(mockCharacter);
 
             expect(result).toContain(bootstrapPlugin);
             expect(createNodePlugin).toHaveBeenCalled();
         });
 
         it("should include webSearchPlugin when TAVILY_API_KEY is present", () => {
-            // @ts-expect-error: mocking secrets
-            mockCharacter.settings.secrets.TAVILY_API_KEY = "test-key";
+            process.env.TAVILY_API_KEY = "test-key";
 
-            // @ts-expect-error: mocking the character
-            const result = buildPlugins(mockCharacter, TEEMode.OFF, "");
+            const result = buildPlugins(mockCharacter);
 
             expect(result).toContain(webSearchPlugin);
         });
 
         it("should include evmPlugin when EVM_PUBLIC_KEY is present", () => {
-            // @ts-expect-error: mocking secrets
-            mockCharacter.settings.secrets.EVM_PUBLIC_KEY = "test-key";
+            process.env.EVM_PUBLIC_KEY = "test-key";
 
-            // @ts-expect-error: mocking the character
-            const result = buildPlugins(mockCharacter, TEEMode.OFF, "");
+            const result = buildPlugins(mockCharacter);
 
             expect(result).toContain(evmPlugin);
         });
 
         it("should include evmPlugin when WALLET_PUBLIC_KEY starts with 0x", () => {
-            // @ts-expect-error: mocking secrets
-            mockCharacter.settings.secrets.WALLET_PUBLIC_KEY = "0xtest-key";
+            process.env.WALLET_PUBLIC_KEY = "0xtest-key";
 
-            // @ts-expect-error: mocking the character
-            const result = buildPlugins(mockCharacter, TEEMode.OFF, "");
+            const result = buildPlugins(mockCharacter);
 
             expect(result).toContain(evmPlugin);
         });
@@ -113,63 +124,28 @@ describe("Plugin Management", () => {
                 mockCharacter.settings.secrets = {};
                 mockCharacter.settings.secrets[key] = "test-key";
 
-                // @ts-expect-error: mocking the character
-                const result = buildPlugins(mockCharacter, TEEMode.OFF, "");
+                const result = buildPlugins(mockCharacter);
 
                 expect(result).toContain(imageGenerationPlugin);
             });
         });
 
         it("should include teePlugin when teeMode is not OFF and walletSecretSalt is provided", () => {
-            // @ts-expect-error: mocking the character
-            const result = buildPlugins(mockCharacter, "enabled", "salt");
+            process.env.TEE_MODE = "enabled";
+            process.env.WALLET_SECRET_SALT = "salt";
+
+            const result = buildPlugins(mockCharacter);
 
             expect(result).toContain(teePlugin);
         });
 
         it("should not include optional plugins when conditions are not met", () => {
-            // @ts-expect-error: mocking the character
-            const result = buildPlugins(mockCharacter, TEEMode.OFF, "");
+            const result = buildPlugins(mockCharacter);
 
             expect(result).not.toContain(webSearchPlugin);
             expect(result).not.toContain(evmPlugin);
             expect(result).not.toContain(imageGenerationPlugin);
             expect(result).not.toContain(teePlugin);
-        });
-    });
-
-    describe("getSecret", () => {
-        const mockCharacter = {
-            settings: {
-                secrets: {
-                    TEST_SECRET: "character-secret",
-                },
-            },
-        };
-
-        it("should prefer character secrets over environment variables", () => {
-            process.env.TEST_SECRET = "env-secret";
-
-            // @ts-expect-error: mocking the character
-            expect(getSecret(mockCharacter, "TEST_SECRET")).toBe(
-                "character-secret"
-            );
-        });
-
-        it("should fall back to environment variables", () => {
-            process.env.ENV_ONLY_SECRET = "env-secret";
-
-            // @ts-expect-error: mocking the character
-            expect(getSecret(mockCharacter, "ENV_ONLY_SECRET")).toBe(
-                "env-secret"
-            );
-        });
-
-        it("should return undefined when secret is not found", () => {
-            // @ts-expect-error: mocking the character
-            expect(getSecret(mockCharacter, "NON_EXISTENT_SECRET")).toBe(
-                undefined
-            );
         });
     });
 
