@@ -1070,7 +1070,7 @@ export interface IDatabaseAdapter {
     }): Promise<Prediction[]>;
     createPrediction?(prediction: Prediction): Promise<void>;
     getReadyActivePredictions?(): Promise<Prediction[]>;
-    resolvePrediction?(predictionId: string, outcome: boolean): Promise<string>;
+    resolvePrediction?(predictionId: string, outcome: boolean): Promise<void>;
     getIsUserInTheRoom(roomId: UUID, userId: UUID): Promise<boolean>;
     getAccountsByIds(actorIds: UUID[]): Promise<Actor[]>;
 }
