@@ -20,6 +20,7 @@ import {
     type Memory,
     type Relationship,
     type UUID,
+    type CharacterDBTraits,
 } from "@elizaos/core";
 import fs from "fs";
 import path from "path";
@@ -1860,6 +1861,20 @@ export class PostgresDatabaseAdapter
             `UPDATE predictions SET "status" = 'RESOLVED', "outcome" = $2 WHERE "id" = $1`,
             [predictionId, outcome]
         );
+    }
+
+    async getCharacterDbTraits(
+        characterId: UUID
+    ): Promise<CharacterDBTraits | undefined> {
+        const { rows } = await this.pool.query(
+            `SELECT * FROM characters
+             WHERE agent_id = $1
+             AND is_published = true
+             ORDER BY version_number DESC, published_at DESC
+             LIMIT 1`,
+            [characterId]
+        );
+        return rows[0];
     }
 }
 

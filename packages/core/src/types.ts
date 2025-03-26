@@ -892,6 +892,26 @@ export type Character = {
     extends?: string[];
 };
 
+export interface CharacterDBTraits {
+    id: string;
+    agent_id: string;
+    system_prompt?: string;
+    bio?: string[];
+    lore?: string[];
+    knowledge?: string[];
+    messageExamples?: MessageExample[][];
+    postExamples?: string[];
+    topics?: string[];
+    adjectives?: string[];
+    style?: {
+        all?: string[];
+        chat?: string[];
+        post?: string[];
+    };
+    templates?: { [key: string]: string };
+    env_twitter_target_users?: string[];
+    env_twitter_knowledge_users?: string[];
+}
 /**
  * Interface for database operations
  */
@@ -1070,9 +1090,12 @@ export interface IDatabaseAdapter {
     }): Promise<Prediction[]>;
     createPrediction?(prediction: Prediction): Promise<void>;
     getReadyActivePredictions?(): Promise<Prediction[]>;
-    resolvePrediction?(predictionId: string, outcome: boolean): Promise<string>;
+    resolvePrediction?(predictionId: string, outcome: boolean): Promise<void>;
     getIsUserInTheRoom(roomId: UUID, userId: UUID): Promise<boolean>;
     getAccountsByIds(actorIds: UUID[]): Promise<Actor[]>;
+    getCharacterDbTraits(
+        characterId: UUID
+    ): Promise<CharacterDBTraits | undefined>;
 }
 
 export interface IDatabaseCacheAdapter {

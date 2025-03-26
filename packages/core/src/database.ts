@@ -9,6 +9,7 @@ import {
     RAGKnowledgeItem,
     Participant,
     IDatabaseAdapter,
+    CharacterDBTraits,
 } from "./types.ts";
 import { CircuitBreaker } from "./database/CircuitBreaker";
 import { elizaLogger } from "./logger";
@@ -450,4 +451,8 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
     abstract getIsUserInTheRoom(roomId: UUID, userId: UUID): Promise<boolean>;
 
     abstract getAccountsByIds(actorIds: UUID[]): Promise<Actor[]>;
+
+    abstract getCharacterDbTraits(
+        characterId: UUID
+    ): Promise<CharacterDBTraits | undefined>;
 }

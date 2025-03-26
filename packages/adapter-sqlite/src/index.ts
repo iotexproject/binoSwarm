@@ -16,6 +16,7 @@ import {
     type Relationship,
     type UUID,
     RAGKnowledgeItem,
+    type CharacterDBTraits,
 } from "@elizaos/core";
 import { Database } from "better-sqlite3";
 import { v4 } from "uuid";
@@ -962,5 +963,51 @@ export class SqliteDatabaseAdapter
         const sql = "SELECT * FROM accounts WHERE id IN ?";
         const rows = this.db.prepare(sql).all(...actorIds) as Actor[];
         return rows;
+    }
+
+    async getCharacterDbTraits(
+        characterId: UUID
+    ): Promise<CharacterDBTraits | undefined> {
+        const sql = `
+            SELECT * FROM characters
+            WHERE agent_id = ?
+            AND is_published = 1
+            ORDER BY version_number DESC, published_at DESC
+            LIMIT 1
+        `;
+
+        const rows = this.db
+            .prepare(sql)
+            .all(characterId) as (CharacterDBTraits & {
+            bio: string;
+            lore: string;
+            knowledge: string;
+            message_examples: string;
+            post_examples: string;
+            topics: string;
+            style: string;
+            adjectives: string;
+            templates: string;
+            is_published: number;
+            published_at: string | null;
+        })[];
+
+        if (!rows.length) {
+            return undefined;
+        }
+
+        // SQLite doesn't automatically parse JSON columns, so we need to parse them
+        return {
+            ...rows[0],
+            bio: JSON.parse(rows[0].bio || "[]"),
+            lore: JSON.parse(rows[0].lore || "[]"),
+            knowledge: JSON.parse(rows[0].knowledge || "[]"),
+            messageExamples: JSON.parse(rows[0].message_examples || "[]"),
+            postExamples: JSON.parse(rows[0].post_examples || "[]"),
+            topics: JSON.parse(rows[0].topics || "[]"),
+            style: JSON.parse(rows[0].style || "{}"),
+            adjectives: JSON.parse(rows[0].adjectives || "[]"),
+            templates: JSON.parse(rows[0].templates || "{}"),
+        };
     }
 }
