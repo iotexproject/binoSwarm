@@ -13,6 +13,7 @@ import { initializeDatabase } from "./db";
 import { initializeCache } from "./cache";
 import { initializeClients } from "./clients";
 import { buildPlugins } from "./plugins";
+import { mergeCharacterTraits } from "./merge";
 
 export async function initializeStartupAgents(
     characters: Character[],
@@ -43,6 +44,8 @@ async function startAgent(character: Character): Promise<AgentRuntime> {
         elizaLogger.debug(
             `Initialized ${character.name} as ${runtime.agentId}`
         );
+
+        console.log("runtime", runtime.character);
         return runtime;
     } catch (error) {
         elizaLogger.error(
@@ -69,14 +72,15 @@ export async function createAgent(
         db
     );
     const plugins = buildPlugins(character);
+    const enrichedCharacter = await mergeCharacterWithDbTraits(character, db);
 
-    elizaLogger.log(`Creating runtime for character ${character.name}`);
+    elizaLogger.log(`Creating runtime for character ${enrichedCharacter.name}`);
     return new AgentRuntime({
         databaseAdapter: db,
         token,
-        modelProvider: character.modelProvider,
+        modelProvider: enrichedCharacter.modelProvider,
         evaluators: [],
-        character,
+        character: enrichedCharacter,
         plugins,
         providers: [],
         actions: [],
@@ -91,3 +95,22 @@ const logFetch = async (url: string, options: any) => {
     elizaLogger.debug(`Fetching ${url}`);
     return fetch(url, options);
 };
+
+async function mergeCharacterWithDbTraits(
+    character: Character,
+    db: IDatabaseAdapter & IDatabaseCacheAdapter
+): Promise<Character> {
+    const characterTraits = await db.getCharacterDbTraits(character.id);
+
+    if (!characterTraits) {
+        return character;
+    }
+
+    if (characterTraits.agent_id !== character.id) {
+        throw new Error(
+            `Character ${character.id} has agent_id ${characterTraits.agent_id} but expected ${character.id}`
+        );
+    }
+
+    return mergeCharacterTraits(character, characterTraits);
+}
