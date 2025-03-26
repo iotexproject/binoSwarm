@@ -62,6 +62,38 @@ fi
 # Find all packages under the packages directory
 PACKAGES=($(find packages -mindepth 1 -maxdepth 1 -type d -exec basename {} \;))
 
+# Add agent directory to test locations if it exists
+if [ -d "agent" ]; then
+    echo -e "\033[1mTesting agent directory\033[0m"
+    cd "agent" || exit 1
+
+    if [ -f "package.json" ]; then
+        if [[ -n "$TEST_COVERAGE" ]] && npm run | grep -q " test:coverage"; then
+            echo -e "\033[1mRunning coverage tests for agent\033[0m"
+            if npm run test:coverage; then
+                echo -e "\033[1;32mSuccessfully tested agent with coverage\033[0m\n"
+            else
+                echo -e "\033[1;31mCoverage tests failed for agent\033[0m"
+                FAILURES=$((FAILURES + 1))
+            fi
+        elif npm run | grep -q " test"; then
+            echo -e "\033[1mRunning tests for agent\033[0m"
+            if npm run test; then
+                echo -e "\033[1;32mSuccessfully tested agent\033[0m\n"
+            else
+                echo -e "\033[1;31mTests failed for agent\033[0m"
+                FAILURES=$((FAILURES + 1))
+            fi
+        else
+            echo "No test script found in agent, skipping tests..."
+        fi
+    else
+        echo "No package.json found in agent, skipping..."
+    fi
+
+    cd - >/dev/null || exit
+fi
+
 # Test packages in specified order
 for package in "${PACKAGES[@]}"; do
     package_path="packages/$package"
