@@ -2,14 +2,14 @@ import {
     State,
     IAgentRuntime,
     composeContext,
-    generateText,
     ModelClass,
     elizaLogger,
+    Content,
+    generateMessageResponse,
 } from "@elizaos/core";
 import axios from "axios";
 
 import { quicksilverResponseTemplate } from "../template";
-import { parseTagContent } from "../helpers/parsers";
 
 type QuicksilverTool =
     | "weather-current"
@@ -83,7 +83,7 @@ export async function adaptQSResponse(
     state: State,
     runtime: IAgentRuntime,
     qsResponse: string
-) {
+): Promise<Content> {
     state.qsResponse = qsResponse;
     const context = composeContext({
         state: {
@@ -99,7 +99,7 @@ export async function adaptQSResponse(
             quicksilverResponseTemplate,
     });
     elizaLogger.info(context);
-    const response = await generateText({
+    const response = await generateMessageResponse({
         runtime,
         context,
         modelClass: ModelClass.LARGE,
@@ -107,5 +107,5 @@ export async function adaptQSResponse(
 
     elizaLogger.info(response);
 
-    return parseTagContent(response, "response");
+    return response;
 }

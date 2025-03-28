@@ -295,12 +295,10 @@ export const askSentai: Action = {
                 runtime,
                 sentaiResponse
             );
+            adaptedResponse.inReplyTo = message.id;
 
             if (callback) {
-                callback({
-                    text: adaptedResponse,
-                    inReplyTo: message.id,
-                });
+                callback(adaptedResponse);
             }
 
             return true;
