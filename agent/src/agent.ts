@@ -45,7 +45,6 @@ async function startAgent(character: Character): Promise<AgentRuntime> {
             `Initialized ${character.name} as ${runtime.agentId}`
         );
 
-        console.log("runtime", runtime.character);
         return runtime;
     } catch (error) {
         elizaLogger.error(
