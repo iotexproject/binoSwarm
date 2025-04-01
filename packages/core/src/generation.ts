@@ -21,7 +21,6 @@ import { tavily } from "@tavily/core";
 import { elizaLogger } from "./index.ts";
 import { getModelSettings, getImageModelSettings } from "./models.ts";
 import {
-    parseBooleanFromText,
     parseJSONObjectFromText,
     parseShouldRespondFromText,
     parseTagContent,
@@ -218,43 +217,25 @@ export async function generateTrueOrFalse({
     context: string;
     modelClass: ModelClass;
 }): Promise<boolean> {
-    let retryDelay = 1000;
-    let retryCount = 0;
-    const MAX_RETRIES = 5;
+    const booleanSchema = z.object({
+        analysis: z.string().describe("A detailed analysis of your response"),
+        response: z.boolean(),
+    });
 
-    const modelSettings = getModelSettings(runtime.modelProvider, modelClass);
-    const stop = Array.from(
-        new Set([...(modelSettings.stop || []), "\n"])
-    ) as string[];
+    try {
+        const response = await generateObject<{ response: boolean }>({
+            runtime,
+            context,
+            modelClass,
+            schema: booleanSchema,
+            schemaName: "Boolean",
+            schemaDescription: "A boolean value",
+        });
 
-    while (retryCount < MAX_RETRIES) {
-        try {
-            const response = await generateText({
-                stop,
-                runtime,
-                context,
-                modelClass,
-            });
-
-            const parsedResponse = parseBooleanFromText(response.trim());
-            if (parsedResponse !== null) {
-                return parsedResponse;
-            }
-        } catch (error) {
-            elizaLogger.error("Error in generateTrueOrFalse:", error);
-        }
-
-        elizaLogger.log(
-            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
-        );
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        retryDelay *= 2;
-        retryCount++;
+        return response.object.response;
+    } catch (error) {
+        elizaLogger.error("Error in generateTrueOrFalse:", error);
     }
-
-    throw new Error(
-        "Failed to generate boolean response after maximum retries"
-    );
 }
 
 export async function generateObjectDeprecated({
