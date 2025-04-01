@@ -254,7 +254,7 @@ describe("Twitter Post Client", () => {
             );
 
             expect(elizaLogger.log).toHaveBeenNthCalledWith(
-                8,
+                7,
                 expect.stringContaining("Posting new tweet")
             );
         });
