@@ -50,6 +50,10 @@ jobs:
                   tags: ${{ steps.meta.outputs.tags }}
                   labels: ${{ steps.meta.outputs.labels }}
                   cache-from: |
-                      type=gha
+                      # Only use GHA cache for main branch
+                      type=gha,scope=${{ github.ref_name == 'main' && 'main' || '' }}
+                      # Always try to use registry cache from latest
                       type=registry,ref=ghcr.io/${{ github.repository_owner }}/bino:latest
-                  cache-to: type=gha,mode=max
+                  cache-to: |
+                      # Only save GHA cache for main branch
+                      type=gha,mode=max,scope=${{ github.ref_name == 'main' && 'main' || '' }}
