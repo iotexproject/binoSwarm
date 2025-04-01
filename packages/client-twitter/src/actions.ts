@@ -195,10 +195,6 @@ export class TwitterActionProcessor {
             modelClass: ModelClass.SMALL,
         });
 
-        if (!actionResponse) {
-            throw new Error(`No valid actions generated for tweet`);
-        }
-
         return actionResponse;
     }
 
