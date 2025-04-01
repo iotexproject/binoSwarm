@@ -1,6 +1,5 @@
 import { composeContext } from "@elizaos/core";
 import { generateTrueOrFalse } from "@elizaos/core";
-import { booleanFooter } from "@elizaos/core";
 import {
     Action,
     ActionExample,
@@ -10,19 +9,18 @@ import {
     State,
 } from "@elizaos/core";
 
-const shouldUnfollowTemplate =
-    `Based on the conversation so far:
+const shouldUnfollowTemplate = `Based on the conversation so far:
 
 {{recentMessages}}
 
 Should {{agentName}} stop closely following this previously followed room and only respond when mentioned?
-Respond with YES if:
+Respond with true if:
 - The user has suggested that {{agentName}} is over-participating or being disruptive
 - {{agentName}}'s eagerness to contribute is not well-received by the users
 - The conversation has shifted to a topic where {{agentName}} has less to add
 
-Otherwise, respond with NO.
-` + booleanFooter;
+Otherwise, respond with false.
+`;
 
 export const unfollowRoomAction: Action = {
     name: "UNFOLLOW_ROOM",

@@ -3,7 +3,6 @@ import {
     composeContext,
     generateMessageResponse,
     generateShouldRespond,
-    shouldRespondFooter,
     Content,
     HandlerCallback,
     IAgentRuntime,
@@ -91,7 +90,7 @@ Thread of Tweets You Are Replying To:
 {{formattedConversation}}
 
 # INSTRUCTIONS: Respond with [RESPOND] if {{agentName}} should respond, or [IGNORE] if {{agentName}} should not respond to the last message and [STOP] if {{agentName}} should stop participating in the conversation.
-` + shouldRespondFooter;
+`;
 
 export class TwitterInteractionClient {
     client: ClientBase;
@@ -679,7 +678,6 @@ For each tweet that contains valuable information (in either text or media), pro
             modelClass: ModelClass.SMALL,
         });
 
-        // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
         if (shouldRespond !== "RESPOND") {
             elizaLogger.log("Not responding to message");
             return { text: "Response Decision:", action: shouldRespond };

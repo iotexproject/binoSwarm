@@ -1,7 +1,4 @@
-import { shouldRespondFooter } from "@elizaos/core";
-
-export const discordShouldRespondTemplate =
-    `# Task: Decide if {{agentName}} should respond.
+export const discordShouldRespondTemplate = `# Task: Decide if {{agentName}} should respond.
 About {{agentName}}:
 {{bio}}
 
@@ -67,7 +64,7 @@ If {{agentName}} is conversing with a user and they have not asked to stop, it i
 {{recentMessages}}
 
 # INSTRUCTIONS: Choose the option that best describes {{agentName}}'s response to the last message. Ignore messages if they are addressed to someone else.
-` + shouldRespondFooter;
+`;
 
 export const discordVoiceHandlerTemplate = `# Task: Generate conversational voice dialog for {{agentName}}.
 About {{agentName}}:

@@ -1,6 +1,5 @@
 import { composeContext, elizaLogger } from "@elizaos/core";
 import { generateMessageResponse, generateTrueOrFalse } from "@elizaos/core";
-import { booleanFooter } from "@elizaos/core";
 import {
     Action,
     ActionExample,
@@ -42,16 +41,15 @@ Note that {{agentName}} is capable of reading/seeing/hearing various forms of me
 # Instructions: Write the next message for {{agentName}}.
 `;
 
-export const shouldContinueTemplate =
-    `# Task: Decide if {{agentName}} should continue, or wait for others in the conversation so speak.
+export const shouldContinueTemplate = `# Task: Decide if {{agentName}} should continue, or wait for others in the conversation so speak.
 
 {{agentName}} is brief, and doesn't want to be annoying. {{agentName}} will only continue if the message requires a continuation to finish the thought.
 
-Based on the following conversation, should {{agentName}} continue? YES or NO
+Based on the following conversation, should {{agentName}} continue? true or false
 
 {{recentMessages}}
 
-Should {{agentName}} continue? ` + booleanFooter;
+Should {{agentName}} continue? `;
 
 export const continueAction: Action = {
     name: "CONTINUE",

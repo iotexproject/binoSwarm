@@ -5,7 +5,7 @@ import { TwitterInteractionClient } from "./interactions.ts";
 import { TwitterPostClient } from "./post.ts";
 import { TwitterSearchClient } from "./search.ts";
 import { TwitterSpaceClient } from "./spaces.ts";
-
+import { TwitterActionProcessor } from "./actions.ts";
 /**
  * A manager that orchestrates all specialized Twitter logic:
  * - client: base operations (login, timeline caching, etc.)
@@ -20,6 +20,7 @@ class TwitterManager {
     search: TwitterSearchClient;
     interaction: TwitterInteractionClient;
     space?: TwitterSpaceClient;
+    actions: TwitterActionProcessor;
 
     constructor(runtime: IAgentRuntime, twitterConfig: TwitterConfig) {
         // Pass twitterConfig to the base client
@@ -27,7 +28,7 @@ class TwitterManager {
 
         // Posting logic
         this.post = new TwitterPostClient(this.client, runtime);
-
+        this.actions = new TwitterActionProcessor(this.client, runtime);
         // Optional search logic (enabled if TWITTER_SEARCH_ENABLE is true)
         if (twitterConfig.TWITTER_SEARCH_ENABLE) {
             elizaLogger.warn("Twitter/X client running in a mode that:");

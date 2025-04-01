@@ -35,6 +35,12 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 WORKDIR /app
 
 # Copy package.json and other configuration files
+ARG NPM_TOKEN
+RUN if [ -n "$NPM_TOKEN" ]; then \
+    npm config set registry https://registry.npmjs.org/ && \
+    npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN; \
+    fi
+    
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc turbo.json ./
 
 # Copy the rest of the application code

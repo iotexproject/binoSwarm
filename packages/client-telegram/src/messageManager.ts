@@ -21,7 +21,6 @@ import {
 import { stringToUuid } from "@elizaos/core";
 
 import { generateMessageResponse, generateShouldRespond } from "@elizaos/core";
-import { shouldRespondFooter } from "@elizaos/core";
 
 import { cosineSimilarity, escapeMarkdown } from "./utils";
 import {
@@ -35,8 +34,7 @@ import fs from "fs";
 
 const MAX_MESSAGE_LENGTH = 4096; // Telegram's max message length
 
-const telegramShouldRespondTemplate =
-    `# About {{agentName}}:
+const telegramShouldRespondTemplate = `# About {{agentName}}:
 {{bio}}
 
 # RESPONSE EXAMPLES
@@ -104,7 +102,7 @@ The goal is to decide whether {{agentName}} should respond to the last message.
 {{recentMessages}}
 
 # INSTRUCTIONS: Choose the option that best describes {{agentName}}'s response to the last message. Ignore messages if they are addressed to someone else.
-` + shouldRespondFooter;
+`;
 
 const telegramMessageHandlerTemplate =
     // {{goals}}

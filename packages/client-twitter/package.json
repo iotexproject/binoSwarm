@@ -36,7 +36,8 @@
         "lint": "eslint --fix  --cache .",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
-        "test:watch": "vitest"
+        "test:watch": "vitest",
+        "test:watch:coverage": "vitest --coverage"
     },
     "peerDependencies": {
         "whatwg-url": "7.1.0"
