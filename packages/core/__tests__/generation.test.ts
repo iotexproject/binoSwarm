@@ -162,6 +162,8 @@ describe("Generation Module", () => {
                 context: "Generate a person object",
                 modelClass: ModelClass.LARGE,
                 schema: testSchema,
+                schemaName: "Person",
+                schemaDescription: "A person with name and age",
             });
 
             // Verify
@@ -180,6 +182,8 @@ describe("Generation Module", () => {
                     context: "",
                     modelClass: ModelClass.LARGE,
                     schema: testSchema,
+                    schemaName: "Person",
+                    schemaDescription: "A person with name and age",
                 })
             ).rejects.toThrow("generateObject context is empty");
         });
@@ -195,6 +199,8 @@ describe("Generation Module", () => {
                     context: "Generate a person object",
                     modelClass: ModelClass.LARGE,
                     schema: testSchema,
+                    schemaName: "Person",
+                    schemaDescription: "A person with name and age",
                 })
             ).rejects.toThrow(
                 "Model settings not found for provider: UNSUPPORTED_PROVIDER"
