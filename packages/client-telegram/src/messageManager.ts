@@ -21,7 +21,6 @@ import {
 import { stringToUuid } from "@elizaos/core";
 
 import { generateMessageResponse, generateShouldRespond } from "@elizaos/core";
-import { shouldRespondFooter } from "@elizaos/core";
 
 import { cosineSimilarity, escapeMarkdown } from "./utils";
 import {
@@ -104,7 +103,7 @@ The goal is to decide whether {{agentName}} should respond to the last message.
 {{recentMessages}}
 
 # INSTRUCTIONS: Choose the option that best describes {{agentName}}'s response to the last message. Ignore messages if they are addressed to someone else.
-` + shouldRespondFooter;
+`;
 
 const telegramMessageHandlerTemplate =
     // {{goals}}
