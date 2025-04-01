@@ -195,7 +195,7 @@ export class TwitterPostClient {
         }, this.approvalCheckInterval);
     }
 
-    createTweetObject(
+    private createTweetObject(
         tweetResult: any,
         client: any,
         twitterUsername: string
@@ -220,7 +220,7 @@ export class TwitterPostClient {
         } as Tweet;
     }
 
-    async processAndCacheTweet(
+    private async processAndCacheTweet(
         runtime: IAgentRuntime,
         client: ClientBase,
         tweet: Tweet,
@@ -262,7 +262,7 @@ export class TwitterPostClient {
         });
     }
 
-    async postTweet(
+    private async postTweet(
         runtime: IAgentRuntime,
         client: ClientBase,
         cleanedContent: string,
@@ -308,7 +308,7 @@ export class TwitterPostClient {
     /**
      * Generates and posts a new tweet.
      */
-    async generateNewTweet() {
+    private async generateNewTweet() {
         elizaLogger.log("Generating new tweet");
 
         try {
