@@ -20,10 +20,7 @@ import { tavily } from "@tavily/core";
 
 import { elizaLogger } from "./index.ts";
 import { getModelSettings, getImageModelSettings } from "./models.ts";
-import {
-    parseJSONObjectFromText,
-    parseTagContent,
-} from "./parsing.ts";
+import { parseJSONObjectFromText, parseTagContent } from "./parsing.ts";
 import {
     Content,
     IAgentRuntime,

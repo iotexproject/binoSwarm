@@ -1,5 +1,4 @@
-export const discordShouldRespondTemplate =
-    `# Task: Decide if {{agentName}} should respond.
+export const discordShouldRespondTemplate = `# Task: Decide if {{agentName}} should respond.
 About {{agentName}}:
 {{bio}}
 

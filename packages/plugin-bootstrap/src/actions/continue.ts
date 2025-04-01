@@ -41,8 +41,7 @@ Note that {{agentName}} is capable of reading/seeing/hearing various forms of me
 # Instructions: Write the next message for {{agentName}}.
 `;
 
-export const shouldContinueTemplate =
-    `# Task: Decide if {{agentName}} should continue, or wait for others in the conversation so speak.
+export const shouldContinueTemplate = `# Task: Decide if {{agentName}} should continue, or wait for others in the conversation so speak.
 
 {{agentName}} is brief, and doesn't want to be annoying. {{agentName}} will only continue if the message requires a continuation to finish the thought.
 

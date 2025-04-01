@@ -9,8 +9,7 @@ import {
     State,
 } from "@elizaos/core";
 
-const shouldUnfollowTemplate =
-    `Based on the conversation so far:
+const shouldUnfollowTemplate = `Based on the conversation so far:
 
 {{recentMessages}}
 

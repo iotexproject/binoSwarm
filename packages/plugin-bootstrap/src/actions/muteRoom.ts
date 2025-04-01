@@ -9,8 +9,7 @@ import {
     State,
 } from "@elizaos/core";
 
-export const shouldMuteTemplate =
-    `Based on the conversation so far:
+export const shouldMuteTemplate = `Based on the conversation so far:
 
 {{recentMessages}}
 

@@ -17,7 +17,7 @@ export class TwitterReplyClient {
         } else {
             await TwitterHelpers.handleStandardTweet(client, text, tweetId);
         }
-        
+
         await TwitterReplyClient.cacheReplyTweet(runtime, tweetId, state, text);
     }
 

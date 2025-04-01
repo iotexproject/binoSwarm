@@ -34,8 +34,7 @@ import fs from "fs";
 
 const MAX_MESSAGE_LENGTH = 4096; // Telegram's max message length
 
-const telegramShouldRespondTemplate =
-    `# About {{agentName}}:
+const telegramShouldRespondTemplate = `# About {{agentName}}:
 {{bio}}
 
 # RESPONSE EXAMPLES
