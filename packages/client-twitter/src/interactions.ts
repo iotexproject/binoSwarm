@@ -679,7 +679,6 @@ For each tweet that contains valuable information (in either text or media), pro
             modelClass: ModelClass.SMALL,
         });
 
-        // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
         if (shouldRespond !== "RESPOND") {
             elizaLogger.log("Not responding to message");
             return { text: "Response Decision:", action: shouldRespond };

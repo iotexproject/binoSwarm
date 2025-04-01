@@ -142,57 +142,33 @@ export async function generateShouldRespond({
     runtime,
     context,
     modelClass,
-    messages,
 }: {
     runtime: IAgentRuntime;
     context: string;
     modelClass: ModelClass;
-    messages?: Message[];
-}): Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
-    let retryDelay = 1000;
-    let retryCount = 0;
-    const MAX_RETRIES = 5;
-    while (retryCount < MAX_RETRIES) {
-        try {
-            elizaLogger.debug(
-                "Attempting to generate text with context:",
-                context
-            );
-            const response = await generateText({
-                runtime,
-                context,
-                modelClass,
-                messages,
-            });
+}): Promise<"RESPOND" | "IGNORE" | "STOP"> {
+    const shouldRespondSchema = z.object({
+        analysis: z.string().describe("A detailed analysis of your response"),
+        response: z.enum(["RESPOND", "IGNORE", "STOP"]),
+    });
 
-            const extractedResponse = parseTagContent(response, "response");
-            const parsedResponse =
-                parseShouldRespondFromText(extractedResponse);
-            if (parsedResponse) {
-                elizaLogger.debug("Parsed response:", parsedResponse);
-                return parsedResponse;
-            } else {
-                elizaLogger.debug("generateShouldRespond no response");
-            }
-        } catch (error) {
-            elizaLogger.error("Error in generateShouldRespond:", error);
-            if (
-                error instanceof TypeError &&
-                error.message.includes("queueTextCompletion")
-            ) {
-                elizaLogger.error(
-                    "TypeError: Cannot read properties of null (reading 'queueTextCompletion')"
-                );
-            }
-        }
+    try {
+        const response = await generateObject<{
+            response: "RESPOND" | "IGNORE" | "STOP";
+        }>({
+            runtime,
+            context,
+            modelClass,
+            schema: shouldRespondSchema,
+            schemaName: "ShouldRespond",
+            schemaDescription: "A boolean value",
+        });
 
-        elizaLogger.log(`Retrying in ${retryDelay}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        retryDelay *= 2;
-        retryCount++;
+        return response.object.response;
+    } catch (error) {
+        elizaLogger.error("Error in generateShouldRespond:", error);
+        return "IGNORE";
     }
-
-    throw new Error("generateShouldRespond failed after 5 retries");
 }
 
 export async function splitChunks(
