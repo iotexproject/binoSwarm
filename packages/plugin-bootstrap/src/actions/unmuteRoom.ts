@@ -1,6 +1,5 @@
 import { composeContext } from "@elizaos/core";
 import { generateTrueOrFalse } from "@elizaos/core";
-import { booleanFooter } from "@elizaos/core";
 import {
     Action,
     ActionExample,
@@ -16,13 +15,13 @@ export const shouldUnmuteTemplate =
 {{recentMessages}}
 
 Should {{agentName}} unmute this previously muted room and start considering it for responses again?
-Respond with YES if:
+Respond with true if:
 - The user has explicitly asked {{agentName}} to start responding again
 - The user seems to want to re-engage with {{agentName}} in a respectful manner
 - The tone of the conversation has improved and {{agentName}}'s input would be welcome
 
-Otherwise, respond with NO.
-` + booleanFooter;
+Otherwise, respond with false.
+`;
 
 export const unmuteRoomAction: Action = {
     name: "UNMUTE_ROOM",
