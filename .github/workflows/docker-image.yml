@@ -50,6 +50,6 @@ jobs:
                   tags: ${{ steps.meta.outputs.tags }}
                   labels: ${{ steps.meta.outputs.labels }}
                   cache-from: |
-                      type=gha
+                      type=gha,scope=${{ github.ref_name == 'main' && 'main' || '' }}
                       type=registry,ref=ghcr.io/${{ github.repository_owner }}/bino:latest
-                  cache-to: type=gha,mode=max
+                  cache-to: ${{ github.ref_name == 'main' && 'type=gha,mode=max' || '' }}
