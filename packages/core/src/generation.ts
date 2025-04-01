@@ -22,7 +22,6 @@ import { elizaLogger } from "./index.ts";
 import { getModelSettings, getImageModelSettings } from "./models.ts";
 import {
     parseJSONObjectFromText,
-    parseShouldRespondFromText,
     parseTagContent,
 } from "./parsing.ts";
 import {
@@ -737,8 +736,8 @@ export async function generateTweetActions({
         analysis: z.string().describe("A detailed analysis of the tweet"),
         like: z.boolean().describe("Whether to like the tweet"),
         retweet: z.boolean().describe("Whether to retweet the tweet"),
-        quote: z.boolean().optional().describe("Whether to quote the tweet"),
-        reply: z.boolean().optional().describe("Whether to reply to the tweet"),
+        quote: z.boolean().describe("Whether to quote the tweet"),
+        reply: z.boolean().describe("Whether to reply to the tweet"),
     });
 
     try {

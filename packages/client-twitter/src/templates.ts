@@ -1,5 +1,3 @@
-import { postActionResponseFooter } from "@elizaos/core";
-
 export const twitterPostTemplate = `
 # Areas of Expertise
 {{knowledge}}
@@ -21,8 +19,7 @@ Your response should be 1, 2, or 3 sentences (choose the length at random).
 Your response should not contain any questions. Brief, concise statements only. The total character count MUST be less than {{maxTweetLength}}. No emojis. Use \\n\\n (double spaces) between statements if there are multiple statements in your response.
 `;
 
-export const twitterActionTemplate =
-    `
+export const twitterActionTemplate = `
 # INSTRUCTIONS: Determine actions for {{agentName}} (@{{twitterUserName}}) based on:
 {{bio}}
 {{postDirections}}
@@ -46,5 +43,4 @@ Actions (respond only with tags):
 Tweet:
 {{currentTweet}}
 
-# Respond with qualifying action tags only. Default to NO action unless extremely confident of relevance.` +
-    postActionResponseFooter;
+# Respond with qualifying action tags only. Default to NO action unless extremely confident of relevance.`;
