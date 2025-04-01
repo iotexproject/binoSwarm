@@ -24,7 +24,6 @@ import {
     parseBooleanFromText,
     parseJSONObjectFromText,
     parseShouldRespondFromText,
-    parseActionResponseFromText,
     parseTagContent,
 } from "./parsing.ts";
 import {
@@ -776,46 +775,35 @@ export async function generateTweetActions({
     runtime: IAgentRuntime;
     context: string;
     modelClass: ModelClass;
-}): Promise<ActionResponse | null> {
-    let retryDelay = 1000;
-    let retryCount = 0;
-    const MAX_RETRIES = 5;
+}): Promise<ActionResponse> {
+    const actionsSchema = z.object({
+        analysis: z.string().describe("A detailed analysis of the tweet"),
+        like: z.boolean().describe("Whether to like the tweet"),
+        retweet: z.boolean().describe("Whether to retweet the tweet"),
+        quote: z.boolean().optional().describe("Whether to quote the tweet"),
+        reply: z.boolean().optional().describe("Whether to reply to the tweet"),
+    });
 
-    while (retryCount < MAX_RETRIES) {
-        try {
-            const response = await generateText({
-                runtime,
-                context,
-                modelClass,
-            });
+    try {
+        const response = await generateObject<ActionResponse>({
+            runtime,
+            context,
+            modelClass,
+            schema: actionsSchema,
+            schemaName: "Actions",
+            schemaDescription: "The actions to take on the tweet",
+        });
 
-            const parsedResponse = parseTagContent(response, "response");
-            const { actions } = parseActionResponseFromText(parsedResponse);
-            if (actions) {
-                elizaLogger.debug("Parsed tweet actions:", actions);
-                return actions;
-            }
-            elizaLogger.debug("generateTweetActions no valid response");
-        } catch (error) {
-            elizaLogger.error("Error in generateTweetActions:", error);
-            if (
-                error instanceof TypeError &&
-                error.message.includes("queueTextCompletion")
-            ) {
-                elizaLogger.error(
-                    "TypeError: Cannot read properties of null (reading 'queueTextCompletion')"
-                );
-            }
-        }
-        elizaLogger.log(
-            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
-        );
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        retryDelay *= 2;
-        retryCount++;
+        return response.object;
+    } catch (error) {
+        elizaLogger.error("Error in generateTweetActions:", error);
+        return {
+            like: false,
+            retweet: false,
+            quote: false,
+            reply: false,
+        };
     }
-
-    throw new Error("Failed to generate tweet actions after maximum retries");
 }
 
 export async function generateObject<T>({
