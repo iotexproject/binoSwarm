@@ -88,11 +88,6 @@ export class TwitterPostClient {
         elizaLogger.log(
             `- Search Enabled: ${this.client.twitterConfig.TWITTER_SEARCH_ENABLE ? "enabled" : "disabled"}`
         );
-        const knowledgeUsers =
-            this.client.twitterConfig.TWITTER_KNOWLEDGE_USERS;
-        if (knowledgeUsers) {
-            elizaLogger.log(`- Knowledge Users: ${knowledgeUsers}`);
-        }
     }
 
     private setupDiscordClient() {
