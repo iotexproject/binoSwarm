@@ -17,11 +17,14 @@ import {
 } from "@elizaos/core";
 
 import { ClientBase } from "./base.ts";
-import { DEFAULT_MAX_TWEET_LENGTH } from "./environment.ts";
+
 import { twitterActionTemplate, twitterPostTemplate } from "./templates.ts";
 import { buildConversationThread } from "./utils.ts";
 import { twitterMessageHandlerTemplate } from "./interactions.ts";
-import { TwitterHelpers } from "./helpers.ts";
+import TwitterQuoteClient from "./quote.ts";
+import TwitterLikeClient from "./like.ts";
+import TwitterRetweetClient from "./retweet.ts";
+import TwitterReplyClient from "./reply.ts";
 
 const MAX_TIMELINES_TO_FETCH = 15;
 
@@ -31,6 +34,7 @@ export class TwitterActionProcessor {
     twitterUsername: string;
     private isProcessing: boolean = false;
     private stopProcessingActions: boolean = false;
+    private processingInterval: NodeJS.Timeout | null = null;
 
     constructor(client: ClientBase, runtime: IAgentRuntime) {
         this.client = client;
@@ -41,17 +45,21 @@ export class TwitterActionProcessor {
     }
 
     async start() {
-        if (!this.client.profile) {
-            await this.client.init();
-        }
-
         if (this.client.twitterConfig.ENABLE_ACTION_PROCESSING) {
+            if (!this.client.profile) {
+                await this.client.init();
+            }
+
             this.processActionsLoop();
         }
     }
 
     async stop() {
         this.stopProcessingActions = true;
+        if (this.processingInterval) {
+            clearInterval(this.processingInterval);
+            this.processingInterval = null;
+        }
     }
 
     private logConfigOnInitialization() {
@@ -69,11 +77,20 @@ export class TwitterActionProcessor {
         }
     }
 
-    private async processActionsLoop() {
+    private processActionsLoop() {
         const actionIntervalMin = this.client.twitterConfig.ACTION_INTERVAL;
-        const notStopped = !this.stopProcessingActions;
+        const intervalMs = actionIntervalMin * 60 * 1000;
 
-        while (notStopped) {
+        // Store the interval ID so we can clear it later
+        this.processingInterval = setInterval(async () => {
+            if (this.stopProcessingActions) {
+                if (this.processingInterval) {
+                    clearInterval(this.processingInterval);
+                    this.processingInterval = null;
+                }
+                return;
+            }
+
             try {
                 if (this.isProcessing) {
                     throw new Error(
@@ -88,14 +105,7 @@ export class TwitterActionProcessor {
             } catch (error) {
                 elizaLogger.error("Error in action processing loop:", error);
             }
-            await this.waitMinutes(actionIntervalMin);
-        }
-    }
-
-    private async waitMinutes(minutes: number) {
-        await new Promise((resolve) =>
-            setTimeout(resolve, minutes * 60 * 1000)
-        );
+        }, intervalMs);
     }
 
     /**
@@ -290,12 +300,12 @@ export class TwitterActionProcessor {
 
         try {
             if (actionResponse.like) {
-                await this.processLike(tweet);
+                await TwitterLikeClient.process(this.client, tweet.id);
                 executedActions.push("like");
             }
 
             if (actionResponse.retweet) {
-                await this.processRetweet(tweet);
+                await TwitterRetweetClient.process(this.client, tweet.id);
                 executedActions.push("retweet");
             }
 
@@ -355,7 +365,13 @@ export class TwitterActionProcessor {
                 "QUOTE"
             );
             const quoteContent = await this.genActionContent(enrichedState);
-            await this.sendAndCacheQuote(quoteContent, tweet, enrichedState);
+            await TwitterQuoteClient.process(
+                this.client,
+                this.runtime,
+                quoteContent,
+                tweet,
+                enrichedState
+            );
         } catch (error) {
             elizaLogger.error("Error in quote tweet generation:", error);
         }
@@ -503,86 +519,22 @@ export class TwitterActionProcessor {
             .join("\n\n");
     }
 
-    private async sendAndCacheQuote(
-        quoteContent: string,
-        tweet: Tweet,
-        enrichedState: State
-    ) {
-        const result = await this.client.requestQueue.add(
-            async () =>
-                await this.client.twitterClient.sendQuoteTweet(
-                    quoteContent,
-                    tweet.id
-                )
-        );
-
-        const body = await result.json();
-
-        if (body?.data?.create_tweet?.tweet_results?.result) {
-            elizaLogger.log("Successfully posted quote tweet");
-
-            // Cache generation context for debugging
-            await this.runtime.cacheManager.set(
-                `twitter/quote_generation_${tweet.id}.txt`,
-                `Context:\n${enrichedState}\n\nGenerated Quote:\n${quoteContent}`
-            );
-        } else {
-            elizaLogger.error("Quote tweet creation failed:", body);
-            throw new Error("Quote tweet creation failed");
-        }
-    }
-
-    private async processRetweet(tweet: Tweet) {
-        try {
-            await this.client.twitterClient.retweet(tweet.id);
-            elizaLogger.log(`Retweeted tweet ${tweet.id}`);
-        } catch (error) {
-            elizaLogger.error(`Error retweeting tweet ${tweet.id}:`, error);
-        }
-    }
-
-    private async processLike(tweet: Tweet) {
-        try {
-            await this.client.twitterClient.likeTweet(tweet.id);
-            elizaLogger.log(`Liked tweet ${tweet.id}`);
-        } catch (error) {
-            elizaLogger.error(`Error liking tweet ${tweet.id}:`, error);
-        }
-    }
-
     private async processReply(tweet: Tweet) {
         try {
             const enrichedState = await this.composeStateForAction(tweet, "");
             const cleanedReplyText = await this.genActionContent(enrichedState);
 
-            if (cleanedReplyText.length > DEFAULT_MAX_TWEET_LENGTH) {
-                await TwitterHelpers.handleNoteTweet(
-                    this.client,
-                    cleanedReplyText,
-                    tweet.id
-                );
-            } else {
-                await TwitterHelpers.sendStandardTweet(
-                    this.client,
-                    cleanedReplyText,
-                    tweet.id
-                );
-            }
-
-            await this.cacheReplyTweet(tweet, enrichedState, cleanedReplyText);
+            await TwitterReplyClient.process(
+                this.client,
+                this.runtime,
+                enrichedState,
+                tweet.id,
+                cleanedReplyText
+            );
         } catch (error) {
             elizaLogger.error(`Error replying to tweet ${tweet.id}:`, error);
         }
     }
-
-    private async cacheReplyTweet(
-        tweet: Tweet,
-        enrichedState: State,
-        cleanedReplyText: string
-    ) {
-        await this.runtime.cacheManager.set(
-            `twitter/reply_generation_${tweet.id}.txt`,
-            `Context:\n${enrichedState}\n\nGenerated Reply:\n${cleanedReplyText}`
-        );
-    }
 }
+
+export default TwitterActionProcessor;

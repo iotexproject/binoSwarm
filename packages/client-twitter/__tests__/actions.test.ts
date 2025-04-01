@@ -1,5 +1,5 @@
 import { TwitterActionProcessor } from "./../src/actions";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
     IAgentRuntime,
     elizaLogger,
@@ -54,6 +54,116 @@ const photoSample = {
     url: "https://example.com/image.jpg",
     alt_text: "Test image alt text",
 };
+
+describe("TwitterActionProcessor Start Method", () => {
+    let mockRuntime: IAgentRuntime;
+    let baseClient: ClientBase;
+    let mockConfig: TwitterConfig;
+    let mockTwitterClient: any;
+    let actionClient: TwitterActionProcessor;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        mockTwitterClient = buildTwitterClientMock();
+        mockRuntime = buildRuntimeMock();
+        mockConfig = buildConfigMock();
+        baseClient = new ClientBase(mockRuntime, mockConfig);
+
+        baseClient.twitterClient = mockTwitterClient;
+        baseClient.profile = null; // Set to null to test initialization
+
+        // Setup mock runtime with character
+        mockRuntime.character = mockCharacter;
+
+        actionClient = new TwitterActionProcessor(baseClient, mockRuntime);
+
+        // Mock processActionsLoop
+        vi.spyOn(actionClient as any, "processActionsLoop").mockImplementation(
+            () => {}
+        );
+
+        // Mock client.init
+        vi.spyOn(baseClient, "init").mockImplementation(async () => {
+            baseClient.profile = mockTwitterProfile;
+        });
+    });
+
+    it("should not start action processing when disabled in config", async () => {
+        // Set ENABLE_ACTION_PROCESSING to false
+        baseClient.twitterConfig.ENABLE_ACTION_PROCESSING = false;
+
+        await actionClient.start();
+
+        // Verify processActionsLoop was not called
+        expect(actionClient["processActionsLoop"]).not.toHaveBeenCalled();
+
+        // Verify client.init was not called
+        expect(baseClient.init).not.toHaveBeenCalled();
+    });
+
+    it("should initialize client when profile is null", async () => {
+        // Set ENABLE_ACTION_PROCESSING to true
+        baseClient.twitterConfig.ENABLE_ACTION_PROCESSING = true;
+        baseClient.profile = null;
+
+        await actionClient.start();
+
+        // Verify client.init was called
+        expect(baseClient.init).toHaveBeenCalled();
+
+        // Verify processActionsLoop was called
+        expect(actionClient["processActionsLoop"]).toHaveBeenCalled();
+    });
+
+    it("should not initialize client when profile already exists", async () => {
+        // Set ENABLE_ACTION_PROCESSING to true
+        baseClient.twitterConfig.ENABLE_ACTION_PROCESSING = true;
+        baseClient.profile = mockTwitterProfile;
+
+        await actionClient.start();
+
+        // Verify client.init was not called
+        expect(baseClient.init).not.toHaveBeenCalled();
+
+        // Verify processActionsLoop was called
+        expect(actionClient["processActionsLoop"]).toHaveBeenCalled();
+    });
+});
+
+describe("TwitterActionProcessor Stop Method", () => {
+    let mockRuntime: IAgentRuntime;
+    let baseClient: ClientBase;
+    let mockConfig: TwitterConfig;
+    let actionClient: TwitterActionProcessor;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        mockRuntime = buildRuntimeMock();
+        mockConfig = buildConfigMock();
+        baseClient = new ClientBase(mockRuntime, mockConfig);
+
+        // Setup mock runtime with character
+        mockRuntime.character = mockCharacter;
+
+        actionClient = new TwitterActionProcessor(baseClient, mockRuntime);
+
+        // Ensure stopProcessingActions is false initially
+        actionClient["stopProcessingActions"] = false;
+    });
+
+    it("should set the stop flag to true", async () => {
+        // Verify stopProcessingActions is false initially
+        expect(actionClient["stopProcessingActions"]).toBe(false);
+
+        // Call stop method
+        await actionClient.stop();
+
+        // Verify stopProcessingActions is now true
+        expect(actionClient["stopProcessingActions"]).toBe(true);
+    });
+});
 
 describe("Tweet Actions Processing", () => {
     let mockRuntime: IAgentRuntime;
@@ -993,5 +1103,141 @@ describe("Tweet Actions Processing", () => {
             expect(sorted[0].roomId).toBe("room1");
             expect(sorted[1].roomId).toBe("room2");
         });
+    });
+});
+
+describe("TwitterActionProcessor ProcessActionsLoop Method", () => {
+    let mockRuntime: IAgentRuntime;
+    let baseClient: ClientBase;
+    let mockConfig: TwitterConfig;
+    let actionClient: TwitterActionProcessor;
+    let originalSetInterval: typeof setInterval;
+    let originalClearInterval: typeof clearInterval;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        originalSetInterval = global.setInterval;
+        originalClearInterval = global.clearInterval;
+
+        let intervalId = 123;
+        global.setInterval = vi.fn().mockImplementation((fn, ms) => {
+            setTimeout(() => {
+                if (typeof fn === "function") {
+                    fn();
+                } else {
+                    eval(fn);
+                }
+            }, 0);
+            return intervalId;
+        }) as unknown as typeof setInterval;
+        global.clearInterval = vi.fn();
+
+        mockRuntime = buildRuntimeMock();
+        mockConfig = buildConfigMock();
+        baseClient = new ClientBase(mockRuntime, mockConfig);
+
+        mockRuntime.character = mockCharacter;
+
+        baseClient.twitterConfig.ACTION_INTERVAL = 5; // 5 minutes
+
+        actionClient = new TwitterActionProcessor(baseClient, mockRuntime);
+
+        vi.spyOn(actionClient as any, "processTweetActions").mockResolvedValue(
+            undefined
+        );
+    });
+
+    afterEach(() => {
+        global.setInterval = originalSetInterval;
+        global.clearInterval = originalClearInterval;
+    });
+
+    it("should set up interval that calls processTweetActions", async () => {
+        actionClient["processActionsLoop"]();
+
+        const expectedIntervalMs =
+            baseClient.twitterConfig.ACTION_INTERVAL * 60 * 1000;
+        expect(global.setInterval).toHaveBeenCalledWith(
+            expect.any(Function),
+            expectedIntervalMs
+        );
+
+        await vi.waitFor(() => {
+            expect(actionClient["processTweetActions"]).toHaveBeenCalled();
+        });
+
+        expect(elizaLogger.log).toHaveBeenCalledWith(
+            `Next action processing scheduled in ${baseClient.twitterConfig.ACTION_INTERVAL} minutes`
+        );
+    });
+
+    it("should not process if isProcessing flag is true", async () => {
+        actionClient["isProcessing"] = true;
+
+        actionClient["processActionsLoop"]();
+
+        await vi.waitFor(() => {
+            expect(elizaLogger.error).toHaveBeenCalled();
+        });
+
+        expect(actionClient["processTweetActions"]).not.toHaveBeenCalled();
+
+        expect(elizaLogger.error).toHaveBeenCalledWith(
+            "Error in action processing loop:",
+            expect.objectContaining({
+                message: "Already processing tweet actions, skipping",
+            })
+        );
+    });
+
+    it("should handle errors in processTweetActions", async () => {
+        const testError = new Error("Processing failed");
+        vi.spyOn(actionClient as any, "processTweetActions").mockRejectedValue(
+            testError
+        );
+
+        actionClient["processActionsLoop"]();
+
+        await vi.waitFor(() => {
+            expect(elizaLogger.error).toHaveBeenCalled();
+        });
+
+        expect(elizaLogger.error).toHaveBeenCalledWith(
+            "Error in action processing loop:",
+            testError
+        );
+    });
+
+    it("should clear interval when stop is called", async () => {
+        actionClient["processActionsLoop"]();
+        const intervalId = actionClient["processingInterval"];
+        expect(intervalId).not.toBeNull();
+
+        await actionClient.stop();
+
+        expect(global.clearInterval).toHaveBeenCalledWith(intervalId);
+
+        expect(actionClient["stopProcessingActions"]).toBe(true);
+
+        expect(actionClient["processingInterval"]).toBeNull();
+    });
+
+    it("should check stopProcessingActions flag in the interval callback", async () => {
+        let capturedCallback: Function = () => {};
+        global.setInterval = vi.fn().mockImplementation((fn, ms) => {
+            capturedCallback = fn as Function;
+            return 123;
+        }) as unknown as typeof setInterval;
+
+        actionClient["processActionsLoop"]();
+
+        actionClient["stopProcessingActions"] = true;
+
+        await capturedCallback();
+
+        expect(global.clearInterval).toHaveBeenCalled();
+
+        expect(actionClient["processTweetActions"]).not.toHaveBeenCalled();
     });
 });
