@@ -1,4 +1,4 @@
-import { truncateToCompleteSentence } from "@elizaos/core";
+import { elizaLogger, truncateToCompleteSentence } from "@elizaos/core";
 
 import { ClientBase } from "./base";
 
@@ -19,7 +19,7 @@ export class TwitterHelpers {
                 content,
                 client.twitterConfig.MAX_TWEET_LENGTH
             );
-            return await TwitterHelpers.sendStandardTweet(
+            return await TwitterHelpers.handleStandardTweet(
                 client,
                 truncateContent,
                 tweetId
@@ -31,7 +31,7 @@ export class TwitterHelpers {
         return noteTweetResult.data.notetweet_create.tweet_results.result;
     }
 
-    static async sendStandardTweet(
+    static async handleStandardTweet(
         client: ClientBase,
         content: string,
         tweetId?: string
@@ -47,4 +47,26 @@ export class TwitterHelpers {
 
         return body.data.create_tweet.tweet_results.result;
     }
+
+    static async handleQuoteTweet(
+        client: ClientBase,
+        content: string,
+        tweetId?: string
+    ) {
+        const result = await client.requestQueue.add(
+            async () =>
+                await client.twitterClient.sendQuoteTweet(content, tweetId)
+        );
+
+        const body = await result.json();
+
+        if (body?.data?.create_tweet?.tweet_results?.result) {
+            elizaLogger.log("Successfully posted quote tweet");
+        } else {
+            elizaLogger.error("Quote tweet creation failed:", body);
+            throw new Error("Quote tweet creation failed");
+        }
+    }
 }
+
+export default TwitterHelpers;

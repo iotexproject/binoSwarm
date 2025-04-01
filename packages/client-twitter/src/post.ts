@@ -286,7 +286,7 @@ export class TwitterPostClient {
                     cleanedContent
                 );
             } else {
-                result = await TwitterHelpers.sendStandardTweet(
+                result = await TwitterHelpers.handleStandardTweet(
                     client,
                     cleanedContent
                 );
