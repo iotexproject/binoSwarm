@@ -3,7 +3,9 @@ import {
     IAgentRuntime,
     elizaLogger,
     generateMessageResponse,
+    generateTextWithTools,
     Content,
+    State,
 } from "@elizaos/core";
 
 import { TwitterPostClient } from "../src/post";
@@ -32,6 +34,7 @@ vi.mock("@elizaos/core", async () => {
         generateText: vi.fn(),
         composeContext: vi.fn().mockReturnValue("mocked context"),
         generateMessageResponse: vi.fn(),
+        generateTextWithTools: vi.fn(),
     };
 });
 
@@ -87,15 +90,32 @@ describe("Twitter Post Client", () => {
                 throw new Error("Profile must be defined for test");
             }
 
+            // Mock the quicksilver response
+            vi.mocked(generateTextWithTools).mockResolvedValue(
+                "Quicksilver oracle response"
+            );
+
+            // Mock the final message response
             vi.mocked(generateMessageResponse).mockResolvedValue({
                 text: "Test tweet content",
             } as Content);
 
+            // Mock the tweet posting
             mockTwitterClient.sendTweet.mockResolvedValue(
                 createSuccessfulTweetResponse("Test tweet content")
             );
 
+            // Mock composeState to return a state object we can inspect
+            const mockState = {} as State;
+            vi.mocked(mockRuntime.composeState).mockResolvedValue(mockState);
+
             await postClient["generateNewTweet"]();
+
+            // Verify state was modified with oracle response
+            expect(mockState).toHaveProperty(
+                "oracleResponse",
+                "Quicksilver oracle response"
+            );
 
             expect(mockRuntime.ensureUserExists).toHaveBeenCalledWith(
                 mockRuntime.agentId,
@@ -118,8 +138,7 @@ describe("Twitter Post Client", () => {
                 })
             );
 
-            expect(elizaLogger.log).toHaveBeenNthCalledWith(
-                6,
+            expect(elizaLogger.log).toHaveBeenCalledWith(
                 expect.stringContaining("Posting new tweet")
             );
         });
