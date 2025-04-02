@@ -10,6 +10,8 @@ import {
     Message,
     Tool,
     LanguageModelV1,
+    ToolSet,
+    tool,
 } from "ai";
 import { Buffer } from "buffer";
 import OpenAI from "openai";
@@ -819,4 +821,89 @@ function getModel(provider: ModelProviderName, model: string): LanguageModelV1 {
         default:
             throw new Error(`Unsupported provider: ${provider}`);
     }
+}
+
+export async function generateTextWithTools({
+    runtime,
+    context,
+    modelClass,
+    stop,
+    customSystemPrompt,
+    tools,
+}: {
+    runtime: IAgentRuntime;
+    context: string;
+    modelClass: ModelClass;
+    stop?: string[];
+    customSystemPrompt?: string;
+    tools: {
+        name: string;
+        description: string;
+        parameters: ZodSchema;
+        execute: (args: any) => Promise<any>;
+    }[];
+}): Promise<string> {
+    if (!context) {
+        throw new Error("generateObject context is empty");
+    }
+
+    const provider = runtime.modelProvider;
+    const modelSettings = getModelSettings(provider, modelClass);
+
+    if (!modelSettings) {
+        throw new Error(`Model settings not found for provider: ${provider}`);
+    }
+
+    context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
+
+    const modelOptions: ModelSettings = {
+        prompt: context,
+        temperature: modelSettings.temperature,
+        maxTokens: modelSettings.maxOutputTokens,
+        frequencyPenalty: modelSettings.frequency_penalty,
+        presencePenalty: modelSettings.presence_penalty,
+        stop: stop || modelSettings.stop,
+        experimental_telemetry: modelSettings.experimental_telemetry,
+    };
+
+    const model = getModel(provider, modelSettings.name);
+    const TOOL_CALL_LIMIT = 5;
+
+    const result = await aiGenerateText({
+        model,
+        system: customSystemPrompt ?? runtime.character?.system ?? undefined,
+        tools: buildToolSet(tools),
+        maxSteps: TOOL_CALL_LIMIT,
+        experimental_continueSteps: true,
+        onStepFinish(step: any) {
+            logStep(step);
+        },
+        ...modelOptions,
+    });
+
+    return result.text;
+}
+
+function buildToolSet(
+    tools: {
+        name: string;
+        description: string;
+        parameters: ZodSchema;
+        execute: (args: any) => Promise<any>;
+    }[]
+): ToolSet {
+    const toolSet: ToolSet = {};
+    tools.forEach((rawTool) => {
+        toolSet[rawTool.name] = tool(rawTool);
+    });
+    return toolSet;
+}
+
+function logStep(step: any) {
+    elizaLogger.log("step: ", step.text);
+    elizaLogger.log("step: ", step.text);
+    elizaLogger.log("toolCalls: ", step.toolCalls);
+    elizaLogger.log("toolResults: ", step.toolResults);
+    elizaLogger.log("finishReason: ", step.finishReason);
+    elizaLogger.log("usage: ", step.usage);
 }

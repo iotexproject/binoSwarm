@@ -50,6 +50,8 @@ export function buildRuntimeMock() {
             ACTION_TIMELINE_TYPE: "foryou",
             MAX_ACTIONS_PROCESSING: "1",
             MAX_TWEET_LENGTH: "280",
+            TWITTER_APPROVAL_DISCORD_BOT_TOKEN: "test-token",
+            TWITTER_APPROVAL_DISCORD_CHANNEL_ID: "test-channel-id",
         },
         getEnv: function (key: string) {
             return this.env[key] || null;

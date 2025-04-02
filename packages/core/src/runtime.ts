@@ -1460,7 +1460,7 @@ type MessagesExample = {
     };
 }[];
 
-const formatCharacterMessageExamples = (
+export const formatCharacterMessageExamples = (
     runtime: AgentRuntime,
     messageExamples: MessagesExample[]
 ) => {

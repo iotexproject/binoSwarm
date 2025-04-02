@@ -8,6 +8,7 @@ import {
     UUID,
 } from "../src/types";
 import { defaultCharacter } from "../src/defaultCharacter";
+import { formatCharacterMessageExamples } from "../src/runtime";
 
 // Mock dependencies with minimal implementations
 const mockDatabaseAdapter: IDatabaseAdapter = {
@@ -54,6 +55,8 @@ const mockDatabaseAdapter: IDatabaseAdapter = {
     removeKnowledge: vi.fn().mockResolvedValue(undefined),
     clearKnowledge: vi.fn().mockResolvedValue(undefined),
     getIsUserInTheRoom: vi.fn().mockResolvedValue(false),
+    getAccountsByIds: vi.fn().mockResolvedValue([]),
+    getCharacterDbTraits: vi.fn().mockResolvedValue([]),
 };
 
 const mockCacheManager = {
@@ -225,6 +228,129 @@ describe("AgentRuntime", () => {
             );
             // Restore the spy
             consoleSpy.mockRestore();
+        });
+    });
+
+    describe("formatCharacterMessageExamples", () => {
+        it("should format message examples correctly", () => {
+            // Set up the runtime with a specific MESSAGE_EXAMPLES_COUNT
+            const testSettings = new Map<string, string>();
+            testSettings.set("MESSAGE_EXAMPLES_COUNT", "2");
+
+            vi.spyOn(runtime, "getSetting").mockImplementation((key) => {
+                return testSettings.get(key) || null;
+            });
+
+            // Mock the message examples from binotest.json
+            const messageExamples = [
+                [
+                    {
+                        user: "{{user1}}",
+                        content: {
+                            text: "Planning a hike in Yosemite this weekend, any weather advice?",
+                        },
+                    },
+                    {
+                        user: "{{agent}}",
+                        content: {
+                            text: "Let me fetch the weather for you.",
+                            action: "ASK_SENTAI",
+                        },
+                    },
+                    {
+                        user: "{{agent}}",
+                        content: {
+                            text: "Switching to actual weather mode for you, hiking buddy!",
+                        },
+                    },
+                ],
+                [
+                    {
+                        user: "{{user1}}",
+                        content: {
+                            text: "Why should I care about DePIN?",
+                        },
+                    },
+                    {
+                        user: "bino",
+                        content: {
+                            text: "Because DePIN is where reality meets the blockchain.",
+                        },
+                    },
+                ],
+                [
+                    {
+                        user: "{{user1}}",
+                        content: {
+                            text: "What makes IoTeX so special?",
+                        },
+                    },
+                    {
+                        user: "bino",
+                        content: {
+                            text: "IoTeX is DePIN's final boss. ",
+                        },
+                    },
+                ],
+                [
+                    {
+                        user: "{{user1}}",
+                        content: {
+                            text: "Is $BTC dead?",
+                        },
+                    },
+                    {
+                        user: "bino",
+                        content: {
+                            text: "Bruh, $BTC doesn't die, it just chills before flexing again.",
+                        },
+                    },
+                ],
+            ];
+
+            // Format the message examples
+            const formattedExamples = formatCharacterMessageExamples(
+                runtime,
+                messageExamples
+            );
+
+            console.log(formattedExamples);
+
+            // Check that the formatted examples behave correctly
+            expect(formattedExamples).toBeDefined();
+
+            // Verify format of the examples string with correct replacements
+            // We expect 2 sets of examples (based on the MESSAGE_EXAMPLES_COUNT we set)
+            const exampleLines = formattedExamples.split("\n\n");
+            expect(exampleLines.length).toBe(2);
+
+            // Each example should contain formatted messages
+            for (const example of exampleLines) {
+                // Verify each example contains names (not {{user1}} placeholders)
+                expect(example).not.toContain("{{user1}}");
+
+                // Each message should be formatted as "username: message"
+                const lines = example.split("\n");
+                for (const line of lines) {
+                    expect(line).toMatch(/^.+: .+$/);
+                }
+            }
+
+            // Verify random selection and shuffling
+            // Run the function again and expect the output to be potentially different due to random selection
+            // Note: This test could occasionally fail due to the random nature of the shuffle
+            const mockRandom = vi.spyOn(Math, "random").mockReturnValue(0.75);
+            const secondFormatted = formatCharacterMessageExamples(
+                runtime,
+                messageExamples
+            );
+            mockRandom.mockRestore();
+
+            // Expect them to be different with high probability
+            // If they're the same, check that the random function behaved as expected
+            if (secondFormatted === formattedExamples) {
+                expect(mockRandom).toHaveBeenCalled();
+            }
         });
     });
 });

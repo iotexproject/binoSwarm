@@ -3,6 +3,7 @@ import {
     IAgentRuntime,
     truncateToCompleteSentence,
     elizaLogger,
+    UUID,
 } from "@elizaos/core";
 
 import { ClientBase } from "../src/base";
@@ -14,6 +15,7 @@ import {
     buildTwitterClientMock,
     mockTwitterProfile,
     mockCharacter,
+    createMockTweet,
     setupMockTwitterClient,
 } from "./mocks";
 
@@ -206,5 +208,27 @@ describe("Tweet Generation and Posting", () => {
             "Quote tweet creation failed:",
             failedResponse
         );
+    });
+
+    describe("Cache Management", () => {
+        it("should properly manage tweet cache", async () => {
+            const mockTweet = createMockTweet({ text: "Test tweet" });
+
+            vi.mocked(mockRuntime.cacheManager.get).mockResolvedValue(null);
+            vi.mocked(mockRuntime.cacheManager.set).mockResolvedValue(
+                undefined
+            );
+
+            await TwitterHelpers.processAndCacheTweet(
+                mockRuntime,
+                baseClient,
+                mockTweet,
+                "room-123" as UUID,
+                mockTweet.text ?? ""
+            );
+
+            expect(mockRuntime.cacheManager.set).toHaveBeenCalled();
+            expect(mockRuntime.messageManager.createMemory).toHaveBeenCalled();
+        });
     });
 });
