@@ -741,6 +741,8 @@ export type Character = {
         twitterSearchTemplate?: TemplateType;
         twitterActionTemplate?: TemplateType;
         twitterPostTemplate?: TemplateType;
+        twitterPostWithQS?: TemplateType;
+        twitterQSPrompt?: TemplateType;
         twitterMessageHandlerTemplate?: TemplateType;
         twitterShouldRespondTemplate?: TemplateType;
         farcasterPostTemplate?: TemplateType;
