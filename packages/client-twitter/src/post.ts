@@ -7,12 +7,15 @@ import {
     truncateToCompleteSentence,
     elizaLogger,
     generateMessageResponse,
+    State,
+    generateTextWithTools,
 } from "@elizaos/core";
 
 import { ClientBase } from "./base.ts";
-import { twitterPostTemplate } from "./templates.ts";
+import { twitterPostTemplate, twitterQSPrompt } from "./templates.ts";
 import { TwitterHelpers } from "./helpers.ts";
 import { DiscordApprover } from "./DiscordApprover.ts";
+import qsTool from "./providers.ts";
 
 export class TwitterPostClient {
     client: ClientBase;
@@ -40,8 +43,7 @@ export class TwitterPostClient {
             this.discordApprover = new DiscordApprover(
                 this.runtime,
                 this.client,
-                this.twitterUsername,
-
+                this.twitterUsername
             );
             this.approvalRequired = true;
         }
@@ -192,14 +194,25 @@ export class TwitterPostClient {
         return cleanedContent;
     }
 
+    private removeQuotes(str: string) {
+        return str.replace(/^['"](.*)['"]$/, "$1");
+    }
+
+    private fixNewLines(str: string) {
+        return str.replaceAll(/\\n/g, "\n\n"); //ensures double spaces
+    }
+
     private async generateNewTweetContent(
         roomId: UUID,
         maxTweetLength: number
     ) {
-        const context = await this.composeNewTweetContext(
-            roomId,
-            maxTweetLength
-        );
+        const state = await this.composeNewTweetState(roomId, maxTweetLength);
+
+        const qsContext = this.composeAskQsContext(state);
+        const qsResponse = await this.askQuicksilver(qsContext);
+
+        state.oracleResponse = qsResponse;
+        const context = this.composeNewTweetContext(state);
 
         const { text } = await generateMessageResponse({
             runtime: this.runtime,
@@ -210,7 +223,29 @@ export class TwitterPostClient {
         return text;
     }
 
-    private async composeNewTweetContext(roomId: UUID, maxTweetLength: number) {
+    private async askQuicksilver(context: string) {
+        const answer = await generateTextWithTools({
+            runtime: this.runtime,
+            context,
+            modelClass: ModelClass.LARGE,
+            tools: [qsTool],
+        });
+
+        return answer;
+    }
+
+    private composeAskQsContext(state: State) {
+        const expertContext = composeContext({
+            state,
+            template:
+                this.runtime.character.templates?.twitterQSPrompt ||
+                twitterQSPrompt,
+        });
+
+        return expertContext;
+    }
+
+    private async composeNewTweetState(roomId: UUID, maxTweetLength: number) {
         const topics = this.runtime.character.topics.join(", ");
         const agentId = this.runtime.agentId;
 
@@ -230,19 +265,16 @@ export class TwitterPostClient {
             }
         );
 
+        return state;
+    }
+
+    private composeNewTweetContext(state: State) {
         return composeContext({
             state,
             template:
+                this.runtime.character.templates?.twitterPostWithQS ||
                 this.runtime.character.templates?.twitterPostTemplate ||
                 twitterPostTemplate,
         });
-    }
-
-    private removeQuotes(str: string) {
-        return str.replace(/^['"](.*)['"]$/, "$1");
-    }
-
-    private fixNewLines(str: string) {
-        return str.replaceAll(/\\n/g, "\n\n"); //ensures double spaces
     }
 }
