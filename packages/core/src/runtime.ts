@@ -1454,7 +1454,7 @@ const formatCharacterPostExamples = (
 
 type MessagesExample = {
     user: string;
-    content: { 
+    content: {
         text?: string;
         action?: string;
     };
