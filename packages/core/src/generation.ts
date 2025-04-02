@@ -823,7 +823,7 @@ function getModel(provider: ModelProviderName, model: string): LanguageModelV1 {
     }
 }
 
-export async function generateTextWithTools<T>({
+export async function generateTextWithTools({
     runtime,
     context,
     modelClass,
