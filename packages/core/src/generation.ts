@@ -827,7 +827,6 @@ export async function generateTextWithTools({
     runtime,
     context,
     modelClass,
-    stop,
     customSystemPrompt,
     tools,
 }: {
