@@ -867,8 +867,7 @@ export async function generateTextWithTools({
     const model = getModel(provider, modelSettings.name);
     const TOOL_CALL_LIMIT = 5;
 
-    const qsres = [];
-    await aiGenerateText({
+    const result = await aiGenerateText({
         model,
         system: customSystemPrompt ?? runtime.character?.system ?? undefined,
         tools: buildToolSet(tools),
@@ -876,19 +875,11 @@ export async function generateTextWithTools({
         experimental_continueSteps: true,
         onStepFinish(step: any) {
             logStep(step);
-            const roundtableResults = step.toolResults.filter(
-                (res: any) => res.toolName === "roundtable"
-            );
-            if (roundtableResults.length > 0) {
-                qsres.push(roundtableResults[0]);
-            }
         },
         ...modelOptions,
     });
 
-    const result = qsres[qsres.length - 1]?.result ?? "";
-    console.log("result: ", result);
-    return result;
+    return result.text;
 }
 
 function buildToolSet(

@@ -3,9 +3,9 @@ import {
     IAgentRuntime,
     elizaLogger,
     generateMessageResponse,
-    generateTextWithTools,
     Content,
     State,
+    generateObject,
 } from "@elizaos/core";
 
 import { TwitterPostClient } from "../src/post";
@@ -31,10 +31,10 @@ vi.mock("@elizaos/core", async () => {
             info: vi.fn(),
             debug: vi.fn(),
         },
+        generateObject: vi.fn(),
         generateText: vi.fn(),
         composeContext: vi.fn().mockReturnValue("mocked context"),
         generateMessageResponse: vi.fn(),
-        generateTextWithTools: vi.fn(),
     };
 });
 
@@ -91,9 +91,17 @@ describe("Twitter Post Client", () => {
             }
 
             // Mock the quicksilver response
-            vi.mocked(generateTextWithTools).mockResolvedValue(
-                "Quicksilver oracle response"
-            );
+            vi.mocked(generateObject).mockResolvedValueOnce({
+                object: {
+                    question: "Quicksilver oracle response",
+                },
+            } as any);
+            // Mock the fetch response for quicksilver
+            global.fetch = vi.fn().mockResolvedValueOnce({
+                json: async () => ({
+                    data: "Quicksilver oracle response",
+                }),
+            });
 
             // Mock the final message response
             vi.mocked(generateMessageResponse).mockResolvedValue({
