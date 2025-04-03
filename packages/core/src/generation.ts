@@ -862,14 +862,14 @@ export async function generateTextWithTools({
         maxTokens: modelSettings.maxOutputTokens,
         frequencyPenalty: modelSettings.frequency_penalty,
         presencePenalty: modelSettings.presence_penalty,
-        stop: stop || modelSettings.stop,
         experimental_telemetry: modelSettings.experimental_telemetry,
     };
 
     const model = getModel(provider, modelSettings.name);
     const TOOL_CALL_LIMIT = 5;
 
-    const result = await aiGenerateText({
+    const qsres = [];
+    await aiGenerateText({
         model,
         system: customSystemPrompt ?? runtime.character?.system ?? undefined,
         tools: buildToolSet(tools),
@@ -877,11 +877,19 @@ export async function generateTextWithTools({
         experimental_continueSteps: true,
         onStepFinish(step: any) {
             logStep(step);
+            const roundtableResults = step.toolResults.filter(
+                (res: any) => res.toolName === "roundtable"
+            );
+            if (roundtableResults.length > 0) {
+                qsres.push(roundtableResults[0]);
+            }
         },
         ...modelOptions,
     });
 
-    return result.text;
+    const result = qsres[qsres.length - 1]?.result ?? "";
+    console.log("result: ", result);
+    return result;
 }
 
 function buildToolSet(
