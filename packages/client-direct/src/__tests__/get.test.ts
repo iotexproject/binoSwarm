@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { REST } from "discord.js";
 import request from "supertest";
 
-import { AgentRuntime, Character } from "@elizaos/core";
+import { AgentRuntime } from "@elizaos/core";
 import { DirectClient } from "..";
+import { buildAgentRuntimeMock } from "./mocks";
 
 vi.mock("discord.js");
 
@@ -13,32 +14,7 @@ describe("GET requests", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-
-        // Create mock agent runtime
-        mockAgentRuntime = {
-            agentId: "00000000-0000-0000-0000-000000000000",
-            character: {
-                name: "Test Agent",
-            } as Character,
-            clients: {
-                discord: true,
-            },
-            token: "mock-token",
-            getSetting: vi.fn().mockReturnValue("mock-setting"),
-            messageManager: {
-                addEmbeddingToMemory: vi.fn(),
-                createMemory: vi.fn(),
-                getMemories: vi.fn().mockResolvedValue([]),
-            },
-            composeState: vi.fn().mockResolvedValue({}),
-            updateRecentMessageState: vi.fn().mockResolvedValue({}),
-            processActions: vi.fn().mockResolvedValue(null),
-            evaluate: vi.fn(),
-            ensureConnection: vi.fn(),
-            actions: [],
-        } as unknown as AgentRuntime;
-
-        // Initialize client
+        mockAgentRuntime = buildAgentRuntimeMock();
         client = new DirectClient();
         client.registerAgent(mockAgentRuntime);
     });
