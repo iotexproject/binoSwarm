@@ -3,7 +3,14 @@ import { getEnvVariable } from "@elizaos/core";
 
 import { DirectClient } from ".";
 import { CustomRequest } from "./types";
-import { getRequests, image, message, speak, whisper } from "./handlers";
+import {
+    getRequests,
+    image,
+    message,
+    speak,
+    whisper,
+    messageStream,
+} from "./handlers";
 
 export function createApiRouter(directClient: DirectClient) {
     const router = express.Router();
@@ -64,5 +71,11 @@ export function createApiRouter(directClient: DirectClient) {
         }
     );
 
+    router.post(
+        "/:agentId/message-stream",
+        async (req: express.Request, res: express.Response) => {
+            await messageStream.handleMessageStream(req, res, directClient);
+        }
+    );
     return router;
 }
