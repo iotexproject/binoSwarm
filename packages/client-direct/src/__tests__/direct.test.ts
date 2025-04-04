@@ -1,18 +1,15 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { REST } from "discord.js";
 import request from "supertest";
 
 import {
     AgentRuntime,
-    Character,
     composeContext,
     generateImage,
     generateCaption,
     generateMessageResponse,
+    Character,
 } from "@elizaos/core";
-import { DirectClient, DirectClientInterface } from "../src";
-
-vi.mock("discord.js");
+import { DirectClient, DirectClientInterface } from "..";
 
 // Mock external dependencies
 vi.mock("@elizaos/core", async () => {
@@ -99,10 +96,6 @@ describe("DirectClient", () => {
     afterEach(() => {
         client.stop();
     });
-
-
-
-
 
     describe("Agent Registration", () => {
         it("should register and unregister agents", () => {

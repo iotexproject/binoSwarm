@@ -3,7 +3,7 @@ import { REST } from "discord.js";
 import request from "supertest";
 
 import { AgentRuntime, Character } from "@elizaos/core";
-import { DirectClient } from "../src";
+import { DirectClient } from "..";
 
 vi.mock("discord.js");
 
