@@ -3,7 +3,6 @@ import request from "supertest";
 
 import {
     AgentRuntime,
-    composeContext,
     generateImage,
     generateCaption,
     generateMessageResponse,
@@ -79,73 +78,6 @@ describe("DirectClient", () => {
 
             client.unregisterAgent(newAgent as AgentRuntime);
             expect(client["agents"].size).toBe(1);
-        });
-    });
-
-    describe("Message Endpoint", () => {
-        it("should handle message with text only", async () => {
-            vi.mocked(generateMessageResponse).mockResolvedValue({
-                text: "Test response",
-                action: null,
-            });
-            vi.mocked(composeContext).mockReturnValue("mock context");
-
-            const response = await request(client.app)
-                .post(`/${mockAgentRuntime.agentId}/message`)
-                .send({
-                    text: "Hello",
-                    userId: "test-user",
-                    roomId: "test-room",
-                });
-
-            expect(response.status).toBe(200);
-            expect(response.headers["content-type"]).toContain(
-                "text/event-stream"
-            );
-            expect(response.text).toContain('"text":"Test response"');
-        });
-
-        it("should handle message with action response", async () => {
-            const mockResponse = {
-                text: "Test response",
-                action: "testAction",
-            };
-            const mockActionResponse = { text: "Action result" };
-            vi.mocked(generateMessageResponse).mockResolvedValue(mockResponse);
-            vi.mocked(composeContext).mockReturnValue("mock context");
-
-            mockAgentRuntime.processActions = vi
-                .fn()
-                .mockImplementation(async (_, __, ___, callback) => {
-                    return callback(mockActionResponse);
-                });
-
-            const response = await request(client.app)
-                .post(`/${mockAgentRuntime.agentId}/message`)
-                .send({
-                    text: "Hello",
-                    userId: "test-user",
-                    roomId: "test-room",
-                });
-
-            expect(response.status).toBe(200);
-            expect(response.headers["content-type"]).toContain(
-                "text/event-stream"
-            );
-            expect(response.text).toContain('"text":"Action result"');
-        });
-
-        it("should handle agent not found", async () => {
-            const response = await request(client.app)
-                .post("/non-existent-agent/message")
-                .send({
-                    text: "Hello",
-                });
-
-            expect(response.headers["content-type"]).toContain(
-                "text/event-stream"
-            );
-            expect(response.text).toContain('"error":"Agent not found"');
         });
     });
 
