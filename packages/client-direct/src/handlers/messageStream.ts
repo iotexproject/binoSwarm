@@ -79,8 +79,6 @@ async function handle(
             messageStreamTemplate,
     });
 
-    console.log("context: ", context);
-
     const responseStream = streamWithTools({
         runtime,
         context,
@@ -91,7 +89,6 @@ async function handle(
     responseStream.pipeDataStreamToResponse(res);
     const response = await responseStream.response;
 
-    console.log("response: ", response);
     processAssistantMessages(response.messages, runtime, roomId, messageId);
 }
 
