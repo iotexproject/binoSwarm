@@ -8,9 +8,9 @@ import {
     handleMessage,
     handleSpeak,
     handleWhisper,
-    handleGetChannels,
-} from "./handlers";
+} from "./handlersx";
 import { AgentNotFound, NoTextError } from "./errors";
+import { getRequests } from "./handlers";
 
 export function createApiRouter(directClient: DirectClient) {
     const router = express.Router();
@@ -23,40 +23,21 @@ export function createApiRouter(directClient: DirectClient) {
     );
 
     router.get("/", (_, res) => {
-        res.send("Welcome, this is the REST API!");
+        getRequests.handleRoot(res);
     });
 
     router.get("/hello", (_, res) => {
-        res.json({ message: "Hello World!" });
+        getRequests.handleHello(res);
     });
 
     router.get("/agents", (_, res) => {
-        const agents = directClient.getAgents();
-        const agentsList = Array.from(agents.values()).map((agent) => ({
-            id: agent.agentId,
-            name: agent.character.name,
-            clients: Object.keys(agent.clients),
-        }));
-        res.json({ agents: agentsList });
+        getRequests.handleAgents(res, directClient);
     });
 
     router.get(
         "/agents/:agentId/channels",
         async (req: express.Request, res: express.Response) => {
-            try {
-                await handleGetChannels(req, res, directClient);
-            } catch (error) {
-                if (error instanceof AgentNotFound) {
-                    res.status(404).json({
-                        error: error.message,
-                    });
-                } else {
-                    res.status(500).json({
-                        error: "Error processing channels",
-                        details: error.message,
-                    });
-                }
-            }
+            getRequests.handleChannels(req, res, directClient);
         }
     );
 
