@@ -18,9 +18,7 @@ export class DiscordApprover {
     private approvalCheckInterval: number;
     private runtime: IAgentRuntime;
 
-    // Are these usernames the same?
     private twitterUsername: string;
-    private profileUsername: string;
 
     constructor(
         runtime: IAgentRuntime,
@@ -30,8 +28,6 @@ export class DiscordApprover {
         this.runtime = runtime;
         this.twitterUsername = twitterUsername;
         this.client = client;
-        this.profileUsername = this.client.profile.username;
-
         const discordToken = this.runtime.getSetting(
             "TWITTER_APPROVAL_DISCORD_BOT_TOKEN"
         );
@@ -77,7 +73,7 @@ export class DiscordApprover {
                 fields: [
                     {
                         name: "Character",
-                        value: this.profileUsername,
+                        value: this.twitterUsername,
                         inline: true,
                     },
                     {
@@ -101,7 +97,7 @@ export class DiscordApprover {
             const message = await validatedChannel.send({ embeds: [embed] });
 
             // Store the pending tweet
-            const pendingTweetsKey = `twitter/${this.profileUsername}/pendingTweet`;
+            const pendingTweetsKey = `twitter/${this.twitterUsername}/pendingTweet`;
             const currentPendingTweets =
                 (await this.runtime.cacheManager.get<PendingTweet[]>(
                     pendingTweetsKey
@@ -227,7 +223,7 @@ export class DiscordApprover {
     }
 
     private async cleanupPendingTweet(discordMessageId: string) {
-        const pendingTweetsKey = `twitter/${this.profileUsername}/pendingTweet`;
+        const pendingTweetsKey = `twitter/${this.twitterUsername}/pendingTweet`;
         const currentPendingTweets =
             (await this.runtime.cacheManager.get<PendingTweet[]>(
                 pendingTweetsKey
@@ -250,7 +246,7 @@ export class DiscordApprover {
 
     private async handlePendingTweet() {
         elizaLogger.log("Checking Pending Tweets...");
-        const pendingTweetsKey = `twitter/${this.profileUsername}/pendingTweet`;
+        const pendingTweetsKey = `twitter/${this.twitterUsername}/pendingTweet`;
         const pendingTweets =
             (await this.runtime.cacheManager.get<PendingTweet[]>(
                 pendingTweetsKey
