@@ -12,6 +12,7 @@ import {
     LanguageModelV1,
     ToolSet,
     tool,
+    streamText,
 } from "ai";
 import { Buffer } from "buffer";
 import OpenAI from "openai";
@@ -882,6 +883,63 @@ export async function generateTextWithTools({
     return result.text;
 }
 
+export function streamWithTools({
+    runtime,
+    context,
+    modelClass,
+    customSystemPrompt,
+    tools,
+}: {
+    runtime: IAgentRuntime;
+    context: string;
+    modelClass: ModelClass;
+    customSystemPrompt?: string;
+    tools: {
+        name: string;
+        description: string;
+        parameters: ZodSchema;
+        execute: (args: any) => Promise<any>;
+    }[];
+}): any {
+    if (!context) {
+        throw new Error("generateObject context is empty");
+    }
+
+    const provider = runtime.modelProvider;
+    const modelSettings = getModelSettings(provider, modelClass);
+
+    if (!modelSettings) {
+        throw new Error(`Model settings not found for provider: ${provider}`);
+    }
+
+    const modelOptions: ModelSettings = {
+        prompt: context,
+        temperature: modelSettings.temperature,
+        maxTokens: modelSettings.maxOutputTokens,
+        frequencyPenalty: modelSettings.frequency_penalty,
+        presencePenalty: modelSettings.presence_penalty,
+        experimental_telemetry: modelSettings.experimental_telemetry,
+    };
+
+    const model = getModel(provider, modelSettings.name);
+    const TOOL_CALL_LIMIT = 5;
+
+    const result = streamText({
+        model,
+        prompt: context,
+        system: customSystemPrompt ?? runtime.character?.system ?? undefined,
+        tools: buildToolSet(tools),
+        maxSteps: TOOL_CALL_LIMIT,
+        experimental_continueSteps: true,
+        onStepFinish(step: any) {
+            logStep(step);
+        },
+        ...modelOptions,
+    });
+
+    return result;
+}
+
 function buildToolSet(
     tools: {
         name: string;
@@ -898,7 +956,6 @@ function buildToolSet(
 }
 
 function logStep(step: any) {
-    elizaLogger.log("step: ", step.text);
     elizaLogger.log("step: ", step.text);
     elizaLogger.log("toolCalls: ", step.toolCalls);
     elizaLogger.log("toolResults: ", step.toolResults);
