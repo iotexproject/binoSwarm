@@ -30,7 +30,10 @@ export function genUserId(req: express.Request) {
 export async function genResponse(runtime: AgentRuntime, state: State) {
     const context = composeContext({
         state,
-        template: messageHandlerTemplate,
+        template:
+            runtime.character.templates?.directMessageHandlerTemplate ||
+            runtime.character.templates?.messageHandlerTemplate ||
+            messageHandlerTemplate,
     });
 
     return generateMessageResponse({
