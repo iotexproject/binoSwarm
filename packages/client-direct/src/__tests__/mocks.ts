@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { Character, AgentRuntime } from "@elizaos/core";;
+import { Character, AgentRuntime } from "@elizaos/core";
 
 export const buildAgentRuntimeMock = (): AgentRuntime =>
     ({
