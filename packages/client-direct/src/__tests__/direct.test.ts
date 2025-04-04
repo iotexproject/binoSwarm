@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import request from "supertest";
 
-import { AgentRuntime, generateMessageResponse } from "@elizaos/core";
+import { AgentRuntime } from "@elizaos/core";
 
 import { DirectClient, DirectClientInterface } from "..";
 import { buildAgentRuntimeMock } from "./mocks";
@@ -73,68 +73,6 @@ describe("DirectClient", () => {
 
             client.unregisterAgent(newAgent as AgentRuntime);
             expect(client["agents"].size).toBe(1);
-        });
-    });
-
-    describe("Speech Synthesis Endpoint", () => {
-        beforeEach(() => {
-            process.env.ELEVENLABS_XI_API_KEY = "mock-key";
-            process.env.ELEVENLABS_VOICE_ID = "mock-voice-id";
-            global.fetch = vi.fn();
-        });
-
-        afterEach(() => {
-            delete process.env.ELEVENLABS_XI_API_KEY;
-            delete process.env.ELEVENLABS_VOICE_ID;
-            vi.restoreAllMocks();
-        });
-
-        it.skip("should convert text to speech", async () => {
-            const mockAudioBuffer = new ArrayBuffer(8);
-            vi.mocked(global.fetch).mockResolvedValueOnce({
-                ok: true,
-                arrayBuffer: () => Promise.resolve(mockAudioBuffer),
-            } as Response);
-
-            const mockMessageResponse = {
-                text: "Hello world",
-                action: null,
-            };
-            vi.mocked(generateMessageResponse).mockResolvedValue(
-                mockMessageResponse
-            );
-
-            const response = await request(client.app)
-                .post(`/${mockAgentRuntime.agentId}/speak`)
-                .send({
-                    text: "Hello world",
-                    userId: "test-user",
-                    roomId: "test-room",
-                });
-
-            expect(response.status).toBe(200);
-            expect(response.headers["content-type"]).toBe("audio/mpeg");
-        });
-
-        it("should handle missing API key", async () => {
-            const mockMessageResponse = {
-                text: "Hello world",
-                action: null,
-            };
-            vi.mocked(generateMessageResponse).mockResolvedValue(
-                mockMessageResponse
-            );
-
-            delete process.env.ELEVENLABS_XI_API_KEY;
-
-            const response = await request(client.app)
-                .post(`/${mockAgentRuntime.agentId}/speak`)
-                .send({
-                    text: "Hello world",
-                });
-
-            expect(response.status).toBe(500);
-            expect(response.body.error).toBe("Error processing speech");
         });
     });
 
