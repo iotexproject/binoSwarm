@@ -12,8 +12,34 @@ import { DirectClient } from "../client";
 
 import { ISpeechService } from "@elizaos/core";
 import { genRoomId, genUserId, genResponse, composeContent } from "./helpers";
+import { AgentNotFound, NoTextError } from "../errors";
 
 export async function handleSpeak(
+    req: express.Request,
+    res: express.Response,
+    directClient: DirectClient
+) {
+    try {
+        await handle(req, res, directClient);
+    } catch (error) {
+        if (error instanceof AgentNotFound) {
+            res.status(404).json({
+                error: error.message,
+            });
+        } else if (error instanceof NoTextError) {
+            res.status(400).json({
+                error: error.message,
+            });
+        } else {
+            res.status(500).json({
+                error: "Error processing speech",
+                details: error.message,
+            });
+        }
+    }
+}
+
+async function handle(
     req: express.Request,
     res: express.Response,
     directClient: DirectClient

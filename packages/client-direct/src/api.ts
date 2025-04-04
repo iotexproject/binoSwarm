@@ -3,7 +3,6 @@ import { getEnvVariable } from "@elizaos/core";
 
 import { DirectClient } from ".";
 import { CustomRequest } from "./types";
-import { AgentNotFound, NoTextError } from "./errors";
 import { getRequests, image, message, speak, whisper } from "./handlers";
 
 export function createApiRouter(directClient: DirectClient) {
@@ -39,24 +38,7 @@ export function createApiRouter(directClient: DirectClient) {
         "/:agentId/message",
         upload.single("file"),
         async (req: express.Request, res: express.Response) => {
-            try {
-                await message.handleMessage(req, res, directClient);
-            } catch (error) {
-                if (error instanceof AgentNotFound) {
-                    res.status(404).json({
-                        error: error.message,
-                    });
-                } else if (error instanceof NoTextError) {
-                    res.status(400).json({
-                        error: error.message,
-                    });
-                } else {
-                    res.status(500).json({
-                        error: "Error processing message",
-                        details: error.message,
-                    });
-                }
-            }
+            await message.handleMessage(req, res, directClient);
         }
     );
 
@@ -64,64 +46,21 @@ export function createApiRouter(directClient: DirectClient) {
         "/:agentId/whisper",
         upload.single("file"),
         async (req: CustomRequest, res: express.Response) => {
-            try {
-                await whisper.handleWhisper(req, res, directClient);
-            } catch (error) {
-                if (error instanceof AgentNotFound) {
-                    res.status(404).json({
-                        error: error.message,
-                    });
-                } else {
-                    res.status(500).json({
-                        error: "Error processing whisper",
-                        details: error.message,
-                    });
-                }
-            }
+            await whisper.handleWhisper(req, res, directClient);
         }
     );
 
     router.post(
         "/:agentId/image",
         async (req: express.Request, res: express.Response) => {
-            try {
-                await image.handleImage(req, res, directClient);
-            } catch (error) {
-                if (error instanceof AgentNotFound) {
-                    res.status(404).json({
-                        error: error.message,
-                    });
-                } else {
-                    res.status(500).json({
-                        error: "Error processing image",
-                        details: error.message,
-                    });
-                }
-            }
+            await image.handleImage(req, res, directClient);
         }
     );
 
     router.post(
         "/:agentId/speak",
         async (req: express.Request, res: express.Response) => {
-            try {
-                await speak.handleSpeak(req, res, directClient);
-            } catch (error) {
-                if (error instanceof AgentNotFound) {
-                    res.status(404).json({
-                        error: error.message,
-                    });
-                } else if (error instanceof NoTextError) {
-                    res.status(400).json({
-                        error: error.message,
-                    });
-                } else {
-                    res.status(500).json({
-                        error: "Error processing speech",
-                        details: error.message,
-                    });
-                }
-            }
+            await speak.handleSpeak(req, res, directClient);
         }
     );
 

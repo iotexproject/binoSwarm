@@ -3,8 +3,30 @@ import express from "express";
 import { generateCaption, generateImage } from "@elizaos/core";
 
 import { DirectClient } from "../client";
+import { AgentNotFound } from "../errors";
 
 export async function handleImage(
+    req: express.Request,
+    res: express.Response,
+    directClient: DirectClient
+) {
+    try {
+        await handle(req, res, directClient);
+    } catch (error) {
+        if (error instanceof AgentNotFound) {
+            res.status(404).json({
+                error: error.message,
+            });
+        } else {
+            res.status(500).json({
+                error: "Error processing image",
+                details: error.message,
+            });
+        }
+    }
+}
+
+async function handle(
     req: express.Request,
     res: express.Response,
     directClient: DirectClient
