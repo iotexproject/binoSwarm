@@ -3,14 +3,8 @@ import { getEnvVariable } from "@elizaos/core";
 
 import { DirectClient } from ".";
 import { CustomRequest } from "./types";
-import {
-    handleImage,
-    handleMessage,
-    handleSpeak,
-    handleWhisper,
-} from "./handlersx";
 import { AgentNotFound, NoTextError } from "./errors";
-import { getRequests } from "./handlers";
+import { getRequests, image, message, speak, whisper } from "./handlers";
 
 export function createApiRouter(directClient: DirectClient) {
     const router = express.Router();
@@ -46,7 +40,7 @@ export function createApiRouter(directClient: DirectClient) {
         upload.single("file"),
         async (req: express.Request, res: express.Response) => {
             try {
-                await handleMessage(req, res, directClient);
+                await message.handleMessage(req, res, directClient);
             } catch (error) {
                 if (error instanceof AgentNotFound) {
                     res.status(404).json({
@@ -71,7 +65,7 @@ export function createApiRouter(directClient: DirectClient) {
         upload.single("file"),
         async (req: CustomRequest, res: express.Response) => {
             try {
-                await handleWhisper(req, res, directClient);
+                await whisper.handleWhisper(req, res, directClient);
             } catch (error) {
                 if (error instanceof AgentNotFound) {
                     res.status(404).json({
@@ -91,7 +85,7 @@ export function createApiRouter(directClient: DirectClient) {
         "/:agentId/image",
         async (req: express.Request, res: express.Response) => {
             try {
-                await handleImage(req, res, directClient);
+                await image.handleImage(req, res, directClient);
             } catch (error) {
                 if (error instanceof AgentNotFound) {
                     res.status(404).json({
@@ -111,7 +105,7 @@ export function createApiRouter(directClient: DirectClient) {
         "/:agentId/speak",
         async (req: express.Request, res: express.Response) => {
             try {
-                await handleSpeak(req, res, directClient);
+                await speak.handleSpeak(req, res, directClient);
             } catch (error) {
                 if (error instanceof AgentNotFound) {
                     res.status(404).json({
