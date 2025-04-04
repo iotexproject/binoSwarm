@@ -144,7 +144,7 @@ describe("GET requests", () => {
         });
 
         it("should return empty list when no agents exist", async () => {
-            // @ts-ignore: even though it's private, we can clear it for testing
+            // @ts-expect-error: even though it's private, we can clear it for testing
             client.agents.clear();
             const response = await request(client.app).get("/agents");
             expect(response.status).toBe(200);
