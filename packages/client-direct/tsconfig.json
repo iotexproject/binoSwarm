@@ -5,5 +5,5 @@
         "rootDir": "src",
         "types": ["vitest/globals", "supertest"]
     },
-    "include": ["src/**/*.ts", "__test__/**/*.ts"]
+    "include": ["src/**/*.ts", "src/__tests__/**/*.ts"]
 }

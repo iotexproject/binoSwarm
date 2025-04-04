@@ -735,6 +735,8 @@ export type Character = {
         goalsTemplate?: TemplateType;
         factsTemplate?: TemplateType;
         messageHandlerTemplate?: TemplateType;
+        directMessageHandlerTemplate?: TemplateType;
+        directMessageStreamTemplate?: TemplateType;
         shouldRespondTemplate?: TemplateType;
         continueMessageHandlerTemplate?: TemplateType;
         evaluationTemplate?: TemplateType;
