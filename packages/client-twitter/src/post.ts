@@ -8,7 +8,7 @@ import {
     elizaLogger,
     generateMessageResponse,
     State,
-    generateTextWithTools,
+    generateObject,
 } from "@elizaos/core";
 
 import { ClientBase } from "./base.ts";
@@ -209,7 +209,7 @@ export class TwitterPostClient {
         const state = await this.composeNewTweetState(roomId, maxTweetLength);
 
         const qsContext = this.composeAskQsContext(state);
-        const qsResponse = await this.askQuicksilver(qsContext);
+        const qsResponse = await this.askOracle(qsContext);
 
         state.oracleResponse = qsResponse;
         const context = this.composeNewTweetContext(state);
@@ -223,14 +223,17 @@ export class TwitterPostClient {
         return text;
     }
 
-    private async askQuicksilver(context: string) {
-        const answer = await generateTextWithTools({
+    private async askOracle(context: string) {
+        const { object } = await generateObject<{ question: string }>({
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
-            tools: [qsTool],
+            schema: qsTool.parameters,
+            schemaName: qsTool.name,
+            schemaDescription: qsTool.description,
         });
 
+        const answer = await qsTool.execute({ question: object.question });
         return answer;
     }
 
