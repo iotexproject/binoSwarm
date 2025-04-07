@@ -890,6 +890,7 @@ export function streamWithTools({
     modelClass,
     customSystemPrompt,
     tools,
+    smoothStreamBy = "word",
 }: {
     runtime: IAgentRuntime;
     context: string;
@@ -901,6 +902,7 @@ export function streamWithTools({
         parameters: ZodSchema;
         execute: (args: any) => Promise<any>;
     }[];
+    smoothStreamBy?: "word" | "line";
 }): any {
     if (!context) {
         throw new Error("generateObject context is empty");
@@ -932,7 +934,7 @@ export function streamWithTools({
         tools: buildToolSet(tools),
         maxSteps: TOOL_CALL_LIMIT,
         experimental_continueSteps: true,
-        experimental_transform: smoothStream({ chunking: "word" }),
+        experimental_transform: smoothStream({ chunking: smoothStreamBy }),
         onStepFinish(step: any) {
             logStep(step);
         },
