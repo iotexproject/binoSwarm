@@ -9,6 +9,7 @@ import {
     stringToUuid,
     Content,
     IAgentRuntime,
+    elizaLogger,
 } from "@elizaos/core";
 
 import { DirectClient } from "../client";
@@ -151,6 +152,8 @@ async function buildAndSaveMemory(
         embedding: getEmbeddingZeroVector(),
         createdAt: Date.now(),
     };
+
+    elizaLogger.info("streamedResponseMessage", responseMessage);
 
     await runtime.messageManager.createMemory(responseMessage);
 }
