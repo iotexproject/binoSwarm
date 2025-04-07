@@ -73,6 +73,7 @@ export function createApiRouter(directClient: DirectClient) {
 
     router.post(
         "/:agentId/message-stream",
+        upload.single("file"),
         async (req: express.Request, res: express.Response) => {
             await messageStream.handleMessageStream(req, res, directClient);
         }
