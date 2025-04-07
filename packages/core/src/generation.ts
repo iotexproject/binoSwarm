@@ -13,6 +13,7 @@ import {
     ToolSet,
     tool,
     streamText,
+    smoothStream,
 } from "ai";
 import { Buffer } from "buffer";
 import OpenAI from "openai";
@@ -931,6 +932,7 @@ export function streamWithTools({
         tools: buildToolSet(tools),
         maxSteps: TOOL_CALL_LIMIT,
         experimental_continueSteps: true,
+        experimental_transform: smoothStream({ chunking: "word" }),
         onStepFinish(step: any) {
             logStep(step);
         },
