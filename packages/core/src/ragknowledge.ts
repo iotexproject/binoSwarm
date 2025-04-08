@@ -177,90 +177,102 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         }
 
         // If no id or no direct results, perform semantic search
-        if (params.query) {
-            try {
-                const processedQuery = this.preprocess(params.query);
-
-                // Build search text with optional context
-                let searchText = processedQuery;
-                if (params.conversationContext) {
-                    const relevantContext = this.preprocess(
-                        params.conversationContext
-                    );
-                    searchText = `${relevantContext} ${processedQuery}`;
-                }
-
-                const embeddingArray = await embed(this.runtime, searchText);
-
-                const embedding = new Float32Array(embeddingArray);
-
-                // Get results with single query
-                const results =
-                    await this.runtime.databaseAdapter.searchKnowledge({
-                        agentId: this.runtime.agentId,
-                        embedding: embedding,
-                        match_threshold: this.defaultRAGMatchThreshold,
-                        match_count:
-                            (params.limit || this.defaultRAGMatchCount) * 2,
-                        searchText: processedQuery,
-                    });
-
-                // Enhanced reranking with sophisticated scoring
-                const rerankedResults = results
-                    .map((result) => {
-                        let score = result.similarity;
-
-                        // Check for direct query term matches
-                        const queryTerms = this.getQueryTerms(processedQuery);
-
-                        const matchingTerms = queryTerms.filter((term) =>
-                            result.content.text.toLowerCase().includes(term)
-                        );
-
-                        if (matchingTerms.length > 0) {
-                            // Much stronger boost for matches
-                            score *=
-                                1 +
-                                (matchingTerms.length / queryTerms.length) * 2; // Double the boost
-
-                            if (
-                                this.hasProximityMatch(
-                                    result.content.text,
-                                    matchingTerms
-                                )
-                            ) {
-                                score *= 1.5; // Stronger proximity boost
-                            }
-                        } else {
-                            // More aggressive penalty
-                            if (!params.conversationContext) {
-                                score *= 0.3; // Stronger penalty
-                            }
-                        }
-
-                        return {
-                            ...result,
-                            score,
-                            matchedTerms: matchingTerms, // Add for debugging
-                        };
-                    })
-                    .sort((a, b) => b.score - a.score);
-
-                // Filter and return results
-                return rerankedResults
-                    .filter(
-                        (result) =>
-                            result.score >= this.defaultRAGMatchThreshold
-                    )
-                    .slice(0, params.limit || this.defaultRAGMatchCount);
-            } catch (error) {
-                elizaLogger.error(`[RAG Search Error] ${error}`);
-                return [];
-            }
+        if (!params.query) {
+            return [];
         }
 
-        // If neither id nor query provided, return empty array
-        return [];
+        try {
+            const processedQuery = this.preprocess(params.query);
+
+            // Build search text with optional context
+            let searchText = processedQuery;
+            if (params.conversationContext) {
+                const relevantContext = this.preprocess(
+                    params.conversationContext
+                );
+                searchText = `${relevantContext} ${processedQuery}`;
+            }
+
+            const embeddingArray = await embed(this.runtime, searchText);
+
+            const embedding = new Float32Array(embeddingArray);
+
+            // Get results with single query
+            const results = await this.runtime.databaseAdapter.searchKnowledge({
+                agentId: this.runtime.agentId,
+                embedding: embedding,
+                match_threshold: this.defaultRAGMatchThreshold,
+                match_count: (params.limit || this.defaultRAGMatchCount) * 2,
+                searchText: processedQuery,
+            });
+
+            const rerankedResults = this.rerankResults(
+                results,
+                processedQuery,
+                params
+            );
+
+            const filteredResults = rerankedResults
+                .filter(
+                    (result) => result.score >= this.defaultRAGMatchThreshold
+                )
+                .slice(0, params.limit || this.defaultRAGMatchCount);
+
+            return filteredResults;
+        } catch (error) {
+            elizaLogger.error(`[RAG Search Error] ${error}`);
+            return [];
+        }
+    }
+
+    private rerankResults(
+        results: RAGKnowledgeItem[],
+        processedQuery: string,
+        params: {
+            query?: string;
+            id?: UUID;
+            conversationContext?: string;
+            limit?: number;
+            agentId?: UUID;
+        }
+    ) {
+        return results
+            .map((result) => {
+                let score = result.similarity;
+
+                // Check for direct query term matches
+                const queryTerms = this.getQueryTerms(processedQuery);
+
+                const matchingTerms = queryTerms.filter((term) =>
+                    result.content.text.toLowerCase().includes(term)
+                );
+
+                if (matchingTerms.length > 0) {
+                    // Much stronger boost for matches
+                    score *= 1 + (matchingTerms.length / queryTerms.length) * 2; // Double the boost
+
+                    if (
+                        this.hasProximityMatch(
+                            result.content.text,
+                            matchingTerms
+                        )
+                    ) {
+                        score *= 1.5; // Stronger proximity boost
+                    }
+                } else {
+                    // More aggressive penalty
+                    if (!params.conversationContext) {
+                        score *= 0.3; // Stronger penalty
+                    }
+                }
+
+                return {
+                    ...result,
+                    score,
+                    matchedTerms: matchingTerms, // Add for debugging
+                };
+            })
+            .sort((a, b) => b.score - a.score);
     }
 
     async createKnowledge(item: RAGKnowledgeItem): Promise<void> {

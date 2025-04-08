@@ -459,34 +459,31 @@ Text: ${attachment.text}
     ) {
         const { userId, roomId } = message;
 
+        const { goals, goalsData } = await this.getAndFormatGoals(
+            roomId,
+            userId
+        );
+        // 4sec!
+        const { formattedKnowledge, knowledgeData } =
+            await this.getAndFormatKnowledge(fastMode, message);
+
         // // 1430 ms
-        const { goals, goalsData } = await this.getAndFormatGoals(roomId, userId);
         const { recentMessagesData, actorsData } =
             await this.getMssgsAndActors(roomId);
-
         // 5sec!!!
         const recentInteractions = await this.getRecentInteractions(
             userId,
             this.agentId,
             roomId
         );
-        // 1600ms
-        const formattedMessageInteractions =
-            await this.getRecentMessageInteractions(recentInteractions);
-
         // 1ms
         const formattedPostInteractions = await this.getRecentPostInteractions(
             recentInteractions,
             actorsData
         );
-
-        // 4sec!
-        const { formattedKnowledge, knowledgeData } =
-            await this.getAndFormatKnowledge(
-                fastMode,
-                recentMessagesData,
-                message
-            );
+        // 1600ms
+        const formattedMessageInteractions =
+            await this.getRecentMessageInteractions(recentInteractions);
 
         const recentMessages = formatMessages({
             messages: recentMessagesData,
@@ -1092,23 +1089,13 @@ Text: ${attachment.text}
             : "";
     }
 
-    private async getAndFormatKnowledge(
-        fastMode: boolean,
-        recentMessagesData: Memory[],
-        message: Memory
-    ) {
+    private async getAndFormatKnowledge(fastMode: boolean, message: Memory) {
         let knowledgeData = [];
         let formattedKnowledge = "";
 
         if (this.character.settings?.ragKnowledge && !fastMode) {
-            const recentContext = recentMessagesData
-                .slice(-3) // Last 3 messages
-                .map((msg) => msg.content.text)
-                .join(" ");
-
             knowledgeData = await this.ragKnowledgeManager.getKnowledge({
                 query: message.content.text,
-                conversationContext: recentContext,
                 limit: 5,
             });
 
