@@ -375,6 +375,36 @@ export class AgentRuntime implements IAgentRuntime {
     }
 
     async initialize() {
+        await this.initializeServices();
+        await this.initializePluginServices();
+        await this.initCharacterKnowledge();
+    }
+
+    private async initCharacterKnowledge() {
+        if (!this.character?.knowledge?.length) {
+            return;
+        }
+
+        if (this.character.settings.ragKnowledge) {
+            await this.processCharacterRAGKnowledge(this.character.knowledge);
+        } else {
+            const stringKnowledge = this.character.knowledge.filter(
+                (item): item is string => typeof item === "string"
+            );
+            await this.processCharacterKnowledge(stringKnowledge);
+        }
+    }
+
+    private async initializePluginServices() {
+        for (const plugin of this.plugins) {
+            if (plugin.services)
+                await Promise.all(
+                    plugin.services?.map((service) => service.initialize(this))
+                );
+        }
+    }
+
+    private async initializeServices() {
         for (const [serviceType, service] of this.services.entries()) {
             try {
                 await service.initialize(this);
@@ -388,31 +418,6 @@ export class AgentRuntime implements IAgentRuntime {
                     error
                 );
                 throw error;
-            }
-        }
-
-        for (const plugin of this.plugins) {
-            if (plugin.services)
-                await Promise.all(
-                    plugin.services?.map((service) => service.initialize(this))
-                );
-        }
-
-        if (
-            this.character &&
-            this.character.knowledge &&
-            this.character.knowledge.length > 0
-        ) {
-            if (this.character.settings.ragKnowledge) {
-                await this.processCharacterRAGKnowledge(
-                    this.character.knowledge
-                );
-            } else {
-                const stringKnowledge = this.character.knowledge.filter(
-                    (item): item is string => typeof item === "string"
-                );
-
-                await this.processCharacterKnowledge(stringKnowledge);
             }
         }
     }
