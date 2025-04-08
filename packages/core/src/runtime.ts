@@ -840,37 +840,40 @@ export class AgentRuntime implements IAgentRuntime {
             ...additionalKeys,
         } as State;
 
-        const actionPromises = this.actions.map(async (action: Action) => {
-            const result = await action.validate(this, message, initialState);
-            if (result) {
-                return action;
-            }
-            return null;
-        });
+        // 5sec!
+        const actionState = await this.buildActionState(
+            message,
+            initialState,
+            fastMode
+        );
 
-        const evaluatorPromises = this.evaluators.map(async (evaluator) => {
-            const result = await evaluator.validate(
-                this,
-                message,
-                initialState
-            );
-            if (result) {
-                return evaluator;
-            }
-            return null;
-        });
+        return { ...initialState, ...actionState } as State;
+    }
 
-        const getProvidersStartTs = Date.now();
+    private async buildActionState(
+        message: Memory,
+        initialState: State,
+        fastMode: boolean
+    ) {
+        const actionPromises = this.getActionValidationPromises(
+            message,
+            initialState
+        );
+        const evaluatorPromises = this.getEvaluatorValidationPromises(
+            message,
+            initialState
+        );
+        const providersPromise = !fastMode
+            ? getProviders(this, message, initialState)
+            : "";
+
         const [resolvedEvaluators, resolvedActions, providers] =
             await Promise.all([
                 Promise.all(evaluatorPromises),
                 Promise.all(actionPromises),
-                !fastMode ? getProviders(this, message, initialState) : "",
+                providersPromise,
             ]);
-        const getProvidersEndTs = Date.now();
-        elizaLogger.debug(
-            `Get providers took ${getProvidersEndTs - getProvidersStartTs}ms`
-        );
+
         const evaluatorsData = resolvedEvaluators.filter(
             Boolean
         ) as Evaluator[];
@@ -911,8 +914,34 @@ export class AgentRuntime implements IAgentRuntime {
                 providers
             ),
         };
+        return actionState;
+    }
 
-        return { ...initialState, ...actionState } as State;
+    private getEvaluatorValidationPromises(
+        message: Memory,
+        initialState: State
+    ) {
+        return this.evaluators.map(async (evaluator) => {
+            const result = await evaluator.validate(
+                this,
+                message,
+                initialState
+            );
+            if (result) {
+                return evaluator;
+            }
+            return null;
+        });
+    }
+
+    private getActionValidationPromises(message: Memory, initialState: State) {
+        return this.actions.map(async (action: Action) => {
+            const result = await action.validate(this, message, initialState);
+            if (result) {
+                return action;
+            }
+            return null;
+        });
     }
 
     private buildAttachments(formattedAttachments: string): unknown {
