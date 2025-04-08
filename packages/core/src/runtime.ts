@@ -26,7 +26,6 @@ import { RAGKnowledgeManager } from "./ragknowledge.ts";
 import settings from "./settings.ts";
 import {
     Character,
-    Goal,
     HandlerCallback,
     IAgentRuntime,
     ICacheManager,
@@ -771,51 +770,11 @@ export class AgentRuntime implements IAgentRuntime {
             conversationHeader: false,
         });
 
-        let allAttachments = message.content.attachments || [];
-
-        if (recentMessagesData && Array.isArray(recentMessagesData)) {
-            const lastMessageWithAttachment = recentMessagesData.find(
-                (msg) =>
-                    msg.content.attachments &&
-                    msg.content.attachments.length > 0
-            );
-
-            if (lastMessageWithAttachment) {
-                const lastMessageTime =
-                    lastMessageWithAttachment?.createdAt ?? Date.now();
-                const oneHourBeforeLastMessage =
-                    lastMessageTime - 60 * 60 * 1000; // 1 hour before last message
-
-                allAttachments = recentMessagesData
-                    .reverse()
-                    .map((msg) => {
-                        const msgTime = msg.createdAt ?? Date.now();
-                        const isWithinTime =
-                            msgTime >= oneHourBeforeLastMessage;
-                        const attachments = msg.content.attachments || [];
-                        if (!isWithinTime) {
-                            attachments.forEach((attachment) => {
-                                attachment.text = "[Hidden]";
-                            });
-                        }
-                        return attachments;
-                    })
-                    .flat();
-            }
-        }
-
-        const formattedAttachments = formatAttachments(allAttachments);
-
-        // randomly get 3 bits of lore and join them into a paragraph, divided by \n
-        let lore = "";
-        if (this.character.lore?.length > 0) {
-            const count = this.getSetting("LORE_COUNT") || LORE_COUNT;
-            const shuffledLore = shuffleAndSlice<string>(
-                this.character.lore,
-                Number(count)
-            );
-            lore = joinLines(shuffledLore);
-        }
+        const formattedAttachments = this.collectAndFormatAttachments(
+            message,
+            recentMessagesData
+        );
+        const lore = this.collectLore();
 
         const formattedCharacterPostExamples = formatCharacterPostExamples(
             this,
@@ -1116,6 +1075,68 @@ export class AgentRuntime implements IAgentRuntime {
         };
 
         return { ...initialState, ...actionState } as State;
+    }
+
+    private collectLore() {
+        let lore = "";
+        if (this.character.lore?.length > 0) {
+            const count = this.getSetting("LORE_COUNT") || LORE_COUNT;
+            const shuffledLore = shuffleAndSlice<string>(
+                this.character.lore,
+                Number(count)
+            );
+            lore = joinLines(shuffledLore);
+        }
+        return lore;
+    }
+
+    private collectAndFormatAttachments(
+        message: Memory,
+        recentMessagesData: Memory[]
+    ) {
+        let allAttachments = message.content.attachments || [];
+
+        if (recentMessagesData && Array.isArray(recentMessagesData)) {
+            allAttachments = this.collectAndFilterAttachments(
+                recentMessagesData,
+                allAttachments
+            );
+        }
+
+        const formattedAttachments = formatAttachments(allAttachments);
+        return formattedAttachments;
+    }
+
+    private collectAndFilterAttachments(
+        recentMessagesData: Memory[],
+        allAttachments: Media[]
+    ) {
+        const lastMessageWithAttachment = recentMessagesData.find(
+            (msg) =>
+                msg.content.attachments && msg.content.attachments.length > 0
+        );
+
+        if (lastMessageWithAttachment) {
+            const lastMessageTime =
+                lastMessageWithAttachment?.createdAt ?? Date.now();
+            const oneHourBeforeLastMessage = lastMessageTime - 60 * 60 * 1000; // 1 hour before last message
+
+            allAttachments = recentMessagesData
+                .reverse()
+                .map((msg) => {
+                    const msgTime = msg.createdAt ?? Date.now();
+                    const isWithinTime = msgTime >= oneHourBeforeLastMessage;
+                    const attachments = msg.content.attachments || [];
+                    if (!isWithinTime) {
+                        attachments.forEach((attachment) => {
+                            attachment.text = "[Hidden]";
+                        });
+                    }
+                    return attachments;
+                })
+                .flat();
+        }
+        return allAttachments;
     }
 
     private extractAgentName(actorsData: Actor[]) {
