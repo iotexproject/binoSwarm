@@ -584,33 +584,39 @@ export class AgentRuntime implements IAgentRuntime {
         didRespond?: boolean,
         callback?: HandlerCallback
     ) {
-        const evaluatorPromises = this.evaluators.map(
-            async (evaluator: Evaluator) => {
-                elizaLogger.log("Evaluating", evaluator.name);
-                if (!evaluator.handler) {
-                    return null;
-                }
-                if (!didRespond && !evaluator.alwaysRun) {
-                    return null;
-                }
-                const result = await evaluator.validate(this, message, state);
-                if (result) {
-                    return evaluator;
-                }
-                return null;
-            }
+        const evaluatorPromises = this.getEvaluatorPromises(
+            message,
+            state,
+            didRespond
         );
-
         const resolvedEvaluators = await Promise.all(evaluatorPromises);
+
         const evaluatorsData = resolvedEvaluators.filter(
             (evaluator): evaluator is Evaluator => evaluator !== null
         );
-
-        // if there are no evaluators this frame, return
         if (!evaluatorsData || evaluatorsData.length === 0) {
             return [];
         }
 
+        const evaluators = await this.generateRequiredEvaluators(
+            state,
+            evaluatorsData
+        );
+
+        for (const evaluator of this.evaluators) {
+            if (!evaluators?.includes(evaluator.name)) continue;
+
+            if (evaluator.handler)
+                await evaluator.handler(this, message, state, {}, callback);
+        }
+
+        return evaluators;
+    }
+
+    private async generateRequiredEvaluators(
+        state: State,
+        evaluatorsData: Evaluator[]
+    ) {
         const context = composeContext({
             state: {
                 ...state,
@@ -633,14 +639,28 @@ export class AgentRuntime implements IAgentRuntime {
 
         const evaluators = result.object?.values || [];
 
-        for (const evaluator of this.evaluators) {
-            if (!evaluators?.includes(evaluator.name)) continue;
-
-            if (evaluator.handler)
-                await evaluator.handler(this, message, state, {}, callback);
-        }
-
         return evaluators;
+    }
+
+    private getEvaluatorPromises(
+        message: Memory,
+        state: State,
+        didRespond?: boolean
+    ) {
+        return this.evaluators.map(async (evaluator: Evaluator) => {
+            elizaLogger.log("Evaluating", evaluator.name);
+            if (!evaluator.handler) {
+                return null;
+            }
+            if (!didRespond && !evaluator.alwaysRun) {
+                return null;
+            }
+            const result = await evaluator.validate(this, message, state);
+            if (result) {
+                return evaluator;
+            }
+            return null;
+        });
     }
 
     async ensureParticipantExists(userId: UUID, roomId: UUID) {
