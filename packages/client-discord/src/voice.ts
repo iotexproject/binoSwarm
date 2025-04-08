@@ -435,52 +435,6 @@ export class VoiceManager extends EventEmitter {
         // this.scanGuild(guild);
     }
 
-    async debouncedProcessTranscription(
-        userId: UUID,
-        name: string,
-        userName: string,
-        channel: BaseGuildVoiceChannel
-    ) {
-        const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 1500; // wait for 1.5 seconds of silence
-
-        if (this.activeAudioPlayer?.state?.status === "idle") {
-            elizaLogger.log("Cleaning up idle audio player.");
-            this.cleanupAudioPlayer(this.activeAudioPlayer);
-        }
-
-        if (this.activeAudioPlayer || this.processingVoice) {
-            const state = this.userStates.get(userId);
-            state.buffers.length = 0;
-            state.totalLength = 0;
-            return;
-        }
-
-        if (this.transcriptionTimeout) {
-            clearTimeout(this.transcriptionTimeout);
-        }
-
-        this.transcriptionTimeout = setTimeout(async () => {
-            this.processingVoice = true;
-            try {
-                await this.processTranscription(
-                    userId,
-                    channel.id,
-                    channel,
-                    name,
-                    userName
-                );
-
-                // Clean all users' previous buffers
-                this.userStates.forEach((state, _) => {
-                    state.buffers.length = 0;
-                    state.totalLength = 0;
-                });
-            } finally {
-                this.processingVoice = false;
-            }
-        }, DEBOUNCE_TRANSCRIPTION_THRESHOLD);
-    }
-
     async handleUserStream(
         userId: UUID,
         name: string,
@@ -535,6 +489,52 @@ export class VoiceManager extends EventEmitter {
                 await processBuffer(buffer);
             }
         );
+    }
+
+    private async debouncedProcessTranscription(
+        userId: UUID,
+        name: string,
+        userName: string,
+        channel: BaseGuildVoiceChannel
+    ) {
+        const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 1500; // wait for 1.5 seconds of silence
+
+        if (this.activeAudioPlayer?.state?.status === "idle") {
+            elizaLogger.log("Cleaning up idle audio player.");
+            this.cleanupAudioPlayer(this.activeAudioPlayer);
+        }
+
+        if (this.activeAudioPlayer || this.processingVoice) {
+            const state = this.userStates.get(userId);
+            state.buffers.length = 0;
+            state.totalLength = 0;
+            return;
+        }
+
+        if (this.transcriptionTimeout) {
+            clearTimeout(this.transcriptionTimeout);
+        }
+
+        this.transcriptionTimeout = setTimeout(async () => {
+            this.processingVoice = true;
+            try {
+                await this.processTranscription(
+                    userId,
+                    channel.id,
+                    channel,
+                    name,
+                    userName
+                );
+
+                // Clean all users' previous buffers
+                this.userStates.forEach((state, _) => {
+                    state.buffers.length = 0;
+                    state.totalLength = 0;
+                });
+            } finally {
+                this.processingVoice = false;
+            }
+        }, DEBOUNCE_TRANSCRIPTION_THRESHOLD);
     }
 
     private async processTranscription(
