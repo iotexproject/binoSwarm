@@ -63,23 +63,17 @@ export class MessageManager {
     private runtime: IAgentRuntime;
     private attachmentManager: AttachmentManager;
     private interestChannels: InterestChannels = {};
-    private discordClient: any;
     private voiceManager: VoiceManager;
 
     constructor(discordClient: any, voiceManager: VoiceManager) {
         this.client = discordClient.client;
         this.voiceManager = voiceManager;
-        this.discordClient = discordClient;
         this.runtime = discordClient.runtime;
         this.attachmentManager = new AttachmentManager(this.runtime);
     }
 
     async handleMessage(message: DiscordMessage) {
-        if (
-            message.interaction ||
-            message.author.id ===
-                this.client.user?.id /* || message.author?.bot*/
-        ) {
+        if (message.interaction || message.author.id === this.client.user?.id) {
             return;
         }
 
@@ -548,15 +542,6 @@ export class MessageManager {
         }
     }
 
-    async cacheMessages(channel: TextChannel, count: number = 20) {
-        const messages = await channel.messages.fetch({ limit: count });
-
-        // TODO: This is throwing an error but seems to work?
-        for (const [_, message] of messages) {
-            await this.handleMessage(message);
-        }
-    }
-
     private _isMessageForMe(message: DiscordMessage): boolean {
         if (message.channel.type === ChannelType.DM) {
             return true;
@@ -605,7 +590,7 @@ export class MessageManager {
         return hasUsername || hasTag || hasNickname;
     }
 
-    async processMessageMedia(
+    private async processMessageMedia(
         message: DiscordMessage
     ): Promise<{ processedContent: string; attachments: Media[] }> {
         let processedContent = message.content;
@@ -1340,32 +1325,6 @@ export class MessageManager {
         return response;
     }
 
-    async fetchBotName(botToken: string) {
-        const url = "https://discord.com/api/v10/users/@me";
-
-        const response = await fetch(url, {
-            method: "GET",
-            headers: {
-                Authorization: `Bot ${botToken}`,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(
-                `Error fetching bot details: ${response.statusText}`
-            );
-        }
-
-        const data = await response.json();
-        return data.username;
-    }
-
-    /**
-     * Simulate discord typing while generating a response;
-     * returns a function to interrupt the typing loop
-     *
-     * @param message
-     */
     private simulateTyping(message: DiscordMessage) {
         let typing = true;
 
