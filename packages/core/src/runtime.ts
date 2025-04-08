@@ -58,6 +58,27 @@ const MESSAGE_EXAMPLES_COUNT = 5;
 const TOPICS_COUNT = 5;
 const LORE_COUNT = 3;
 
+type AgentRuntimeOptions = {
+    conversationLength?: number;
+    agentId?: UUID;
+    character?: Character;
+    token: string; // JWT token, can be a JWT token if outside worker, or an OpenAI token if inside worker
+    serverUrl?: string; // The URL of the worker
+    actions?: Action[];
+    evaluators?: Evaluator[];
+    plugins?: Plugin[];
+    providers?: Provider[];
+    modelProvider: ModelProviderName;
+    services?: Service[];
+    managers?: IMemoryManager[];
+    databaseAdapter: IDatabaseAdapter;
+    fetch?: typeof fetch | unknown;
+    speechModelPath?: string;
+    cacheManager: ICacheManager;
+    logging?: boolean;
+    verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
+};
+
 export class AgentRuntime implements IAgentRuntime {
     /**
      * Default count for recent messages to be kept in memory.
@@ -134,62 +155,138 @@ export class AgentRuntime implements IAgentRuntime {
         elizaLogger.success(`Service ${serviceType} registered successfully`);
     }
 
-    constructor(opts: {
-        conversationLength?: number;
-        agentId?: UUID;
-        character?: Character;
-        token: string; // JWT token, can be a JWT token if outside worker, or an OpenAI token if inside worker
-        serverUrl?: string; // The URL of the worker
-        actions?: Action[];
-        evaluators?: Evaluator[];
-        plugins?: Plugin[];
-        providers?: Provider[];
-        modelProvider: ModelProviderName;
-        services?: Service[];
-        managers?: IMemoryManager[];
-        databaseAdapter: IDatabaseAdapter;
-        fetch?: typeof fetch | unknown;
-        speechModelPath?: string;
-        cacheManager: ICacheManager;
-        logging?: boolean;
-        verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
-    }) {
-        elizaLogger.info("Initializing AgentRuntime with options:", {
-            character: opts.character?.name,
-            modelProvider: opts.modelProvider,
-            characterModelProvider: opts.character?.modelProvider,
-        });
-
-        this.#conversationLength =
-            opts.conversationLength ?? this.#conversationLength;
-
-        if (!opts.databaseAdapter) {
-            throw new Error("No database adapter provided");
+    constructor(opts: AgentRuntimeOptions) {
+        if (opts.conversationLength) {
+            this.#conversationLength = opts.conversationLength;
         }
-        this.databaseAdapter = opts.databaseAdapter;
-        // use the character id if it exists, otherwise use the agentId if it is passed in, otherwise use the character name
-        this.agentId =
-            opts.character?.id ??
-            opts?.agentId ??
-            stringToUuid(opts.character?.name ?? uuidv4());
-        this.character = opts.character || defaultCharacter;
+        this.initAgent(opts);
+        this.initFetch(opts);
+        this.registerMemoryManagers(opts);
+        this.registerCustomServices(opts);
+        this.initServerUrl(opts);
 
-        // By convention, we create a user and room using the agent id.
-        // Memories related to it are considered global context for the agent.
-        this.ensureRoomExists(this.agentId);
-        this.ensureUserExists(
-            this.agentId,
-            this.character.name,
-            this.character.name
-        ).then(() => {
-            // postgres needs the user to exist before you can add a participant
-            this.ensureParticipantExists(this.agentId, this.agentId);
+        this.initModelProvider(opts);
+        this.initImageModelProvider();
+        this.initImageVisionModelProvider();
+        this.validateModelProvider();
+
+        this.initPlugins(opts);
+
+        this.registerActions(opts);
+        this.registerContextProviders(opts);
+        this.registerEvaluators(opts);
+    }
+
+    private registerEvaluators(opts: AgentRuntimeOptions) {
+        (opts.evaluators ?? []).forEach((evaluator: Evaluator) => {
+            this.registerEvaluator(evaluator);
+        });
+    }
+
+    private registerContextProviders(opts: AgentRuntimeOptions) {
+        (opts.providers ?? []).forEach((provider) => {
+            this.registerContextProvider(provider);
+        });
+    }
+
+    private registerActions(opts: AgentRuntimeOptions) {
+        (opts.actions ?? []).forEach((action) => {
+            this.registerAction(action);
+        });
+    }
+
+    private initPlugins(opts: AgentRuntimeOptions) {
+        this.plugins = [
+            ...(opts.character?.plugins ?? []),
+            ...(opts.plugins ?? []),
+        ];
+
+        this.plugins.forEach((plugin) => {
+            plugin.actions?.forEach((action) => {
+                this.registerAction(action);
+            });
+
+            plugin.evaluators?.forEach((evaluator) => {
+                this.registerEvaluator(evaluator);
+            });
+
+            plugin.services?.forEach((service) => {
+                this.registerService(service);
+            });
+
+            plugin.providers?.forEach((provider) => {
+                this.registerContextProvider(provider);
+            });
+        });
+    }
+
+    private initServerUrl(opts: AgentRuntimeOptions) {
+        this.serverUrl = opts.serverUrl ?? this.serverUrl;
+        if (!this.serverUrl) {
+            elizaLogger.warn("No serverUrl provided, defaulting to localhost");
+        }
+    }
+
+    private validateModelProvider() {
+        if (!Object.values(ModelProviderName).includes(this.modelProvider)) {
+            elizaLogger.error("Invalid model provider:", this.modelProvider);
+            elizaLogger.error(
+                "Available providers:",
+                Object.values(ModelProviderName)
+            );
+            throw new Error(`Invalid model provider: ${this.modelProvider}`);
+        }
+    }
+
+    private initImageVisionModelProvider() {
+        if (this.character.imageVisionModelProvider) {
+            this.imageVisionModelProvider =
+                this.character.imageVisionModelProvider;
+        } else {
+            this.imageVisionModelProvider = this.modelProvider;
+        }
+
+        elizaLogger.info(
+            "Selected IMAGE VISION model provider:",
+            this.imageVisionModelProvider
+        );
+    }
+
+    private initImageModelProvider() {
+        if (this.character.imageModelProvider) {
+            this.imageModelProvider = this.character.imageModelProvider;
+        } else {
+            this.imageModelProvider = this.modelProvider;
+        }
+
+        elizaLogger.info(
+            "Selected IMAGE model provider:",
+            this.imageModelProvider
+        );
+    }
+
+    private initModelProvider(opts: AgentRuntimeOptions) {
+        elizaLogger.info("Setting model provider...");
+        elizaLogger.info("Model Provider Selection:", {
+            characterModelProvider: this.character.modelProvider,
+            optsModelProvider: opts.modelProvider,
+            currentModelProvider: this.modelProvider,
+            finalSelection:
+                this.character.modelProvider ??
+                opts.modelProvider ??
+                this.modelProvider,
         });
 
-        elizaLogger.success(`Agent ID: ${this.agentId}`);
+        if (this.character.modelProvider) {
+            this.modelProvider = this.character.modelProvider;
+        } else if (opts.modelProvider) {
+            this.modelProvider = opts.modelProvider;
+        }
 
-        this.fetch = (opts.fetch as typeof fetch) ?? this.fetch;
+        elizaLogger.info("Selected model provider:", this.modelProvider);
+    }
 
+    private registerMemoryManagers(opts: AgentRuntimeOptions) {
         this.cacheManager = opts.cacheManager;
 
         this.messageManager = new MemoryManager({
@@ -225,99 +322,56 @@ export class AgentRuntime implements IAgentRuntime {
         (opts.managers ?? []).forEach((manager: IMemoryManager) => {
             this.registerMemoryManager(manager);
         });
+    }
 
+    private initAgent(opts: AgentRuntimeOptions) {
+        if (!opts.databaseAdapter) {
+            throw new Error("No database adapter provided");
+        }
+
+        elizaLogger.info("Initializing AgentRuntime with options:", {
+            character: opts.character?.name,
+            modelProvider: opts.modelProvider,
+            characterModelProvider: opts.character?.modelProvider,
+        });
+
+        this.databaseAdapter = opts.databaseAdapter;
+        this.character = opts.character || defaultCharacter;
+        this.token = opts.token;
+
+        this.initAgentId(opts);
+        this.ensureRoomExists(this.agentId);
+        this.ensureUserExists(
+            this.agentId,
+            this.character.name,
+            this.character.name
+        ).then(() => {
+            // postgres needs the user to exist before you can add a participant
+            this.ensureParticipantExists(this.agentId, this.agentId);
+        });
+
+        elizaLogger.success(`Agent ID: ${this.agentId}`);
+    }
+
+    private registerCustomServices(opts: AgentRuntimeOptions) {
         (opts.services ?? []).forEach((service: Service) => {
             this.registerService(service);
         });
+    }
 
-        this.serverUrl = opts.serverUrl ?? this.serverUrl;
+    private initFetch(opts: AgentRuntimeOptions) {
+        this.fetch = (opts.fetch as typeof fetch) ?? this.fetch;
+    }
 
-        elizaLogger.info("Setting model provider...");
-        elizaLogger.info("Model Provider Selection:", {
-            characterModelProvider: this.character.modelProvider,
-            optsModelProvider: opts.modelProvider,
-            currentModelProvider: this.modelProvider,
-            finalSelection:
-                this.character.modelProvider ??
-                opts.modelProvider ??
-                this.modelProvider,
-        });
-
-        this.modelProvider =
-            this.character.modelProvider ??
-            opts.modelProvider ??
-            this.modelProvider;
-
-        this.imageModelProvider =
-            this.character.imageModelProvider ?? this.modelProvider;
-
-        elizaLogger.info("Selected model provider:", this.modelProvider);
-        elizaLogger.info(
-            "Selected image model provider:",
-            this.imageModelProvider
-        );
-
-        this.imageVisionModelProvider =
-            this.character.imageVisionModelProvider ?? this.modelProvider;
-
-        elizaLogger.info("Selected model provider:", this.modelProvider);
-        elizaLogger.info(
-            "Selected image model provider:",
-            this.imageVisionModelProvider
-        );
-
-        // Validate model provider
-        if (!Object.values(ModelProviderName).includes(this.modelProvider)) {
-            elizaLogger.error("Invalid model provider:", this.modelProvider);
-            elizaLogger.error(
-                "Available providers:",
-                Object.values(ModelProviderName)
-            );
-            throw new Error(`Invalid model provider: ${this.modelProvider}`);
+    private initAgentId(opts: AgentRuntimeOptions) {
+        // use the character id if it exists, otherwise use the agentId if it is passed in, otherwise use the character name
+        if (opts.character?.id) {
+            this.agentId = opts.character.id;
+        } else if (opts.agentId) {
+            this.agentId = opts.agentId;
+        } else {
+            this.agentId = stringToUuid(opts.character?.name ?? uuidv4());
         }
-
-        if (!this.serverUrl) {
-            elizaLogger.warn("No serverUrl provided, defaulting to localhost");
-        }
-
-        this.token = opts.token;
-
-        this.plugins = [
-            ...(opts.character?.plugins ?? []),
-            ...(opts.plugins ?? []),
-        ];
-
-        this.plugins.forEach((plugin) => {
-            plugin.actions?.forEach((action) => {
-                this.registerAction(action);
-            });
-
-            plugin.evaluators?.forEach((evaluator) => {
-                this.registerEvaluator(evaluator);
-            });
-
-            plugin.services?.forEach((service) => {
-                this.registerService(service);
-            });
-
-            plugin.providers?.forEach((provider) => {
-                this.registerContextProvider(provider);
-            });
-        });
-
-        (opts.actions ?? []).forEach((action) => {
-            this.registerAction(action);
-        });
-
-        (opts.providers ?? []).forEach((provider) => {
-            this.registerContextProvider(provider);
-        });
-
-        (opts.evaluators ?? []).forEach((evaluator: Evaluator) => {
-            this.registerEvaluator(evaluator);
-        });
-
-        this.verifiableInferenceAdapter = opts.verifiableInferenceAdapter;
     }
 
     async initialize() {
