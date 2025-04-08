@@ -995,6 +995,7 @@ export class AgentRuntime implements IAgentRuntime {
 
         const conversationLength = this.getConversationLength();
 
+        const recentMessagesStartTs = Date.now();
         const [recentMessagesData, goalsData]: [Memory[], Goal[]] =
             await Promise.all([
                 this.messageManager.getMemories({
@@ -1009,7 +1010,10 @@ export class AgentRuntime implements IAgentRuntime {
                     roomId,
                 }),
             ]);
-
+        const recentMessagesEndTs = Date.now();
+        elizaLogger.debug(
+            `Recent messages took ${recentMessagesEndTs - recentMessagesStartTs}ms`
+        );
         const goals = formatGoalsAsString({ goals: goalsData });
 
         const actorIds = retrieveActorIdsFromMessages(recentMessagesData);
@@ -1113,10 +1117,15 @@ export class AgentRuntime implements IAgentRuntime {
             });
         };
 
+        const recentInteractionsStartTs = Date.now();
         const recentInteractions =
             userId !== this.agentId
                 ? await getRecentInteractions(userId, this.agentId)
                 : [];
+        const recentInteractionsEndTs = Date.now();
+        elizaLogger.debug(
+            `Recent interactions took ${recentInteractionsEndTs - recentInteractionsStartTs}ms`
+        );
 
         const getRecentMessageInteractions = async (
             recentInteractionsData: Memory[]
@@ -1142,9 +1151,13 @@ export class AgentRuntime implements IAgentRuntime {
             return formattedInteractions.join("\n");
         };
 
+        const recentMessageInteractionsStartTs = Date.now();
         const formattedMessageInteractions =
             await getRecentMessageInteractions(recentInteractions);
-
+        const recentMessageInteractionsEndTs = Date.now();
+        elizaLogger.debug(
+            `Recent message interactions took ${recentMessageInteractionsEndTs - recentMessageInteractionsStartTs}ms`
+        );
         const getRecentPostInteractions = async (
             recentInteractionsData: Memory[],
             actors: Actor[]
@@ -1158,9 +1171,14 @@ export class AgentRuntime implements IAgentRuntime {
             return formattedInteractions;
         };
 
+        const recentPostInteractionsStartTs = Date.now();
         const formattedPostInteractions = await getRecentPostInteractions(
             recentInteractions,
             actorsData
+        );
+        const recentPostInteractionsEndTs = Date.now();
+        elizaLogger.debug(
+            `Recent post interactions took ${recentPostInteractionsEndTs - recentPostInteractionsStartTs}ms`
         );
 
         // if bio is a string, use it. if its an array, shuffle array and return all items
@@ -1172,6 +1190,7 @@ export class AgentRuntime implements IAgentRuntime {
         let knowledgeData = [];
         let formattedKnowledge = "";
 
+        const getKnowledgeStartTs = Date.now();
         if (this.character.settings?.ragKnowledge && !fastMode) {
             const recentContext = recentMessagesData
                 .slice(-3) // Last 3 messages
@@ -1190,6 +1209,10 @@ export class AgentRuntime implements IAgentRuntime {
 
             formattedKnowledge = formatKnowledge(knowledgeData);
         }
+        const getKnowledgeEndTs = Date.now();
+        elizaLogger.debug(
+            `Get knowledge took ${getKnowledgeEndTs - getKnowledgeStartTs}ms`
+        );
 
         const initialState = {
             agentId: this.agentId,
@@ -1312,13 +1335,17 @@ export class AgentRuntime implements IAgentRuntime {
             return null;
         });
 
+        const getProvidersStartTs = Date.now();
         const [resolvedEvaluators, resolvedActions, providers] =
             await Promise.all([
                 Promise.all(evaluatorPromises),
                 Promise.all(actionPromises),
                 !fastMode ? getProviders(this, message, initialState) : "",
             ]);
-
+        const getProvidersEndTs = Date.now();
+        elizaLogger.debug(
+            `Get providers took ${getProvidersEndTs - getProvidersStartTs}ms`
+        );
         const evaluatorsData = resolvedEvaluators.filter(
             Boolean
         ) as Evaluator[];
