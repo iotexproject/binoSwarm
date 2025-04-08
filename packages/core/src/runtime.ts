@@ -460,17 +460,17 @@ Text: ${attachment.text}
         const { userId, roomId } = message;
 
         // RETRIEVING
-        const goalsRes = await this.getAndFormatGoals(roomId, userId);
-        const knowledgeRes = await this.getAndFormatKnowledge(
-            fastMode,
-            message
-        );
-        const recentInteractionsData = await this.getRecentInteractions(
-            userId,
-            this.agentId,
-            roomId
-        );
-        const messagesAndActorsRes = await this.getMssgsAndActors(roomId);
+        const [
+            goalsRes,
+            knowledgeRes,
+            recentInteractionsData,
+            messagesAndActorsRes,
+        ] = await Promise.all([
+            this.getAndFormatGoals(roomId, userId),
+            this.getAndFormatKnowledge(fastMode, message),
+            this.getRecentInteractions(userId, this.agentId, roomId),
+            this.getMssgsAndActors(roomId),
+        ]);
 
         // FORMATTING
         const recentPostInteractions = this.getRecentPostInteractions(
@@ -1223,7 +1223,8 @@ Text: ${attachment.text}
         if (userId === agentId) {
             return [];
         }
-        // Find all rooms where userA and userB are participants
+
+        // Find all rooms where both user and agent are participants
         const rooms = await this.databaseAdapter.getRoomsForParticipants([
             userId,
             agentId,
