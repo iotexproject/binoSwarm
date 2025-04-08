@@ -476,14 +476,18 @@ Text: ${attachment.text}
         // // 1430 ms
         const { recentMessagesData, actorsData } =
             await this.getMssgsAndActors(roomId);
+
         // 1ms
         const formattedPostInteractions = await this.getRecentPostInteractions(
             recentInteractions,
             actorsData
         );
         // 1600ms
-        const formattedMessageInteractions =
-            await this.getRecentMessageInteractions(recentInteractions);
+        const formattedMessageInteractions = this.getRecentMessageInteractions(
+            recentInteractions,
+            actorsData,
+            userId
+        );
 
         const recentMessages = formatMessages({
             messages: recentMessagesData,
@@ -1237,24 +1241,24 @@ Text: ${attachment.text}
         });
     }
 
-    private async getRecentMessageInteractions(
-        recentInteractionsData: Memory[]
-    ): Promise<string> {
-        // Format the recent messages
-        const formattedInteractions = await Promise.all(
-            recentInteractionsData.map(async (message) => {
+    private getRecentMessageInteractions(
+        recentInteractionsData: Memory[],
+        actorsData: Actor[],
+        userId: UUID
+    ): string {
+        const formattedInteractions = recentInteractionsData.map(
+            async (message) => {
                 const isSelf = message.userId === this.agentId;
                 let sender: string;
                 if (isSelf) {
                     sender = this.character.name;
                 } else {
-                    const accountId = await this.databaseAdapter.getAccountById(
-                        message.userId
-                    );
-                    sender = accountId?.username || "unknown";
+                    sender =
+                        actorsData.find((actor) => actor.id === userId)?.name ||
+                        "unknown";
                 }
                 return `${sender}: ${message.content.text}`;
-            })
+            }
         );
 
         return formattedInteractions.join("\n");
