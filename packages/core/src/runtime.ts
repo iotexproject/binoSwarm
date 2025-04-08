@@ -459,24 +459,26 @@ Text: ${attachment.text}
     ) {
         const { userId, roomId } = message;
 
+        // RETRIEVING
         const goalsRes = await this.getAndFormatGoals(roomId, userId);
         const knowledgeRes = await this.getAndFormatKnowledge(
             fastMode,
             message
         );
-        const recentInteractions = await this.getRecentInteractions(
+        const recentInteractionsData = await this.getRecentInteractions(
             userId,
             this.agentId,
             roomId
         );
         const messagesAndActorsRes = await this.getMssgsAndActors(roomId);
 
-        const formattedPostInteractions = this.getRecentPostInteractions(
-            recentInteractions,
+        // FORMATTING
+        const recentPostInteractions = this.getRecentPostInteractions(
+            recentInteractionsData,
             messagesAndActorsRes.actorsData
         );
-        const formattedMessageInteractions = this.getRecentMessageInteractions(
-            recentInteractions,
+        const recentMessageInteractions = this.getRecentMessageInteractions(
+            recentInteractionsData,
             messagesAndActorsRes.actorsData,
             userId
         );
@@ -494,11 +496,11 @@ Text: ${attachment.text}
             message,
             messagesAndActorsRes.recentMessagesData
         );
-        const formattedPostExamples = formatPostExamples(
+        const characterPostExamples = formatPostExamples(
             this,
             this.character.postExamples
         );
-        const formattedMessageExamples = formatMessageExamples(
+        const characterMessageExamples = formatMessageExamples(
             this,
             this.character.messageExamples
         );
@@ -513,13 +515,8 @@ Text: ${attachment.text}
             knowledge: knowledgeRes.formattedKnowledge,
             knowledgeData: knowledgeRes.knowledgeData,
             ragKnowledgeData: knowledgeRes.knowledgeData,
-            recentMessageInteractions: formattedMessageInteractions,
-            recentPostInteractions: formattedPostInteractions,
-            recentInteractionsData: recentInteractions,
             topic: this.buildTopic(),
             topics: this.buildTopics(),
-            characterPostExamples: formattedPostExamples,
-            characterMessageExamples: formattedMessageExamples,
             messageDirections: this.buildMessageDirections(),
             postDirections: this.buildPostDirections(),
             senderName: this.extractSenderName(
@@ -535,6 +532,11 @@ Text: ${attachment.text}
             recentPosts: this.buildRecentPosts(recentPosts),
             recentMessagesData: messagesAndActorsRes.recentMessagesData,
             attachments: this.buildAttachments(formattedAttachments),
+            recentMessageInteractions,
+            recentPostInteractions,
+            recentInteractionsData,
+            characterPostExamples,
+            characterMessageExamples,
             ...additionalKeys,
         } as State;
 
