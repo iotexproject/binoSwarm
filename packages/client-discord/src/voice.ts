@@ -1,6 +1,5 @@
 import {
     Content,
-    HandlerCallback,
     IAgentRuntime,
     Memory,
     ModelClass,
@@ -11,11 +10,11 @@ import {
     composeRandomUser,
     elizaLogger,
     getEmbeddingZeroVector,
-    generateMessageResponse,
     stringToUuid,
     generateShouldRespond,
     ITranscriptionService,
     ISpeechService,
+    streamWithTools,
 } from "@elizaos/core";
 import {
     AudioPlayer,
@@ -48,10 +47,22 @@ import {
     discordVoiceHandlerTemplate,
 } from "./templates.ts";
 import { getWavHeader } from "./utils.ts";
+import { qsSchema } from "@elizaos/plugin-depin";
 
 // These values are chosen for compatibility with picovoice components
 const DECODE_FRAME_SIZE = 1024;
 const DECODE_SAMPLE_RATE = 16000;
+
+type Message = {
+    content: ResContent[];
+    role: string;
+    id: string;
+};
+
+type ResContent = {
+    type: string;
+    text?: string;
+};
 
 export class AudioMonitor {
     private readable: Readable;
@@ -691,100 +702,109 @@ export class VoiceManager extends EventEmitter {
                 return { text: "", action: "IGNORE" };
             }
 
-            const shouldRespond = await this._shouldRespond(
-                message,
-                userId,
-                channel,
-                state
-            );
+            // const shouldRespond = await this._shouldRespond(
+            //     message,
+            //     userId,
+            //     channel,
+            //     state
+            // );
 
-            if (!shouldRespond) {
-                return;
-            }
+            // if (!shouldRespond) {
+            //     return;
+            // }
 
             const context = composeContext({
                 state,
                 template:
+                    this.runtime.character.templates
+                        ?.directVoiceStreamTemplate ||
                     this.runtime.character.templates
                         ?.discordVoiceHandlerTemplate ||
                     this.runtime.character.templates?.messageHandlerTemplate ||
                     discordVoiceHandlerTemplate,
             });
 
-            const responseContent = await this._generateResponse(
-                memory,
-                state,
-                context
-            );
+            const result = this._generateResponse(memory, state, context);
 
-            const callback: HandlerCallback = async (content: Content) => {
-                elizaLogger.log("callback content: ", content);
-                const { roomId } = memory;
-
-                const responseMemory: Memory = {
-                    id: stringToUuid(
-                        memory.id + "-voice-response-" + Date.now()
-                    ),
-                    agentId: this.runtime.agentId,
-                    userId: this.runtime.agentId,
-                    content: {
-                        ...content,
-                        user: this.runtime.character.name,
-                        inReplyTo: memory.id,
-                    },
-                    roomId,
-                    embedding: getEmbeddingZeroVector(),
-                };
-
-                if (responseMemory.content.text?.trim()) {
-                    await this.runtime.messageManager.createMemory(
-                        responseMemory
-                    );
-                    state = await this.runtime.updateRecentMessageState(state);
-
-                    const responseStream = await this.runtime
-                        .getService<ISpeechService>(
-                            ServiceType.SPEECH_GENERATION
-                        )
-                        .generate(this.runtime, content.text);
-
-                    if (responseStream) {
-                        await this.playAudioStream(
-                            userId,
-                            responseStream as Readable
-                        );
-                    }
-
-                    await this.runtime.evaluate(memory, state);
-                } else {
-                    elizaLogger.warn("Empty response, skipping");
-                }
-                return [responseMemory];
-            };
-
-            const responseMemories = await callback(responseContent);
-
-            const response = responseContent;
-
-            const content = (response.responseMessage ||
-                response.content ||
-                response.message) as string;
-
-            if (!content) {
-                return null;
+            for await (const textPart of result.textStream) {
+                console.log("textPart: ", textPart);
+                const responseStream = await this.runtime
+                    .getService<ISpeechService>(ServiceType.SPEECH_GENERATION)
+                    .generate(this.runtime, textPart);
+                await this.playAudioStream(userId, responseStream as Readable);
             }
 
-            elizaLogger.log("responseMemories: ", responseMemories);
+            const response = await result.response;
 
-            await this.runtime.processActions(
-                memory,
-                responseMemories,
-                state,
-                callback
+            this.processAssistantMessages(
+                response.messages,
+                this.runtime,
+                roomId,
+                stringToUuid(memory.id + "-voice-response-" + Date.now())
             );
         } catch (error) {
             elizaLogger.error("Error processing transcribed text:", error);
         }
+    }
+
+    private async processAssistantMessages(
+        messages: Message[],
+        runtime: IAgentRuntime,
+        roomId: UUID,
+        inReplyTo: UUID
+    ) {
+        messages.forEach(({ content, role, id }: Message) => {
+            if (role === "assistant") {
+                this.processMessageContents(
+                    id,
+                    runtime,
+                    roomId,
+                    content,
+                    inReplyTo
+                );
+            }
+        });
+    }
+
+    private async processMessageContents(
+        messageId: string,
+        runtime: IAgentRuntime,
+        roomId: UUID,
+        content: ResContent[],
+        inReplyTo: UUID
+    ) {
+        content.forEach(({ type, text }: ResContent) => {
+            if (type === "text") {
+                const content: Content = {
+                    text,
+                    inReplyTo,
+                };
+                this.buildAndSaveMemory(messageId, runtime, roomId, content);
+            }
+        });
+    }
+
+    private async buildAndSaveMemory(
+        messageId: string,
+        runtime: IAgentRuntime,
+        roomId: UUID,
+        content: Content
+    ) {
+        const agentId = runtime.agentId;
+
+        const responseMessage: Memory = {
+            id: stringToUuid(messageId + "-" + agentId),
+            roomId,
+            userId: agentId,
+            agentId,
+            content,
+            embedding: getEmbeddingZeroVector(),
+            createdAt: Date.now(),
+        };
+
+        elizaLogger.info("streamedVoiceMessage", responseMessage);
+
+        await runtime.messageManager.createMemory(responseMessage);
     }
 
     private async convertOpusToWav(pcmBuffer: Buffer): Promise<Buffer> {
@@ -865,26 +885,13 @@ export class VoiceManager extends EventEmitter {
         }
     }
 
-    private async _generateResponse(
-        message: Memory,
-        state: State,
-        context: string
-    ): Promise<Content> {
-        const { userId, roomId } = message;
-
-        const response = await generateMessageResponse({
+    private _generateResponse(context: string): any {
+        const response = streamWithTools({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.SMALL,
-        });
-
-        response.source = "discord";
-
-        await this.runtime.databaseAdapter.log({
-            body: { message, context, response },
-            userId: userId,
-            roomId,
-            type: "response",
+            modelClass: ModelClass.LARGE,
+            tools: [qsSchema],
+            smoothStreamBy: "line",
         });
 
         return response;
@@ -1010,21 +1017,26 @@ export class VoiceManager extends EventEmitter {
         });
         audioPlayer.play(resource);
 
-        audioPlayer.on("error", (err: any) => {
-            elizaLogger.log(`Audio player error: ${err}`);
-        });
+        // Return a promise that resolves when the audio finishes playing
+        return new Promise((resolve, reject) => {
+            audioPlayer.on("error", (err: any) => {
+                elizaLogger.log(`Audio player error: ${err}`);
+                reject(err);
+            });
 
-        audioPlayer.on(
-            "stateChange",
-            (_oldState: any, newState: { status: string }) => {
-                if (newState.status == "idle") {
-                    const idleTime = Date.now();
-                    elizaLogger.log(
-                        `Audio playback took: ${idleTime - audioStartTime}ms`
-                    );
+            audioPlayer.on(
+                "stateChange",
+                (_oldState: any, newState: { status: string }) => {
+                    if (newState.status === "idle") {
+                        const idleTime = Date.now();
+                        elizaLogger.log(
+                            `Audio playback took: ${idleTime - audioStartTime}ms`
+                        );
+                        resolve();
+                    }
                 }
-            }
-        );
+            );
+        });
     }
 
     cleanupAudioPlayer(audioPlayer: AudioPlayer) {
