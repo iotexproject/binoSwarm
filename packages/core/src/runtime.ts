@@ -459,48 +459,40 @@ Text: ${attachment.text}
     ) {
         const { userId, roomId } = message;
 
-        const { goals, goalsData } = await this.getAndFormatGoals(
-            roomId,
-            userId
+        const goalsRes = await this.getAndFormatGoals(roomId, userId);
+        const knowledgeRes = await this.getAndFormatKnowledge(
+            fastMode,
+            message
         );
-        // 4sec!
-        const { formattedKnowledge, knowledgeData } =
-            await this.getAndFormatKnowledge(fastMode, message);
-        // 5sec!!!
         const recentInteractions = await this.getRecentInteractions(
             userId,
             this.agentId,
             roomId
         );
+        const messagesAndActorsRes = await this.getMssgsAndActors(roomId);
 
-        // // 1430 ms
-        const { recentMessagesData, actorsData } =
-            await this.getMssgsAndActors(roomId);
-
-        // 1ms
-        const formattedPostInteractions = await this.getRecentPostInteractions(
+        const formattedPostInteractions = this.getRecentPostInteractions(
             recentInteractions,
-            actorsData
+            messagesAndActorsRes.actorsData
         );
-        // 1600ms
         const formattedMessageInteractions = this.getRecentMessageInteractions(
             recentInteractions,
-            actorsData,
+            messagesAndActorsRes.actorsData,
             userId
         );
 
         const recentMessages = formatMessages({
-            messages: recentMessagesData,
-            actors: actorsData,
+            messages: messagesAndActorsRes.recentMessagesData,
+            actors: messagesAndActorsRes.actorsData,
         });
         const recentPosts = formatPosts({
-            messages: recentMessagesData,
-            actors: actorsData,
+            messages: messagesAndActorsRes.recentMessagesData,
+            actors: messagesAndActorsRes.actorsData,
             conversationHeader: false,
         });
         const formattedAttachments = this.collectAndFormatAttachments(
             message,
-            recentMessagesData
+            messagesAndActorsRes.recentMessagesData
         );
         const formattedPostExamples = formatPostExamples(
             this,
@@ -513,14 +505,14 @@ Text: ${attachment.text}
 
         const initialState = {
             agentId: this.agentId,
-            agentName: this.extractAgentName(actorsData),
+            agentName: this.extractAgentName(messagesAndActorsRes.actorsData),
             bio: this.buildBio(),
             system: this.character.system,
             lore: this.buildLore(),
             adjective: this.buildAdjectives(),
-            knowledge: formattedKnowledge,
-            knowledgeData: knowledgeData,
-            ragKnowledgeData: knowledgeData,
+            knowledge: knowledgeRes.formattedKnowledge,
+            knowledgeData: knowledgeRes.knowledgeData,
+            ragKnowledgeData: knowledgeRes.knowledgeData,
             recentMessageInteractions: formattedMessageInteractions,
             recentPostInteractions: formattedPostInteractions,
             recentInteractionsData: recentInteractions,
@@ -530,15 +522,18 @@ Text: ${attachment.text}
             characterMessageExamples: formattedMessageExamples,
             messageDirections: this.buildMessageDirections(),
             postDirections: this.buildPostDirections(),
-            senderName: this.extractSenderName(actorsData, userId),
+            senderName: this.extractSenderName(
+                messagesAndActorsRes.actorsData,
+                userId
+            ),
             actors: "", // TODO: Can be removed once we verify that this is not used anywhere
-            actorsData,
+            actorsData: messagesAndActorsRes.actorsData,
             roomId,
-            goals: this.buildGoals(goals),
-            goalsData,
+            goals: this.buildGoals(goalsRes.goals),
+            goalsData: goalsRes.goalsData,
             recentMessages: this.buildRecentMessages(recentMessages),
             recentPosts: this.buildRecentPosts(recentPosts),
-            recentMessagesData,
+            recentMessagesData: messagesAndActorsRes.recentMessagesData,
             attachments: this.buildAttachments(formattedAttachments),
             ...additionalKeys,
         } as State;
@@ -1264,10 +1259,10 @@ Text: ${attachment.text}
         return formattedInteractions.join("\n");
     }
 
-    private async getRecentPostInteractions(
+    private getRecentPostInteractions(
         recentInteractionsData: Memory[],
         actors: Actor[]
-    ): Promise<string> {
+    ): string {
         const formattedInteractions = formatPosts({
             messages: recentInteractionsData,
             actors,
