@@ -80,39 +80,54 @@ export class AudioMonitor {
         this.readable = readable;
         this.maxSize = maxSize;
         this.readable.on("data", (chunk: Buffer) => {
-            //console.log('AudioMonitor got data');
-            if (this.lastFlagged < 0) {
-                this.lastFlagged = this.buffers.length;
-            }
-            this.buffers.push(chunk);
-            const currentSize = this.buffers.reduce(
-                (acc, cur) => acc + cur.length,
-                0
-            );
-            while (currentSize > this.maxSize) {
-                this.buffers.shift();
-                this.lastFlagged--;
-            }
+            this.handleOnData(chunk);
         });
         this.readable.on("end", () => {
-            elizaLogger.log("AudioMonitor ended");
-            this.ended = true;
-            if (this.lastFlagged < 0) return;
-            callback(this.getBufferFromStart());
-            this.lastFlagged = -1;
+            this.handleOnEnd(callback);
         });
         this.readable.on("speakingStopped", () => {
-            if (this.ended) return;
-            elizaLogger.log("Speaking stopped");
-            if (this.lastFlagged < 0) return;
-            callback(this.getBufferFromStart());
+            this.handleOnSpeakingStopped(callback);
         });
         this.readable.on("speakingStarted", () => {
-            if (this.ended) return;
-            onStart();
-            elizaLogger.log("Speaking started");
-            this.reset();
+            this.handleOnSpeakingStarted(onStart);
         });
+    }
+
+    private handleOnSpeakingStarted(onStart: () => void) {
+        if (this.ended) return;
+        onStart();
+        elizaLogger.log("Speaking started");
+        this.reset();
+    }
+
+    private handleOnSpeakingStopped(callback: (buffer: Buffer) => void) {
+        if (this.ended) return;
+        elizaLogger.log("Speaking stopped");
+        if (this.lastFlagged < 0) return;
+        callback(this.getBufferFromStart());
+    }
+
+    private handleOnEnd(callback: (buffer: Buffer) => void) {
+        elizaLogger.log("AudioMonitor ended");
+        this.ended = true;
+        if (this.lastFlagged < 0) return;
+        callback(this.getBufferFromStart());
+        this.lastFlagged = -1;
+    }
+
+    private handleOnData(chunk: Buffer<ArrayBufferLike>) {
+        if (this.lastFlagged < 0) {
+            this.lastFlagged = this.buffers.length;
+        }
+        this.buffers.push(chunk);
+        const currentSize = this.buffers.reduce(
+            (acc, cur) => acc + cur.length,
+            0
+        );
+        while (currentSize > this.maxSize) {
+            this.buffers.shift();
+            this.lastFlagged--;
+        }
     }
 
     stop() {
