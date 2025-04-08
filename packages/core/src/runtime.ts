@@ -108,6 +108,34 @@ export class AgentRuntime implements IAgentRuntime {
 
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
 
+    constructor(opts: AgentRuntimeOptions) {
+        if (opts.conversationLength) {
+            this.#conversationLength = opts.conversationLength;
+        }
+        this.initAgent(opts);
+        this.initFetch(opts);
+        this.registerMemoryManagers(opts);
+        this.registerCustomServices(opts);
+        this.initServerUrl(opts);
+
+        this.initModelProvider(opts);
+        this.initImageModelProvider();
+        this.initImageVisionModelProvider();
+        this.validateModelProvider();
+
+        this.initPlugins(opts);
+
+        this.registerActions(opts);
+        this.registerContextProviders(opts);
+        this.registerEvaluators(opts);
+    }
+
+    async initialize() {
+        await this.initializeServices();
+        await this.initializePluginServices();
+        await this.initCharacterKnowledge();
+    }
+
     registerMemoryManager(manager: IMemoryManager): void {
         if (!manager.tableName) {
             throw new Error("Memory manager must have a tableName");
@@ -136,6 +164,54 @@ export class AgentRuntime implements IAgentRuntime {
         return serviceInstance as T;
     }
 
+    getVerifiableInferenceAdapter(): IVerifiableInferenceAdapter | undefined {
+        return this.verifiableInferenceAdapter;
+    }
+
+    setVerifiableInferenceAdapter(adapter: IVerifiableInferenceAdapter): void {
+        this.verifiableInferenceAdapter = adapter;
+    }
+
+    getSetting(key: string) {
+        // check if the key is in the character.settings.secrets object
+        if (this.character.settings?.secrets?.[key]) {
+            return this.character.settings.secrets[key];
+        }
+        // if not, check if it's in the settings object
+        if (this.character.settings?.[key]) {
+            return this.character.settings[key];
+        }
+
+        // if not, check if it's in the settings object
+        if (settings[key]) {
+            return settings[key];
+        }
+
+        return null;
+    }
+
+    getConversationLength() {
+        return this.#conversationLength;
+    }
+
+    registerAction(action: Action) {
+        elizaLogger.success(`Registering action: ${action.name}`);
+        this.actions.push(action);
+    }
+
+    registerEvaluator(evaluator: Evaluator) {
+        this.evaluators.push(evaluator);
+    }
+
+    registerContextProvider(provider: Provider) {
+        this.providers.push(provider);
+    }
+
+    async stop() {
+        elizaLogger.debug("runtime::stop - character", this.character);
+        this.stopClients();
+    }
+
     async registerService(service: Service): Promise<void> {
         const serviceType = service.serviceType;
         elizaLogger.log("Registering service:", serviceType);
@@ -152,26 +228,330 @@ export class AgentRuntime implements IAgentRuntime {
         elizaLogger.success(`Service ${serviceType} registered successfully`);
     }
 
-    constructor(opts: AgentRuntimeOptions) {
-        if (opts.conversationLength) {
-            this.#conversationLength = opts.conversationLength;
+    async updateRecentMessageState(state: State): Promise<State> {
+        const conversationLength = this.getConversationLength();
+        const recentMessagesData = await this.messageManager.getMemories({
+            roomId: state.roomId,
+            count: conversationLength,
+            unique: false,
+        });
+
+        const recentMessages = formatMessages({
+            actors: state.actorsData ?? [],
+            messages: recentMessagesData.map((memory: Memory) => {
+                const newMemory = { ...memory };
+                delete newMemory.embedding;
+                return newMemory;
+            }),
+        });
+
+        let allAttachments = [];
+
+        if (recentMessagesData && Array.isArray(recentMessagesData)) {
+            const lastMessageWithAttachment = recentMessagesData.find(
+                (msg) =>
+                    msg.content.attachments &&
+                    msg.content.attachments.length > 0
+            );
+
+            if (lastMessageWithAttachment) {
+                const lastMessageTime =
+                    lastMessageWithAttachment?.createdAt ?? Date.now();
+                const oneHourBeforeLastMessage =
+                    lastMessageTime - 60 * 60 * 1000; // 1 hour before last message
+
+                allAttachments = recentMessagesData
+                    .filter((msg) => {
+                        const msgTime = msg.createdAt ?? Date.now();
+                        return msgTime >= oneHourBeforeLastMessage;
+                    })
+                    .flatMap((msg) => msg.content.attachments || []);
+            }
         }
-        this.initAgent(opts);
-        this.initFetch(opts);
-        this.registerMemoryManagers(opts);
-        this.registerCustomServices(opts);
-        this.initServerUrl(opts);
 
-        this.initModelProvider(opts);
-        this.initImageModelProvider();
-        this.initImageVisionModelProvider();
-        this.validateModelProvider();
+        const formattedAttachments = allAttachments
+            .map(
+                (attachment) =>
+                    `ID: ${attachment.id}
+Name: ${attachment.title}
+URL: ${attachment.url}
+Type: ${attachment.source}
+Description: ${attachment.description}
+Text: ${attachment.text}
+    `
+            )
+            .join("\n");
 
-        this.initPlugins(opts);
+        return {
+            ...state,
+            recentMessages: addHeader(
+                "# Conversation Messages",
+                recentMessages
+            ),
+            recentMessagesData,
+            attachments: formattedAttachments,
+        } as State;
+    }
 
-        this.registerActions(opts);
-        this.registerContextProviders(opts);
-        this.registerEvaluators(opts);
+    async processActions(
+        message: Memory,
+        responses: Memory[],
+        state?: State,
+        callback?: HandlerCallback
+    ): Promise<void> {
+        for (const response of responses) {
+            if (!response.content?.action) {
+                elizaLogger.warn("No action found in the response content.");
+                continue;
+            }
+
+            const action = this.findAction(response.content.action);
+
+            if (!action) {
+                elizaLogger.error(
+                    "No action found for",
+                    response.content.action
+                );
+                continue;
+            }
+
+            if (!action.handler) {
+                elizaLogger.error(`Action ${action.name} has no handler.`);
+                continue;
+            }
+
+            try {
+                elizaLogger.info(
+                    `Executing handler for action: ${action.name}`
+                );
+                await action.handler(this, message, state, {}, callback);
+            } catch (error) {
+                elizaLogger.error(error);
+            }
+        }
+    }
+
+    async evaluate(
+        message: Memory,
+        state: State,
+        didRespond?: boolean,
+        callback?: HandlerCallback
+    ) {
+        const evaluatorPromises = this.getEvaluatorPromises(
+            message,
+            state,
+            didRespond
+        );
+        const resolvedEvaluators = await Promise.all(evaluatorPromises);
+
+        const evaluatorsData = resolvedEvaluators.filter(
+            (evaluator): evaluator is Evaluator => evaluator !== null
+        );
+        if (!evaluatorsData || evaluatorsData.length === 0) {
+            return [];
+        }
+
+        const evaluators = await this.generateRequiredEvaluators(
+            state,
+            evaluatorsData
+        );
+
+        for (const evaluator of this.evaluators) {
+            if (!evaluators?.includes(evaluator.name)) continue;
+
+            if (evaluator.handler)
+                await evaluator.handler(this, message, state, {}, callback);
+        }
+
+        return evaluators;
+    }
+
+    async ensureParticipantExists(userId: UUID, roomId: UUID) {
+        const participants =
+            await this.databaseAdapter.getParticipantsForAccount(userId);
+
+        if (participants?.length === 0) {
+            await this.databaseAdapter.addParticipant(userId, roomId);
+        }
+    }
+
+    async ensureUserExists(
+        userId: UUID,
+        userName: string | null,
+        name: string | null,
+        email?: string | null,
+        source?: string | null
+    ) {
+        const account = await this.databaseAdapter.getAccountById(userId);
+        if (!account) {
+            await this.databaseAdapter.createAccount({
+                id: userId,
+                name: name || userName || "Unknown User",
+                username: userName || name || "Unknown",
+                email: email || (userName || "Bot") + "@" + source || "Unknown", // Temporary
+                details: { summary: "" },
+            });
+            elizaLogger.success(`User ${userName} created successfully.`);
+        }
+    }
+
+    async ensureParticipantInRoom(userId: UUID, roomId: UUID) {
+        const isUserInTheRoom = await this.databaseAdapter.getIsUserInTheRoom(
+            roomId,
+            userId
+        );
+        if (isUserInTheRoom) {
+            return;
+        }
+        await this.databaseAdapter.addParticipant(userId, roomId);
+        if (userId === this.agentId) {
+            elizaLogger.log(
+                `Agent ${this.character.name} linked to room ${roomId} successfully.`
+            );
+        } else {
+            elizaLogger.log(
+                `User ${userId} linked to room ${roomId} successfully.`
+            );
+        }
+    }
+
+    async ensureConnection(
+        userId: UUID,
+        roomId: UUID,
+        userName?: string,
+        userScreenName?: string,
+        source?: string
+    ) {
+        await Promise.all([
+            this.ensureUserExists(
+                this.agentId,
+                this.character.name ?? "Agent",
+                this.character.name ?? "Agent",
+                source
+            ),
+            this.ensureUserExists(
+                userId,
+                userName ?? "User" + userId,
+                userScreenName ?? "User" + userId,
+                source
+            ),
+            this.ensureRoomExists(roomId),
+        ]);
+
+        await Promise.all([
+            this.ensureParticipantInRoom(userId, roomId),
+            this.ensureParticipantInRoom(this.agentId, roomId),
+        ]);
+    }
+
+    async ensureRoomExists(roomId: UUID) {
+        const room = await this.databaseAdapter.getRoom(roomId);
+        if (!room) {
+            await this.databaseAdapter.createRoom(roomId);
+            elizaLogger.log(`Room ${roomId} created successfully.`);
+        }
+    }
+
+    async composeState(
+        message: Memory,
+        additionalKeys: { [key: string]: unknown } = {},
+        fastMode: boolean = false
+    ) {
+        const { userId, roomId } = message;
+
+        // // 1430 ms
+        const { goals, goalsData } = await this.getAndFormatGoals(roomId);
+        const { recentMessagesData, actorsData } =
+            await this.getMssgsAndActors(roomId);
+
+        const recentMessages = formatMessages({
+            messages: recentMessagesData,
+            actors: actorsData,
+        });
+        const recentPosts = formatPosts({
+            messages: recentMessagesData,
+            actors: actorsData,
+            conversationHeader: false,
+        });
+
+        const formattedAttachments = this.collectAndFormatAttachments(
+            message,
+            recentMessagesData
+        );
+
+        const formattedPostExamples = formatPostExamples(
+            this,
+            this.character.postExamples
+        );
+        const formattedMessageExamples = formatMessageExamples(
+            this,
+            this.character.messageExamples
+        );
+
+        // 5sec!!!
+        const recentInteractions = await this.getRecentInteractions(
+            userId,
+            this.agentId,
+            roomId
+        );
+        // 1600ms
+        const formattedMessageInteractions =
+            await this.getRecentMessageInteractions(recentInteractions);
+
+        // 1ms
+        const formattedPostInteractions = await this.getRecentPostInteractions(
+            recentInteractions,
+            actorsData
+        );
+
+        // 4sec!
+        const { formattedKnowledge, knowledgeData } =
+            await this.getAndFormatKnowledge(
+                fastMode,
+                recentMessagesData,
+                message
+            );
+
+        const initialState = {
+            agentId: this.agentId,
+            agentName: this.extractAgentName(actorsData),
+            bio: this.buildBio(),
+            system: this.character.system,
+            lore: this.buildLore(),
+            adjective: this.buildAdjectives(),
+            knowledge: formattedKnowledge,
+            knowledgeData: knowledgeData,
+            ragKnowledgeData: knowledgeData,
+            recentMessageInteractions: formattedMessageInteractions,
+            recentPostInteractions: formattedPostInteractions,
+            recentInteractionsData: recentInteractions,
+            topic: this.buildTopic(),
+            topics: this.buildTopics(),
+            characterPostExamples: formattedPostExamples,
+            characterMessageExamples: formattedMessageExamples,
+            messageDirections: this.buildMessageDirections(),
+            postDirections: this.buildPostDirections(),
+            senderName: this.extractSenderName(actorsData, userId),
+            actors: "", // TODO: Can be removed once we verify that this is not used anywhere
+            actorsData,
+            roomId,
+            goals: this.buildGoals(goals),
+            goalsData,
+            recentMessages: this.buildRecentMessages(recentMessages),
+            recentPosts: this.buildRecentPosts(recentPosts),
+            recentMessagesData,
+            attachments: this.buildAttachments(formattedAttachments),
+            ...additionalKeys,
+        } as State;
+
+        // 5sec!
+        const actionState = await this.buildActionState(
+            message,
+            initialState,
+            fastMode
+        );
+
+        return { ...initialState, ...actionState } as State;
     }
 
     private registerEvaluators(opts: AgentRuntimeOptions) {
@@ -371,12 +751,6 @@ export class AgentRuntime implements IAgentRuntime {
         }
     }
 
-    async initialize() {
-        await this.initializeServices();
-        await this.initializePluginServices();
-        await this.initCharacterKnowledge();
-    }
-
     private async initCharacterKnowledge() {
         if (!this.character?.knowledge?.length) {
             return;
@@ -421,11 +795,6 @@ export class AgentRuntime implements IAgentRuntime {
         }
     }
 
-    async stop() {
-        elizaLogger.debug("runtime::stop - character", this.character);
-        this.stopClients();
-    }
-
     private stopClients() {
         for (const clientString in this.clients) {
             const client = this.clients[clientString];
@@ -461,79 +830,6 @@ export class AgentRuntime implements IAgentRuntime {
                     text: item,
                 },
             });
-        }
-    }
-
-    getSetting(key: string) {
-        // check if the key is in the character.settings.secrets object
-        if (this.character.settings?.secrets?.[key]) {
-            return this.character.settings.secrets[key];
-        }
-        // if not, check if it's in the settings object
-        if (this.character.settings?.[key]) {
-            return this.character.settings[key];
-        }
-
-        // if not, check if it's in the settings object
-        if (settings[key]) {
-            return settings[key];
-        }
-
-        return null;
-    }
-
-    getConversationLength() {
-        return this.#conversationLength;
-    }
-
-    registerAction(action: Action) {
-        elizaLogger.success(`Registering action: ${action.name}`);
-        this.actions.push(action);
-    }
-
-    registerEvaluator(evaluator: Evaluator) {
-        this.evaluators.push(evaluator);
-    }
-
-    registerContextProvider(provider: Provider) {
-        this.providers.push(provider);
-    }
-
-    async processActions(
-        message: Memory,
-        responses: Memory[],
-        state?: State,
-        callback?: HandlerCallback
-    ): Promise<void> {
-        for (const response of responses) {
-            if (!response.content?.action) {
-                elizaLogger.warn("No action found in the response content.");
-                continue;
-            }
-
-            const action = this.findAction(response.content.action);
-
-            if (!action) {
-                elizaLogger.error(
-                    "No action found for",
-                    response.content.action
-                );
-                continue;
-            }
-
-            if (!action.handler) {
-                elizaLogger.error(`Action ${action.name} has no handler.`);
-                continue;
-            }
-
-            try {
-                elizaLogger.info(
-                    `Executing handler for action: ${action.name}`
-                );
-                await action.handler(this, message, state, {}, callback);
-            } catch (error) {
-                elizaLogger.error(error);
-            }
         }
     }
 
@@ -575,41 +871,6 @@ export class AgentRuntime implements IAgentRuntime {
         }
 
         return action;
-    }
-
-    async evaluate(
-        message: Memory,
-        state: State,
-        didRespond?: boolean,
-        callback?: HandlerCallback
-    ) {
-        const evaluatorPromises = this.getEvaluatorPromises(
-            message,
-            state,
-            didRespond
-        );
-        const resolvedEvaluators = await Promise.all(evaluatorPromises);
-
-        const evaluatorsData = resolvedEvaluators.filter(
-            (evaluator): evaluator is Evaluator => evaluator !== null
-        );
-        if (!evaluatorsData || evaluatorsData.length === 0) {
-            return [];
-        }
-
-        const evaluators = await this.generateRequiredEvaluators(
-            state,
-            evaluatorsData
-        );
-
-        for (const evaluator of this.evaluators) {
-            if (!evaluators?.includes(evaluator.name)) continue;
-
-            if (evaluator.handler)
-                await evaluator.handler(this, message, state, {}, callback);
-        }
-
-        return evaluators;
     }
 
     private async generateRequiredEvaluators(
@@ -660,194 +921,6 @@ export class AgentRuntime implements IAgentRuntime {
             }
             return null;
         });
-    }
-
-    async ensureParticipantExists(userId: UUID, roomId: UUID) {
-        const participants =
-            await this.databaseAdapter.getParticipantsForAccount(userId);
-
-        if (participants?.length === 0) {
-            await this.databaseAdapter.addParticipant(userId, roomId);
-        }
-    }
-
-    async ensureUserExists(
-        userId: UUID,
-        userName: string | null,
-        name: string | null,
-        email?: string | null,
-        source?: string | null
-    ) {
-        const account = await this.databaseAdapter.getAccountById(userId);
-        if (!account) {
-            await this.databaseAdapter.createAccount({
-                id: userId,
-                name: name || userName || "Unknown User",
-                username: userName || name || "Unknown",
-                email: email || (userName || "Bot") + "@" + source || "Unknown", // Temporary
-                details: { summary: "" },
-            });
-            elizaLogger.success(`User ${userName} created successfully.`);
-        }
-    }
-
-    async ensureParticipantInRoom(userId: UUID, roomId: UUID) {
-        const isUserInTheRoom = await this.databaseAdapter.getIsUserInTheRoom(
-            roomId,
-            userId
-        );
-        if (isUserInTheRoom) {
-            return;
-        }
-        await this.databaseAdapter.addParticipant(userId, roomId);
-        if (userId === this.agentId) {
-            elizaLogger.log(
-                `Agent ${this.character.name} linked to room ${roomId} successfully.`
-            );
-        } else {
-            elizaLogger.log(
-                `User ${userId} linked to room ${roomId} successfully.`
-            );
-        }
-    }
-
-    async ensureConnection(
-        userId: UUID,
-        roomId: UUID,
-        userName?: string,
-        userScreenName?: string,
-        source?: string
-    ) {
-        await Promise.all([
-            this.ensureUserExists(
-                this.agentId,
-                this.character.name ?? "Agent",
-                this.character.name ?? "Agent",
-                source
-            ),
-            this.ensureUserExists(
-                userId,
-                userName ?? "User" + userId,
-                userScreenName ?? "User" + userId,
-                source
-            ),
-            this.ensureRoomExists(roomId),
-        ]);
-
-        await Promise.all([
-            this.ensureParticipantInRoom(userId, roomId),
-            this.ensureParticipantInRoom(this.agentId, roomId),
-        ]);
-    }
-
-    async ensureRoomExists(roomId: UUID) {
-        const room = await this.databaseAdapter.getRoom(roomId);
-        if (!room) {
-            await this.databaseAdapter.createRoom(roomId);
-            elizaLogger.log(`Room ${roomId} created successfully.`);
-        }
-    }
-
-    async composeState(
-        message: Memory,
-        additionalKeys: { [key: string]: unknown } = {},
-        fastMode: boolean = false
-    ) {
-        const { userId, roomId } = message;
-
-        // // 1430 ms
-        const { goals, goalsData } = await this.getAndFormatGoals(roomId);
-        const { recentMessagesData, actorsData } =
-            await this.getMssgsAndActors(roomId);
-
-        const recentMessages = formatMessages({
-            messages: recentMessagesData,
-            actors: actorsData,
-        });
-        const recentPosts = formatPosts({
-            messages: recentMessagesData,
-            actors: actorsData,
-            conversationHeader: false,
-        });
-
-        const formattedAttachments = this.collectAndFormatAttachments(
-            message,
-            recentMessagesData
-        );
-
-        const formattedPostExamples = formatPostExamples(
-            this,
-            this.character.postExamples
-        );
-        const formattedMessageExamples = formatMessageExamples(
-            this,
-            this.character.messageExamples
-        );
-
-        // 5sec!!!
-        const recentInteractions = await this.getRecentInteractions(
-            userId,
-            this.agentId,
-            roomId
-        );
-        // 1600ms
-        const formattedMessageInteractions =
-            await this.getRecentMessageInteractions(recentInteractions);
-
-        // 1ms
-        const formattedPostInteractions = await this.getRecentPostInteractions(
-            recentInteractions,
-            actorsData
-        );
-
-        // 4sec!
-        const { formattedKnowledge, knowledgeData } =
-            await this.getAndFormatKnowledge(
-                fastMode,
-                recentMessagesData,
-                message
-            );
-
-        const initialState = {
-            agentId: this.agentId,
-            agentName: this.extractAgentName(actorsData),
-            bio: this.buildBio(),
-            system: this.character.system,
-            lore: this.buildLore(),
-            adjective: this.buildAdjectives(),
-            knowledge: formattedKnowledge,
-            knowledgeData: knowledgeData,
-            ragKnowledgeData: knowledgeData,
-            recentMessageInteractions: formattedMessageInteractions,
-            recentPostInteractions: formattedPostInteractions,
-            recentInteractionsData: recentInteractions,
-            topic: this.buildTopic(),
-            topics: this.buildTopics(),
-            characterPostExamples: formattedPostExamples,
-            characterMessageExamples: formattedMessageExamples,
-            messageDirections: this.buildMessageDirections(),
-            postDirections: this.buildPostDirections(),
-            senderName: this.extractSenderName(actorsData, userId),
-            actors: "", // TODO: Can be removed once we verify that this is not used anywhere
-            actorsData,
-            roomId,
-            goals: this.buildGoals(goals),
-            goalsData,
-            recentMessages: this.buildRecentMessages(recentMessages),
-            recentPosts: this.buildRecentPosts(recentPosts),
-            recentMessagesData,
-            attachments: this.buildAttachments(formattedAttachments),
-            ...additionalKeys,
-        } as State;
-
-        // 5sec!
-        const actionState = await this.buildActionState(
-            message,
-            initialState,
-            fastMode
-        );
-
-        return { ...initialState, ...actionState } as State;
     }
 
     private async buildActionState(
@@ -1155,79 +1228,6 @@ export class AgentRuntime implements IAgentRuntime {
 
         const goals = formatGoalsAsString({ goals: goalsData });
         return { goals, goalsData };
-    }
-
-    async updateRecentMessageState(state: State): Promise<State> {
-        const conversationLength = this.getConversationLength();
-        const recentMessagesData = await this.messageManager.getMemories({
-            roomId: state.roomId,
-            count: conversationLength,
-            unique: false,
-        });
-
-        const recentMessages = formatMessages({
-            actors: state.actorsData ?? [],
-            messages: recentMessagesData.map((memory: Memory) => {
-                const newMemory = { ...memory };
-                delete newMemory.embedding;
-                return newMemory;
-            }),
-        });
-
-        let allAttachments = [];
-
-        if (recentMessagesData && Array.isArray(recentMessagesData)) {
-            const lastMessageWithAttachment = recentMessagesData.find(
-                (msg) =>
-                    msg.content.attachments &&
-                    msg.content.attachments.length > 0
-            );
-
-            if (lastMessageWithAttachment) {
-                const lastMessageTime =
-                    lastMessageWithAttachment?.createdAt ?? Date.now();
-                const oneHourBeforeLastMessage =
-                    lastMessageTime - 60 * 60 * 1000; // 1 hour before last message
-
-                allAttachments = recentMessagesData
-                    .filter((msg) => {
-                        const msgTime = msg.createdAt ?? Date.now();
-                        return msgTime >= oneHourBeforeLastMessage;
-                    })
-                    .flatMap((msg) => msg.content.attachments || []);
-            }
-        }
-
-        const formattedAttachments = allAttachments
-            .map(
-                (attachment) =>
-                    `ID: ${attachment.id}
-Name: ${attachment.title}
-URL: ${attachment.url}
-Type: ${attachment.source}
-Description: ${attachment.description}
-Text: ${attachment.text}
-    `
-            )
-            .join("\n");
-
-        return {
-            ...state,
-            recentMessages: addHeader(
-                "# Conversation Messages",
-                recentMessages
-            ),
-            recentMessagesData,
-            attachments: formattedAttachments,
-        } as State;
-    }
-
-    getVerifiableInferenceAdapter(): IVerifiableInferenceAdapter | undefined {
-        return this.verifiableInferenceAdapter;
-    }
-
-    setVerifiableInferenceAdapter(adapter: IVerifiableInferenceAdapter): void {
-        this.verifiableInferenceAdapter = adapter;
     }
 
     private async getRecentInteractions(
