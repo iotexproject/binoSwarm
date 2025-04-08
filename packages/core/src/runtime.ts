@@ -756,55 +756,20 @@ export class AgentRuntime implements IAgentRuntime {
     ) {
         const { userId, roomId } = message;
 
-        const conversationLength = this.getConversationLength();
+        // // 1430 ms
+        const { goals, goalsData } = await this.getAndFormatGoals(roomId);
+        const { recentMessagesData, actorsData } =
+            await this.getMssgsAndActors(roomId);
 
-        const recentMessagesStartTs = Date.now();
-        const [recentMessagesData, goalsData]: [Memory[], Goal[]] =
-            await Promise.all([
-                this.messageManager.getMemories({
-                    roomId,
-                    count: conversationLength,
-                    unique: false,
-                }),
-                getGoals({
-                    runtime: this,
-                    count: 10,
-                    onlyInProgress: false,
-                    roomId,
-                }),
-            ]);
-        const recentMessagesEndTs = Date.now();
-        elizaLogger.debug(
-            `Recent messages took ${recentMessagesEndTs - recentMessagesStartTs}ms`
-        );
-        const goals = formatGoalsAsString({ goals: goalsData });
-
-        const actorIds = retrieveActorIdsFromMessages(recentMessagesData);
-        const actorsData =
-            await this.databaseAdapter.getAccountsByIds(actorIds);
         const recentMessages = formatMessages({
             messages: recentMessagesData,
             actors: actorsData,
         });
-
         const recentPosts = formatPosts({
             messages: recentMessagesData,
             actors: actorsData,
             conversationHeader: false,
         });
-
-        elizaLogger.debug("Actors data", actorsData);
-
-        // const lore = formatLore(loreData);
-
-        const senderName = actorsData?.find(
-            (actor: Actor) => actor.id === userId
-        )?.name;
-
-        // TODO: We may wish to consolidate and just accept character.name here instead of the actor name
-        const agentName =
-            actorsData?.find((actor: Actor) => actor.id === this.agentId)
-                ?.name || this.character.name;
 
         let allAttachments = message.content.attachments || [];
 
@@ -979,7 +944,7 @@ export class AgentRuntime implements IAgentRuntime {
 
         const initialState = {
             agentId: this.agentId,
-            agentName,
+            agentName: this.extractAgentName(actorsData),
             bio,
             system: this.character.system,
             lore,
@@ -1044,12 +1009,12 @@ export class AgentRuntime implements IAgentRuntime {
                               const post = this.character?.style?.post || [];
                               return formatPostDirections(
                                   [...all, ...post],
-                                  conversationLength / 2
+                                  this.getConversationLength() / 2
                               );
                           })()
                       )
                     : "",
-            senderName,
+            senderName: this.extractSenderName(actorsData, userId),
             // TODO: Can be removed globally once we verify that this is not used anywhere
             actors: "",
             actorsData,
@@ -1151,6 +1116,43 @@ export class AgentRuntime implements IAgentRuntime {
         };
 
         return { ...initialState, ...actionState } as State;
+    }
+
+    private extractAgentName(actorsData: Actor[]) {
+        // TODO: We may wish to consolidate and just accept character.name here instead of the actor name
+        return (
+            actorsData?.find((actor: Actor) => actor.id === this.agentId)
+                ?.name || this.character.name
+        );
+    }
+
+    private extractSenderName(actorsData: Actor[], userId: string) {
+        return actorsData?.find((actor: Actor) => actor.id === userId)?.name;
+    }
+
+    private async getMssgsAndActors(roomId: UUID) {
+        const recentMessagesData = await this.messageManager.getMemories({
+            roomId,
+            count: this.getConversationLength(),
+            unique: false,
+        });
+
+        const actorIds = retrieveActorIdsFromMessages(recentMessagesData);
+        const actorsData =
+            await this.databaseAdapter.getAccountsByIds(actorIds);
+        return { recentMessagesData, actorsData };
+    }
+
+    private async getAndFormatGoals(roomId: UUID) {
+        const goalsData = await getGoals({
+            runtime: this,
+            count: 10,
+            onlyInProgress: false,
+            roomId,
+        });
+
+        const goals = formatGoalsAsString({ goals: goalsData });
+        return { goals, goalsData };
     }
 
     async updateRecentMessageState(state: State): Promise<State> {
