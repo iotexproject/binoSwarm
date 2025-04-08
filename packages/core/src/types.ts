@@ -737,6 +737,7 @@ export type Character = {
         messageHandlerTemplate?: TemplateType;
         directMessageHandlerTemplate?: TemplateType;
         directMessageStreamTemplate?: TemplateType;
+        directVoiceStreamTemplate?: TemplateType;
         shouldRespondTemplate?: TemplateType;
         continueMessageHandlerTemplate?: TemplateType;
         evaluationTemplate?: TemplateType;
