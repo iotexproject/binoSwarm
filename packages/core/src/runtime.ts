@@ -776,38 +776,20 @@ export class AgentRuntime implements IAgentRuntime {
         );
         const lore = this.collectLore();
 
-        const formattedCharacterPostExamples = formatCharacterPostExamples(
+        const formattedPostExamples = formatPostExamples(
             this,
             this.character.postExamples
         );
-        const formattedCharacterMessageExamples =
-            formatCharacterMessageExamples(
-                this,
-                this.character.messageExamples
-            );
-
-        const getRecentInteractions = async (
-            userA: UUID,
-            userB: UUID
-        ): Promise<Memory[]> => {
-            // Find all rooms where userA and userB are participants
-            const rooms = await this.databaseAdapter.getRoomsForParticipants([
-                userA,
-                userB,
-            ]);
-
-            // Check the existing memories in the database
-            return this.messageManager.getMemoriesByRoomIds({
-                // filter out the current room id from rooms
-                roomIds: rooms.filter((room) => room !== roomId),
-                limit: 20,
-            });
-        };
+        const formattedMessageExamples = formatMessageExamples(
+            this,
+            this.character.messageExamples
+        );
+        console.log("formattedMessageExamples", formattedMessageExamples);
 
         const recentInteractionsStartTs = Date.now();
         const recentInteractions =
             userId !== this.agentId
-                ? await getRecentInteractions(userId, this.agentId)
+                ? await this.getRecentInteractions(userId, this.agentId, roomId)
                 : [];
         const recentInteractionsEndTs = Date.now();
         elizaLogger.debug(
@@ -930,21 +912,8 @@ export class AgentRuntime implements IAgentRuntime {
                     ? `${this.character.name} is interested in ` +
                       getTopics(this, this.character.topics)
                     : "",
-            characterPostExamples:
-                formattedCharacterPostExamples?.replaceAll("\n", "").length > 0
-                    ? addHeader(
-                          `# Example Posts for ${this.character.name}`,
-                          formattedCharacterPostExamples
-                      )
-                    : "",
-            characterMessageExamples:
-                formattedCharacterMessageExamples?.replaceAll("\n", "").length >
-                0
-                    ? addHeader(
-                          `# Example Conversations for ${this.character.name}`,
-                          formattedCharacterMessageExamples
-                      )
-                    : "",
+            characterPostExamples: formattedPostExamples,
+            characterMessageExamples: formattedMessageExamples,
             messageDirections:
                 this.character?.style?.all?.length > 0 ||
                 this.character?.style?.chat.length > 0
@@ -1248,6 +1217,25 @@ Text: ${attachment.text}
     setVerifiableInferenceAdapter(adapter: IVerifiableInferenceAdapter): void {
         this.verifiableInferenceAdapter = adapter;
     }
+
+    private async getRecentInteractions(
+        userA: UUID,
+        userB: UUID,
+        roomId: UUID
+    ): Promise<Memory[]> {
+        // Find all rooms where userA and userB are participants
+        const rooms = await this.databaseAdapter.getRoomsForParticipants([
+            userA,
+            userB,
+        ]);
+
+        // Check the existing memories in the database
+        return this.messageManager.getMemoriesByRoomIds({
+            // filter out the current room id from rooms
+            roomIds: rooms.filter((room) => room !== roomId),
+            limit: 20,
+        });
+    }
 }
 
 const formatKnowledge = (knowledge: KnowledgeItem[]) => {
@@ -1256,14 +1244,19 @@ const formatKnowledge = (knowledge: KnowledgeItem[]) => {
         .join("\n");
 };
 
-const formatCharacterPostExamples = (
-    runtime: AgentRuntime,
-    postExamples: string[]
-) => {
+const formatPostExamples = (runtime: AgentRuntime, postExamples: string[]) => {
     const count =
         runtime.getSetting("POST_EXAMPLES_COUNT") || POST_EXAMPLES_COUNT;
     const examples = shuffleAndSlice<string>(postExamples, Number(count));
-    return joinLines(examples);
+    const formattedExamples = joinLines(examples);
+
+    if (formattedExamples.length > 0) {
+        return addHeader(
+            "Example Posts for " + runtime.character.name + ":\n\n",
+            formattedExamples
+        );
+    }
+    return "";
 };
 
 type MessagesExample = {
@@ -1274,7 +1267,7 @@ type MessagesExample = {
     };
 }[];
 
-export const formatCharacterMessageExamples = (
+export const formatMessageExamples = (
     runtime: AgentRuntime,
     messageExamples: MessagesExample[]
 ) => {
@@ -1285,7 +1278,15 @@ export const formatCharacterMessageExamples = (
         Number(count)
     );
     const withNames = examples.map((example) => buildExample(example));
-    return joinLines(withNames, "\n\n");
+    const formattedExamples = joinLines(withNames, "\n\n");
+
+    if (formattedExamples.length > 0) {
+        return addHeader(
+            "Example Conversations for " + runtime.character.name + "\n\n",
+            formattedExamples
+        );
+    }
+    return "";
 };
 
 const formatAttachments = (attachments: Media[]) => {

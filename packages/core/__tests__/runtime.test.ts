@@ -8,7 +8,7 @@ import {
     UUID,
 } from "../src/types";
 import { defaultCharacter } from "../src/defaultCharacter";
-import { formatCharacterMessageExamples } from "../src/runtime";
+import { formatMessageExamples } from "../src/runtime";
 import { stringToUuid } from "../src/uuid";
 
 // Mock dependencies with minimal implementations
@@ -310,7 +310,7 @@ describe("AgentRuntime", () => {
             ];
 
             // Format the message examples
-            const formattedExamples = formatCharacterMessageExamples(
+            const formattedExamples = formatMessageExamples(
                 runtime,
                 messageExamples
             );
@@ -322,7 +322,7 @@ describe("AgentRuntime", () => {
 
             // Verify format of the examples string with correct replacements
             // We expect 2 sets of examples (based on the MESSAGE_EXAMPLES_COUNT we set)
-            const exampleLines = formattedExamples.split("\n\n");
+            const exampleLines = formattedExamples.split("\n\n").slice(1);
             expect(exampleLines.length).toBe(2);
 
             // Each example should contain formatted messages
@@ -331,7 +331,7 @@ describe("AgentRuntime", () => {
                 expect(example).not.toContain("{{user1}}");
 
                 // Each message should be formatted as "username: message"
-                const lines = example.split("\n");
+                const lines = example.trim().split("\n");
                 for (const line of lines) {
                     expect(line).toMatch(/^.+: .+$/);
                 }
@@ -341,7 +341,7 @@ describe("AgentRuntime", () => {
             // Run the function again and expect the output to be potentially different due to random selection
             // Note: This test could occasionally fail due to the random nature of the shuffle
             const mockRandom = vi.spyOn(Math, "random").mockReturnValue(0.75);
-            const secondFormatted = formatCharacterMessageExamples(
+            const secondFormatted = formatMessageExamples(
                 runtime,
                 messageExamples
             );
