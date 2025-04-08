@@ -424,26 +424,20 @@ export class AgentRuntime implements IAgentRuntime {
 
     async stop() {
         elizaLogger.debug("runtime::stop - character", this.character);
-        // stop services, they don't have a stop function
-        // just initialize
+        this.stopClients();
+    }
 
-        // plugins
-        // have actions, providers, evaluators (no start/stop)
-        // services (just initialized), clients
-
-        // client have a start
-        for (const cStr in this.clients) {
-            const c = this.clients[cStr];
+    private stopClients() {
+        for (const clientString in this.clients) {
+            const client = this.clients[clientString];
             elizaLogger.log(
                 "runtime::stop - requesting",
-                cStr,
+                clientString,
                 "client stop for",
                 this.character.name
             );
-            c.stop();
+            client.stop();
         }
-        // we don't need to unregister with directClient
-        // don't need to worry about knowledge
     }
 
     private async processCharacterKnowledge(items: string[]) {
