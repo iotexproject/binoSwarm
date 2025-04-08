@@ -843,7 +843,7 @@ export class VoiceManager extends EventEmitter {
         const response = streamWithTools({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.SMALL,
+            modelClass: ModelClass.LARGE,
             tools: [qsSchema],
             smoothStreamBy: "line",
         });
