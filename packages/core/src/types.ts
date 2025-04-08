@@ -954,6 +954,7 @@ export interface IDatabaseAdapter {
         agentId: UUID;
         roomIds: UUID[];
         limit?: number;
+        userId?: UUID;
     }): Promise<Memory[]>;
 
     getCachedEmbeddings(params: {
@@ -1141,6 +1142,7 @@ export interface IMemoryManager {
     getMemoriesByRoomIds(params: {
         roomIds: UUID[];
         limit?: number;
+        userId?: UUID;
     }): Promise<Memory[]>;
     searchMemoriesByEmbedding(
         embedding: number[],
@@ -1188,6 +1190,9 @@ export interface IRAGKnowledgeManager {
         type: "pdf" | "md" | "txt";
         isShared: boolean;
     }): Promise<void>;
+    processCharacterRAGKnowledge(
+        items: (string | { path: string; shared?: boolean })[]
+    ): Promise<void>;
 }
 
 export type CacheOptions = {

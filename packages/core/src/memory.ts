@@ -194,12 +194,14 @@ export class MemoryManager implements IMemoryManager {
     async getMemoriesByRoomIds(params: {
         roomIds: UUID[];
         limit?: number;
+        userId?: UUID;
     }): Promise<Memory[]> {
         return await this.runtime.databaseAdapter.getMemoriesByRoomIds({
             tableName: this.tableName,
             agentId: this.runtime.agentId,
             roomIds: params.roomIds,
             limit: params.limit,
+            userId: params.userId,
         });
     }
 

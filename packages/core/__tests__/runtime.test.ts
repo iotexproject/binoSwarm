@@ -8,7 +8,8 @@ import {
     UUID,
 } from "../src/types";
 import { defaultCharacter } from "../src/defaultCharacter";
-import { formatCharacterMessageExamples } from "../src/runtime";
+import { formatMessageExamples } from "../src/runtime";
+import { stringToUuid } from "../src/uuid";
 
 // Mock dependencies with minimal implementations
 const mockDatabaseAdapter: IDatabaseAdapter = {
@@ -309,7 +310,7 @@ describe("AgentRuntime", () => {
             ];
 
             // Format the message examples
-            const formattedExamples = formatCharacterMessageExamples(
+            const formattedExamples = formatMessageExamples(
                 runtime,
                 messageExamples
             );
@@ -321,7 +322,7 @@ describe("AgentRuntime", () => {
 
             // Verify format of the examples string with correct replacements
             // We expect 2 sets of examples (based on the MESSAGE_EXAMPLES_COUNT we set)
-            const exampleLines = formattedExamples.split("\n\n");
+            const exampleLines = formattedExamples.split("\n\n").slice(1);
             expect(exampleLines.length).toBe(2);
 
             // Each example should contain formatted messages
@@ -330,7 +331,7 @@ describe("AgentRuntime", () => {
                 expect(example).not.toContain("{{user1}}");
 
                 // Each message should be formatted as "username: message"
-                const lines = example.split("\n");
+                const lines = example.trim().split("\n");
                 for (const line of lines) {
                     expect(line).toMatch(/^.+: .+$/);
                 }
@@ -340,7 +341,7 @@ describe("AgentRuntime", () => {
             // Run the function again and expect the output to be potentially different due to random selection
             // Note: This test could occasionally fail due to the random nature of the shuffle
             const mockRandom = vi.spyOn(Math, "random").mockReturnValue(0.75);
-            const secondFormatted = formatCharacterMessageExamples(
+            const secondFormatted = formatMessageExamples(
                 runtime,
                 messageExamples
             );
@@ -351,6 +352,158 @@ describe("AgentRuntime", () => {
             if (secondFormatted === formattedExamples) {
                 expect(mockRandom).toHaveBeenCalled();
             }
+        });
+    });
+
+    describe("initAgent", () => {
+        it("should throw error if no database adapter is provided", () => {
+            expect(() => {
+                new AgentRuntime({
+                    token: "test-token",
+                    character: defaultCharacter,
+                    modelProvider: ModelProviderName.OPENAI,
+                    cacheManager: mockCacheManager,
+                } as any); // Using 'as any' to bypass TypeScript checks for test
+            }).toThrow("No database adapter provided");
+        });
+
+        it("should use default character if none provided", () => {
+            const runtimeWithoutCharacter = new AgentRuntime({
+                token: "test-token",
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            expect(runtimeWithoutCharacter.character).toBe(defaultCharacter);
+        });
+
+        it("should set agent ID from character ID if available", () => {
+            const characterWithId = {
+                ...defaultCharacter,
+                id: "test-character-id" as UUID,
+            };
+
+            const runtimeWithCharacterId = new AgentRuntime({
+                token: "test-token",
+                character: characterWithId,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            expect(runtimeWithCharacterId.agentId).toBe("test-character-id");
+        });
+
+        it("should set agent ID from provided agentId if character ID not available", () => {
+            const runtimeWithAgentId = new AgentRuntime({
+                token: "test-token",
+                agentId: "test-agent-id" as UUID,
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            expect(runtimeWithAgentId.agentId).toBe("test-agent-id");
+        });
+
+        it("should generate agent ID from character name if no ID provided", () => {
+            const characterWithName = {
+                ...defaultCharacter,
+                name: "TestCharacter",
+            };
+
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: characterWithName,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            // Since stringToUuid is deterministic, we can test for the exact UUID
+            expect(runtime.agentId).toBe(stringToUuid("TestCharacter"));
+        });
+
+        it("should initialize room and user for the agent", async () => {
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            // Verify room creation was attempted
+            expect(mockDatabaseAdapter.getRoom).toHaveBeenCalledWith(
+                runtime.agentId
+            );
+            expect(mockDatabaseAdapter.createRoom).toHaveBeenCalledWith(
+                runtime.agentId
+            );
+
+            // Verify user creation was attempted
+            expect(mockDatabaseAdapter.getAccountById).toHaveBeenCalledWith(
+                runtime.agentId
+            );
+            expect(mockDatabaseAdapter.createAccount).toHaveBeenCalledWith({
+                id: runtime.agentId,
+                name: defaultCharacter.name,
+                username: defaultCharacter.name,
+                email: `${defaultCharacter.name}@undefined`,
+                details: { summary: "" },
+            });
+
+            // Verify participant creation was attempted
+            expect(
+                mockDatabaseAdapter.getParticipantsForAccount
+            ).toHaveBeenCalledWith(runtime.agentId);
+            expect(mockDatabaseAdapter.addParticipant).toHaveBeenCalledWith(
+                runtime.agentId,
+                runtime.agentId
+            );
+        });
+    });
+
+    describe("initFetch", () => {
+        it("should use provided fetch implementation if available", () => {
+            const customFetch = vi.fn();
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+                fetch: customFetch,
+            });
+
+            expect(runtime.fetch).toBe(customFetch);
+        });
+
+        it("should use global fetch if no custom fetch provided", () => {
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            expect(runtime.fetch).toBe(global.fetch);
+        });
+
+        it("should handle fetch being undefined in options", () => {
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+                fetch: undefined,
+            });
+
+            expect(runtime.fetch).toBe(global.fetch);
         });
     });
 });

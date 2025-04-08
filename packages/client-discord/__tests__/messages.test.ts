@@ -2,17 +2,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MessageManager } from "../src/messages";
 import {
     Message,
-    TextChannel,
     User,
     Guild,
     Collection,
     ChannelType,
     Snowflake,
     Attachment,
+    BaseChannel,
 } from "discord.js";
 
 // Import the modules we want to mock
 import * as elizaosCore from "@elizaos/core";
+const { elizaLogger } = elizaosCore;
 
 // Mock @elizaos/core
 vi.mock("@elizaos/core", () => ({
@@ -93,7 +94,7 @@ function createMockDiscordMessage(overrides = {}) {
         messages: {
             fetch: vi.fn().mockResolvedValue(new Collection()),
         },
-    } as unknown as TextChannel;
+    } as unknown as BaseChannel & { sendTyping: () => Promise<void> };
 
     return {
         id: "mock-message-id",
@@ -361,5 +362,174 @@ describe("MessageManager", () => {
         });
     });
 
-    // Add more test groups as needed for other methods
+    describe("Team functionality", () => {
+        beforeEach(() => {
+            mockRuntime.character.clientConfig.discord.isPartOfTeam = true;
+            mockRuntime.character.clientConfig.discord.teamAgentIds = [
+                "bot-user-id",
+                "other-bot-id",
+            ];
+            mockRuntime.character.clientConfig.discord.teamLeaderId =
+                "bot-user-id";
+            mockRuntime.character.clientConfig.discord.teamMemberInterestKeywords =
+                ["keyword1", "keyword2"];
+        });
+
+        it("should handle team leader coordination requests", async () => {
+            const message = createMockDiscordMessage({
+                content: "team coordinate on this task",
+            });
+
+            vi.mocked(elizaosCore.generateShouldRespond).mockResolvedValue(
+                "RESPOND"
+            );
+            vi.mocked(elizaosCore.generateMessageResponse).mockResolvedValue({
+                text: "Coordinating team response",
+                inReplyTo: "mock-message-id-mock-agent-id",
+            });
+
+            await messageManager.handleMessage(message);
+
+            expect(
+                messageManager.interestChannels[message.channelId]
+            ).toBeDefined();
+            expect(
+                messageManager.interestChannels[message.channelId]
+                    .currentHandler
+            ).toBe("bot-user-id");
+        });
+
+        it("should maintain interest for relevant team member messages", async () => {
+            const message = createMockDiscordMessage({
+                content: "keyword1 is relevant to team member",
+            });
+
+            mockRuntime.messageManager.getMemories.mockResolvedValue([
+                {
+                    userId: mockRuntime.agentId,
+                    content: { text: "Previous related message" },
+                    createdAt: Date.now() - 1000,
+                },
+            ]);
+
+            await messageManager.handleMessage(message);
+
+            expect(
+                messageManager.interestChannels[message.channelId]
+            ).toBeDefined();
+        });
+
+        it("should clear interest when another team member is mentioned", async () => {
+            const message = createMockDiscordMessage({
+                content: "Hey <@other-bot-id>, can you help?",
+            });
+
+            // First establish interest
+            messageManager.interestChannels[message.channelId] = {
+                currentHandler: "bot-user-id",
+                lastMessageSent: Date.now(),
+                messages: [],
+            };
+
+            await messageManager.handleMessage(message);
+
+            expect(
+                messageManager.interestChannels[message.channelId]
+            ).toBeUndefined();
+        });
+    });
+
+    describe("Message processing and memory", () => {
+        it("should properly process and store message content and attachments", async () => {
+            const mockAttachment = {
+                id: "mock-attachment",
+                contentType: "image/png",
+                url: "https://example.com/image.png",
+            };
+
+            const message = createMockDiscordMessage({
+                content: "Message with attachment",
+                attachments: new Collection([
+                    [mockAttachment.id, mockAttachment as any],
+                ]),
+            });
+
+            await messageManager.handleMessage(message);
+
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    content: expect.objectContaining({
+                        text: "Message with attachment",
+                        attachments: expect.any(Array),
+                    }),
+                })
+            );
+        });
+
+        it("should handle audio attachments correctly", async () => {
+            const mockAudioAttachment = {
+                id: "mock-audio",
+                contentType: "audio/mp3",
+                url: "https://example.com/audio.mp3",
+            };
+
+            const message = createMockDiscordMessage({
+                attachments: new Collection([
+                    [mockAudioAttachment.id, mockAudioAttachment as any],
+                ]),
+            });
+
+            const mockProcessedAudio = [
+                {
+                    id: "processed-audio",
+                    url: "https://example.com/processed.mp3",
+                    type: "audio",
+                },
+            ];
+
+            messageManager.attachmentManager.processAttachments.mockResolvedValue(
+                mockProcessedAudio
+            );
+
+            await messageManager.handleMessage(message);
+
+            expect(
+                messageManager.attachmentManager.processAttachments
+            ).toHaveBeenCalledWith(expect.any(Collection));
+        });
+    });
+
+    describe("State and response handling", () => {
+        it("should respect muted state in channels", async () => {
+            mockRuntime.databaseAdapter.getParticipantUserState.mockResolvedValue(
+                "MUTED"
+            );
+
+            const message = createMockDiscordMessage({
+                content: "Message in muted channel",
+            });
+
+            await messageManager.handleMessage(message);
+
+            expect(elizaosCore.generateMessageResponse).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("Error handling", () => {
+        it("should handle text channel errors appropriately", async () => {
+            const message = createMockDiscordMessage();
+            mockRuntime.messageManager.createMemory.mockRejectedValue(
+                new Error("Test error")
+            );
+
+            await messageManager.handleMessage(message);
+
+            expect(elizaLogger.error).toHaveBeenCalledWith(
+                "Error handling message:",
+                expect.any(Error)
+            );
+        });
+    });
 });

@@ -97,6 +97,7 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
         roomIds: UUID[];
         tableName: string;
         limit?: number;
+        userId?: UUID;
     }): Promise<Memory[]>;
 
     abstract getMemoryById(id: UUID): Promise<Memory | null>;
