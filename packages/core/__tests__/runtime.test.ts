@@ -9,6 +9,7 @@ import {
 } from "../src/types";
 import { defaultCharacter } from "../src/defaultCharacter";
 import { formatCharacterMessageExamples } from "../src/runtime";
+import { stringToUuid } from "../src/uuid";
 
 // Mock dependencies with minimal implementations
 const mockDatabaseAdapter: IDatabaseAdapter = {
@@ -351,6 +352,117 @@ describe("AgentRuntime", () => {
             if (secondFormatted === formattedExamples) {
                 expect(mockRandom).toHaveBeenCalled();
             }
+        });
+    });
+
+    describe("initAgent", () => {
+        it("should throw error if no database adapter is provided", () => {
+            expect(() => {
+                new AgentRuntime({
+                    token: "test-token",
+                    character: defaultCharacter,
+                    modelProvider: ModelProviderName.OPENAI,
+                    cacheManager: mockCacheManager,
+                } as any); // Using 'as any' to bypass TypeScript checks for test
+            }).toThrow("No database adapter provided");
+        });
+
+        it("should use default character if none provided", () => {
+            const runtimeWithoutCharacter = new AgentRuntime({
+                token: "test-token",
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            expect(runtimeWithoutCharacter.character).toBe(defaultCharacter);
+        });
+
+        it("should set agent ID from character ID if available", () => {
+            const characterWithId = {
+                ...defaultCharacter,
+                id: "test-character-id" as UUID,
+            };
+
+            const runtimeWithCharacterId = new AgentRuntime({
+                token: "test-token",
+                character: characterWithId,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            expect(runtimeWithCharacterId.agentId).toBe("test-character-id");
+        });
+
+        it("should set agent ID from provided agentId if character ID not available", () => {
+            const runtimeWithAgentId = new AgentRuntime({
+                token: "test-token",
+                agentId: "test-agent-id" as UUID,
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            expect(runtimeWithAgentId.agentId).toBe("test-agent-id");
+        });
+
+        it("should generate agent ID from character name if no ID provided", () => {
+            const characterWithName = {
+                ...defaultCharacter,
+                name: "TestCharacter",
+            };
+
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: characterWithName,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            // Since stringToUuid is deterministic, we can test for the exact UUID
+            expect(runtime.agentId).toBe(stringToUuid("TestCharacter"));
+        });
+
+        it("should initialize room and user for the agent", async () => {
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            // Verify room creation was attempted
+            expect(mockDatabaseAdapter.getRoom).toHaveBeenCalledWith(
+                runtime.agentId
+            );
+            expect(mockDatabaseAdapter.createRoom).toHaveBeenCalledWith(
+                runtime.agentId
+            );
+
+            // Verify user creation was attempted
+            expect(mockDatabaseAdapter.getAccountById).toHaveBeenCalledWith(
+                runtime.agentId
+            );
+            expect(mockDatabaseAdapter.createAccount).toHaveBeenCalledWith({
+                id: runtime.agentId,
+                name: defaultCharacter.name,
+                username: defaultCharacter.name,
+                email: `${defaultCharacter.name}@undefined`,
+                details: { summary: "" },
+            });
+
+            // Verify participant creation was attempted
+            expect(
+                mockDatabaseAdapter.getParticipantsForAccount
+            ).toHaveBeenCalledWith(runtime.agentId);
+            expect(mockDatabaseAdapter.addParticipant).toHaveBeenCalledWith(
+                runtime.agentId,
+                runtime.agentId
+            );
         });
     });
 });
