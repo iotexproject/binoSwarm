@@ -58,105 +58,31 @@ const MESSAGE_EXAMPLES_COUNT = 5;
 const TOPICS_COUNT = 5;
 const LORE_COUNT = 3;
 
-/**
- * Represents the runtime environment for an agent, handling message processing,
- * action registration, and interaction with external services like OpenAI and Supabase.
- */
 export class AgentRuntime implements IAgentRuntime {
     /**
      * Default count for recent messages to be kept in memory.
      * @private
      */
     readonly #conversationLength = 32 as number;
-    /**
-     * The ID of the agent
-     */
     agentId: UUID;
-    /**
-     * The base URL of the server where the agent's requests are processed.
-     */
-    serverUrl = "http://localhost:7998";
-
-    /**
-     * The database adapter used for interacting with the database.
-     */
+    serverUrl = "http://localhost:7998"; // Do we need this?
     databaseAdapter: IDatabaseAdapter;
-
-    /**
-     * Authentication token used for securing requests.
-     */
     token: string | null;
-
-    /**
-     * Custom actions that the agent can perform.
-     */
     actions: Action[] = [];
-
-    /**
-     * Evaluators used to assess and guide the agent's responses.
-     */
     evaluators: Evaluator[] = [];
-
-    /**
-     * Context providers used to provide context for message generation.
-     */
     providers: Provider[] = [];
-
     plugins: Plugin[] = [];
-
-    /**
-     * The model to use for generateText.
-     */
     modelProvider: ModelProviderName;
-
-    /**
-     * The model to use for generateImage.
-     */
     imageModelProvider: ModelProviderName;
-
-    /**
-     * The model to use for describing images.
-     */
     imageVisionModelProvider: ModelProviderName;
-
-    /**
-     * Fetch function to use
-     * Some environments may not have access to the global fetch function and need a custom fetch override.
-     */
     fetch = fetch;
-
-    /**
-     * The character to use for the agent
-     */
     character: Character;
-
-    /**
-     * Store messages that are sent and received by the agent.
-     */
     messageManager: IMemoryManager;
-
-    /**
-     * Store and recall descriptions of users based on conversations.
-     */
     descriptionManager: IMemoryManager;
-
-    /**
-     * Manage the creation and recall of static information (documents, historical game lore, etc)
-     */
     loreManager: IMemoryManager;
-
-    /**
-     * Hold large documents that can be referenced
-     */
     documentsManager: IMemoryManager;
-
-    /**
-     * Searchable document fragments
-     */
     knowledgeManager: IMemoryManager;
-
     ragKnowledgeManager: IRAGKnowledgeManager;
-
     services: Map<ServiceType, Service> = new Map();
     memoryManagers: Map<string, IMemoryManager> = new Map();
     cacheManager: ICacheManager;
@@ -208,39 +134,20 @@ export class AgentRuntime implements IAgentRuntime {
         elizaLogger.success(`Service ${serviceType} registered successfully`);
     }
 
-    /**
-     * Creates an instance of AgentRuntime.
-     * @param opts - The options for configuring the AgentRuntime.
-     * @param opts.conversationLength - The number of messages to hold in the recent message cache.
-     * @param opts.token - The JWT token, can be a JWT token if outside worker, or an OpenAI token if inside worker.
-     * @param opts.serverUrl - The URL of the worker.
-     * @param opts.actions - Optional custom actions.
-     * @param opts.evaluators - Optional custom evaluators.
-     * @param opts.services - Optional custom services.
-     * @param opts.memoryManagers - Optional custom memory managers.
-     * @param opts.providers - Optional context providers.
-     * @param opts.model - The model to use for generateText.
-     * @param opts.embeddingModel - The model to use for embedding.
-     * @param opts.agentId - Optional ID of the agent.
-     * @param opts.databaseAdapter - The database adapter used for interacting with the database.
-     * @param opts.fetch - Custom fetch function to use for making requests.
-     */
-
     constructor(opts: {
-        conversationLength?: number; // number of messages to hold in the recent message cache
-        agentId?: UUID; // ID of the agent
-        character?: Character; // The character to use for the agent
+        conversationLength?: number;
+        agentId?: UUID;
+        character?: Character;
         token: string; // JWT token, can be a JWT token if outside worker, or an OpenAI token if inside worker
         serverUrl?: string; // The URL of the worker
-        actions?: Action[]; // Optional custom actions
-        evaluators?: Evaluator[]; // Optional custom evaluators
+        actions?: Action[];
+        evaluators?: Evaluator[];
         plugins?: Plugin[];
         providers?: Provider[];
         modelProvider: ModelProviderName;
-
-        services?: Service[]; // Map of service name to service instance
-        managers?: IMemoryManager[]; // Map of table name to memory manager
-        databaseAdapter: IDatabaseAdapter; // The database adapter used for interacting with the database
+        services?: Service[];
+        managers?: IMemoryManager[];
+        databaseAdapter: IDatabaseAdapter;
         fetch?: typeof fetch | unknown;
         speechModelPath?: string;
         cacheManager: ICacheManager;
@@ -480,12 +387,6 @@ export class AgentRuntime implements IAgentRuntime {
         // don't need to worry about knowledge
     }
 
-    /**
-     * Processes character knowledge by creating document memories and fragment memories.
-     * This function takes an array of knowledge items, creates a document memory for each item if it doesn't exist,
-     * then chunks the content into fragments, embeds each fragment, and creates fragment memories.
-     * @param knowledge An array of knowledge items containing id, path, and content.
-     */
     private async processCharacterKnowledge(items: string[]) {
         for (const item of items) {
             const knowledgeId = stringToUuid(item);
@@ -511,12 +412,6 @@ export class AgentRuntime implements IAgentRuntime {
         }
     }
 
-    /**
-     * Processes character knowledge by creating document memories and fragment memories.
-     * This function takes an array of knowledge items, creates a document knowledge for each item if it doesn't exist,
-     * then chunks the content into fragments, embeds each fragment, and creates fragment knowledge.
-     * An array of knowledge items or objects containing id, path, and content.
-     */
     private async processCharacterRAGKnowledge(
         items: (string | { path: string; shared?: boolean })[]
     ) {
@@ -689,44 +584,23 @@ export class AgentRuntime implements IAgentRuntime {
         return null;
     }
 
-    /**
-     * Get the number of messages that are kept in the conversation buffer.
-     * @returns The number of recent messages to be kept in memory.
-     */
     getConversationLength() {
         return this.#conversationLength;
     }
 
-    /**
-     * Register an action for the agent to perform.
-     * @param action The action to register.
-     */
     registerAction(action: Action) {
         elizaLogger.success(`Registering action: ${action.name}`);
         this.actions.push(action);
     }
 
-    /**
-     * Register an evaluator to assess and guide the agent's responses.
-     * @param evaluator The evaluator to register.
-     */
     registerEvaluator(evaluator: Evaluator) {
         this.evaluators.push(evaluator);
     }
 
-    /**
-     * Register a context provider to provide context for message generation.
-     * @param provider The context provider to register.
-     */
     registerContextProvider(provider: Provider) {
         this.providers.push(provider);
     }
 
-    /**
-     * Process the actions of a message.
-     * @param message The message to process.
-     * @param content The content of the message to process actions from.
-     */
     async processActions(
         message: Memory,
         responses: Memory[],
@@ -803,14 +677,6 @@ export class AgentRuntime implements IAgentRuntime {
         }
     }
 
-    /**
-     * Evaluate the message and state using the registered evaluators.
-     * @param message The message to evaluate.
-     * @param state The state of the agent.
-     * @param didRespond Whether the agent responded to the message.~
-     * @param callback The handler callback
-     * @returns The results of the evaluation.
-     */
     async evaluate(
         message: Memory,
         state: State,
@@ -876,11 +742,6 @@ export class AgentRuntime implements IAgentRuntime {
         return evaluators;
     }
 
-    /**
-     * Ensure the existence of a participant in the room. If the participant does not exist, they are added to the room.
-     * @param userId - The user ID to ensure the existence of.
-     * @throws An error if the participant cannot be added.
-     */
     async ensureParticipantExists(userId: UUID, roomId: UUID) {
         const participants =
             await this.databaseAdapter.getParticipantsForAccount(userId);
@@ -889,13 +750,6 @@ export class AgentRuntime implements IAgentRuntime {
             await this.databaseAdapter.addParticipant(userId, roomId);
         }
     }
-
-    /**
-     * Ensure the existence of a user in the database. If the user does not exist, they are added to the database.
-     * @param userId - The user ID to ensure the existence of.
-     * @param userName - The user name to ensure the existence of.
-     * @returns
-     */
 
     async ensureUserExists(
         userId: UUID,
@@ -966,13 +820,6 @@ export class AgentRuntime implements IAgentRuntime {
         ]);
     }
 
-    /**
-     * Ensure the existence of a room between the agent and a user. If no room exists, a new room is created and the user
-     * and agent are added as participants. The room ID is returned.
-     * @param userId - The user ID to create a room with.
-     * @returns The room ID of the room between the agent and the user.
-     * @throws An error if the room cannot be created.
-     */
     async ensureRoomExists(roomId: UUID) {
         const room = await this.databaseAdapter.getRoom(roomId);
         if (!room) {
@@ -981,11 +828,6 @@ export class AgentRuntime implements IAgentRuntime {
         }
     }
 
-    /**
-     * Compose the state of the agent into an object that can be passed or used for response generation.
-     * @param message The message to compose the state from.
-     * @returns The state of the agent.
-     */
     async composeState(
         message: Memory,
         additionalKeys: { [key: string]: unknown } = {},
