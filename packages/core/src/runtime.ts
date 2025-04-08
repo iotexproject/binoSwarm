@@ -784,77 +784,22 @@ export class AgentRuntime implements IAgentRuntime {
             this,
             this.character.messageExamples
         );
-        console.log("formattedMessageExamples", formattedMessageExamples);
 
-        const recentInteractionsStartTs = Date.now();
-        const recentInteractions =
-            userId !== this.agentId
-                ? await this.getRecentInteractions(userId, this.agentId, roomId)
-                : [];
-        const recentInteractionsEndTs = Date.now();
-        elizaLogger.debug(
-            `Recent interactions took ${recentInteractionsEndTs - recentInteractionsStartTs}ms`
+        // 5sec!!!
+        const recentInteractions = await this.getRecentInteractions(
+            userId,
+            this.agentId,
+            roomId
         );
-
-        const getRecentMessageInteractions = async (
-            recentInteractionsData: Memory[]
-        ): Promise<string> => {
-            // Format the recent messages
-            const formattedInteractions = await Promise.all(
-                recentInteractionsData.map(async (message) => {
-                    const isSelf = message.userId === this.agentId;
-                    let sender: string;
-                    if (isSelf) {
-                        sender = this.character.name;
-                    } else {
-                        const accountId =
-                            await this.databaseAdapter.getAccountById(
-                                message.userId
-                            );
-                        sender = accountId?.username || "unknown";
-                    }
-                    return `${sender}: ${message.content.text}`;
-                })
-            );
-
-            return formattedInteractions.join("\n");
-        };
-
-        const recentMessageInteractionsStartTs = Date.now();
+        // 1600ms
         const formattedMessageInteractions =
-            await getRecentMessageInteractions(recentInteractions);
-        const recentMessageInteractionsEndTs = Date.now();
-        elizaLogger.debug(
-            `Recent message interactions took ${recentMessageInteractionsEndTs - recentMessageInteractionsStartTs}ms`
-        );
-        const getRecentPostInteractions = async (
-            recentInteractionsData: Memory[],
-            actors: Actor[]
-        ): Promise<string> => {
-            const formattedInteractions = formatPosts({
-                messages: recentInteractionsData,
-                actors,
-                conversationHeader: true,
-            });
+            await this.getRecentMessageInteractions(recentInteractions);
 
-            return formattedInteractions;
-        };
-
-        const recentPostInteractionsStartTs = Date.now();
-        const formattedPostInteractions = await getRecentPostInteractions(
+        // 1ms
+        const formattedPostInteractions = await this.getRecentPostInteractions(
             recentInteractions,
             actorsData
         );
-        const recentPostInteractionsEndTs = Date.now();
-        elizaLogger.debug(
-            `Recent post interactions took ${recentPostInteractionsEndTs - recentPostInteractionsStartTs}ms`
-        );
-
-        // if bio is a string, use it. if its an array, shuffle array and return all items
-        let bio = this.character.bio || "";
-        if (Array.isArray(bio)) {
-            bio = shuffleAndSlice<string>(bio);
-        }
 
         let knowledgeData = [];
         let formattedKnowledge = "";
@@ -886,7 +831,7 @@ export class AgentRuntime implements IAgentRuntime {
         const initialState = {
             agentId: this.agentId,
             agentName: this.extractAgentName(actorsData),
-            bio,
+            bio: this.collectBio(),
             system: this.character.system,
             lore,
             adjective:
@@ -1044,6 +989,14 @@ export class AgentRuntime implements IAgentRuntime {
         };
 
         return { ...initialState, ...actionState } as State;
+    }
+
+    private collectBio() {
+        let bio = this.character.bio || "";
+        if (Array.isArray(bio)) {
+            bio = shuffleAndSlice<string>(bio);
+        }
+        return bio;
     }
 
     private collectLore() {
@@ -1219,14 +1172,17 @@ Text: ${attachment.text}
     }
 
     private async getRecentInteractions(
-        userA: UUID,
-        userB: UUID,
+        userId: UUID,
+        agentId: UUID,
         roomId: UUID
     ): Promise<Memory[]> {
+        if (userId === agentId) {
+            return [];
+        }
         // Find all rooms where userA and userB are participants
         const rooms = await this.databaseAdapter.getRoomsForParticipants([
-            userA,
-            userB,
+            userId,
+            agentId,
         ]);
 
         // Check the existing memories in the database
@@ -1235,6 +1191,42 @@ Text: ${attachment.text}
             roomIds: rooms.filter((room) => room !== roomId),
             limit: 20,
         });
+    }
+
+    private async getRecentMessageInteractions(
+        recentInteractionsData: Memory[]
+    ): Promise<string> {
+        // Format the recent messages
+        const formattedInteractions = await Promise.all(
+            recentInteractionsData.map(async (message) => {
+                const isSelf = message.userId === this.agentId;
+                let sender: string;
+                if (isSelf) {
+                    sender = this.character.name;
+                } else {
+                    const accountId = await this.databaseAdapter.getAccountById(
+                        message.userId
+                    );
+                    sender = accountId?.username || "unknown";
+                }
+                return `${sender}: ${message.content.text}`;
+            })
+        );
+
+        return formattedInteractions.join("\n");
+    }
+
+    private async getRecentPostInteractions(
+        recentInteractionsData: Memory[],
+        actors: Actor[]
+    ): Promise<string> {
+        const formattedInteractions = formatPosts({
+            messages: recentInteractionsData,
+            actors,
+            conversationHeader: true,
+        });
+
+        return formattedInteractions;
     }
 }
 
