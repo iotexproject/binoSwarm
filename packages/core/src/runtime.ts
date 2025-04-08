@@ -512,45 +512,7 @@ export class AgentRuntime implements IAgentRuntime {
                 continue;
             }
 
-            const normalizedAction = response.content.action
-                .toLowerCase()
-                .replace("_", "");
-
-            elizaLogger.success(`Normalized action: ${normalizedAction}`);
-
-            let action = this.actions.find(
-                (a: { name: string }) =>
-                    a.name
-                        .toLowerCase()
-                        .replace("_", "")
-                        .includes(normalizedAction) ||
-                    normalizedAction.includes(
-                        a.name.toLowerCase().replace("_", "")
-                    )
-            );
-
-            if (!action) {
-                elizaLogger.info("Attempting to find action in similes.");
-                for (const _action of this.actions) {
-                    const simileAction = _action.similes.find(
-                        (simile) =>
-                            simile
-                                .toLowerCase()
-                                .replace("_", "")
-                                .includes(normalizedAction) ||
-                            normalizedAction.includes(
-                                simile.toLowerCase().replace("_", "")
-                            )
-                    );
-                    if (simileAction) {
-                        action = _action;
-                        elizaLogger.success(
-                            `Action found in similes: ${action.name}`
-                        );
-                        break;
-                    }
-                }
-            }
+            const action = this.findAction(response.content.action);
 
             if (!action) {
                 elizaLogger.error(
@@ -574,6 +536,46 @@ export class AgentRuntime implements IAgentRuntime {
                 elizaLogger.error(error);
             }
         }
+    }
+
+    private findAction(contentAction: string) {
+        const normalizedAction = contentAction.toLowerCase().replace("_", "");
+
+        elizaLogger.success(`Normalized action: ${normalizedAction}`);
+
+        let action = this.actions.find((a: { name: string }) => {
+            const lowerCaseName = a.name.toLowerCase().replace("_", "");
+            return (
+                lowerCaseName.includes(normalizedAction) ||
+                normalizedAction.includes(lowerCaseName)
+            );
+        });
+
+        if (!action) {
+            elizaLogger.info("Attempting to find action in similes.");
+            for (const actionFromSimiles of this.actions) {
+                const simileAction = actionFromSimiles.similes.find(
+                    (simile) => {
+                        const lowerCaseSimile = simile
+                            .toLowerCase()
+                            .replace("_", "");
+                        return (
+                            lowerCaseSimile.includes(normalizedAction) ||
+                            normalizedAction.includes(lowerCaseSimile)
+                        );
+                    }
+                );
+                if (simileAction) {
+                    action = actionFromSimiles;
+                    elizaLogger.success(
+                        `Action found in similes: ${action.name}`
+                    );
+                    break;
+                }
+            }
+        }
+
+        return action;
     }
 
     async evaluate(
