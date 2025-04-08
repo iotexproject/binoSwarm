@@ -988,7 +988,8 @@ export class AgentRuntime implements IAgentRuntime {
      */
     async composeState(
         message: Memory,
-        additionalKeys: { [key: string]: unknown } = {}
+        additionalKeys: { [key: string]: unknown } = {},
+        fastMode: boolean = false
     ) {
         const { userId, roomId } = message;
 
@@ -1171,7 +1172,7 @@ export class AgentRuntime implements IAgentRuntime {
         let knowledgeData = [];
         let formattedKnowledge = "";
 
-        if (this.character.settings?.ragKnowledge) {
+        if (this.character.settings?.ragKnowledge && !fastMode) {
             const recentContext = recentMessagesData
                 .slice(-3) // Last 3 messages
                 .map((msg) => msg.content.text)
@@ -1184,7 +1185,7 @@ export class AgentRuntime implements IAgentRuntime {
             });
 
             formattedKnowledge = formatKnowledge(knowledgeData);
-        } else {
+        } else if (!fastMode) {
             knowledgeData = await knowledge.get(this, message);
 
             formattedKnowledge = formatKnowledge(knowledgeData);
@@ -1315,7 +1316,7 @@ export class AgentRuntime implements IAgentRuntime {
             await Promise.all([
                 Promise.all(evaluatorPromises),
                 Promise.all(actionPromises),
-                getProviders(this, message, initialState),
+                !fastMode ? getProviders(this, message, initialState) : "",
             ]);
 
         const evaluatorsData = resolvedEvaluators.filter(

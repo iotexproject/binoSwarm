@@ -1,5 +1,6 @@
 export * from "./actions/sentai";
 export * from "./services/quicksilver";
+export * from "./schemas/quicksilver";
 
 import type { Plugin } from "@elizaos/core";
 

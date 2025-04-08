@@ -737,6 +737,7 @@ export type Character = {
         messageHandlerTemplate?: TemplateType;
         directMessageHandlerTemplate?: TemplateType;
         directMessageStreamTemplate?: TemplateType;
+        directVoiceStreamTemplate?: TemplateType;
         shouldRespondTemplate?: TemplateType;
         continueMessageHandlerTemplate?: TemplateType;
         evaluationTemplate?: TemplateType;
@@ -1314,7 +1315,8 @@ export interface IAgentRuntime {
 
     composeState(
         message: Memory,
-        additionalKeys?: { [key: string]: unknown }
+        additionalKeys?: { [key: string]: unknown },
+        fastMode?: boolean
     ): Promise<State>;
 
     updateRecentMessageState(state: State): Promise<State>;

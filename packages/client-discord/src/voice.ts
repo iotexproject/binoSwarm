@@ -1,6 +1,5 @@
 import {
     Content,
-    HandlerCallback,
     IAgentRuntime,
     Memory,
     ModelClass,
@@ -11,11 +10,11 @@ import {
     composeRandomUser,
     elizaLogger,
     getEmbeddingZeroVector,
-    generateMessageResponse,
     stringToUuid,
     generateShouldRespond,
     ITranscriptionService,
     ISpeechService,
+    streamWithTools,
 } from "@elizaos/core";
 import {
     AudioPlayer,
@@ -48,95 +47,25 @@ import {
     discordVoiceHandlerTemplate,
 } from "./templates.ts";
 import { getWavHeader } from "./utils.ts";
+import { qsSchema } from "@elizaos/plugin-depin";
+import { AudioMonitor } from "./AudioMonitor.ts";
 
 // These values are chosen for compatibility with picovoice components
 const DECODE_FRAME_SIZE = 1024;
 const DECODE_SAMPLE_RATE = 16000;
+const VOLUME_WINDOW_SIZE = 30;
+const SPEAKING_THRESHOLD = 0.05;
 
-export class AudioMonitor {
-    private readable: Readable;
-    private buffers: Buffer[] = [];
-    private maxSize: number;
-    private lastFlagged: number = -1;
-    private ended: boolean = false;
+type Message = {
+    content: ResContent[];
+    role: string;
+    id: string;
+};
 
-    constructor(
-        readable: Readable,
-        maxSize: number,
-        onStart: () => void,
-        callback: (buffer: Buffer) => void
-    ) {
-        this.readable = readable;
-        this.maxSize = maxSize;
-        this.readable.on("data", (chunk: Buffer) => {
-            //console.log('AudioMonitor got data');
-            if (this.lastFlagged < 0) {
-                this.lastFlagged = this.buffers.length;
-            }
-            this.buffers.push(chunk);
-            const currentSize = this.buffers.reduce(
-                (acc, cur) => acc + cur.length,
-                0
-            );
-            while (currentSize > this.maxSize) {
-                this.buffers.shift();
-                this.lastFlagged--;
-            }
-        });
-        this.readable.on("end", () => {
-            elizaLogger.log("AudioMonitor ended");
-            this.ended = true;
-            if (this.lastFlagged < 0) return;
-            callback(this.getBufferFromStart());
-            this.lastFlagged = -1;
-        });
-        this.readable.on("speakingStopped", () => {
-            if (this.ended) return;
-            elizaLogger.log("Speaking stopped");
-            if (this.lastFlagged < 0) return;
-            callback(this.getBufferFromStart());
-        });
-        this.readable.on("speakingStarted", () => {
-            if (this.ended) return;
-            onStart();
-            elizaLogger.log("Speaking started");
-            this.reset();
-        });
-    }
-
-    stop() {
-        this.readable.removeAllListeners("data");
-        this.readable.removeAllListeners("end");
-        this.readable.removeAllListeners("speakingStopped");
-        this.readable.removeAllListeners("speakingStarted");
-    }
-
-    isFlagged() {
-        return this.lastFlagged >= 0;
-    }
-
-    getBufferFromFlag() {
-        if (this.lastFlagged < 0) {
-            return null;
-        }
-        const buffer = Buffer.concat(this.buffers.slice(this.lastFlagged));
-        return buffer;
-    }
-
-    getBufferFromStart() {
-        const buffer = Buffer.concat(this.buffers);
-        return buffer;
-    }
-
-    reset() {
-        this.buffers = [];
-        this.lastFlagged = -1;
-    }
-
-    isEnded() {
-        return this.ended;
-    }
-}
+type ResContent = {
+    type: string;
+    text?: string;
+};
 
 export class VoiceManager extends EventEmitter {
     private processingVoice: boolean = false;
@@ -236,56 +165,16 @@ export class VoiceManager extends EventEmitter {
 
             // Set up ongoing state change monitoring
             connection.on("stateChange", async (oldState, newState) => {
-                elizaLogger.log(
-                    `Voice connection state changed from ${oldState.status} to ${newState.status}`
+                await this.handleOnStateChange(
+                    oldState,
+                    newState,
+                    connection,
+                    channel
                 );
-
-                if (newState.status === VoiceConnectionStatus.Disconnected) {
-                    elizaLogger.log("Handling disconnection...");
-
-                    try {
-                        // Try to reconnect if disconnected
-                        await Promise.race([
-                            entersState(
-                                connection,
-                                VoiceConnectionStatus.Signalling,
-                                5_000
-                            ),
-                            entersState(
-                                connection,
-                                VoiceConnectionStatus.Connecting,
-                                5_000
-                            ),
-                        ]);
-                        // Seems to be reconnecting to a new channel
-                        elizaLogger.log("Reconnecting to channel...");
-                    } catch (e) {
-                        // Seems to be a real disconnect, destroy and cleanup
-                        elizaLogger.log(
-                            "Disconnection confirmed - cleaning up..." + e
-                        );
-                        connection.destroy();
-                        this.connections.delete(channel.id);
-                    }
-                } else if (
-                    newState.status === VoiceConnectionStatus.Destroyed
-                ) {
-                    this.connections.delete(channel.id);
-                } else if (
-                    !this.connections.has(channel.id) &&
-                    (newState.status === VoiceConnectionStatus.Ready ||
-                        newState.status === VoiceConnectionStatus.Signalling)
-                ) {
-                    this.connections.set(channel.id, connection);
-                }
             });
 
             connection.on("error", (error) => {
-                elizaLogger.log("Voice connection error:", error);
-                // Don't immediately destroy - let the state change handler deal with it
-                elizaLogger.log(
-                    "Connection error - will attempt to recover..."
-                );
+                this.handleOnError(error);
             });
 
             // Store the connection
@@ -294,41 +183,111 @@ export class VoiceManager extends EventEmitter {
             // Continue with voice state modifications
             const me = channel.guild.members.me;
             if (me?.voice && me.permissions.has("DeafenMembers")) {
-                try {
-                    await me.voice.setDeaf(false);
-                    await me.voice.setMute(false);
-                } catch (error) {
-                    elizaLogger.log("Failed to modify voice state:", error);
-                    // Continue even if this fails
-                }
+                await this.undeafUnmute(me);
             }
 
             connection.receiver.speaking.on("start", async (userId: string) => {
-                let user = channel.members.get(userId);
-                if (!user) {
-                    try {
-                        user = await channel.guild.members.fetch(userId);
-                    } catch (error) {
-                        elizaLogger.error("Failed to fetch user:", error);
-                    }
-                }
-                if (user && !user?.user.bot) {
-                    this.monitorMember(user as GuildMember, channel);
-                    this.streams.get(userId)?.emit("speakingStarted");
-                }
+                await this.handleOnStartSpeaking(channel, userId);
             });
 
             connection.receiver.speaking.on("end", async (userId: string) => {
-                const user = channel.members.get(userId);
-                if (!user?.user.bot) {
-                    this.streams.get(userId)?.emit("speakingStopped");
-                }
+                this.handleOnEndSpeaking(channel, userId);
             });
         } catch (error) {
             elizaLogger.log("Failed to establish voice connection:", error);
             connection.destroy();
             this.connections.delete(channel.id);
             throw error;
+        }
+    }
+
+    private handleOnEndSpeaking(
+        channel: BaseGuildVoiceChannel,
+        userId: string
+    ) {
+        const user = channel.members.get(userId);
+        if (!user?.user.bot) {
+            this.streams.get(userId)?.emit("speakingStopped");
+        }
+    }
+
+    private async handleOnStartSpeaking(
+        channel: BaseGuildVoiceChannel,
+        userId: string
+    ) {
+        let user = channel.members.get(userId);
+        if (!user) {
+            try {
+                user = await channel.guild.members.fetch(userId);
+            } catch (error) {
+                elizaLogger.error("Failed to fetch user:", error);
+            }
+        }
+        if (user && !user?.user.bot) {
+            this.monitorMember(user as GuildMember, channel);
+            this.streams.get(userId)?.emit("speakingStarted");
+        }
+    }
+
+    private async undeafUnmute(me: GuildMember) {
+        try {
+            await me.voice.setDeaf(false);
+            await me.voice.setMute(false);
+        } catch (error) {
+            elizaLogger.log("Failed to modify voice state:", error);
+            // Continue even if this fails
+        }
+    }
+
+    private handleOnError(error: Error) {
+        elizaLogger.log("Voice connection error:", error);
+        // Don't immediately destroy - let the state change handler deal with it
+        elizaLogger.log("Connection error - will attempt to recover...");
+    }
+
+    private async handleOnStateChange(
+        oldState,
+        newState,
+        connection: VoiceConnection,
+        channel: BaseGuildVoiceChannel
+    ) {
+        elizaLogger.log(
+            `Voice connection state changed from ${oldState.status} to ${newState.status}`
+        );
+
+        if (newState.status === VoiceConnectionStatus.Disconnected) {
+            elizaLogger.log("Handling disconnection...");
+
+            try {
+                // Try to reconnect if disconnected
+                await Promise.race([
+                    entersState(
+                        connection,
+                        VoiceConnectionStatus.Signalling,
+                        5000
+                    ),
+                    entersState(
+                        connection,
+                        VoiceConnectionStatus.Connecting,
+                        5000
+                    ),
+                ]);
+                // Seems to be reconnecting to a new channel
+                elizaLogger.log("Reconnecting to channel...");
+            } catch (e) {
+                // Seems to be a real disconnect, destroy and cleanup
+                elizaLogger.log("Disconnection confirmed - cleaning up..." + e);
+                connection.destroy();
+                this.connections.delete(channel.id);
+            }
+        } else if (newState.status === VoiceConnectionStatus.Destroyed) {
+            this.connections.delete(channel.id);
+        } else if (
+            !this.connections.has(channel.id) &&
+            (newState.status === VoiceConnectionStatus.Ready ||
+                newState.status === VoiceConnectionStatus.Signalling)
+        ) {
+            this.connections.set(channel.id, connection);
         }
     }
 
@@ -364,35 +323,9 @@ export class VoiceManager extends EventEmitter {
             frameSize: DECODE_FRAME_SIZE,
         });
         const volumeBuffer: number[] = [];
-        const VOLUME_WINDOW_SIZE = 30;
-        const SPEAKING_THRESHOLD = 0.05;
+
         opusDecoder.on("data", (pcmData: Buffer) => {
-            // Monitor the audio volume while the agent is speaking.
-            // If the average volume of the user's audio exceeds the defined threshold, it indicates active speaking.
-            // When active speaking is detected, stop the agent's current audio playback to avoid overlap.
-
-            if (this.activeAudioPlayer) {
-                const samples = new Int16Array(
-                    pcmData.buffer,
-                    pcmData.byteOffset,
-                    pcmData.length / 2
-                );
-                const maxAmplitude = Math.max(...samples.map(Math.abs)) / 32768;
-                volumeBuffer.push(maxAmplitude);
-
-                if (volumeBuffer.length > VOLUME_WINDOW_SIZE) {
-                    volumeBuffer.shift();
-                }
-                const avgVolume =
-                    volumeBuffer.reduce((sum, v) => sum + v, 0) /
-                    VOLUME_WINDOW_SIZE;
-
-                if (avgVolume > SPEAKING_THRESHOLD) {
-                    volumeBuffer.length = 0;
-                    this.cleanupAudioPlayer(this.activeAudioPlayer);
-                    this.processingVoice = false;
-                }
-            }
+            this.handleOnOpusData(pcmData, volumeBuffer);
         });
         pipeline(
             receiveStream as AudioReceiveStream,
@@ -436,6 +369,37 @@ export class VoiceManager extends EventEmitter {
         );
     }
 
+    private handleOnOpusData(
+        pcmData: Buffer<ArrayBufferLike>,
+        volumeBuffer: number[]
+    ) {
+        // Monitor the audio volume while the agent is speaking.
+        // If the average volume of the user's audio exceeds the defined threshold, it indicates active speaking.
+        // When active speaking is detected, stop the agent's current audio playback to avoid overlap.
+        if (this.activeAudioPlayer) {
+            const samples = new Int16Array(
+                pcmData.buffer,
+                pcmData.byteOffset,
+                pcmData.length / 2
+            );
+            const maxAmplitude = Math.max(...samples.map(Math.abs)) / 32768;
+            volumeBuffer.push(maxAmplitude);
+
+            if (volumeBuffer.length > VOLUME_WINDOW_SIZE) {
+                volumeBuffer.shift();
+            }
+            const avgVolume =
+                volumeBuffer.reduce((sum, v) => sum + v, 0) /
+                VOLUME_WINDOW_SIZE;
+
+            if (avgVolume > SPEAKING_THRESHOLD) {
+                volumeBuffer.length = 0;
+                this.cleanupAudioPlayer(this.activeAudioPlayer);
+                this.processingVoice = false;
+            }
+        }
+    }
+
     leaveChannel(channel: BaseGuildVoiceChannel) {
         const connection = this.connections.get(channel.id);
         if (connection) {
@@ -469,52 +433,6 @@ export class VoiceManager extends EventEmitter {
     async handleGuildCreate(guild: Guild) {
         elizaLogger.log(`Joined guild ${guild.name}`);
         // this.scanGuild(guild);
-    }
-
-    async debouncedProcessTranscription(
-        userId: UUID,
-        name: string,
-        userName: string,
-        channel: BaseGuildVoiceChannel
-    ) {
-        const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 1500; // wait for 1.5 seconds of silence
-
-        if (this.activeAudioPlayer?.state?.status === "idle") {
-            elizaLogger.log("Cleaning up idle audio player.");
-            this.cleanupAudioPlayer(this.activeAudioPlayer);
-        }
-
-        if (this.activeAudioPlayer || this.processingVoice) {
-            const state = this.userStates.get(userId);
-            state.buffers.length = 0;
-            state.totalLength = 0;
-            return;
-        }
-
-        if (this.transcriptionTimeout) {
-            clearTimeout(this.transcriptionTimeout);
-        }
-
-        this.transcriptionTimeout = setTimeout(async () => {
-            this.processingVoice = true;
-            try {
-                await this.processTranscription(
-                    userId,
-                    channel.id,
-                    channel,
-                    name,
-                    userName
-                );
-
-                // Clean all users' previous buffers
-                this.userStates.forEach((state, _) => {
-                    state.buffers.length = 0;
-                    state.totalLength = 0;
-                });
-            } finally {
-                this.processingVoice = false;
-            }
-        }, DEBOUNCE_TRANSCRIPTION_THRESHOLD);
     }
 
     async handleUserStream(
@@ -571,6 +489,52 @@ export class VoiceManager extends EventEmitter {
                 await processBuffer(buffer);
             }
         );
+    }
+
+    private async debouncedProcessTranscription(
+        userId: UUID,
+        name: string,
+        userName: string,
+        channel: BaseGuildVoiceChannel
+    ) {
+        const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 1500; // wait for 1.5 seconds of silence
+
+        if (this.activeAudioPlayer?.state?.status === "idle") {
+            elizaLogger.log("Cleaning up idle audio player.");
+            this.cleanupAudioPlayer(this.activeAudioPlayer);
+        }
+
+        if (this.activeAudioPlayer || this.processingVoice) {
+            const state = this.userStates.get(userId);
+            state.buffers.length = 0;
+            state.totalLength = 0;
+            return;
+        }
+
+        if (this.transcriptionTimeout) {
+            clearTimeout(this.transcriptionTimeout);
+        }
+
+        this.transcriptionTimeout = setTimeout(async () => {
+            this.processingVoice = true;
+            try {
+                await this.processTranscription(
+                    userId,
+                    channel.id,
+                    channel,
+                    name,
+                    userName
+                );
+
+                // Clean all users' previous buffers
+                this.userStates.forEach((state, _) => {
+                    state.buffers.length = 0;
+                    state.totalLength = 0;
+                });
+            } finally {
+                this.processingVoice = false;
+            }
+        }, DEBOUNCE_TRANSCRIPTION_THRESHOLD);
     }
 
     private async processTranscription(
@@ -656,7 +620,8 @@ export class VoiceManager extends EventEmitter {
                     discordChannel: channel,
                     discordClient: this.client,
                     agentName: this.runtime.character.name,
-                }
+                },
+                true
             );
 
             if (message && message.startsWith("/")) {
@@ -691,100 +656,109 @@ export class VoiceManager extends EventEmitter {
                 return { text: "", action: "IGNORE" };
             }
 
-            const shouldRespond = await this._shouldRespond(
-                message,
-                userId,
-                channel,
-                state
-            );
+            // const shouldRespond = await this._shouldRespond(
+            //     message,
+            //     userId,
+            //     channel,
+            //     state
+            // );
 
-            if (!shouldRespond) {
-                return;
-            }
+            // if (!shouldRespond) {
+            //     return;
+            // }
 
             const context = composeContext({
                 state,
                 template:
+                    this.runtime.character.templates
+                        ?.directVoiceStreamTemplate ||
                     this.runtime.character.templates
                         ?.discordVoiceHandlerTemplate ||
                     this.runtime.character.templates?.messageHandlerTemplate ||
                     discordVoiceHandlerTemplate,
             });
 
-            const responseContent = await this._generateResponse(
-                memory,
-                state,
-                context
-            );
+            const result = this._generateResponse(context);
 
-            const callback: HandlerCallback = async (content: Content) => {
-                elizaLogger.log("callback content: ", content);
-                const { roomId } = memory;
-
-                const responseMemory: Memory = {
-                    id: stringToUuid(
-                        memory.id + "-voice-response-" + Date.now()
-                    ),
-                    agentId: this.runtime.agentId,
-                    userId: this.runtime.agentId,
-                    content: {
-                        ...content,
-                        user: this.runtime.character.name,
-                        inReplyTo: memory.id,
-                    },
-                    roomId,
-                    embedding: getEmbeddingZeroVector(),
-                };
-
-                if (responseMemory.content.text?.trim()) {
-                    await this.runtime.messageManager.createMemory(
-                        responseMemory
-                    );
-                    state = await this.runtime.updateRecentMessageState(state);
-
-                    const responseStream = await this.runtime
-                        .getService<ISpeechService>(
-                            ServiceType.SPEECH_GENERATION
-                        )
-                        .generate(this.runtime, content.text);
-
-                    if (responseStream) {
-                        await this.playAudioStream(
-                            userId,
-                            responseStream as Readable
-                        );
-                    }
-
-                    await this.runtime.evaluate(memory, state);
-                } else {
-                    elizaLogger.warn("Empty response, skipping");
-                }
-                return [responseMemory];
-            };
-
-            const responseMemories = await callback(responseContent);
-
-            const response = responseContent;
-
-            const content = (response.responseMessage ||
-                response.content ||
-                response.message) as string;
-
-            if (!content) {
-                return null;
+            for await (const textPart of result.textStream) {
+                console.log("textPart: ", textPart);
+                const responseStream = await this.runtime
+                    .getService<ISpeechService>(ServiceType.SPEECH_GENERATION)
+                    .generate(this.runtime, textPart);
+                await this.playAudioStream(userId, responseStream as Readable);
             }
 
-            elizaLogger.log("responseMemories: ", responseMemories);
+            const response = await result.response;
 
-            await this.runtime.processActions(
-                memory,
-                responseMemories,
-                state,
-                callback
+            this.processAssistantMessages(
+                response.messages,
+                this.runtime,
+                roomId,
+                stringToUuid(memory.id + "-voice-response-" + Date.now())
             );
         } catch (error) {
             elizaLogger.error("Error processing transcribed text:", error);
         }
+    }
+
+    private async processAssistantMessages(
+        messages: Message[],
+        runtime: IAgentRuntime,
+        roomId: UUID,
+        inReplyTo: UUID
+    ) {
+        messages.forEach(({ content, role, id }: Message) => {
+            if (role === "assistant") {
+                this.processMessageContents(
+                    id,
+                    runtime,
+                    roomId,
+                    content,
+                    inReplyTo
+                );
+            }
+        });
+    }
+
+    private async processMessageContents(
+        messageId: string,
+        runtime: IAgentRuntime,
+        roomId: UUID,
+        content: ResContent[],
+        inReplyTo: UUID
+    ) {
+        content.forEach(({ type, text }: ResContent) => {
+            if (type === "text") {
+                const content: Content = {
+                    text,
+                    inReplyTo,
+                };
+                this.buildAndSaveMemory(messageId, runtime, roomId, content);
+            }
+        });
+    }
+
+    private async buildAndSaveMemory(
+        messageId: string,
+        runtime: IAgentRuntime,
+        roomId: UUID,
+        content: Content
+    ) {
+        const agentId = runtime.agentId;
+
+        const responseMessage: Memory = {
+            id: stringToUuid(messageId + "-" + agentId),
+            roomId,
+            userId: agentId,
+            agentId,
+            content,
+            embedding: getEmbeddingZeroVector(),
+            createdAt: Date.now(),
+        };
+
+        elizaLogger.info("streamedVoiceMessage", responseMessage);
+
+        await runtime.messageManager.createMemory(responseMessage);
     }
 
     private async convertOpusToWav(pcmBuffer: Buffer): Promise<Buffer> {
@@ -865,26 +839,13 @@ export class VoiceManager extends EventEmitter {
         }
     }
 
-    private async _generateResponse(
-        message: Memory,
-        state: State,
-        context: string
-    ): Promise<Content> {
-        const { userId, roomId } = message;
-
-        const response = await generateMessageResponse({
+    private _generateResponse(context: string): any {
+        const response = streamWithTools({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.SMALL,
-        });
-
-        response.source = "discord";
-
-        await this.runtime.databaseAdapter.log({
-            body: { message, context, response },
-            userId: userId,
-            roomId,
-            type: "response",
+            modelClass: ModelClass.LARGE,
+            tools: [qsSchema],
+            smoothStreamBy: "line",
         });
 
         return response;
@@ -1010,21 +971,26 @@ export class VoiceManager extends EventEmitter {
         });
         audioPlayer.play(resource);
 
-        audioPlayer.on("error", (err: any) => {
-            elizaLogger.log(`Audio player error: ${err}`);
-        });
+        // Return a promise that resolves when the audio finishes playing
+        return new Promise((resolve, reject) => {
+            audioPlayer.on("error", (err: any) => {
+                elizaLogger.log(`Audio player error: ${err}`);
+                reject(err);
+            });
 
-        audioPlayer.on(
-            "stateChange",
-            (_oldState: any, newState: { status: string }) => {
-                if (newState.status == "idle") {
-                    const idleTime = Date.now();
-                    elizaLogger.log(
-                        `Audio playback took: ${idleTime - audioStartTime}ms`
-                    );
+            audioPlayer.on(
+                "stateChange",
+                (_oldState: any, newState: { status: string }) => {
+                    if (newState.status === "idle") {
+                        const idleTime = Date.now();
+                        elizaLogger.log(
+                            `Audio playback took: ${idleTime - audioStartTime}ms`
+                        );
+                        resolve();
+                    }
                 }
-            }
-        );
+            );
+        });
     }
 
     cleanupAudioPlayer(audioPlayer: AudioPlayer) {

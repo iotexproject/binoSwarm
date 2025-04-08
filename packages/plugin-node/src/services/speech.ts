@@ -79,7 +79,7 @@ async function textToSpeech(runtime: IAgentRuntime, text: string) {
 
     try {
         const response = await fetch(
-            `https://api.elevenlabs.io/v1/text-to-speech/${elevenlabsVoiceId}/stream?optimize_streaming_latency=${runtime.getSetting("ELEVENLABS_OPTIMIZE_STREAMING_LATENCY")}&output_format=${runtime.getSetting("ELEVENLABS_OUTPUT_FORMAT")}`,
+            `https://api.elevenlabs.io/v1/text-to-speech/${elevenlabsVoiceId}/stream?output_format=${runtime.getSetting("ELEVENLABS_OUTPUT_FORMAT")}`,
             {
                 method: "POST",
                 headers: {
