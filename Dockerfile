@@ -8,6 +8,7 @@ RUN npm install -g pnpm@9.4.0 && \
     python3 \
     make \
     g++ \
+    ffmpeg \
     libglib2.0-0 \
     libnss3 \
     libnspr4 \
@@ -40,7 +41,7 @@ RUN if [ -n "$NPM_TOKEN" ]; then \
     npm config set registry https://registry.npmjs.org/ && \
     npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN; \
     fi
-    
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc turbo.json ./
 
 # Copy the rest of the application code
@@ -63,10 +64,13 @@ RUN pnpm prune --prod
 # Create a new stage for the final image
 FROM node:23.3.0-slim
 
-# Install runtime dependencies including Playwright dependencies
+# Install runtime dependencies including Playwright dependencies and FFmpeg
 RUN npm install -g pnpm@9.4.0 && \
     apt-get update && \
-    apt-get install -y git python3 \
+    apt-get install -y \
+    git \
+    python3 \
+    ffmpeg \
     libglib2.0-0 \
     libnss3 \
     libnspr4 \
@@ -100,3 +104,6 @@ COPY --from=builder /app/agent ./agent
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
+
+# Create and set permissions for content cache directory
+RUN mkdir -p /app/packages/content_cache && chmod 777 /app/packages/content_cache
