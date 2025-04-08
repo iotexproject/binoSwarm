@@ -417,6 +417,7 @@ export class MessageManager {
                             ?.discordMessageHandlerTemplate ||
                         discordMessageHandlerTemplate,
                 });
+                elizaLogger.debug("discordMsgHandlerContext", context);
 
                 // simulate discord typing while generating a response
                 const stopTyping = this.simulateTyping(message);
