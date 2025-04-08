@@ -460,33 +460,9 @@ Text: ${attachment.text}
         const { userId, roomId } = message;
 
         // // 1430 ms
-        const { goals, goalsData } = await this.getAndFormatGoals(roomId);
+        const { goals, goalsData } = await this.getAndFormatGoals(roomId, userId);
         const { recentMessagesData, actorsData } =
             await this.getMssgsAndActors(roomId);
-
-        const recentMessages = formatMessages({
-            messages: recentMessagesData,
-            actors: actorsData,
-        });
-        const recentPosts = formatPosts({
-            messages: recentMessagesData,
-            actors: actorsData,
-            conversationHeader: false,
-        });
-
-        const formattedAttachments = this.collectAndFormatAttachments(
-            message,
-            recentMessagesData
-        );
-
-        const formattedPostExamples = formatPostExamples(
-            this,
-            this.character.postExamples
-        );
-        const formattedMessageExamples = formatMessageExamples(
-            this,
-            this.character.messageExamples
-        );
 
         // 5sec!!!
         const recentInteractions = await this.getRecentInteractions(
@@ -511,6 +487,28 @@ Text: ${attachment.text}
                 recentMessagesData,
                 message
             );
+
+        const recentMessages = formatMessages({
+            messages: recentMessagesData,
+            actors: actorsData,
+        });
+        const recentPosts = formatPosts({
+            messages: recentMessagesData,
+            actors: actorsData,
+            conversationHeader: false,
+        });
+        const formattedAttachments = this.collectAndFormatAttachments(
+            message,
+            recentMessagesData
+        );
+        const formattedPostExamples = formatPostExamples(
+            this,
+            this.character.postExamples
+        );
+        const formattedMessageExamples = formatMessageExamples(
+            this,
+            this.character.messageExamples
+        );
 
         const initialState = {
             agentId: this.agentId,
@@ -1218,12 +1216,11 @@ Text: ${attachment.text}
         return { recentMessagesData, actorsData };
     }
 
-    private async getAndFormatGoals(roomId: UUID) {
+    private async getAndFormatGoals(roomId: UUID, userId?: UUID) {
         const goalsData = await getGoals({
             runtime: this,
-            count: 10,
-            onlyInProgress: false,
             roomId,
+            userId,
         });
 
         const goals = formatGoalsAsString({ goals: goalsData });
