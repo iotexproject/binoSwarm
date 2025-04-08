@@ -620,7 +620,8 @@ export class VoiceManager extends EventEmitter {
                     discordChannel: channel,
                     discordClient: this.client,
                     agentName: this.runtime.character.name,
-                }
+                },
+                true
             );
 
             if (message && message.startsWith("/")) {
