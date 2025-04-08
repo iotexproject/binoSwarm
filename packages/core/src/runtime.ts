@@ -774,7 +774,6 @@ export class AgentRuntime implements IAgentRuntime {
             message,
             recentMessagesData
         );
-        const lore = this.collectLore();
 
         const formattedPostExamples = formatPostExamples(
             this,
@@ -801,118 +800,43 @@ export class AgentRuntime implements IAgentRuntime {
             actorsData
         );
 
-        let knowledgeData = [];
-        let formattedKnowledge = "";
-
-        const getKnowledgeStartTs = Date.now();
-        if (this.character.settings?.ragKnowledge && !fastMode) {
-            const recentContext = recentMessagesData
-                .slice(-3) // Last 3 messages
-                .map((msg) => msg.content.text)
-                .join(" ");
-
-            knowledgeData = await this.ragKnowledgeManager.getKnowledge({
-                query: message.content.text,
-                conversationContext: recentContext,
-                limit: 5,
-            });
-
-            formattedKnowledge = formatKnowledge(knowledgeData);
-        } else if (!fastMode) {
-            knowledgeData = await knowledge.get(this, message);
-
-            formattedKnowledge = formatKnowledge(knowledgeData);
-        }
-        const getKnowledgeEndTs = Date.now();
-        elizaLogger.debug(
-            `Get knowledge took ${getKnowledgeEndTs - getKnowledgeStartTs}ms`
-        );
+        // 4sec!
+        const { formattedKnowledge, knowledgeData } =
+            await this.getAndFormatKnowledge(
+                fastMode,
+                recentMessagesData,
+                message
+            );
 
         const initialState = {
             agentId: this.agentId,
             agentName: this.extractAgentName(actorsData),
-            bio: this.collectBio(),
+            bio: this.buildBio(),
             system: this.character.system,
-            lore,
-            adjective:
-                this.character.adjectives?.length > 0
-                    ? getRandomElementFromArray(this.character.adjectives)
-                    : "",
+            lore: this.buildLore(),
+            adjective: this.buildAdjectives(),
             knowledge: formattedKnowledge,
             knowledgeData: knowledgeData,
             ragKnowledgeData: knowledgeData,
-            // Recent interactions between the sender and receiver, formatted as messages
             recentMessageInteractions: formattedMessageInteractions,
-            // Recent interactions between the sender and receiver, formatted as posts
             recentPostInteractions: formattedPostInteractions,
-            // Raw memory[] array of interactions
             recentInteractionsData: recentInteractions,
-            // randomly pick one topic
-            topic:
-                this.character.topics?.length > 0
-                    ? getRandomElementFromArray(this.character.topics)
-                    : null,
-            topics:
-                this.character.topics?.length > 0
-                    ? `${this.character.name} is interested in ` +
-                      getTopics(this, this.character.topics)
-                    : "",
+            topic: this.buildTopic(),
+            topics: this.buildTopics(),
             characterPostExamples: formattedPostExamples,
             characterMessageExamples: formattedMessageExamples,
-            messageDirections:
-                this.character?.style?.all?.length > 0 ||
-                this.character?.style?.chat.length > 0
-                    ? addHeader(
-                          "# Message Directions for " + this.character.name,
-                          (() => {
-                              const all = this.character?.style?.all || [];
-                              const chat = this.character?.style?.chat || [];
-                              return [...all, ...chat].join("\n");
-                          })()
-                      )
-                    : "",
-
-            postDirections:
-                this.character?.style?.all?.length > 0 ||
-                this.character?.style?.post.length > 0
-                    ? addHeader(
-                          "# Post Directions for " + this.character.name,
-                          (() => {
-                              const all = this.character?.style?.all || [];
-                              const post = this.character?.style?.post || [];
-                              return formatPostDirections(
-                                  [...all, ...post],
-                                  this.getConversationLength() / 2
-                              );
-                          })()
-                      )
-                    : "",
+            messageDirections: this.buildMessageDirections(),
+            postDirections: this.buildPostDirections(),
             senderName: this.extractSenderName(actorsData, userId),
-            // TODO: Can be removed globally once we verify that this is not used anywhere
-            actors: "",
+            actors: "", // TODO: Can be removed once we verify that this is not used anywhere
             actorsData,
             roomId,
-            goals:
-                goals && goals.length > 0
-                    ? addHeader(
-                          "# Goals\n{{agentName}} should prioritize accomplishing the objectives that are in progress.",
-                          goals
-                      )
-                    : "",
+            goals: this.buildGoals(goals),
             goalsData,
-            recentMessages:
-                recentMessages && recentMessages.length > 0
-                    ? addHeader("# Conversation Messages", recentMessages)
-                    : "",
-            recentPosts:
-                recentPosts && recentPosts.length > 0
-                    ? addHeader("# Posts in Thread", recentPosts)
-                    : "",
+            recentMessages: this.buildRecentMessages(recentMessages),
+            recentPosts: this.buildRecentPosts(recentPosts),
             recentMessagesData,
-            attachments:
-                formattedAttachments && formattedAttachments.length > 0
-                    ? addHeader("# Attachments", formattedAttachments)
-                    : "",
+            attachments: this.buildAttachments(formattedAttachments),
             ...additionalKeys,
         } as State;
 
@@ -991,7 +915,113 @@ export class AgentRuntime implements IAgentRuntime {
         return { ...initialState, ...actionState } as State;
     }
 
-    private collectBio() {
+    private buildAttachments(formattedAttachments: string): unknown {
+        return formattedAttachments && formattedAttachments.length > 0
+            ? addHeader("# Attachments", formattedAttachments)
+            : "";
+    }
+
+    private buildRecentPosts(recentPosts: string): unknown {
+        return recentPosts && recentPosts.length > 0
+            ? addHeader("# Posts in Thread", recentPosts)
+            : "";
+    }
+
+    private buildRecentMessages(recentMessages: string): string {
+        return recentMessages && recentMessages.length > 0
+            ? addHeader("# Conversation Messages", recentMessages)
+            : "";
+    }
+
+    private buildGoals(goals: string): string {
+        return goals && goals.length > 0
+            ? addHeader(
+                  "# Goals\n{{agentName}} should prioritize accomplishing the objectives that are in progress.",
+                  goals
+              )
+            : "";
+    }
+
+    private buildPostDirections(): string {
+        return this.character?.style?.all?.length > 0 ||
+            this.character?.style?.post.length > 0
+            ? addHeader(
+                  "# Post Directions for " + this.character.name,
+                  (() => {
+                      const all = this.character?.style?.all || [];
+                      const post = this.character?.style?.post || [];
+                      return formatPostDirections(
+                          [...all, ...post],
+                          this.getConversationLength() / 2
+                      );
+                  })()
+              )
+            : "";
+    }
+
+    private buildMessageDirections(): string {
+        return this.character?.style?.all?.length > 0 ||
+            this.character?.style?.chat.length > 0
+            ? addHeader(
+                  "# Message Directions for " + this.character.name,
+                  (() => {
+                      const all = this.character?.style?.all || [];
+                      const chat = this.character?.style?.chat || [];
+                      return [...all, ...chat].join("\n");
+                  })()
+              )
+            : "";
+    }
+
+    private buildTopics(): unknown {
+        return this.character.topics?.length > 0
+            ? `${this.character.name} is interested in ` +
+                  getTopics(this, this.character.topics)
+            : "";
+    }
+
+    private buildTopic(): unknown {
+        return this.character.topics?.length > 0
+            ? getRandomElementFromArray(this.character.topics)
+            : null;
+    }
+
+    private buildAdjectives(): unknown {
+        return this.character.adjectives?.length > 0
+            ? getRandomElementFromArray(this.character.adjectives)
+            : "";
+    }
+
+    private async getAndFormatKnowledge(
+        fastMode: boolean,
+        recentMessagesData: Memory[],
+        message: Memory
+    ) {
+        let knowledgeData = [];
+        let formattedKnowledge = "";
+
+        if (this.character.settings?.ragKnowledge && !fastMode) {
+            const recentContext = recentMessagesData
+                .slice(-3) // Last 3 messages
+                .map((msg) => msg.content.text)
+                .join(" ");
+
+            knowledgeData = await this.ragKnowledgeManager.getKnowledge({
+                query: message.content.text,
+                conversationContext: recentContext,
+                limit: 5,
+            });
+
+            formattedKnowledge = formatKnowledge(knowledgeData);
+        } else if (!fastMode) {
+            knowledgeData = await knowledge.get(this, message);
+
+            formattedKnowledge = formatKnowledge(knowledgeData);
+        }
+        return { formattedKnowledge, knowledgeData };
+    }
+
+    private buildBio() {
         let bio = this.character.bio || "";
         if (Array.isArray(bio)) {
             bio = shuffleAndSlice<string>(bio);
@@ -999,7 +1029,7 @@ export class AgentRuntime implements IAgentRuntime {
         return bio;
     }
 
-    private collectLore() {
+    private buildLore() {
         let lore = "";
         if (this.character.lore?.length > 0) {
             const count = this.getSetting("LORE_COUNT") || LORE_COUNT;
