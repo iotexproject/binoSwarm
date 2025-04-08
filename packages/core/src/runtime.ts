@@ -460,6 +460,7 @@ Text: ${attachment.text}
         const { userId, roomId } = message;
 
         // RETRIEVING
+        const retrievingStart = Date.now();
         const [
             goalsRes,
             knowledgeRes,
@@ -471,7 +472,8 @@ Text: ${attachment.text}
             this.getRecentInteractions(userId, this.agentId, roomId),
             this.getMssgsAndActors(roomId),
         ]);
-
+        const retrievingTime = Date.now() - retrievingStart;
+        elizaLogger.info(`Retrieving took ${retrievingTime}ms`);
         // FORMATTING
         const recentPostInteractions = this.getRecentPostInteractions(
             recentInteractionsData,
@@ -540,13 +542,14 @@ Text: ${attachment.text}
             ...additionalKeys,
         } as State;
 
-        // 5sec!
+        const actionStateStart = Date.now();
         const actionState = await this.buildActionState(
             message,
             initialState,
             fastMode
         );
-
+        const actionStateTime = Date.now() - actionStateStart;
+        elizaLogger.info(`Action state took ${actionStateTime}ms`);
         return { ...initialState, ...actionState } as State;
     }
 
