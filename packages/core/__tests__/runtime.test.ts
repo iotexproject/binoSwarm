@@ -465,4 +465,45 @@ describe("AgentRuntime", () => {
             );
         });
     });
+
+    describe("initFetch", () => {
+        it("should use provided fetch implementation if available", () => {
+            const customFetch = vi.fn();
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+                fetch: customFetch,
+            });
+
+            expect(runtime.fetch).toBe(customFetch);
+        });
+
+        it("should use global fetch if no custom fetch provided", () => {
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+            });
+
+            expect(runtime.fetch).toBe(global.fetch);
+        });
+
+        it("should handle fetch being undefined in options", () => {
+            const runtime = new AgentRuntime({
+                token: "test-token",
+                character: defaultCharacter,
+                databaseAdapter: mockDatabaseAdapter,
+                cacheManager: mockCacheManager,
+                modelProvider: ModelProviderName.OPENAI,
+                fetch: undefined,
+            });
+
+            expect(runtime.fetch).toBe(global.fetch);
+        });
+    });
 });
