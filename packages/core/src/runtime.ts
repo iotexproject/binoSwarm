@@ -1,5 +1,3 @@
-import { readFile } from "fs/promises";
-import { join } from "path";
 import { names, uniqueNamesGenerator } from "unique-names-generator";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -386,7 +384,9 @@ export class AgentRuntime implements IAgentRuntime {
         }
 
         if (this.character.settings.ragKnowledge) {
-            await this.processCharacterRAGKnowledge(this.character.knowledge);
+            await this.ragKnowledgeManager.processCharacterRAGKnowledge(
+                this.character.knowledge
+            );
         } else {
             const stringKnowledge = this.character.knowledge.filter(
                 (item): item is string => typeof item === "string"
@@ -462,160 +462,6 @@ export class AgentRuntime implements IAgentRuntime {
                     text: item,
                 },
             });
-        }
-    }
-
-    private async processCharacterRAGKnowledge(
-        items: (string | { path: string; shared?: boolean })[]
-    ) {
-        let hasError = false;
-
-        for (const item of items) {
-            if (!item) continue;
-
-            try {
-                // Check if item is marked as shared
-                let isShared = false;
-                let contentItem = item;
-
-                // Only treat as shared if explicitly marked
-                if (typeof item === "object" && "path" in item) {
-                    isShared = item.shared === true;
-                    contentItem = item.path;
-                } else {
-                    contentItem = item;
-                }
-
-                const knowledgeId = stringToUuid(contentItem);
-                const fileExtension = contentItem
-                    .split(".")
-                    .pop()
-                    ?.toLowerCase();
-
-                // Check if it's a file or direct knowledge
-                if (
-                    fileExtension &&
-                    ["md", "txt", "pdf"].includes(fileExtension)
-                ) {
-                    try {
-                        const rootPath = join(process.cwd(), "..");
-                        const filePath = join(
-                            rootPath,
-                            "characters",
-                            "knowledge",
-                            contentItem
-                        );
-                        elizaLogger.info(
-                            "Attempting to read file from:",
-                            filePath
-                        );
-
-                        // Get existing knowledge first
-                        const existingKnowledge =
-                            await this.ragKnowledgeManager.getKnowledge({
-                                id: knowledgeId,
-                                agentId: this.agentId,
-                            });
-
-                        const content: string = await readFile(
-                            filePath,
-                            "utf8"
-                        );
-                        if (!content) {
-                            hasError = true;
-                            continue;
-                        }
-
-                        // If the file exists in DB, check if content has changed
-                        if (existingKnowledge.length > 0) {
-                            const existingContent =
-                                existingKnowledge[0].content.text;
-                            if (existingContent === content) {
-                                elizaLogger.info(
-                                    `File ${contentItem} unchanged, skipping`
-                                );
-                                continue;
-                            } else {
-                                // If content changed, remove old knowledge before adding new
-                                await this.ragKnowledgeManager.removeKnowledge(
-                                    knowledgeId
-                                );
-                                // Also remove any associated chunks - this is needed for non-PostgreSQL adapters
-                                // PostgreSQL adapter handles chunks internally via foreign keys
-                                await this.ragKnowledgeManager.removeKnowledge(
-                                    `${knowledgeId}-chunk-*` as UUID
-                                );
-                            }
-                        }
-
-                        elizaLogger.info(
-                            `Successfully read ${fileExtension.toUpperCase()} file content for`,
-                            this.character.name,
-                            "-",
-                            contentItem
-                        );
-
-                        await this.ragKnowledgeManager.processFile({
-                            path: contentItem,
-                            content: content,
-                            type: fileExtension as "pdf" | "md" | "txt",
-                            isShared: isShared,
-                        });
-                    } catch (error: any) {
-                        hasError = true;
-                        elizaLogger.error(
-                            `Failed to read knowledge file ${contentItem}. Error details:`,
-                            error?.message || error || "Unknown error"
-                        );
-                        continue; // Continue to next item even if this one fails
-                    }
-                } else {
-                    // Handle direct knowledge string
-                    elizaLogger.info(
-                        "Processing direct knowledge for",
-                        this.character.name,
-                        "-",
-                        contentItem.slice(0, 100)
-                    );
-
-                    const existingKnowledge =
-                        await this.ragKnowledgeManager.getKnowledge({
-                            id: knowledgeId,
-                            agentId: this.agentId,
-                        });
-
-                    if (existingKnowledge.length > 0) {
-                        elizaLogger.info(
-                            `Direct knowledge ${knowledgeId} already exists, skipping`
-                        );
-                        continue;
-                    }
-
-                    await this.ragKnowledgeManager.createKnowledge({
-                        id: knowledgeId,
-                        agentId: this.agentId,
-                        content: {
-                            text: contentItem,
-                            metadata: {
-                                type: "direct",
-                            },
-                        },
-                    });
-                }
-            } catch (error: any) {
-                hasError = true;
-                elizaLogger.error(
-                    `Error processing knowledge item ${item}:`,
-                    error?.message || error || "Unknown error"
-                );
-                continue; // Continue to next item even if this one fails
-            }
-        }
-
-        if (hasError) {
-            elizaLogger.warn(
-                "Some knowledge items failed to process, but continuing with available knowledge"
-            );
         }
     }
 

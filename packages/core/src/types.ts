@@ -1188,6 +1188,9 @@ export interface IRAGKnowledgeManager {
         type: "pdf" | "md" | "txt";
         isShared: boolean;
     }): Promise<void>;
+    processCharacterRAGKnowledge(
+        items: (string | { path: string; shared?: boolean })[]
+    ): Promise<void>;
 }
 
 export type CacheOptions = {
