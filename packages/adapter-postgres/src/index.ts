@@ -334,6 +334,7 @@ export class PostgresDatabaseAdapter
         agentId?: UUID;
         tableName: string;
         limit?: number;
+        userId?: UUID;
     }): Promise<Memory[]> {
         return this.withDatabase(async () => {
             if (params.roomIds.length === 0) return [];
@@ -347,6 +348,10 @@ export class PostgresDatabaseAdapter
             if (params.agentId) {
                 query += ` AND "agentId" = $${params.roomIds.length + 2}`;
                 queryParams = [...queryParams, params.agentId];
+            }
+            if (params.userId) {
+                query += ` AND "userId" = $${queryParams.length + 1}`;
+                queryParams.push(params.userId);
             }
 
             // Add sorting, and conditionally add LIMIT if provided

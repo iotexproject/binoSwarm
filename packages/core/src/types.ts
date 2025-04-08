@@ -954,6 +954,7 @@ export interface IDatabaseAdapter {
         agentId: UUID;
         roomIds: UUID[];
         limit?: number;
+        userId?: UUID;
     }): Promise<Memory[]>;
 
     getCachedEmbeddings(params: {
@@ -1141,6 +1142,7 @@ export interface IMemoryManager {
     getMemoriesByRoomIds(params: {
         roomIds: UUID[];
         limit?: number;
+        userId?: UUID;
     }): Promise<Memory[]>;
     searchMemoriesByEmbedding(
         embedding: number[],

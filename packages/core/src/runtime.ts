@@ -466,16 +466,16 @@ Text: ${attachment.text}
         // 4sec!
         const { formattedKnowledge, knowledgeData } =
             await this.getAndFormatKnowledge(fastMode, message);
-
-        // // 1430 ms
-        const { recentMessagesData, actorsData } =
-            await this.getMssgsAndActors(roomId);
         // 5sec!!!
         const recentInteractions = await this.getRecentInteractions(
             userId,
             this.agentId,
             roomId
         );
+
+        // // 1430 ms
+        const { recentMessagesData, actorsData } =
+            await this.getMssgsAndActors(roomId);
         // 1ms
         const formattedPostInteractions = await this.getRecentPostInteractions(
             recentInteractions,
@@ -1233,6 +1233,7 @@ Text: ${attachment.text}
             // filter out the current room id from rooms
             roomIds: rooms.filter((room) => room !== roomId),
             limit: 20,
+            userId,
         });
     }
 
