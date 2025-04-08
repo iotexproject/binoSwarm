@@ -163,56 +163,16 @@ export class VoiceManager extends EventEmitter {
 
             // Set up ongoing state change monitoring
             connection.on("stateChange", async (oldState, newState) => {
-                elizaLogger.log(
-                    `Voice connection state changed from ${oldState.status} to ${newState.status}`
+                await this.handleOnStateChange(
+                    oldState,
+                    newState,
+                    connection,
+                    channel
                 );
-
-                if (newState.status === VoiceConnectionStatus.Disconnected) {
-                    elizaLogger.log("Handling disconnection...");
-
-                    try {
-                        // Try to reconnect if disconnected
-                        await Promise.race([
-                            entersState(
-                                connection,
-                                VoiceConnectionStatus.Signalling,
-                                5_000
-                            ),
-                            entersState(
-                                connection,
-                                VoiceConnectionStatus.Connecting,
-                                5_000
-                            ),
-                        ]);
-                        // Seems to be reconnecting to a new channel
-                        elizaLogger.log("Reconnecting to channel...");
-                    } catch (e) {
-                        // Seems to be a real disconnect, destroy and cleanup
-                        elizaLogger.log(
-                            "Disconnection confirmed - cleaning up..." + e
-                        );
-                        connection.destroy();
-                        this.connections.delete(channel.id);
-                    }
-                } else if (
-                    newState.status === VoiceConnectionStatus.Destroyed
-                ) {
-                    this.connections.delete(channel.id);
-                } else if (
-                    !this.connections.has(channel.id) &&
-                    (newState.status === VoiceConnectionStatus.Ready ||
-                        newState.status === VoiceConnectionStatus.Signalling)
-                ) {
-                    this.connections.set(channel.id, connection);
-                }
             });
 
             connection.on("error", (error) => {
-                elizaLogger.log("Voice connection error:", error);
-                // Don't immediately destroy - let the state change handler deal with it
-                elizaLogger.log(
-                    "Connection error - will attempt to recover..."
-                );
+                this.handleOnError(error);
             });
 
             // Store the connection
@@ -221,41 +181,111 @@ export class VoiceManager extends EventEmitter {
             // Continue with voice state modifications
             const me = channel.guild.members.me;
             if (me?.voice && me.permissions.has("DeafenMembers")) {
-                try {
-                    await me.voice.setDeaf(false);
-                    await me.voice.setMute(false);
-                } catch (error) {
-                    elizaLogger.log("Failed to modify voice state:", error);
-                    // Continue even if this fails
-                }
+                await this.undeafUnmute(me);
             }
 
             connection.receiver.speaking.on("start", async (userId: string) => {
-                let user = channel.members.get(userId);
-                if (!user) {
-                    try {
-                        user = await channel.guild.members.fetch(userId);
-                    } catch (error) {
-                        elizaLogger.error("Failed to fetch user:", error);
-                    }
-                }
-                if (user && !user?.user.bot) {
-                    this.monitorMember(user as GuildMember, channel);
-                    this.streams.get(userId)?.emit("speakingStarted");
-                }
+                await this.handleOnStartSpeaking(channel, userId);
             });
 
             connection.receiver.speaking.on("end", async (userId: string) => {
-                const user = channel.members.get(userId);
-                if (!user?.user.bot) {
-                    this.streams.get(userId)?.emit("speakingStopped");
-                }
+                this.handleOnEndSpeaking(channel, userId);
             });
         } catch (error) {
             elizaLogger.log("Failed to establish voice connection:", error);
             connection.destroy();
             this.connections.delete(channel.id);
             throw error;
+        }
+    }
+
+    private handleOnEndSpeaking(
+        channel: BaseGuildVoiceChannel,
+        userId: string
+    ) {
+        const user = channel.members.get(userId);
+        if (!user?.user.bot) {
+            this.streams.get(userId)?.emit("speakingStopped");
+        }
+    }
+
+    private async handleOnStartSpeaking(
+        channel: BaseGuildVoiceChannel,
+        userId: string
+    ) {
+        let user = channel.members.get(userId);
+        if (!user) {
+            try {
+                user = await channel.guild.members.fetch(userId);
+            } catch (error) {
+                elizaLogger.error("Failed to fetch user:", error);
+            }
+        }
+        if (user && !user?.user.bot) {
+            this.monitorMember(user as GuildMember, channel);
+            this.streams.get(userId)?.emit("speakingStarted");
+        }
+    }
+
+    private async undeafUnmute(me: GuildMember) {
+        try {
+            await me.voice.setDeaf(false);
+            await me.voice.setMute(false);
+        } catch (error) {
+            elizaLogger.log("Failed to modify voice state:", error);
+            // Continue even if this fails
+        }
+    }
+
+    private handleOnError(error: Error) {
+        elizaLogger.log("Voice connection error:", error);
+        // Don't immediately destroy - let the state change handler deal with it
+        elizaLogger.log("Connection error - will attempt to recover...");
+    }
+
+    private async handleOnStateChange(
+        oldState,
+        newState,
+        connection: VoiceConnection,
+        channel: BaseGuildVoiceChannel
+    ) {
+        elizaLogger.log(
+            `Voice connection state changed from ${oldState.status} to ${newState.status}`
+        );
+
+        if (newState.status === VoiceConnectionStatus.Disconnected) {
+            elizaLogger.log("Handling disconnection...");
+
+            try {
+                // Try to reconnect if disconnected
+                await Promise.race([
+                    entersState(
+                        connection,
+                        VoiceConnectionStatus.Signalling,
+                        5000
+                    ),
+                    entersState(
+                        connection,
+                        VoiceConnectionStatus.Connecting,
+                        5000
+                    ),
+                ]);
+                // Seems to be reconnecting to a new channel
+                elizaLogger.log("Reconnecting to channel...");
+            } catch (e) {
+                // Seems to be a real disconnect, destroy and cleanup
+                elizaLogger.log("Disconnection confirmed - cleaning up..." + e);
+                connection.destroy();
+                this.connections.delete(channel.id);
+            }
+        } else if (newState.status === VoiceConnectionStatus.Destroyed) {
+            this.connections.delete(channel.id);
+        } else if (
+            !this.connections.has(channel.id) &&
+            (newState.status === VoiceConnectionStatus.Ready ||
+                newState.status === VoiceConnectionStatus.Signalling)
+        ) {
+            this.connections.set(channel.id, connection);
         }
     }
 
@@ -640,7 +670,7 @@ export class VoiceManager extends EventEmitter {
                     discordVoiceHandlerTemplate,
             });
 
-            const result = this._generateResponse(memory, state, context);
+            const result = this._generateResponse(context);
 
             for await (const textPart of result.textStream) {
                 console.log("textPart: ", textPart);
@@ -805,7 +835,7 @@ export class VoiceManager extends EventEmitter {
         const response = streamWithTools({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.LARGE,
+            modelClass: ModelClass.SMALL,
             tools: [qsSchema],
             smoothStreamBy: "line",
         });
