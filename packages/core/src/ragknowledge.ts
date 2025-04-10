@@ -17,9 +17,10 @@ type RAGKnowledgeItemMetadata = {
     type: string;
     isChunk: boolean;
     isMain: boolean;
+    source: string;
+    inputHash: string;
     originalId?: UUID;
     chunkIndex?: number;
-    source?: string;
     isShared?: boolean;
 };
 
@@ -91,7 +92,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
 
     async createKnowledge(
         item: RAGKnowledgeItem,
-        source?: string
+        source: string
     ): Promise<void> {
         if (!item.content.text) {
             elizaLogger.warn("Empty content in knowledge item");
@@ -313,16 +314,19 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         continue;
                     }
 
-                    await this.createKnowledge({
-                        id: knowledgeId,
-                        agentId: this.runtime.agentId,
-                        content: {
-                            text: contentItem,
-                            metadata: {
-                                type: "direct",
+                    await this.createKnowledge(
+                        {
+                            id: knowledgeId,
+                            agentId: this.runtime.agentId,
+                            content: {
+                                text: contentItem,
+                                metadata: {
+                                    type: "direct",
+                                },
                             },
                         },
-                    });
+                        "character"
+                    );
                 }
             } catch (error: any) {
                 hasError = true;
@@ -513,7 +517,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             type: "knowledge",
             ...item.content.metadata,
             createdAt: Date.now().toString(),
-            source: source || "",
+            source: source,
         };
         await this.vectorDB.upsert({
             namespace: this.runtime.agentId.toString(),
@@ -525,6 +529,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         ...metadata,
                         isMain: true,
                         isChunk: false,
+                        inputHash: this.vectorDB.hashInput(item.content.text),
                     },
                 },
                 ...chunks.map((_chunk, index) => ({
@@ -536,6 +541,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         isMain: false,
                         originalId: item.id,
                         chunkIndex: index,
+                        inputHash: this.vectorDB.hashInput(_chunk),
                     },
                 })),
             ],

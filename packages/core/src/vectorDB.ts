@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import {
     Pinecone,
     Index,
@@ -48,5 +49,11 @@ export class VectorDB<T extends RecordMetadata> {
             },
         });
         return results.matches;
+    }
+
+    hashInput(input: string): string {
+        return createHash("sha256")
+            .update(input.trim().toLowerCase())
+            .digest("hex");
     }
 }
