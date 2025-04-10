@@ -383,17 +383,11 @@ export interface Memory {
     /** Memory content */
     content: Content;
 
-    /** Optional embedding vector */
-    embedding?: number[];
-
     /** Associated room ID */
     roomId: UUID;
 
     /** Whether memory is unique */
     unique?: boolean;
-
-    /** Embedding similarity score */
-    similarity?: number;
 }
 
 /**
@@ -1085,8 +1079,6 @@ export interface IMemoryManager {
     tableName: string;
     constructor: Function;
 
-    addEmbeddingToMemory(memory: Memory): Promise<Memory>;
-
     getMemories(opts: {
         roomId: UUID;
         count?: number;
@@ -1095,9 +1087,7 @@ export interface IMemoryManager {
         end?: number;
     }): Promise<Memory[]>;
 
-    getCachedEmbeddings(
-        content: string
-    ): Promise<{ embedding: number[]; levenshtein_score: number }[]>;
+    getCachedEmbeddings(content: string): Promise<number[]>;
 
     getMemoryById(id: UUID): Promise<Memory | null>;
     getMemoriesByRoomIds(params: {
@@ -1105,15 +1095,6 @@ export interface IMemoryManager {
         limit?: number;
         userId?: UUID;
     }): Promise<Memory[]>;
-    searchMemoriesByEmbedding(
-        embedding: number[],
-        opts: {
-            match_threshold?: number;
-            count?: number;
-            roomId: UUID;
-            unique?: boolean;
-        }
-    ): Promise<Memory[]>;
 
     createMemory(memory: Memory, unique?: boolean): Promise<void>;
 
@@ -1213,7 +1194,6 @@ export interface IAgentRuntime {
     messageManager: IMemoryManager;
     descriptionManager: IMemoryManager;
     documentsManager: IMemoryManager;
-    knowledgeManager: IMemoryManager;
     ragKnowledgeManager: IRAGKnowledgeManager;
     loreManager: IMemoryManager;
 

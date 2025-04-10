@@ -99,7 +99,6 @@ export class AgentRuntime implements IAgentRuntime {
     descriptionManager: IMemoryManager;
     loreManager: IMemoryManager;
     documentsManager: IMemoryManager;
-    knowledgeManager: IMemoryManager;
     ragKnowledgeManager: IRAGKnowledgeManager;
     services: Map<ServiceType, Service> = new Map();
     memoryManagers: Map<string, IMemoryManager> = new Map();
@@ -238,11 +237,7 @@ export class AgentRuntime implements IAgentRuntime {
 
         const recentMessages = formatMessages({
             actors: state.actorsData ?? [],
-            messages: recentMessagesData.map((memory: Memory) => {
-                const newMemory = { ...memory };
-                delete newMemory.embedding;
-                return newMemory;
-            }),
+            messages: recentMessagesData,
         });
 
         let allAttachments = [];
@@ -685,10 +680,10 @@ Text: ${attachment.text}
             tableName: "documents",
         });
 
-        this.knowledgeManager = new MemoryManager({
-            runtime: this,
-            tableName: "fragments",
-        });
+        // this.knowledgeManager = new MemoryManager({
+        //     runtime: this,
+        //     tableName: "fragments",
+        // });
 
         this.ragKnowledgeManager = new RAGKnowledgeManager({
             runtime: this,
@@ -1096,15 +1091,11 @@ Text: ${attachment.text}
         let knowledgeData = [];
         let formattedKnowledge = "";
 
-        if (this.character.settings?.ragKnowledge && !fastMode) {
+        if (!fastMode) {
             knowledgeData = await this.ragKnowledgeManager.getKnowledge({
                 query: message.content.text,
                 limit: 5,
             });
-
-            formattedKnowledge = formatKnowledge(knowledgeData);
-        } else if (!fastMode) {
-            knowledgeData = await knowledge.get(this, message);
 
             formattedKnowledge = formatKnowledge(knowledgeData);
         }
