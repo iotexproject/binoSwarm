@@ -32,6 +32,12 @@ export class VectorDB<T extends RecordMetadata> {
         await this.index.namespace(namespace).deleteAll();
     }
 
+    async removeByFilter<T>(filter: T, namespace: string): Promise<void> {
+        await this.index.namespace(namespace).deleteMany({
+            filter,
+        });
+    }
+
     async search(params: {
         namespace: string;
         topK: number;

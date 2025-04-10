@@ -106,17 +106,29 @@ export class MemoryManager implements IMemoryManager {
     }
 
     async removeMemory(memoryId: UUID): Promise<void> {
-        await this.runtime.databaseAdapter.removeMemory(
-            memoryId,
-            this.tableName
-        );
+        await Promise.all([
+            this.vectorDB.removeVector(
+                memoryId,
+                this.runtime.agentId.toString()
+            ),
+            this.runtime.databaseAdapter.removeMemory(memoryId, this.tableName),
+        ]);
     }
 
     async removeAllMemories(roomId: UUID): Promise<void> {
-        await this.runtime.databaseAdapter.removeAllMemories(
-            roomId,
-            this.tableName
-        );
+        await Promise.all([
+            this.vectorDB.removeByFilter(
+                {
+                    type: this.tableName,
+                    roomId,
+                },
+                this.runtime.agentId.toString()
+            ),
+            this.runtime.databaseAdapter.removeAllMemories(
+                roomId,
+                this.tableName
+            ),
+        ]);
     }
 
     async countMemories(roomId: UUID, unique = true): Promise<number> {
