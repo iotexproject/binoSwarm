@@ -83,19 +83,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         }
     }
 
-    private async getKnowledgeById(params: {
-        query?: string;
-        id?: UUID;
-        conversationContext?: string;
-        limit?: number;
-        agentId?: UUID;
-    }): Promise<RAGKnowledgeItem[]> {
-        return await this.runtime.databaseAdapter.getKnowledgeByIds({
-            ids: [params.id],
-            agentId: params.agentId,
-        });
-    }
-
     async createKnowledge(
         item: RAGKnowledgeItem,
         source?: string
@@ -112,97 +99,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             elizaLogger.error(`Error processing knowledge ${item.id}:`, error);
             throw error;
         }
-    }
-
-    private async chunkEmbedAndPersist(
-        processedContent: string,
-        item: RAGKnowledgeItem,
-        source: string
-    ) {
-        const chunks = await splitChunks(processedContent, 512, 20);
-        const embeddings = await embedMany([processedContent, ...chunks]);
-
-        await Promise.all([
-            this.persistVectorData(item, embeddings, source, chunks),
-            this.persistRelationalData(item, chunks),
-        ]);
-    }
-
-    private async persistVectorData(
-        item: RAGKnowledgeItem,
-        embeddings: number[][],
-        source: string,
-        chunks: string[]
-    ) {
-        const metadata = {
-            type: "knowledge",
-            ...item.content.metadata,
-            createdAt: Date.now().toString(),
-            source: source || "",
-        };
-        await index.namespace(this.runtime.agentId.toString()).upsert([
-            {
-                id: item.id,
-                values: embeddings[0],
-                metadata: {
-                    ...metadata,
-                    isMain: true,
-                },
-            },
-            ...chunks.map((_chunk, index) => ({
-                id: this.buildChunkId(item, index),
-                values: embeddings[index + 1],
-                metadata: {
-                    ...metadata,
-                    isChunk: true,
-                    originalId: item.id,
-                    chunkIndex: index,
-                },
-            })),
-        ]);
-    }
-
-    private async persistRelationalData(
-        item: RAGKnowledgeItem,
-        chunks: string[]
-    ) {
-        await Promise.all([
-            this.runtime.databaseAdapter.createKnowledge({
-                id: item.id,
-                agentId: this.runtime.agentId,
-                content: {
-                    text: item.content.text,
-                    metadata: {
-                        ...item.content.metadata,
-                        isMain: true,
-                    },
-                },
-                createdAt: Date.now(),
-            }),
-            ...chunks.map((chunk, index) =>
-                this.runtime.databaseAdapter.createKnowledge({
-                    id: this.buildChunkId(item, index),
-                    agentId: this.runtime.agentId,
-                    content: {
-                        text: chunk,
-                        metadata: {
-                            ...item.content.metadata,
-                            isChunk: true,
-                            originalId: item.id,
-                            chunkIndex: index,
-                        },
-                    },
-                    createdAt: Date.now(),
-                })
-            ),
-        ]);
-    }
-
-    private buildChunkId(
-        item: RAGKnowledgeItem,
-        index: number
-    ): `${UUID}-chunk-${number}` {
-        return `${item.id}-chunk-${index}`;
     }
 
     async searchKnowledge(params: {
@@ -484,9 +380,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             })
             .sort((a, b) => b.score - a.score);
     }
-    /**
-     * Common English stop words to filter out from query analysis
-     */
+
     private readonly stopWords = new Set([
         "a",
         "an",
@@ -535,9 +429,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         "you",
     ]);
 
-    /**
-     * Filters out stop words and returns meaningful terms
-     */
     private getQueryTerms(query: string): string[] {
         return query
             .toLowerCase()
@@ -586,5 +477,109 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             }
         }
         return false;
+    }
+
+    private async chunkEmbedAndPersist(
+        processedContent: string,
+        item: RAGKnowledgeItem,
+        source: string
+    ) {
+        const chunks = await splitChunks(processedContent, 512, 20);
+        const embeddings = await embedMany([processedContent, ...chunks]);
+
+        await Promise.all([
+            this.persistVectorData(item, embeddings, source, chunks),
+            this.persistRelationalData(item, chunks),
+        ]);
+    }
+
+    private async persistVectorData(
+        item: RAGKnowledgeItem,
+        embeddings: number[][],
+        source: string,
+        chunks: string[]
+    ) {
+        const metadata = {
+            type: "knowledge",
+            ...item.content.metadata,
+            createdAt: Date.now().toString(),
+            source: source || "",
+        };
+        await index.namespace(this.runtime.agentId.toString()).upsert([
+            {
+                id: item.id,
+                values: embeddings[0],
+                metadata: {
+                    ...metadata,
+                    isMain: true,
+                },
+            },
+            ...chunks.map((_chunk, index) => ({
+                id: this.buildChunkId(item, index),
+                values: embeddings[index + 1],
+                metadata: {
+                    ...metadata,
+                    isChunk: true,
+                    originalId: item.id,
+                    chunkIndex: index,
+                },
+            })),
+        ]);
+    }
+
+    private async persistRelationalData(
+        item: RAGKnowledgeItem,
+        chunks: string[]
+    ) {
+        await Promise.all([
+            this.runtime.databaseAdapter.createKnowledge({
+                id: item.id,
+                agentId: this.runtime.agentId,
+                content: {
+                    text: item.content.text,
+                    metadata: {
+                        ...item.content.metadata,
+                        isMain: true,
+                    },
+                },
+                createdAt: Date.now(),
+            }),
+            ...chunks.map((chunk, index) =>
+                this.runtime.databaseAdapter.createKnowledge({
+                    id: this.buildChunkId(item, index),
+                    agentId: this.runtime.agentId,
+                    content: {
+                        text: chunk,
+                        metadata: {
+                            ...item.content.metadata,
+                            isChunk: true,
+                            originalId: item.id,
+                            chunkIndex: index,
+                        },
+                    },
+                    createdAt: Date.now(),
+                })
+            ),
+        ]);
+    }
+
+    private async getKnowledgeById(params: {
+        query?: string;
+        id?: UUID;
+        conversationContext?: string;
+        limit?: number;
+        agentId?: UUID;
+    }): Promise<RAGKnowledgeItem[]> {
+        return await this.runtime.databaseAdapter.getKnowledgeByIds({
+            ids: [params.id],
+            agentId: params.agentId,
+        });
+    }
+
+    private buildChunkId(
+        item: RAGKnowledgeItem,
+        index: number
+    ): `${UUID}-chunk-${number}` {
+        return `${item.id}-chunk-${index}`;
     }
 }
