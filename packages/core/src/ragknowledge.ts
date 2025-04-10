@@ -334,29 +334,28 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
 
     async searchKnowledge(params: {
         agentId: UUID;
-        embedding: Float32Array | number[];
+        embedding: number[];
         match_threshold?: number;
         match_count?: number;
         searchText?: string;
     }): Promise<RAGKnowledgeItem[]> {
-        const {
-            match_threshold = this.defaultRAGMatchThreshold,
-            match_count = this.defaultRAGMatchCount,
-            embedding,
-            searchText,
-        } = params;
+        const { match_count = this.defaultRAGMatchCount, embedding } = params;
 
-        const float32Embedding = Array.isArray(embedding)
-            ? new Float32Array(embedding)
-            : embedding;
-
-        return await this.runtime.databaseAdapter.searchKnowledge({
-            agentId: params.agentId || this.runtime.agentId,
-            embedding: float32Embedding,
-            match_threshold,
-            match_count,
-            searchText,
+        const results = await index.namespace(params.agentId.toString()).query({
+            vector: embedding,
+            topK: match_count,
+            includeMetadata: true,
         });
+
+        console.log(results);
+
+        return results.matches.map((match) => ({
+            id: match.id as UUID,
+            agentId: params.agentId,
+            content: {
+                text: (match.metadata?.text as string) || "",
+            },
+        }));
     }
 
     async removeKnowledge(id: UUID): Promise<void> {
