@@ -359,14 +359,11 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     }
 
     async removeKnowledge(id: UUID): Promise<void> {
-        await this.runtime.databaseAdapter.removeKnowledge(id);
+        await index.namespace(this.runtime.agentId.toString()).deleteOne(id);
     }
 
-    async clearKnowledge(shared?: boolean): Promise<void> {
-        await this.runtime.databaseAdapter.clearKnowledge(
-            this.runtime.agentId,
-            shared ? shared : false
-        );
+    async clearKnowledge(): Promise<void> {
+        await index.namespace(this.runtime.agentId.toString()).deleteAll();
     }
 
     async processFile(file: {
