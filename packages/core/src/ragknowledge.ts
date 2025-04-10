@@ -38,24 +38,11 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     );
 
     async getKnowledge(params: {
-        query?: string;
-        id?: UUID;
+        query: string;
         conversationContext?: string;
         limit?: number;
         agentId?: UUID;
     }): Promise<RAGKnowledgeItem[]> {
-        const agentId = params.agentId || this.runtime.agentId;
-
-        if (params.id) {
-            const directResults = await this.getKnowledgeById({
-                id: params.id,
-                agentId,
-            });
-            if (directResults.length > 0) {
-                return directResults;
-            }
-        }
-
         if (!params.query) {
             return [];
         }
@@ -111,22 +98,10 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         limit?: number;
         agentId?: UUID;
     }): Promise<RAGKnowledgeItem[]> {
-        const { id, agentId } = params;
-        const directResults = await index.namespace(agentId.toString()).query({
-            id: id.toString(),
-            topK: 1,
-            includeMetadata: true,
+        return await this.runtime.databaseAdapter.getKnowledgeByIds({
+            ids: [params.id],
+            agentId: params.agentId,
         });
-
-        if (directResults.matches.length > 0) {
-            return directResults.matches.map((match) => ({
-                id: match.id as UUID,
-                agentId: agentId,
-                content: {
-                    text: (match.metadata?.text as string) || "",
-                },
-            }));
-        }
     }
 
     async createKnowledge(
@@ -140,14 +115,14 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
 
         try {
             const processedContent = this.preprocess(item.content.text);
-            await this.chunkEmbedAndUpsert(processedContent, item, source);
+            await this.chunkEmbedAndPersist(processedContent, item, source);
         } catch (error) {
             elizaLogger.error(`Error processing knowledge ${item.id}:`, error);
             throw error;
         }
     }
 
-    private async chunkEmbedAndUpsert(
+    private async chunkEmbedAndPersist(
         processedContent: string,
         item: RAGKnowledgeItem,
         source: string
@@ -254,21 +229,27 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
 
         elizaLogger.debug("Pinecone search results:", results);
 
-        return results.matches.map((match) => ({
-            id: match.id as UUID,
+        const ids = results.matches.map((match) => match.id as UUID);
+        const chunks = await this.runtime.databaseAdapter.getKnowledgeByIds({
+            ids,
             agentId: params.agentId,
-            content: {
-                text: (match.metadata?.text as string) || "",
-            },
-        }));
+        });
+
+        return chunks;
     }
 
     async removeKnowledge(id: UUID): Promise<void> {
-        await index.namespace(this.runtime.agentId.toString()).deleteOne(id);
+        await Promise.all([
+            index.namespace(this.runtime.agentId.toString()).deleteOne(id),
+            this.runtime.databaseAdapter.removeKnowledge(id),
+        ]);
     }
 
     async clearKnowledge(): Promise<void> {
-        await index.namespace(this.runtime.agentId.toString()).deleteAll();
+        await Promise.all([
+            index.namespace(this.runtime.agentId.toString()).deleteAll(),
+            this.runtime.databaseAdapter.clearKnowledge(this.runtime.agentId),
+        ]);
     }
 
     async processFile(file: {
@@ -300,7 +281,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             };
 
             const processedContent = this.preprocess(content);
-            await this.chunkEmbedAndUpsert(processedContent, item, "file");
+            await this.chunkEmbedAndPersist(processedContent, item, "file");
 
             const totalTime = (Date.now() - startTime) / 1000;
             elizaLogger.info(
@@ -357,8 +338,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                             filePath
                         );
 
-                        // Get existing knowledge first
-                        const existingKnowledge = await this.getKnowledge({
+                        const existingKnowledge = await this.getKnowledgeById({
                             id: knowledgeId,
                             agentId: this.runtime.agentId,
                         });
@@ -422,7 +402,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         contentItem.slice(0, 100)
                     );
 
-                    const existingKnowledge = await this.getKnowledge({
+                    const existingKnowledge = await this.getKnowledgeById({
                         id: knowledgeId,
                         agentId: this.runtime.agentId,
                     });
