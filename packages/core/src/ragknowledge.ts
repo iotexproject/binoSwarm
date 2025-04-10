@@ -144,26 +144,29 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         source: string,
         chunks: string[]
     ) {
+        const metadata = {
+            type: "knowledge",
+            ...item.content.metadata,
+            createdAt: Date.now().toString(),
+            source: source || "",
+        };
         await index.namespace(this.runtime.agentId.toString()).upsert([
             {
                 id: item.id,
                 values: embeddings[0],
                 metadata: {
+                    ...metadata,
                     isMain: true,
-                    ...item.content.metadata,
-                    createdAt: Date.now().toString(),
-                    source: source || "",
                 },
             },
             ...chunks.map((_chunk, index) => ({
                 id: this.buildChunkId(item, index),
                 values: embeddings[index + 1],
                 metadata: {
+                    ...metadata,
                     isChunk: true,
                     originalId: item.id,
                     chunkIndex: index,
-                    createdAt: Date.now().toString(),
-                    source: source || "",
                 },
             })),
         ]);
