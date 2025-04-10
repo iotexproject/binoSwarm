@@ -714,154 +714,38 @@ export class SqliteDatabaseAdapter
         }
     }
 
-    async getKnowledge(params: {
-        id?: UUID;
-        agentId: UUID;
-        limit?: number;
-        query?: string;
-    }): Promise<RAGKnowledgeItem[]> {
-        let sql = `SELECT * FROM knowledge WHERE (agentId = ? OR isShared = 1)`;
-        const queryParams: any[] = [params.agentId];
-
-        if (params.id) {
-            sql += ` AND id = ?`;
-            queryParams.push(params.id);
-        }
-
-        if (params.limit) {
-            sql += ` LIMIT ?`;
-            queryParams.push(params.limit);
-        }
+    async getKnowledge(id: UUID): Promise<RAGKnowledgeItem | null> {
+        let sql = `SELECT * FROM knowledge WHERE id = ?`;
+        const queryParams: any[] = [id];
 
         interface KnowledgeRow {
             id: UUID;
             agentId: UUID;
             content: string;
-            embedding: Buffer | null;
             createdAt: string | number;
         }
 
         const rows = this.db.prepare(sql).all(...queryParams) as KnowledgeRow[];
 
-        return rows.map((row) => ({
-            id: row.id,
-            agentId: row.agentId,
-            content: JSON.parse(row.content),
-            embedding: row.embedding
-                ? new Float32Array(row.embedding)
-                : undefined,
-            createdAt:
-                typeof row.createdAt === "string"
-                    ? Date.parse(row.createdAt)
-                    : row.createdAt,
-        }));
-    }
-
-    async searchKnowledge(params: {
-        agentId: UUID;
-        embedding: Float32Array;
-        match_threshold: number;
-        match_count: number;
-        searchText?: string;
-    }): Promise<RAGKnowledgeItem[]> {
-        const cacheKey = `embedding_${params.agentId}_${params.searchText}`;
-        const cachedResult = await this.getCache({
-            key: cacheKey,
-            agentId: params.agentId,
-        });
-
-        if (cachedResult) {
-            return JSON.parse(cachedResult);
-        }
-
-        interface KnowledgeSearchRow {
-            id: UUID;
-            agentId: UUID;
-            content: string;
-            embedding: Buffer | null;
-            createdAt: string | number;
-            vector_score: number;
-            keyword_score: number;
-            combined_score: number;
-        }
-
-        const sql = `
-            WITH vector_scores AS (
-                SELECT id,
-                        1 / (1 + vec_distance_L2(embedding, ?)) as vector_score
-                FROM knowledge
-                WHERE (agentId IS NULL AND isShared = 1) OR agentId = ?
-                AND embedding IS NOT NULL
-            ),
-            keyword_matches AS (
-                SELECT id,
-                CASE
-                    WHEN lower(json_extract(content, '$.text')) LIKE ? THEN 3.0
-                    ELSE 1.0
-                END *
-                CASE
-                    WHEN json_extract(content, '$.metadata.isChunk') = 1 THEN 1.5
-                    WHEN json_extract(content, '$.metadata.isMain') = 1 THEN 1.2
-                    ELSE 1.0
-                END as keyword_score
-                FROM knowledge
-                WHERE (agentId IS NULL AND isShared = 1) OR agentId = ?
-            )
-            SELECT k.*,
-                v.vector_score,
-                kw.keyword_score,
-                (v.vector_score * kw.keyword_score) as combined_score
-            FROM knowledge k
-            JOIN vector_scores v ON k.id = v.id
-            LEFT JOIN keyword_matches kw ON k.id = kw.id
-            WHERE (k.agentId IS NULL AND k.isShared = 1) OR k.agentId = ?
-            AND (
-                v.vector_score >= ?  -- Using match_threshold parameter
-                OR (kw.keyword_score > 1.0 AND v.vector_score >= 0.3)
-            )
-            ORDER BY combined_score DESC
-            LIMIT ?
-        `;
-
-        const searchParams = [
-            params.embedding,
-            params.agentId,
-            `%${params.searchText?.toLowerCase() || ""}%`,
-            params.agentId,
-            params.agentId,
-            params.match_threshold,
-            params.match_count,
-        ];
-
-        try {
-            const rows = this.db
-                .prepare(sql)
-                .all(...searchParams) as KnowledgeSearchRow[];
-            const results = rows.map((row) => ({
+        return (
+            rows.map((row) => ({
                 id: row.id,
                 agentId: row.agentId,
                 content: JSON.parse(row.content),
-                embedding: row.embedding
-                    ? new Float32Array(row.embedding)
-                    : undefined,
                 createdAt:
                     typeof row.createdAt === "string"
                         ? Date.parse(row.createdAt)
                         : row.createdAt,
-                similarity: row.combined_score,
-            }));
+            }))[0] ?? null
+        );
+    }
 
-            await this.setCache({
-                key: cacheKey,
-                agentId: params.agentId,
-                value: JSON.stringify(results),
-            });
-
-            return results;
-        } catch (error) {
-            elizaLogger.error("Error in searchKnowledge:", error);
-            throw error;
-        }
+    async getKnowledgeByIds(params: {
+        ids: UUID[];
+        agentId: UUID;
+    }): Promise<RAGKnowledgeItem[]> {
+        const sql = `SELECT * FROM knowledge WHERE id IN (${params.ids.map(() => "?").join(", ")})`;
+        return this.db.prepare(sql).all(...params.ids) as RAGKnowledgeItem[];
     }
 
     async createKnowledge(knowledge: RAGKnowledgeItem): Promise<void> {
@@ -869,12 +753,10 @@ export class SqliteDatabaseAdapter
             this.db.transaction(() => {
                 const sql = `
                     INSERT INTO knowledge (
-                    id, agentId, content, embedding, createdAt,
+                    id, agentId, content, createdAt,
                     isMain, originalId, chunkIndex, isShared
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 `;
-
-                const embeddingArray = knowledge.embedding || null;
 
                 const metadata = knowledge.content.metadata || {};
                 const isShared = metadata.isShared ? 1 : 0;
@@ -885,7 +767,6 @@ export class SqliteDatabaseAdapter
                         knowledge.id,
                         metadata.isShared ? null : knowledge.agentId,
                         JSON.stringify(knowledge.content),
-                        embeddingArray,
                         knowledge.createdAt || Date.now(),
                         metadata.isMain ? 1 : 0,
                         metadata.originalId || null,
@@ -909,7 +790,6 @@ export class SqliteDatabaseAdapter
             ) {
                 elizaLogger.error(`Error creating knowledge ${knowledge.id}:`, {
                     error,
-                    embeddingLength: knowledge.embedding?.length,
                     content: knowledge.content,
                 });
                 throw error;
