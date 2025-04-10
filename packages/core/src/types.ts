@@ -1167,7 +1167,7 @@ export interface IRAGKnowledgeManager {
         conversationContext?: string;
         agentId?: UUID;
     }): Promise<RAGKnowledgeItem[]>;
-    createKnowledge(item: RAGKnowledgeItem): Promise<void>;
+    createKnowledge(item: RAGKnowledgeItem, source?: string): Promise<void>;
     removeKnowledge(id: UUID): Promise<void>;
     searchKnowledge(params: {
         agentId: UUID;

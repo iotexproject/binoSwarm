@@ -282,7 +282,10 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             .sort((a, b) => b.score - a.score);
     }
 
-    async createKnowledge(item: RAGKnowledgeItem): Promise<void> {
+    async createKnowledge(
+        item: RAGKnowledgeItem,
+        source?: string
+    ): Promise<void> {
         if (!item.content.text) {
             elizaLogger.warn("Empty content in knowledge item");
             return;
@@ -307,6 +310,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         isMain: true,
                         ...item.content.metadata,
                         createdAt: Date.now().toString(),
+                        source: source || "",
                     },
                 },
                 ...chunks.map((chunk, index) => ({
@@ -318,6 +322,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         originalId: item.id,
                         chunkIndex: index,
                         createdAt: Date.now().toString(),
+                        source: source || "",
                     },
                 })),
             ]);
