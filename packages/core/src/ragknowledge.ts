@@ -347,7 +347,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             includeMetadata: true,
         });
 
-        console.log(results);
+        elizaLogger.debug("Pinecone search results:", results);
 
         return results.matches.map((match) => ({
             id: match.id as UUID,
