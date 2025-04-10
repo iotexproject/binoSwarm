@@ -419,24 +419,6 @@ export class SqliteDatabaseAdapter
         this.db.prepare(sql).run(params.status, params.goalId);
     }
 
-    async log(params: {
-        body: { [key: string]: unknown };
-        userId: UUID;
-        roomId: UUID;
-        type: string;
-    }): Promise<void> {
-        const sql =
-            "INSERT INTO logs (body, userId, roomId, type) VALUES (?, ?, ?, ?)";
-        this.db
-            .prepare(sql)
-            .run(
-                JSON.stringify(params.body),
-                params.userId,
-                params.roomId,
-                params.type
-            );
-    }
-
     async getMemories(params: {
         roomId: UUID;
         count?: number;
