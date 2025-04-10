@@ -129,18 +129,6 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
     >;
 
     /**
-     * Logs an event or action with the specified details.
-     * @param params An object containing parameters for the log entry.
-     * @returns A Promise that resolves when the log entry has been saved.
-     */
-    abstract log(params: {
-        body: { [key: string]: unknown };
-        userId: UUID;
-        roomId: UUID;
-        type: string;
-    }): Promise<void>;
-
-    /**
      * Retrieves details of actors in a given room.
      * @param params An object containing the roomId to search for actors.
      * @returns A Promise that resolves to an array of Actor objects.
