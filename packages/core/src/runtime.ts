@@ -16,7 +16,6 @@ import {
 import { generateObject } from "./generation.ts";
 import { formatGoalsAsString, getGoals } from "./goals.ts";
 import { elizaLogger } from "./index.ts";
-import knowledge from "./knowledge.ts";
 import { MemoryManager } from "./memory.ts";
 import { formatMessages, retrieveActorIdsFromMessages } from "./messages.ts";
 import { stringArraySchema } from "./parsing.ts";
@@ -749,16 +748,9 @@ Text: ${attachment.text}
             return;
         }
 
-        if (this.character.settings.ragKnowledge) {
-            await this.ragKnowledgeManager.processCharacterRAGKnowledge(
-                this.character.knowledge
-            );
-        } else {
-            const stringKnowledge = this.character.knowledge.filter(
-                (item): item is string => typeof item === "string"
-            );
-            await this.processCharacterKnowledge(stringKnowledge);
-        }
+        await this.ragKnowledgeManager.processCharacterRAGKnowledge(
+            this.character.knowledge
+        );
     }
 
     private async initializePluginServices() {
@@ -798,31 +790,6 @@ Text: ${attachment.text}
                 this.character.name
             );
             client.stop();
-        }
-    }
-
-    private async processCharacterKnowledge(items: string[]) {
-        for (const item of items) {
-            const knowledgeId = stringToUuid(item);
-            const existingDocument =
-                await this.documentsManager.getMemoryById(knowledgeId);
-            if (existingDocument) {
-                continue;
-            }
-
-            elizaLogger.info(
-                "Processing knowledge for ",
-                this.character.name,
-                " - ",
-                item.slice(0, 100)
-            );
-
-            await knowledge.set(this, {
-                id: knowledgeId,
-                content: {
-                    text: item,
-                },
-            });
         }
     }
 
