@@ -115,15 +115,16 @@ async function handler(runtime: IAgentRuntime, message: Memory) {
         .map((fact) => fact.claim);
 
     for (const fact of filteredFacts) {
-        const factMemory = await factsManager.addEmbeddingToMemory({
-            userId: agentId!,
-            agentId,
-            content: { text: fact },
-            roomId,
-            createdAt: Date.now(),
-        });
-
-        await factsManager.createMemory(factMemory, true);
+        await factsManager.createMemory(
+            {
+                userId: agentId!,
+                agentId,
+                content: { text: fact },
+                roomId,
+                createdAt: Date.now(),
+            },
+            true
+        );
 
         await new Promise((resolve) => setTimeout(resolve, 250));
     }

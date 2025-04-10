@@ -326,7 +326,6 @@ export class MessageManager {
             });
 
             if (content.text) {
-                await this.runtime.messageManager.addEmbeddingToMemory(memory);
                 await this.runtime.messageManager.createMemory(memory);
 
                 if (this.interestChannels[message.channelId]) {
