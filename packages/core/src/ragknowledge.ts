@@ -10,7 +10,7 @@ import {
     UUID,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
-import { embed, embedMany } from "./embedding.ts";
+import { embed, embedMany, getDimentionZeroEmbedding } from "./embedding.ts";
 import { VectorDB } from "./vectorDB.ts";
 
 type RAGKnowledgeItemMetadata = {
@@ -23,6 +23,8 @@ type RAGKnowledgeItemMetadata = {
     chunkIndex?: number;
     isShared?: boolean;
 };
+
+const KNOWLEDGE_METADATA_TYPE = "knowledge";
 
 export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     runtime: IAgentRuntime;
@@ -99,6 +101,11 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             return;
         }
 
+        const existingKnowledge = await this.checkExistingKnowledge(item);
+        if (existingKnowledge) {
+            elizaLogger.debug("Knowledge already exists", existingKnowledge);
+            return;
+        }
         try {
             const processedContent = this.preprocess(item.content.text);
             await this.chunkEmbedAndPersist(processedContent, item, source);
@@ -106,6 +113,27 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             elizaLogger.error(`Error processing knowledge ${item.id}:`, error);
             throw error;
         }
+    }
+
+    async getKnowledgeByContentHash(
+        inputHash: string
+    ): Promise<RAGKnowledgeItemMetadata | null> {
+        const matches = await this.vectorDB.search({
+            namespace: this.runtime.agentId.toString(),
+            vector: getDimentionZeroEmbedding(),
+            topK: 1,
+            type: KNOWLEDGE_METADATA_TYPE,
+            filter: {
+                inputHash,
+            },
+        });
+
+        if (matches.length > 0) {
+            elizaLogger.debug("Knowledge match found", matches[0].metadata);
+            return matches[0].metadata;
+        }
+
+        return null;
     }
 
     async searchKnowledge(params: {
@@ -121,7 +149,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             namespace: params.agentId.toString(),
             vector: embedding,
             topK: match_count,
-            type: "knowledge",
+            type: KNOWLEDGE_METADATA_TYPE,
             filter: {
                 isChunk: true,
             },
@@ -149,7 +177,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         await Promise.all([
             this.vectorDB.removeByFilter(
                 {
-                    type: "knowledge",
+                    type: KNOWLEDGE_METADATA_TYPE,
                 },
                 this.runtime.agentId.toString()
             ),
@@ -185,6 +213,14 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 },
             };
 
+            const existingKnowledge = await this.checkExistingKnowledge(item);
+            if (existingKnowledge) {
+                elizaLogger.debug(
+                    "Knowledge already exists",
+                    existingKnowledge
+                );
+                return;
+            }
             const processedContent = this.preprocess(content);
             await this.chunkEmbedAndPersist(processedContent, item, "file");
 
@@ -307,18 +343,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         contentItem.slice(0, 100)
                     );
 
-                    const existingKnowledge = await this.getKnowledgeById({
-                        id: knowledgeId,
-                        agentId: this.runtime.agentId,
-                    });
-
-                    if (existingKnowledge.length > 0) {
-                        elizaLogger.info(
-                            `Direct knowledge ${knowledgeId} already exists, skipping`
-                        );
-                        continue;
-                    }
-
                     await this.createKnowledge(
                         {
                             id: knowledgeId,
@@ -326,7 +350,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                             content: {
                                 text: contentItem,
                                 metadata: {
-                                    type: "direct",
+                                    type: KNOWLEDGE_METADATA_TYPE,
                                 },
                             },
                         },
@@ -348,6 +372,14 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 "Some knowledge items failed to process, but continuing with available knowledge"
             );
         }
+    }
+
+    private async checkExistingKnowledge(
+        item: RAGKnowledgeItem
+    ): Promise<boolean> {
+        const contentHash = this.vectorDB.hashInput(item.content.text);
+        const res = await this.getKnowledgeByContentHash(contentHash);
+        return res !== null;
     }
 
     private rerankResults(
@@ -504,8 +536,18 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         source: string
     ) {
         const chunks = await splitChunks(processedContent, 512, 20);
-        const embeddings = await embedMany([processedContent, ...chunks]);
 
+        if (chunks.length <= 1) {
+            elizaLogger.debug("Single chunk, only embedding main item");
+            const embedding = await embed(this.runtime, processedContent);
+            await Promise.all([
+                this.persistVectorData(item, [embedding], source, []),
+                this.persistRelationalData(item, []),
+            ]);
+            return;
+        }
+
+        const embeddings = await embedMany([processedContent, ...chunks]);
         await Promise.all([
             this.persistVectorData(item, embeddings, source, chunks),
             this.persistRelationalData(item, chunks),
@@ -519,7 +561,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         chunks: string[]
     ) {
         const metadata = {
-            type: "knowledge",
+            type: KNOWLEDGE_METADATA_TYPE,
             ...item.content.metadata,
             createdAt: Date.now().toString(),
             source: source,
