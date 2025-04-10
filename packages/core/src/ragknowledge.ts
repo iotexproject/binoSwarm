@@ -10,19 +10,25 @@ import {
     UUID,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
-import { Pinecone } from "@pinecone-database/pinecone";
 import { embed, embedMany } from "./embedding.ts";
+import { VectorDB } from "./vectorDB.ts";
 
-const pc = new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY,
-});
-const index = pc.index(process.env.PINECONE_INDEX);
+type RAGKnowledgeItemMetadata = {
+    type: string;
+    isChunk: boolean;
+    isMain: boolean;
+    originalId?: UUID;
+    chunkIndex?: number;
+    source?: string;
+    isShared?: boolean;
+};
 
 export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     runtime: IAgentRuntime;
-
+    vectorDB: VectorDB<RAGKnowledgeItemMetadata>;
     constructor(opts: { runtime: IAgentRuntime }) {
         this.runtime = opts.runtime;
+        this.vectorDB = new VectorDB<RAGKnowledgeItemMetadata>();
     }
 
     private readonly defaultRAGMatchThreshold = Number(
@@ -110,15 +116,19 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     }): Promise<RAGKnowledgeItem[]> {
         const { match_count = this.defaultRAGMatchCount, embedding } = params;
 
-        const results = await index.namespace(params.agentId.toString()).query({
+        const matches = await this.vectorDB.search({
+            namespace: params.agentId.toString(),
             vector: embedding,
             topK: match_count,
-            includeMetadata: true,
+            type: "knowledge",
+            filter: {
+                isChunk: true,
+            },
         });
 
-        elizaLogger.debug("Pinecone search results:", results);
+        elizaLogger.debug("Pinecone search results:", matches);
 
-        const ids = results.matches.map((match) => match.id as UUID);
+        const ids = matches.map((match) => match.id as UUID);
         const chunks = await this.runtime.databaseAdapter.getKnowledgeByIds({
             ids,
             agentId: params.agentId,
@@ -129,14 +139,14 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
 
     async removeKnowledge(id: UUID): Promise<void> {
         await Promise.all([
-            index.namespace(this.runtime.agentId.toString()).deleteOne(id),
+            this.vectorDB.removeVector(id, this.runtime.agentId.toString()),
             this.runtime.databaseAdapter.removeKnowledge(id),
         ]);
     }
 
     async clearKnowledge(): Promise<void> {
         await Promise.all([
-            index.namespace(this.runtime.agentId.toString()).deleteAll(),
+            this.vectorDB.removeAllVectors(this.runtime.agentId.toString()),
             this.runtime.databaseAdapter.clearKnowledge(this.runtime.agentId),
         ]);
     }
@@ -505,26 +515,31 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             createdAt: Date.now().toString(),
             source: source || "",
         };
-        await index.namespace(this.runtime.agentId.toString()).upsert([
-            {
-                id: item.id,
-                values: embeddings[0],
-                metadata: {
-                    ...metadata,
-                    isMain: true,
+        await this.vectorDB.upsert({
+            namespace: this.runtime.agentId.toString(),
+            values: [
+                {
+                    id: item.id,
+                    values: embeddings[0],
+                    metadata: {
+                        ...metadata,
+                        isMain: true,
+                        isChunk: false,
+                    },
                 },
-            },
-            ...chunks.map((_chunk, index) => ({
-                id: this.buildChunkId(item, index),
-                values: embeddings[index + 1],
-                metadata: {
-                    ...metadata,
-                    isChunk: true,
-                    originalId: item.id,
-                    chunkIndex: index,
-                },
-            })),
-        ]);
+                ...chunks.map((_chunk, index) => ({
+                    id: this.buildChunkId(item, index),
+                    values: embeddings[index + 1],
+                    metadata: {
+                        ...metadata,
+                        isChunk: true,
+                        isMain: false,
+                        originalId: item.id,
+                        chunkIndex: index,
+                    },
+                })),
+            ],
+        });
     }
 
     private async persistRelationalData(
@@ -564,10 +579,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     }
 
     private async getKnowledgeById(params: {
-        query?: string;
         id?: UUID;
-        conversationContext?: string;
-        limit?: number;
         agentId?: UUID;
     }): Promise<RAGKnowledgeItem[]> {
         return await this.runtime.databaseAdapter.getKnowledgeByIds({
