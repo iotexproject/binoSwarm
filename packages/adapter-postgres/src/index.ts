@@ -1484,27 +1484,19 @@ export class PostgresDatabaseAdapter
         }, "deleteCache");
     }
 
-    async getKnowledge(params: {
-        id?: UUID;
+    async getKnowledgeByIds(params: {
+        ids: UUID[];
         agentId: UUID;
-        limit?: number;
-        query?: string;
     }): Promise<RAGKnowledgeItem[]> {
         return this.withDatabase(async () => {
             let sql = `SELECT * FROM knowledge WHERE ("agentId" = $1 OR "isShared" = true)`;
             const queryParams: any[] = [params.agentId];
             let paramCount = 1;
 
-            if (params.id) {
+            if (params.ids.length > 0) {
                 paramCount++;
-                sql += ` AND id = $${paramCount}`;
-                queryParams.push(params.id);
-            }
-
-            if (params.limit) {
-                paramCount++;
-                sql += ` LIMIT $${paramCount}`;
-                queryParams.push(params.limit);
+                sql += ` AND id IN (${params.ids.map((_, i) => `$${paramCount + i}`).join(",")})`;
+                queryParams.push(...params.ids);
             }
 
             const { rows } = await this.pool.query(sql, queryParams);
@@ -1516,102 +1508,19 @@ export class PostgresDatabaseAdapter
                     typeof row.content === "string"
                         ? JSON.parse(row.content)
                         : row.content,
-                embedding: row.embedding
-                    ? new Float32Array(row.embedding)
-                    : undefined,
                 createdAt: row.createdAt.getTime(),
             }));
         }, "getKnowledge");
     }
 
-    async searchKnowledge(params: {
-        agentId: UUID;
-        embedding: Float32Array;
-        match_threshold: number;
-        match_count: number;
-        searchText?: string;
-    }): Promise<RAGKnowledgeItem[]> {
+    async getKnowledge(id: UUID): Promise<RAGKnowledgeItem | null> {
         return this.withDatabase(async () => {
-            const cacheKey = `embedding_${params.agentId}_${params.searchText}`;
-            const cachedResult = await this.getCache({
-                key: cacheKey,
-                agentId: params.agentId,
-            });
-
-            if (cachedResult) {
-                return JSON.parse(cachedResult);
-            }
-
-            const vectorStr = `[${Array.from(params.embedding).join(",")}]`;
-
-            const sql = `
-                WITH vector_scores AS (
-                    SELECT id,
-                        1 - (embedding <-> $1::vector) as vector_score
-                    FROM knowledge
-                    WHERE ("agentId" IS NULL AND "isShared" = true) OR "agentId" = $2
-                    AND embedding IS NOT NULL
-                ),
-                keyword_matches AS (
-                    SELECT id,
-                    CASE
-                        WHEN content->>'text' ILIKE $3 THEN 3.0
-                        ELSE 1.0
-                    END *
-                    CASE
-                        WHEN (content->'metadata'->>'isChunk')::boolean = true THEN 1.5
-                        WHEN (content->'metadata'->>'isMain')::boolean = true THEN 1.2
-                        ELSE 1.0
-                    END as keyword_score
-                    FROM knowledge
-                    WHERE ("agentId" IS NULL AND "isShared" = true) OR "agentId" = $2
-                )
-                SELECT k.*,
-                    v.vector_score,
-                    kw.keyword_score,
-                    (v.vector_score * kw.keyword_score) as combined_score
-                FROM knowledge k
-                JOIN vector_scores v ON k.id = v.id
-                LEFT JOIN keyword_matches kw ON k.id = kw.id
-                WHERE ("agentId" IS NULL AND "isShared" = true) OR k."agentId" = $2
-                AND (
-                    v.vector_score >= $4
-                    OR (kw.keyword_score > 1.0 AND v.vector_score >= 0.3)
-                )
-                ORDER BY combined_score DESC
-                LIMIT $5
-            `;
-
-            const { rows } = await this.pool.query(sql, [
-                vectorStr,
-                params.agentId,
-                `%${params.searchText || ""}%`,
-                params.match_threshold,
-                params.match_count,
-            ]);
-
-            const results = rows.map((row) => ({
-                id: row.id,
-                agentId: row.agentId,
-                content:
-                    typeof row.content === "string"
-                        ? JSON.parse(row.content)
-                        : row.content,
-                embedding: row.embedding
-                    ? new Float32Array(row.embedding)
-                    : undefined,
-                createdAt: row.createdAt.getTime(),
-                similarity: row.combined_score,
-            }));
-
-            await this.setCache({
-                key: cacheKey,
-                agentId: params.agentId,
-                value: JSON.stringify(results),
-            });
-
-            return results;
-        }, "searchKnowledge");
+            const { rows } = await this.pool.query(
+                `SELECT * FROM knowledge WHERE id = $1`,
+                [id]
+            );
+            return rows[0] ?? null;
+        }, "getKnowledge");
     }
 
     async createKnowledge(knowledge: RAGKnowledgeItem): Promise<void> {
@@ -1621,9 +1530,6 @@ export class PostgresDatabaseAdapter
                 await client.query("BEGIN");
 
                 const metadata = knowledge.content.metadata || {};
-                const vectorStr = knowledge.embedding
-                    ? `[${Array.from(knowledge.embedding).join(",")}]`
-                    : null;
 
                 // If this is a chunk, use createKnowledgeChunk
                 if (metadata.isChunk && metadata.originalId) {
@@ -1632,7 +1538,6 @@ export class PostgresDatabaseAdapter
                         originalId: metadata.originalId,
                         agentId: metadata.isShared ? null : knowledge.agentId,
                         content: knowledge.content,
-                        embedding: knowledge.embedding,
                         chunkIndex: metadata.chunkIndex || 0,
                         isShared: metadata.isShared || false,
                         createdAt: knowledge.createdAt || Date.now(),
@@ -1642,16 +1547,15 @@ export class PostgresDatabaseAdapter
                     await client.query(
                         `
                         INSERT INTO knowledge (
-                            id, "agentId", content, embedding, "createdAt",
+                            id, "agentId", content, "createdAt",
                             "isMain", "originalId", "chunkIndex", "isShared"
-                        ) VALUES ($1, $2, $3, $4, to_timestamp($5/1000.0), $6, $7, $8, $9)
+                        ) VALUES ($1, $2, $3, to_timestamp($4/1000.0), $5, $6, $7, $8)
                         ON CONFLICT (id) DO NOTHING
                     `,
                         [
                             knowledge.id,
                             metadata.isShared ? null : knowledge.agentId,
                             knowledge.content,
-                            vectorStr,
                             knowledge.createdAt || Date.now(),
                             true,
                             null,
@@ -1727,38 +1631,30 @@ export class PostgresDatabaseAdapter
         originalId: UUID;
         agentId: UUID | null;
         content: any;
-        embedding: Float32Array | undefined | null;
         chunkIndex: number;
         isShared: boolean;
         createdAt: number;
     }): Promise<void> {
-        const vectorStr = params.embedding
-            ? `[${Array.from(params.embedding).join(",")}]`
-            : null;
-
-        // Store the pattern-based ID in the content metadata for compatibility
-        const patternId = `${params.originalId}-chunk-${params.chunkIndex}`;
         const contentWithPatternId = {
             ...params.content,
             metadata: {
                 ...params.content.metadata,
-                patternId,
+                patternId: params.id,
             },
         };
 
         await this.pool.query(
             `
             INSERT INTO knowledge (
-                id, "agentId", content, embedding, "createdAt",
+                id, "agentId", content, "createdAt",
                 "isMain", "originalId", "chunkIndex", "isShared"
-            ) VALUES ($1, $2, $3, $4, to_timestamp($5/1000.0), $6, $7, $8, $9)
+            ) VALUES ($1, $2, $3, to_timestamp($4/1000.0), $5, $6, $7, $8)
             ON CONFLICT (id) DO NOTHING
         `,
             [
                 v4(), // Generate a proper UUID for PostgreSQL
                 params.agentId,
                 contentWithPatternId, // Store the pattern ID in metadata
-                vectorStr,
                 params.createdAt,
                 false,
                 params.originalId,

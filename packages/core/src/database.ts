@@ -377,21 +377,12 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
      * @param params Object containing search parameters
      * @returns Promise resolving to array of knowledge items
      */
-    abstract getKnowledge(params: {
-        id?: UUID;
+    abstract getKnowledgeByIds(params: {
+        ids: UUID[];
         agentId: UUID;
-        limit?: number;
-        query?: string;
-        conversationContext?: string;
     }): Promise<RAGKnowledgeItem[]>;
 
-    abstract searchKnowledge(params: {
-        agentId: UUID;
-        embedding: Float32Array;
-        match_threshold: number;
-        match_count: number;
-        searchText?: string;
-    }): Promise<RAGKnowledgeItem[]>;
+    abstract getKnowledge(id: UUID): Promise<RAGKnowledgeItem | null>;
 
     /**
      * Creates a new knowledge item in the database.

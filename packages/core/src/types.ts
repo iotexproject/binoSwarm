@@ -1065,21 +1065,11 @@ export interface IDatabaseAdapter {
 
     getRelationships(params: { userId: UUID }): Promise<Relationship[]>;
 
-    getKnowledge(params: {
-        id?: UUID;
+    getKnowledgeByIds(params: {
+        ids: UUID[];
         agentId: UUID;
-        limit?: number;
-        query?: string;
-        conversationContext?: string;
     }): Promise<RAGKnowledgeItem[]>;
-
-    searchKnowledge(params: {
-        agentId: UUID;
-        embedding: Float32Array;
-        match_threshold: number;
-        match_count: number;
-        searchText?: string;
-    }): Promise<RAGKnowledgeItem[]>;
+    getKnowledge(id: UUID): Promise<RAGKnowledgeItem | null>;
 
     createKnowledge(knowledge: RAGKnowledgeItem): Promise<void>;
     removeKnowledge(id: UUID): Promise<void>;
@@ -1158,7 +1148,6 @@ export interface IMemoryManager {
 
 export interface IRAGKnowledgeManager {
     runtime: IAgentRuntime;
-    tableName: string;
 
     getKnowledge(params: {
         query?: string;
@@ -1533,9 +1522,7 @@ export interface RAGKnowledgeItem {
             [key: string]: unknown;
         };
     };
-    embedding?: Float32Array;
     createdAt?: number;
-    similarity?: number;
     score?: number;
 }
 

@@ -23,11 +23,9 @@ const EMBEDDING_MODEL = "text-embedding-3-large";
 
 export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     runtime: IAgentRuntime;
-    tableName: string;
 
-    constructor(opts: { tableName: string; runtime: IAgentRuntime }) {
+    constructor(opts: { runtime: IAgentRuntime }) {
         this.runtime = opts.runtime;
-        this.tableName = opts.tableName;
     }
 
     private readonly defaultRAGMatchThreshold = Number(
@@ -207,9 +205,11 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         ]);
     }
 
-    private buildChunkId(item: RAGKnowledgeItem, index: number): UUID {
-        const chunkStart = item.id.split("-").slice(0, 3).join("-");
-        return `${chunkStart}-chunk-${index}` as UUID;
+    private buildChunkId(
+        item: RAGKnowledgeItem,
+        index: number
+    ): `${UUID}-chunk-${number}` {
+        return `${item.id}-chunk-${index}`;
     }
 
     async searchKnowledge(params: {
@@ -455,7 +455,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     ) {
         return results
             .map((result) => {
-                let score = result.similarity;
+                let score = result.score;
 
                 // Check for direct query term matches
                 const queryTerms = this.getQueryTerms(processedQuery);

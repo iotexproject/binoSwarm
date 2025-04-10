@@ -692,7 +692,6 @@ Text: ${attachment.text}
 
         this.ragKnowledgeManager = new RAGKnowledgeManager({
             runtime: this,
-            tableName: "knowledge",
         });
 
         (opts.managers ?? []).forEach((manager: IMemoryManager) => {
