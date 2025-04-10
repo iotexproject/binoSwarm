@@ -11,7 +11,14 @@ import {
     UUID,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
+import { Pinecone } from "@pinecone-database/pinecone";
+import { openai } from "@ai-sdk/openai";
+import { embedMany } from "ai";
 
+const pc = new Pinecone({
+    apiKey: process.env.PINECONE_API_KEY,
+});
+const index = pc.index(process.env.PINECONE_INDEX);
 /**
  * Manage knowledge in the database.
  */
@@ -282,54 +289,38 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         }
 
         try {
-            // Process main document
             const processedContent = this.preprocess(item.content.text);
-            const mainEmbeddingArray = await embed(
-                this.runtime,
-                processedContent
-            );
-
-            const mainEmbedding = new Float32Array(mainEmbeddingArray);
-
-            // Create main document
-            await this.runtime.databaseAdapter.createKnowledge({
-                id: item.id,
-                agentId: this.runtime.agentId,
-                content: {
-                    text: item.content.text,
-                    metadata: {
-                        ...item.content.metadata,
-                        isMain: true,
-                    },
-                },
-                embedding: mainEmbedding,
-                createdAt: Date.now(),
-            });
-
-            // Generate and store chunks
             const chunks = await splitChunks(processedContent, 512, 20);
 
-            for (const [index, chunk] of chunks.entries()) {
-                const chunkEmbeddingArray = await embed(this.runtime, chunk);
-                const chunkEmbedding = new Float32Array(chunkEmbeddingArray);
-                const chunkId = `${item.id}-chunk-${index}` as UUID;
+            const { embeddings } = await embedMany({
+                model: openai.embedding("text-embedding-3-large"),
+                values: [processedContent, ...chunks],
+                maxRetries: 3,
+            });
 
-                await this.runtime.databaseAdapter.createKnowledge({
-                    id: chunkId,
-                    agentId: this.runtime.agentId,
-                    content: {
-                        text: chunk,
-                        metadata: {
-                            ...item.content.metadata,
-                            isChunk: true,
-                            originalId: item.id,
-                            chunkIndex: index,
-                        },
+            await index.namespace(this.runtime.agentId.toString()).upsert([
+                {
+                    id: item.id,
+                    values: embeddings[0],
+                    metadata: {
+                        text: item.content.text,
+                        isMain: true,
+                        ...item.content.metadata,
+                        createdAt: Date.now().toString(),
                     },
-                    embedding: chunkEmbedding,
-                    createdAt: Date.now(),
-                });
-            }
+                },
+                ...chunks.map((chunk, index) => ({
+                    id: `${item.id}-chunk-${index}` as UUID,
+                    values: embeddings[index + 1],
+                    metadata: {
+                        text: chunk,
+                        isChunk: true,
+                        originalId: item.id,
+                        chunkIndex: index,
+                        createdAt: Date.now().toString(),
+                    },
+                })),
+            ]);
         } catch (error) {
             elizaLogger.error(`Error processing knowledge ${item.id}:`, error);
             throw error;
