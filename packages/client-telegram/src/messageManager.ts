@@ -825,7 +825,7 @@ export class MessageManager {
             modelClass: ModelClass.LARGE,
         });
 
-        await this.runtime.databaseAdapter.log({
+        elizaLogger.log({
             body: { message, context, response },
             userId,
             roomId,
