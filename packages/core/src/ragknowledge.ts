@@ -46,28 +46,16 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     }): Promise<RAGKnowledgeItem[]> {
         const agentId = params.agentId || this.runtime.agentId;
 
-        // If id is provided, do direct lookup first
         if (params.id) {
-            const directResults = await index
-                .namespace(agentId.toString())
-                .query({
-                    id: params.id.toString(),
-                    topK: 1,
-                    includeMetadata: true,
-                });
-
-            if (directResults.matches.length > 0) {
-                return directResults.matches.map((match) => ({
-                    id: match.id as UUID,
-                    agentId: agentId,
-                    content: {
-                        text: (match.metadata?.text as string) || "",
-                    },
-                }));
+            const directResults = await this.getKnowledgeById({
+                id: params.id,
+                agentId,
+            });
+            if (directResults.length > 0) {
+                return directResults;
             }
         }
 
-        // If no id or no direct results, perform semantic search
         if (!params.query) {
             return [];
         }
@@ -84,7 +72,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 searchText = `${relevantContext} ${processedQuery}`;
             }
 
-            // const embeddingArray = await embed(this.runtime, searchText);
             const embeddingArray = await embed({
                 model: openai.embedding(EMBEDDING_MODEL),
                 value: searchText,
@@ -114,6 +101,31 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         } catch (error) {
             elizaLogger.error(`[RAG Search Error] ${error}`);
             return [];
+        }
+    }
+
+    private async getKnowledgeById(params: {
+        query?: string;
+        id?: UUID;
+        conversationContext?: string;
+        limit?: number;
+        agentId?: UUID;
+    }): Promise<RAGKnowledgeItem[]> {
+        const { id, agentId } = params;
+        const directResults = await index.namespace(agentId.toString()).query({
+            id: id.toString(),
+            topK: 1,
+            includeMetadata: true,
+        });
+
+        if (directResults.matches.length > 0) {
+            return directResults.matches.map((match) => ({
+                id: match.id as UUID,
+                agentId: agentId,
+                content: {
+                    text: (match.metadata?.text as string) || "",
+                },
+            }));
         }
     }
 
