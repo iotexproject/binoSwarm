@@ -147,7 +147,12 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
 
     async clearKnowledge(): Promise<void> {
         await Promise.all([
-            this.vectorDB.removeAllVectors(this.runtime.agentId.toString()),
+            this.vectorDB.removeByFilter(
+                {
+                    type: "knowledge",
+                },
+                this.runtime.agentId.toString()
+            ),
             this.runtime.databaseAdapter.clearKnowledge(this.runtime.agentId),
         ]);
     }
