@@ -1093,62 +1093,6 @@ export class PostgresDatabaseAdapter
         }, "getCachedEmbeddings");
     }
 
-    async log(params: {
-        body: { [key: string]: unknown };
-        userId: UUID;
-        roomId: UUID;
-        type: string;
-    }): Promise<void> {
-        // Input validation
-        if (!params.userId) throw new Error("userId is required");
-        if (!params.roomId) throw new Error("roomId is required");
-        if (!params.type) throw new Error("type is required");
-        if (!params.body || typeof params.body !== "object") {
-            throw new Error("body must be a valid object");
-        }
-
-        return this.withDatabase(async () => {
-            try {
-                const logId = v4(); // Generate ID for tracking
-                await this.pool.query(
-                    `INSERT INTO logs (
-                        id,
-                        body,
-                        "userId",
-                        "roomId",
-                        type,
-                        "createdAt"
-                    ) VALUES ($1, $2, $3, $4, $5, NOW())
-                    RETURNING id`,
-                    [
-                        logId,
-                        JSON.stringify(params.body), // Ensure body is stringified
-                        params.userId,
-                        params.roomId,
-                        params.type,
-                    ]
-                );
-
-                elizaLogger.debug("Log entry created:", {
-                    logId,
-                    type: params.type,
-                    roomId: params.roomId,
-                    userId: params.userId,
-                    bodyKeys: Object.keys(params.body),
-                });
-            } catch (error) {
-                elizaLogger.error("Failed to create log entry:", {
-                    error:
-                        error instanceof Error ? error.message : String(error),
-                    type: params.type,
-                    roomId: params.roomId,
-                    userId: params.userId,
-                });
-                throw error;
-            }
-        }, "log");
-    }
-
     async searchMemoriesByEmbedding(
         embedding: number[],
         params: {
