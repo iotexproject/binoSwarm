@@ -159,23 +159,33 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             maxRetries: 3,
         });
 
+        await Promise.all([
+            this.persistVectorData(item, embeddings, source, chunks),
+            this.persistRelationalData(item, chunks),
+        ]);
+    }
+
+    private async persistVectorData(
+        item: RAGKnowledgeItem,
+        embeddings: number[][],
+        source: string,
+        chunks: string[]
+    ) {
         await index.namespace(this.runtime.agentId.toString()).upsert([
             {
                 id: item.id,
                 values: embeddings[0],
                 metadata: {
-                    text: item.content.text,
                     isMain: true,
                     ...item.content.metadata,
                     createdAt: Date.now().toString(),
                     source: source || "",
                 },
             },
-            ...chunks.map((chunk, index) => ({
-                id: `${item.id}-chunk-${index}` as UUID,
+            ...chunks.map((_chunk, index) => ({
+                id: this.buildChunkId(item, index),
                 values: embeddings[index + 1],
                 metadata: {
-                    text: chunk,
                     isChunk: true,
                     originalId: item.id,
                     chunkIndex: index,
@@ -184,6 +194,47 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 },
             })),
         ]);
+    }
+
+    private async persistRelationalData(
+        item: RAGKnowledgeItem,
+        chunks: string[]
+    ) {
+        await Promise.all([
+            this.runtime.databaseAdapter.createKnowledge({
+                id: item.id,
+                agentId: this.runtime.agentId,
+                content: {
+                    text: item.content.text,
+                    metadata: {
+                        ...item.content.metadata,
+                        isMain: true,
+                    },
+                },
+                createdAt: Date.now(),
+            }),
+            ...chunks.map((chunk, index) =>
+                this.runtime.databaseAdapter.createKnowledge({
+                    id: this.buildChunkId(item, index),
+                    agentId: this.runtime.agentId,
+                    content: {
+                        text: chunk,
+                        metadata: {
+                            ...item.content.metadata,
+                            isChunk: true,
+                            originalId: item.id,
+                            chunkIndex: index,
+                        },
+                    },
+                    createdAt: Date.now(),
+                })
+            ),
+        ]);
+    }
+
+    private buildChunkId(item: RAGKnowledgeItem, index: number): UUID {
+        const chunkStart = item.id.split("-").slice(0, 3).join("-");
+        return `${chunkStart}-chunk-${index}` as UUID;
     }
 
     async searchKnowledge(params: {
