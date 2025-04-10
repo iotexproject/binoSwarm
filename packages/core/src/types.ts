@@ -966,13 +966,6 @@ export interface IDatabaseAdapter {
         query_match_count: number;
     }): Promise<{ embedding: number[]; levenshtein_score: number }[]>;
 
-    log(params: {
-        body: { [key: string]: unknown };
-        userId: UUID;
-        roomId: UUID;
-        type: string;
-    }): Promise<void>;
-
     getActorDetails(params: { roomId: UUID }): Promise<Actor[]>;
 
     searchMemories(params: {

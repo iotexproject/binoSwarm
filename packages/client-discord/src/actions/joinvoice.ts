@@ -173,7 +173,7 @@ You should only respond with the name of the voice channel or none, no commentar
                 modelClass: ModelClass.SMALL,
             });
 
-            runtime.databaseAdapter.log({
+            elizaLogger.log({
                 body: { message, context, response: responseContent },
                 userId: message.userId,
                 roomId: message.roomId,

@@ -197,7 +197,7 @@ export const continueAction: Action = {
 
         response.inReplyTo = message.id;
 
-        runtime.databaseAdapter.log({
+        elizaLogger.log({
             body: { message, context, response },
             userId,
             roomId,
