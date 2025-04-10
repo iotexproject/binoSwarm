@@ -136,21 +136,6 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
     abstract getActorDetails(params: { roomId: UUID }): Promise<Actor[]>;
 
     /**
-     * Searches for memories based on embeddings and other specified parameters.
-     * @param params An object containing parameters for the memory search.
-     * @returns A Promise that resolves to an array of Memory objects.
-     */
-    abstract searchMemories(params: {
-        tableName: string;
-        agentId: UUID;
-        roomId: UUID;
-        embedding: number[];
-        match_threshold: number;
-        match_count: number;
-        unique: boolean;
-    }): Promise<Memory[]>;
-
-    /**
      * Updates the status of a specific goal.
      * @param params An object containing the goalId and the new status.
      * @returns A Promise that resolves when the goal status has been updated.
@@ -159,24 +144,6 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
         goalId: UUID;
         status: GoalStatus;
     }): Promise<void>;
-
-    /**
-     * Searches for memories by embedding and other specified parameters.
-     * @param embedding The embedding vector to search with.
-     * @param params Additional parameters for the search.
-     * @returns A Promise that resolves to an array of Memory objects.
-     */
-    abstract searchMemoriesByEmbedding(
-        embedding: number[],
-        params: {
-            match_threshold?: number;
-            count?: number;
-            roomId?: UUID;
-            agentId?: UUID;
-            unique?: boolean;
-            tableName: string;
-        }
-    ): Promise<Memory[]>;
 
     /**
      * Creates a new memory in the database.

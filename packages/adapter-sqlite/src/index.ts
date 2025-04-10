@@ -210,147 +210,25 @@ export class SqliteDatabaseAdapter
         // const deleteSql = `DELETE FROM memories WHERE id = ? AND type = ?`;
         // this.db.prepare(deleteSql).run(memory.id, tableName);
 
-        let isUnique = true;
-
-        if (memory.embedding) {
-            // Check if a similar memory already exists
-            const similarMemories = await this.searchMemoriesByEmbedding(
-                memory.embedding,
-                {
-                    tableName,
-                    agentId: memory.agentId,
-                    roomId: memory.roomId,
-                    match_threshold: 0.95, // 5% similarity threshold
-                    count: 1,
-                }
-            );
-
-            isUnique = similarMemories.length === 0;
-        }
+        const isUnique = true;
 
         const content = JSON.stringify(memory.content);
         const createdAt = memory.createdAt ?? Date.now();
 
-        let embeddingValue: Float32Array = new Float32Array(384);
-        // If embedding is not available, we just load an array with a length of 384
-        if (memory?.embedding && memory?.embedding?.length > 0) {
-            embeddingValue = new Float32Array(memory.embedding);
-        }
-
         // Insert the memory with the appropriate 'unique' value
-        const sql = `INSERT OR REPLACE INTO memories (id, type, content, embedding, userId, roomId, agentId, \`unique\`, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT OR REPLACE INTO memories (id, type, content, userId, roomId, agentId, \`unique\`, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
         this.db
             .prepare(sql)
             .run(
                 memory.id ?? v4(),
                 tableName,
                 content,
-                embeddingValue,
                 memory.userId,
                 memory.roomId,
                 memory.agentId,
                 isUnique ? 1 : 0,
                 createdAt
             );
-    }
-
-    async searchMemories(params: {
-        tableName: string;
-        roomId: UUID;
-        agentId?: UUID;
-        embedding: number[];
-        match_threshold: number;
-        match_count: number;
-        unique: boolean;
-    }): Promise<Memory[]> {
-        // Build the query and parameters carefully
-        const queryParams = [
-            new Float32Array(params.embedding), // Ensure embedding is Float32Array
-            params.tableName,
-            params.roomId,
-        ];
-
-        let sql = `
-            SELECT *, vec_distance_L2(embedding, ?) AS similarity
-            FROM memories
-            WHERE type = ?
-            AND roomId = ?`;
-
-        if (params.unique) {
-            sql += " AND `unique` = 1";
-        }
-
-        if (params.agentId) {
-            sql += " AND agentId = ?";
-            queryParams.push(params.agentId);
-        }
-        sql += ` ORDER BY similarity ASC LIMIT ?`; // ASC for lower distance
-        queryParams.push(params.match_count.toString()); // Convert number to string
-
-        // Execute the prepared statement with the correct number of parameters
-        const memories = this.db.prepare(sql).all(...queryParams) as (Memory & {
-            similarity: number;
-        })[];
-
-        return memories.map((memory) => ({
-            ...memory,
-            createdAt:
-                typeof memory.createdAt === "string"
-                    ? Date.parse(memory.createdAt as string)
-                    : memory.createdAt,
-            content: JSON.parse(memory.content as unknown as string),
-        }));
-    }
-
-    async searchMemoriesByEmbedding(
-        embedding: number[],
-        params: {
-            match_threshold?: number;
-            count?: number;
-            roomId?: UUID;
-            agentId: UUID;
-            unique?: boolean;
-            tableName: string;
-        }
-    ): Promise<Memory[]> {
-        const queryParams = [
-            // JSON.stringify(embedding),
-            new Float32Array(embedding),
-            params.tableName,
-            params.agentId,
-        ];
-
-        let sql = `
-      SELECT *, vec_distance_L2(embedding, ?) AS similarity
-      FROM memories
-      WHERE embedding IS NOT NULL AND type = ? AND agentId = ?`;
-
-        if (params.unique) {
-            sql += " AND `unique` = 1";
-        }
-
-        if (params.roomId) {
-            sql += " AND roomId = ?";
-            queryParams.push(params.roomId);
-        }
-        sql += ` ORDER BY similarity DESC`;
-
-        if (params.count) {
-            sql += " LIMIT ?";
-            queryParams.push(params.count.toString());
-        }
-
-        const memories = this.db.prepare(sql).all(...queryParams) as (Memory & {
-            similarity: number;
-        })[];
-        return memories.map((memory) => ({
-            ...memory,
-            createdAt:
-                typeof memory.createdAt === "string"
-                    ? Date.parse(memory.createdAt as string)
-                    : memory.createdAt,
-            content: JSON.parse(memory.content as unknown as string),
-        }));
     }
 
     async getCachedEmbeddings(opts: {

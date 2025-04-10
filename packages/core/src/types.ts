@@ -968,32 +968,10 @@ export interface IDatabaseAdapter {
 
     getActorDetails(params: { roomId: UUID }): Promise<Actor[]>;
 
-    searchMemories(params: {
-        tableName: string;
-        agentId: UUID;
-        roomId: UUID;
-        embedding: number[];
-        match_threshold: number;
-        match_count: number;
-        unique: boolean;
-    }): Promise<Memory[]>;
-
     updateGoalStatus(params: {
         goalId: UUID;
         status: GoalStatus;
     }): Promise<void>;
-
-    searchMemoriesByEmbedding(
-        embedding: number[],
-        params: {
-            match_threshold?: number;
-            count?: number;
-            roomId?: UUID;
-            agentId?: UUID;
-            unique?: boolean;
-            tableName: string;
-        }
-    ): Promise<Memory[]>;
 
     createMemory(
         memory: Memory,

@@ -8,13 +8,11 @@ import {
     Account,
     Actor,
     DatabaseAdapter,
-    EmbeddingProvider,
     GoalStatus,
     Participant,
     Prediction,
     RAGKnowledgeItem,
     elizaLogger,
-    getEmbeddingConfig,
     type Goal,
     type IDatabaseCacheAdapter,
     type Memory,
@@ -214,26 +212,6 @@ export class PostgresDatabaseAdapter
         try {
             await client.query("BEGIN");
 
-            // Set application settings for embedding dimension
-            const embeddingConfig = getEmbeddingConfig();
-            if (embeddingConfig.provider === EmbeddingProvider.OpenAI) {
-                await client.query("SET app.use_openai_embedding = 'true'");
-                await client.query("SET app.use_ollama_embedding = 'false'");
-                await client.query("SET app.use_gaianet_embedding = 'false'");
-            } else if (embeddingConfig.provider === EmbeddingProvider.Ollama) {
-                await client.query("SET app.use_openai_embedding = 'false'");
-                await client.query("SET app.use_ollama_embedding = 'true'");
-                await client.query("SET app.use_gaianet_embedding = 'false'");
-            } else if (embeddingConfig.provider === EmbeddingProvider.GaiaNet) {
-                await client.query("SET app.use_openai_embedding = 'false'");
-                await client.query("SET app.use_ollama_embedding = 'false'");
-                await client.query("SET app.use_gaianet_embedding = 'true'");
-            } else {
-                await client.query("SET app.use_openai_embedding = 'false'");
-                await client.query("SET app.use_ollama_embedding = 'false'");
-            }
-
-            // Check if schema already exists (check for a core table)
             const { rows } = await client.query(`
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables
@@ -539,40 +517,19 @@ export class PostgresDatabaseAdapter
         return this.withDatabase(async () => {
             elizaLogger.debug("PostgresAdapter createMemory:", {
                 memoryId: memory.id,
-                embeddingLength: memory.embedding?.length,
                 contentLength: memory.content?.text?.length,
             });
 
-            let isUnique = true;
-
-            if (memory.embedding) {
-                // Check if this is a zero embedding vector
-                const isZeroVector = memory.embedding.every((val) => val === 0);
-                if (isZeroVector) {
-                    elizaLogger.debug(
-                        "Zero embedding vector, skipping similarity search"
-                    );
-                } else {
-                    const similarMemories =
-                        await this.searchMemoriesByEmbedding(memory.embedding, {
-                            tableName,
-                            roomId: memory.roomId,
-                            match_threshold: 0.95,
-                            count: 1,
-                        });
-                    isUnique = similarMemories.length === 0;
-                }
-            }
+            const isUnique = true;
 
             await this.pool.query(
                 `INSERT INTO memories (
-                    id, type, content, embedding, "userId", "roomId", "agentId", "unique", "createdAt"
-                ) VALUES ($1, $2, $3, $4, $5::uuid, $6::uuid, $7::uuid, $8, to_timestamp($9/1000.0))`,
+                    id, type, content, "userId", "roomId", "agentId", "unique", "createdAt"
+                ) VALUES ($1, $2, $3, $4::uuid, $5::uuid, $6::uuid, $7, to_timestamp($8/1000.0))`,
                 [
                     memory.id ?? v4(),
                     tableName,
                     JSON.stringify(memory.content),
-                    memory.embedding ? `[${memory.embedding.join(",")}]` : null,
                     memory.userId,
                     memory.roomId,
                     memory.agentId,
@@ -581,25 +538,6 @@ export class PostgresDatabaseAdapter
                 ]
             );
         }, "createMemory");
-    }
-
-    async searchMemories(params: {
-        tableName: string;
-        agentId: UUID;
-        roomId: UUID;
-        embedding: number[];
-        match_threshold: number;
-        match_count: number;
-        unique: boolean;
-    }): Promise<Memory[]> {
-        return await this.searchMemoriesByEmbedding(params.embedding, {
-            match_threshold: params.match_threshold,
-            count: params.match_count,
-            agentId: params.agentId,
-            roomId: params.roomId,
-            unique: params.unique,
-            tableName: params.tableName,
-        });
     }
 
     async getMemories(params: {
@@ -1091,108 +1029,6 @@ export class PostgresDatabaseAdapter
                 throw error;
             }
         }, "getCachedEmbeddings");
-    }
-
-    async searchMemoriesByEmbedding(
-        embedding: number[],
-        params: {
-            match_threshold?: number;
-            count?: number;
-            agentId?: UUID;
-            roomId?: UUID;
-            unique?: boolean;
-            tableName: string;
-        }
-    ): Promise<Memory[]> {
-        return this.withDatabase(async () => {
-            elizaLogger.debug("Incoming vector:", {
-                length: embedding.length,
-                sample: embedding.slice(0, 5),
-                isArray: Array.isArray(embedding),
-                allNumbers: embedding.every((n) => typeof n === "number"),
-            });
-
-            // Validate embedding dimension
-            if (embedding.length !== getEmbeddingConfig().dimensions) {
-                throw new Error(
-                    `Invalid embedding dimension: expected ${getEmbeddingConfig().dimensions}, got ${embedding.length}`
-                );
-            }
-
-            // Ensure vector is properly formatted
-            const cleanVector = embedding.map((n) => {
-                if (!Number.isFinite(n)) return 0;
-                // Limit precision to avoid floating point issues
-                return Number(n.toFixed(6));
-            });
-
-            // Format for Postgres pgvector
-            const vectorStr = `[${cleanVector.join(",")}]`;
-
-            elizaLogger.debug("Vector debug:", {
-                originalLength: embedding.length,
-                cleanLength: cleanVector.length,
-                sampleStr: vectorStr.slice(0, 100),
-            });
-
-            let sql = `
-                SELECT *,
-                1 - (embedding <-> $1::vector(${getEmbeddingConfig().dimensions})) as similarity
-                FROM memories
-                WHERE type = $2
-            `;
-
-            const values: any[] = [vectorStr, params.tableName];
-
-            // Log the query for debugging
-            elizaLogger.debug("Query debug:", {
-                sql: sql.slice(0, 200),
-                paramTypes: values.map((v) => typeof v),
-                vectorStrLength: vectorStr.length,
-            });
-
-            let paramCount = 2;
-
-            if (params.unique) {
-                sql += ` AND "unique" = true`;
-            }
-
-            if (params.agentId) {
-                paramCount++;
-                sql += ` AND "agentId" = $${paramCount}`;
-                values.push(params.agentId);
-            }
-
-            if (params.roomId) {
-                paramCount++;
-                sql += ` AND "roomId" = $${paramCount}::uuid`;
-                values.push(params.roomId);
-            }
-
-            if (params.match_threshold) {
-                paramCount++;
-                sql += ` AND 1 - (embedding <-> $1::vector) >= $${paramCount}`;
-                values.push(params.match_threshold);
-            }
-
-            sql += ` ORDER BY embedding <-> $1::vector`;
-
-            if (params.count) {
-                paramCount++;
-                sql += ` LIMIT $${paramCount}`;
-                values.push(params.count);
-            }
-
-            const { rows } = await this.pool.query(sql, values);
-            return rows.map((row) => ({
-                ...row,
-                content:
-                    typeof row.content === "string"
-                        ? JSON.parse(row.content)
-                        : row.content,
-                similarity: row.similarity,
-            }));
-        }, "searchMemoriesByEmbedding");
     }
 
     async addParticipant(userId: UUID, roomId: UUID): Promise<boolean> {
