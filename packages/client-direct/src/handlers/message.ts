@@ -2,7 +2,6 @@ import express from "express";
 
 import {
     stringToUuid,
-    getEmbeddingZeroVector,
     Content,
     Memory,
     elizaLogger,
@@ -85,7 +84,6 @@ async function handle(
         ...userMessage,
         userId: agentId,
         content: response,
-        embedding: getEmbeddingZeroVector(),
         createdAt: Date.now(),
     };
 

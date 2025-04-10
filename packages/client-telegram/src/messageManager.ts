@@ -6,7 +6,6 @@ import {
     ServiceType,
     composeRandomUser,
 } from "@elizaos/core";
-import { getEmbeddingZeroVector } from "@elizaos/core";
 import {
     Content,
     HandlerCallback,
@@ -1062,7 +1061,6 @@ export class MessageManager {
                 roomId,
                 content,
                 createdAt: message.date * 1000,
-                embedding: getEmbeddingZeroVector(),
             };
 
             await this.runtime.messageManager.createMemory(memory);
@@ -1104,7 +1102,6 @@ export class MessageManager {
                                 inReplyTo: messageId,
                             },
                             createdAt: sentMessage.date * 1000,
-                            embedding: getEmbeddingZeroVector(),
                         };
 
                         memory.content.action = !isLastMessage

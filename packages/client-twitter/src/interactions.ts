@@ -11,7 +11,6 @@ import {
     State,
     stringToUuid,
     elizaLogger,
-    getEmbeddingZeroVector,
     IImageDescriptionService,
     ServiceType,
     generateObject,
@@ -829,7 +828,6 @@ For each tweet that contains valuable information (in either text or media), pro
                         currentTweet.userId === this.twitterUserId
                             ? this.runtime.agentId
                             : stringToUuid(currentTweet.userId),
-                    embedding: getEmbeddingZeroVector(),
                 });
             }
 

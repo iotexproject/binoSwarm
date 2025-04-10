@@ -2,7 +2,6 @@ import express from "express";
 
 import {
     stringToUuid,
-    getEmbeddingZeroVector,
     Content,
     Memory,
     ServiceType,
@@ -113,7 +112,6 @@ async function processTextualRequest(
         ...userMessage,
         userId: agentId,
         content: response,
-        embedding: getEmbeddingZeroVector(),
         createdAt: Date.now(),
     };
 

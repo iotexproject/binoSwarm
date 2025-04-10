@@ -11,15 +11,12 @@ import {
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
 import { Pinecone } from "@pinecone-database/pinecone";
-import { openai } from "@ai-sdk/openai";
-import { embedMany, embed } from "ai";
+import { embed, embedMany } from "./embedding.ts";
 
 const pc = new Pinecone({
     apiKey: process.env.PINECONE_API_KEY,
 });
 const index = pc.index(process.env.PINECONE_INDEX);
-
-const EMBEDDING_MODEL = "text-embedding-3-large";
 
 export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     runtime: IAgentRuntime;
@@ -57,14 +54,11 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 searchText = `${relevantContext} ${processedQuery}`;
             }
 
-            const embeddingArray = await embed({
-                model: openai.embedding(EMBEDDING_MODEL),
-                value: searchText,
-            });
+            const embeddingArray = await embed(this.runtime, searchText);
 
             const results = await this.searchKnowledge({
                 agentId: this.runtime.agentId,
-                embedding: embeddingArray.embedding,
+                embedding: embeddingArray,
                 match_threshold: this.defaultRAGMatchThreshold,
                 match_count: (params.limit || this.defaultRAGMatchCount) * 2,
                 searchText: processedQuery,
@@ -126,11 +120,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         source: string
     ) {
         const chunks = await splitChunks(processedContent, 512, 20);
-        const { embeddings } = await embedMany({
-            model: openai.embedding(EMBEDDING_MODEL),
-            values: [processedContent, ...chunks],
-            maxRetries: 3,
-        });
+        const embeddings = await embedMany([processedContent, ...chunks]);
 
         await Promise.all([
             this.persistVectorData(item, embeddings, source, chunks),

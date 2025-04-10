@@ -1,5 +1,4 @@
 import { Tweet } from "agent-twitter-client";
-import { getEmbeddingZeroVector } from "@elizaos/core";
 import { Content, Memory, UUID } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 import { ClientBase } from "./base";
@@ -96,7 +95,6 @@ export async function buildConversationThread(
                     currentTweet.userId === client.profile.id
                         ? client.runtime.agentId
                         : stringToUuid(currentTweet.userId),
-                embedding: getEmbeddingZeroVector(),
             });
         }
 
@@ -287,7 +285,6 @@ export async function sendTweet(
                 : undefined,
         },
         roomId,
-        embedding: getEmbeddingZeroVector(),
         createdAt: tweet.timestamp * 1000,
     }));
 

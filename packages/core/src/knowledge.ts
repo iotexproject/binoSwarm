@@ -1,5 +1,5 @@
 import { AgentRuntime } from "./runtime.ts";
-import { embed, getEmbeddingZeroVector } from "./embedding.ts";
+import { embed } from "./embedding.ts";
 import { KnowledgeItem, UUID, type Memory } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
 import { splitChunks } from "./generation.ts";
@@ -77,7 +77,6 @@ async function set(
         userId: runtime.agentId,
         createdAt: Date.now(),
         content: item.content,
-        embedding: getEmbeddingZeroVector(),
     });
 
     const preprocessed = preprocess(item.content.text);

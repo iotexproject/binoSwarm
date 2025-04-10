@@ -2,7 +2,6 @@ import express from "express";
 
 import {
     composeContext,
-    getEmbeddingZeroVector,
     Memory,
     ModelClass,
     streamWithTools,
@@ -149,7 +148,6 @@ async function buildAndSaveMemory(
         userId: agentId,
         agentId,
         content,
-        embedding: getEmbeddingZeroVector(),
         createdAt: Date.now(),
     };
 

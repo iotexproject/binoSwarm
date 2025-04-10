@@ -3,7 +3,6 @@ import {
     IAgentRuntime,
     truncateToCompleteSentence,
     UUID,
-    getEmbeddingZeroVector,
     stringToUuid,
 } from "@elizaos/core";
 import { Tweet } from "agent-twitter-client";
@@ -157,7 +156,6 @@ export class TwitterHelpers {
                 source: "twitter",
             },
             roomId,
-            embedding: getEmbeddingZeroVector(),
             createdAt: tweet.timestamp,
         });
     }

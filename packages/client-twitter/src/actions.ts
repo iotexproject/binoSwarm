@@ -1,7 +1,6 @@
 import { Tweet } from "agent-twitter-client";
 import {
     composeContext,
-    getEmbeddingZeroVector,
     IAgentRuntime,
     ModelClass,
     stringToUuid,
@@ -349,7 +348,6 @@ export class TwitterActionProcessor {
             },
             agentId,
             roomId,
-            embedding: getEmbeddingZeroVector(),
             createdAt: tweet.timestamp * 1000,
         });
     }

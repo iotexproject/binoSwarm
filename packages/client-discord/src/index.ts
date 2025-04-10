@@ -1,5 +1,4 @@
 import {
-    getEmbeddingZeroVector,
     stringToUuid,
     elizaLogger,
     Character,
@@ -271,7 +270,6 @@ export class DiscordClient extends EventEmitter {
                 },
                 roomId,
                 createdAt: timestamp,
-                embedding: getEmbeddingZeroVector(),
             };
 
             try {
@@ -362,7 +360,6 @@ export class DiscordClient extends EventEmitter {
                 },
                 roomId,
                 createdAt: Date.now(),
-                embedding: getEmbeddingZeroVector(),
             });
         } catch (error) {
             elizaLogger.error(

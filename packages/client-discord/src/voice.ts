@@ -9,7 +9,6 @@ import {
     composeContext,
     composeRandomUser,
     elizaLogger,
-    getEmbeddingZeroVector,
     stringToUuid,
     generateShouldRespond,
     ITranscriptionService,
@@ -638,7 +637,6 @@ export class VoiceManager extends EventEmitter {
                 },
                 userId: userIdUUID,
                 roomId,
-                embedding: getEmbeddingZeroVector(),
                 createdAt: Date.now(),
             };
 
@@ -752,7 +750,6 @@ export class VoiceManager extends EventEmitter {
             userId: agentId,
             agentId,
             content,
-            embedding: getEmbeddingZeroVector(),
             createdAt: Date.now(),
         };
 

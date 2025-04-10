@@ -14,7 +14,7 @@ import {
     State,
     UUID,
 } from "@elizaos/core";
-import { stringToUuid, getEmbeddingZeroVector } from "@elizaos/core";
+import { stringToUuid } from "@elizaos/core";
 import {
     ChannelType,
     Client,
@@ -488,7 +488,6 @@ export class MessageManager {
                                     url: m.url,
                                 },
                                 roomId,
-                                embedding: getEmbeddingZeroVector(),
                                 createdAt: m.createdTimestamp,
                             };
                             memories.push(memory);
