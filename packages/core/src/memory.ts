@@ -1,4 +1,4 @@
-import { embed } from "./embedding.ts";
+import { embed, getDimentionZeroEmbedding } from "./embedding.ts";
 import elizaLogger from "./logger.ts";
 import {
     IAgentRuntime,
@@ -56,7 +56,7 @@ export class MemoryManager implements IMemoryManager {
         const contentHash = this.vectorDB.hashInput(content);
 
         const matches = await this.vectorDB.search({
-            vector: Array(1536).fill(0),
+            vector: getDimentionZeroEmbedding(),
             namespace: this.runtime.agentId.toString(),
             topK: 1,
             type: this.tableName,

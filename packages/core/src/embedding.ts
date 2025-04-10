@@ -43,6 +43,15 @@ export async function embed(
     return await getRemoteEmbedding(input);
 }
 
+export function getCurrentDimention() {
+    // TODO: get the current dimension from the model
+    return 3072;
+}
+
+export function getDimentionZeroEmbedding() {
+    return Array(getCurrentDimention()).fill(0);
+}
+
 export async function embedMany(values: string[]): Promise<number[][]> {
     const { embeddings } = await embedManyAi({
         model: openai.embedding(EMBEDDING_MODEL),
