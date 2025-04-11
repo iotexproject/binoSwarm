@@ -951,15 +951,6 @@ export interface IDatabaseAdapter {
         userId?: UUID;
     }): Promise<Memory[]>;
 
-    getCachedEmbeddings(params: {
-        query_table_name: string;
-        query_threshold: number;
-        query_input: string;
-        query_field_name: string;
-        query_field_sub_name: string;
-        query_match_count: number;
-    }): Promise<{ embedding: number[]; levenshtein_score: number }[]>;
-
     getActorDetails(params: { roomId: UUID }): Promise<Actor[]>;
 
     updateGoalStatus(params: {

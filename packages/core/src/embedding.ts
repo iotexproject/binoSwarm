@@ -80,10 +80,9 @@ async function retrieveCachedEmbedding(runtime: IAgentRuntime, input: string) {
         return null;
     }
 
-    const similaritySearchResult =
-        await runtime.messageManager.getCachedEmbeddings(input);
-    if (similaritySearchResult) {
-        return similaritySearchResult;
+    const existing = await runtime.messageManager.getCachedEmbeddings(input);
+    if (existing) {
+        return existing;
     }
     return null;
 }

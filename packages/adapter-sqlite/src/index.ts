@@ -231,64 +231,6 @@ export class SqliteDatabaseAdapter
             );
     }
 
-    async getCachedEmbeddings(opts: {
-        query_table_name: string;
-        query_threshold: number;
-        query_input: string;
-        query_field_name: string;
-        query_field_sub_name: string;
-        query_match_count: number;
-    }): Promise<{ embedding: number[]; levenshtein_score: number }[]> {
-        // First get content text and calculate Levenshtein distance
-        const sql = `
-            WITH content_text AS (
-                SELECT
-                    embedding,
-                    json_extract(
-                        json(content),
-                        '$.' || ? || '.' || ?
-                    ) as content_text
-                FROM memories
-                WHERE type = ?
-                AND json_extract(
-                    json(content),
-                    '$.' || ? || '.' || ?
-                ) IS NOT NULL
-            )
-            SELECT
-                embedding,
-                length(?) + length(content_text) - (
-                    length(?) + length(content_text) - (
-                        length(replace(lower(?), lower(content_text), '')) +
-                        length(replace(lower(content_text), lower(?), ''))
-                    ) / 2
-                ) as levenshtein_score
-            FROM content_text
-            ORDER BY levenshtein_score ASC
-            LIMIT ?
-        `;
-
-        const rows = this.db
-            .prepare(sql)
-            .all(
-                opts.query_field_name,
-                opts.query_field_sub_name,
-                opts.query_table_name,
-                opts.query_field_name,
-                opts.query_field_sub_name,
-                opts.query_input,
-                opts.query_input,
-                opts.query_input,
-                opts.query_input,
-                opts.query_match_count
-            ) as { embedding: Buffer; levenshtein_score: number }[];
-
-        return rows.map((row) => ({
-            embedding: Array.from(new Float32Array(row.embedding as Buffer)),
-            levenshtein_score: row.levenshtein_score,
-        }));
-    }
-
     async updateGoalStatus(params: {
         goalId: UUID;
         status: GoalStatus;

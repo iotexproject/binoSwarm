@@ -103,32 +103,6 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
     abstract getMemoryById(id: UUID): Promise<Memory | null>;
 
     /**
-     * Retrieves cached embeddings based on the specified query parameters.
-     * @param params An object containing parameters for the embedding retrieval.
-     * @returns A Promise that resolves to an array of objects containing embeddings and levenshtein scores.
-     */
-    abstract getCachedEmbeddings({
-        query_table_name,
-        query_threshold,
-        query_input,
-        query_field_name,
-        query_field_sub_name,
-        query_match_count,
-    }: {
-        query_table_name: string;
-        query_threshold: number;
-        query_input: string;
-        query_field_name: string;
-        query_field_sub_name: string;
-        query_match_count: number;
-    }): Promise<
-        {
-            embedding: number[];
-            levenshtein_score: number;
-        }[]
-    >;
-
-    /**
      * Retrieves details of actors in a given room.
      * @param params An object containing the roomId to search for actors.
      * @returns A Promise that resolves to an array of Actor objects.
