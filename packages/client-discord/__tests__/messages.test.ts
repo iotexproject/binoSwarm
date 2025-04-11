@@ -387,7 +387,10 @@ describe("MessageManager", () => {
                         text: "Message with attachment",
                         attachments: expect.any(Array),
                     }),
-                })
+                }),
+                "discord",
+                true,
+                false
             );
         });
 
