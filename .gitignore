@@ -62,3 +62,11 @@ agent/content
 eliza.manifest
 eliza.manifest.sgx
 eliza.sig
+
+*.crt
+*.key
+*.pem
+*.csr
+*.csr.pem
+*.csr.pem.crt
+*.csr.pem.key
