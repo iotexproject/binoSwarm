@@ -184,27 +184,6 @@ export class PostgresDatabaseAdapter
         }, "query");
     }
 
-    private async validateVectorSetup(): Promise<boolean> {
-        try {
-            const vectorExt = await this.query(`
-                SELECT 1 FROM pg_extension WHERE extname = 'vector'
-            `);
-            const hasVector = vectorExt.rows.length > 0;
-
-            if (!hasVector) {
-                elizaLogger.error("Vector extension not found in database");
-                return false;
-            }
-
-            return true;
-        } catch (error) {
-            elizaLogger.error("Failed to validate vector extension:", {
-                error: error instanceof Error ? error.message : String(error),
-            });
-            return false;
-        }
-    }
-
     async init() {
         await this.testConnection();
 
@@ -219,9 +198,9 @@ export class PostgresDatabaseAdapter
                 );
             `);
 
-            if (!rows[0].exists || !(await this.validateVectorSetup())) {
+            if (!rows[0].exists) {
                 elizaLogger.info(
-                    "Applying database schema - tables or vector extension missing"
+                    "Applying database schema - tables missing"
                 );
                 const schema = fs.readFileSync(
                     path.resolve(__dirname, "../schema.sql"),
