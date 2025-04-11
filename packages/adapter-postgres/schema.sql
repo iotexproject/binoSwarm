@@ -4,7 +4,6 @@
 -- DROP EXTENSION IF EXISTS vector CASCADE;
 -- DROP TABLE IF EXISTS relationships CASCADE;
 -- DROP TABLE IF EXISTS participants CASCADE;
--- DROP TABLE IF EXISTS logs CASCADE;
 -- DROP TABLE IF EXISTS goals CASCADE;
 -- DROP TABLE IF EXISTS memories CASCADE;
 -- DROP TABLE IF EXISTS rooms CASCADE;
@@ -51,17 +50,6 @@ CREATE TABLE IF NOT EXISTS  goals (
     "description" TEXT,
     "roomId" UUID REFERENCES rooms("id"),
     "objectives" JSONB DEFAULT '[]'::jsonb NOT NULL,
-    CONSTRAINT fk_room FOREIGN KEY ("roomId") REFERENCES rooms("id") ON DELETE CASCADE,
-    CONSTRAINT fk_user FOREIGN KEY ("userId") REFERENCES accounts("id") ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS  logs (
-    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    "userId" UUID NOT NULL REFERENCES accounts("id"),
-    "body" JSONB NOT NULL,
-    "type" TEXT NOT NULL,
-    "roomId" UUID NOT NULL REFERENCES rooms("id"),
     CONSTRAINT fk_room FOREIGN KEY ("roomId") REFERENCES rooms("id") ON DELETE CASCADE,
     CONSTRAINT fk_user FOREIGN KEY ("userId") REFERENCES accounts("id") ON DELETE CASCADE
 );
