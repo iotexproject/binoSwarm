@@ -72,30 +72,35 @@ export async function buildConversationThread(
                 "twitter"
             );
 
-            await client.runtime.messageManager.createMemory({
-                id: stringToUuid(
-                    currentTweet.id + "-" + client.runtime.agentId
-                ),
-                agentId: client.runtime.agentId,
-                content: {
-                    text: currentTweet.text,
-                    source: "twitter",
-                    url: currentTweet.permanentUrl,
-                    inReplyTo: currentTweet.inReplyToStatusId
-                        ? stringToUuid(
-                              currentTweet.inReplyToStatusId +
-                                  "-" +
-                                  client.runtime.agentId
-                          )
-                        : undefined,
+            await client.runtime.messageManager.createMemory(
+                {
+                    id: stringToUuid(
+                        currentTweet.id + "-" + client.runtime.agentId
+                    ),
+                    agentId: client.runtime.agentId,
+                    content: {
+                        text: currentTweet.text,
+                        source: "twitter",
+                        url: currentTweet.permanentUrl,
+                        inReplyTo: currentTweet.inReplyToStatusId
+                            ? stringToUuid(
+                                  currentTweet.inReplyToStatusId +
+                                      "-" +
+                                      client.runtime.agentId
+                              )
+                            : undefined,
+                    },
+                    createdAt: currentTweet.timestamp * 1000,
+                    roomId,
+                    userId:
+                        currentTweet.userId === client.profile.id
+                            ? client.runtime.agentId
+                            : stringToUuid(currentTweet.userId),
                 },
-                createdAt: currentTweet.timestamp * 1000,
-                roomId,
-                userId:
-                    currentTweet.userId === client.profile.id
-                        ? client.runtime.agentId
-                        : stringToUuid(currentTweet.userId),
-            });
+                "twitter",
+                false,
+                false
+            );
         }
 
         if (visited.has(currentTweet.id)) {

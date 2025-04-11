@@ -289,7 +289,9 @@ export class TwitterSearchClient {
                 for (const responseMessage of responseMessages) {
                     await this.runtime.messageManager.createMemory(
                         responseMessage,
-                        false
+                        "twitter",
+                        false,
+                        true
                     );
                 }
 

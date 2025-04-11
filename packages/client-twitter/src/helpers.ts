@@ -146,18 +146,23 @@ export class TwitterHelpers {
         await runtime.ensureParticipantInRoom(runtime.agentId, roomId);
 
         // Create a memory for the tweet
-        await runtime.messageManager.createMemory({
-            id: stringToUuid(tweet.id + "-" + runtime.agentId),
-            userId: runtime.agentId,
-            agentId: runtime.agentId,
-            content: {
-                text: newTweetContent.trim(),
-                url: tweet.permanentUrl,
-                source: "twitter",
+        await runtime.messageManager.createMemory(
+            {
+                id: stringToUuid(tweet.id + "-" + runtime.agentId),
+                userId: runtime.agentId,
+                agentId: runtime.agentId,
+                content: {
+                    text: newTweetContent.trim(),
+                    url: tweet.permanentUrl,
+                    source: "twitter",
+                },
+                roomId,
+                createdAt: tweet.timestamp,
             },
-            roomId,
-            createdAt: tweet.timestamp,
-        });
+            "twitter",
+            false,
+            true
+        );
     }
 
     static createTweetObject(

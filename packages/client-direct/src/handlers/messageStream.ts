@@ -65,7 +65,7 @@ async function handle(
         createdAt: Date.now(),
     };
 
-    await runtime.messageManager.createMemory(memory);
+    await runtime.messageManager.createMemory(memory, "direct", true, false);
 
     const state = await runtime.composeState(userMessage, {
         agentName: runtime.character.name,
@@ -152,5 +152,10 @@ async function buildAndSaveMemory(
 
     elizaLogger.info("streamedResponseMessage", responseMessage);
 
-    await runtime.messageManager.createMemory(responseMessage);
+    await runtime.messageManager.createMemory(
+        responseMessage,
+        "direct",
+        false,
+        true
+    );
 }

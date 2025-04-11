@@ -71,7 +71,12 @@ export class MemoryManager implements IMemoryManager {
         return null;
     }
 
-    async createMemory(memory: Memory, unique = true): Promise<void> {
+    async createMemory(
+        memory: Memory,
+        source: string,
+        unique: boolean,
+        isVectorRequired: boolean
+    ): Promise<void> {
         const existingMessage = await this.getMemoryById(memory.id);
 
         if (existingMessage) {
@@ -82,7 +87,7 @@ export class MemoryManager implements IMemoryManager {
         }
 
         elizaLogger.log("Creating Memory", memory.id, memory.content.text);
-        await this.embedAndPersist(memory, unique);
+        await this.embedAndPersist(memory, source, unique, isVectorRequired);
     }
 
     async getMemoriesByRoomIds(params: {
@@ -139,15 +144,23 @@ export class MemoryManager implements IMemoryManager {
         );
     }
 
-    private async embedAndPersist(memory: Memory, unique: boolean) {
+    private async embedAndPersist(
+        memory: Memory,
+        source: string,
+        unique: boolean,
+        isVectorRequired: boolean
+    ) {
         await this.runtime.databaseAdapter.createMemory(
             memory,
             this.tableName,
             unique
         );
 
+        if (!isVectorRequired) {
+            return;
+        }
         // don't await this, continue handle user message as soon as possible
-        this.persistVectorData(memory, this.tableName, unique);
+        this.persistVectorData(memory, source, unique);
     }
 
     private async persistVectorData(

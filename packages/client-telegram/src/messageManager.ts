@@ -1063,7 +1063,12 @@ export class MessageManager {
                 createdAt: message.date * 1000,
             };
 
-            await this.runtime.messageManager.createMemory(memory);
+            await this.runtime.messageManager.createMemory(
+                memory,
+                "telegram",
+                true,
+                false
+            );
 
             // Update state with the new memory
             let state = await this.runtime.composeState(memory);
@@ -1108,7 +1113,12 @@ export class MessageManager {
                             ? "CONTINUE"
                             : content.action;
 
-                        await this.runtime.messageManager.createMemory(memory);
+                        await this.runtime.messageManager.createMemory(
+                            memory,
+                            "telegram",
+                            false,
+                            true
+                        );
                         memories.push(memory);
                     }
 

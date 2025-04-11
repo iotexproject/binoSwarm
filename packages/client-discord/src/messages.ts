@@ -111,7 +111,12 @@ export class MessageManager {
                 this.updateInterest(message, userIdUUID, userName, content);
             }
 
-            await this.runtime.messageManager.createMemory(memory);
+            await this.runtime.messageManager.createMemory(
+                memory,
+                "discord",
+                true,
+                false
+            );
             let state = await this.runtime.composeState(memory, {
                 discordClient: this.client,
                 discordMessage: message,
@@ -203,7 +208,12 @@ export class MessageManager {
                             memories
                         );
                         for (const m of memories) {
-                            await this.runtime.messageManager.createMemory(m);
+                            await this.runtime.messageManager.createMemory(
+                                m,
+                                "discord",
+                                false,
+                                true
+                            );
                         }
                         return memories;
                     } catch (error) {

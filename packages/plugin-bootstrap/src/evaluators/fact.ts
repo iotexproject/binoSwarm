@@ -123,7 +123,9 @@ async function handler(runtime: IAgentRuntime, message: Memory) {
                 roomId,
                 createdAt: Date.now(),
             },
-            true
+            "facts",
+            true,
+            false
         );
 
         await new Promise((resolve) => setTimeout(resolve, 250));
