@@ -140,14 +140,14 @@ export class MemoryManager implements IMemoryManager {
     }
 
     private async embedAndPersist(memory: Memory, unique: boolean) {
-        await Promise.all([
-            this.runtime.databaseAdapter.createMemory(
-                memory,
-                this.tableName,
-                unique
-            ),
-            this.persistVectorData(memory, this.tableName, unique),
-        ]);
+        await this.runtime.databaseAdapter.createMemory(
+            memory,
+            this.tableName,
+            unique
+        );
+
+        // don't await this, continue handle user message as soon as possible
+        this.persistVectorData(memory, this.tableName, unique);
     }
 
     private async persistVectorData(
