@@ -173,10 +173,6 @@ export class MessageManager {
                     stopTyping();
                 });
 
-                elizaLogger.debug("responseContent", {
-                    responseContent,
-                });
-
                 responseContent.text = responseContent.text?.trim();
                 responseContent.inReplyTo = this.buildMemoryId(message);
 
