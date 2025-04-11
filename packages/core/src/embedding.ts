@@ -11,7 +11,8 @@ const EMBEDDING_RETRIES = 3;
 
 export async function embed(
     runtime: IAgentRuntime,
-    input: string
+    input: string,
+    isUnique: boolean
 ): Promise<number[]> {
     elizaLogger.debug("Embedding request:", {
         modelProvider: runtime.character.modelProvider,
@@ -33,8 +34,11 @@ export async function embed(
         return []; // Return empty embedding array
     }
 
-    const cachedEmbedding = await retrieveCachedEmbedding(runtime, input);
-    if (cachedEmbedding) return cachedEmbedding;
+    // messages in chats are not unique, so we don't need to check existing embeddings
+    if (!isUnique) {
+        const cachedEmbedding = await retrieveCachedEmbedding(runtime, input);
+        if (cachedEmbedding) return cachedEmbedding;
+    }
 
     const isLocal = getEmbeddingType(runtime) === "local";
     if (isLocal) {

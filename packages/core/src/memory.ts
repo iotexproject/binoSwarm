@@ -71,7 +71,7 @@ export class MemoryManager implements IMemoryManager {
         return null;
     }
 
-    async createMemory(memory: Memory, unique = false): Promise<void> {
+    async createMemory(memory: Memory, unique = true): Promise<void> {
         const existingMessage = await this.getMemoryById(memory.id);
 
         if (existingMessage) {
@@ -140,7 +140,7 @@ export class MemoryManager implements IMemoryManager {
     }
 
     private async embedAndPersist(memory: Memory, unique: boolean) {
-        const embedding = await embed(this.runtime, memory.content.text);
+        const embedding = await embed(this.runtime, memory.content.text, unique);
 
         await Promise.all([
             this.runtime.databaseAdapter.createMemory(
