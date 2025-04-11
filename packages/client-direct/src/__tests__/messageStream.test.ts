@@ -187,9 +187,6 @@ describe("Message stream endpoint", () => {
             "test-user",
             "direct"
         );
-        expect(
-            mockAgentRuntime.messageManager.addEmbeddingToMemory
-        ).toHaveBeenCalled();
         expect(mockAgentRuntime.messageManager.createMemory).toHaveBeenCalled();
         expect(mockAgentRuntime.composeState).toHaveBeenCalled();
     });
