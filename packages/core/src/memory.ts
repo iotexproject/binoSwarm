@@ -140,29 +140,28 @@ export class MemoryManager implements IMemoryManager {
     }
 
     private async embedAndPersist(memory: Memory, unique: boolean) {
-        const embedding = await embed(this.runtime, memory.content.text, unique);
-
         await Promise.all([
             this.runtime.databaseAdapter.createMemory(
                 memory,
                 this.tableName,
                 unique
             ),
-            this.persistVectorData(memory, embedding, this.tableName),
+            this.persistVectorData(memory, this.tableName, unique),
         ]);
     }
 
     private async persistVectorData(
         item: Memory,
-        embeddings: number[],
-        source: string
+        source: string,
+        unique: boolean
     ) {
+        const embedding = await embed(this.runtime, item.content.text, unique);
         await this.vectorDB.upsert({
             namespace: this.runtime.agentId.toString(),
             values: [
                 {
                     id: item.id,
-                    values: embeddings,
+                    values: embedding,
                     metadata: {
                         type: this.tableName,
                         createdAt: Date.now().toString(),
