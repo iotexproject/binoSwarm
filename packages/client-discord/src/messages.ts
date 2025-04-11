@@ -70,12 +70,16 @@ export class MessageManager {
     }
 
     async handleMessage(message: DiscordMessage) {
+        elizaLogger.log("DISCORD_HANDLE_MSG", {
+            message,
+        });
         const shouldSkip = this.shouldSkip(message);
         if (shouldSkip) {
             return;
         }
 
         const userId = message.author.id as UUID;
+        const userDiscordTag = `<@${userId}>`;
         const userName = message.author.username;
         const name = message.author.displayName;
         const channelId = message.channel.id;
@@ -102,9 +106,6 @@ export class MessageManager {
                 id: this.buildMemoryId(message),
                 createdAt: message.createdTimestamp,
             };
-            elizaLogger.debug("memory", {
-                memory,
-            });
 
             if (content.text) {
                 this.updateInterest(message, userIdUUID, userName, content);
@@ -160,7 +161,6 @@ export class MessageManager {
                             ?.discordMessageHandlerTemplate ||
                         discordMessageHandlerTemplate,
                 });
-                elizaLogger.debug("discordMsgHandlerContext", context);
 
                 // simulate discord typing while generating a response
                 const stopTyping = this.simulateTyping(message);
@@ -189,7 +189,7 @@ export class MessageManager {
                         }
                         const messages = await sendMessageInChunks(
                             message.channel as TextChannel,
-                            content.text,
+                            userDiscordTag + " " + content.text,
                             message.id,
                             files
                         );
@@ -841,7 +841,7 @@ export class MessageManager {
             modelClass: ModelClass.LARGE,
         });
 
-        elizaLogger.log({
+        elizaLogger.log("DISCORD_GEN_RESPONSE_RES", {
             body: { message, context, response },
             userId: userId,
             roomId,
