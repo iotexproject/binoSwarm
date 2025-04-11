@@ -46,6 +46,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         conversationContext?: string;
         limit?: number;
         agentId?: UUID;
+        isUnique?: boolean;
     }): Promise<RAGKnowledgeItem[]> {
         if (!params.query) {
             return [];
@@ -63,8 +64,11 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 searchText = `${relevantContext} ${processedQuery}`;
             }
 
-            const embeddingArray = await embed(this.runtime, searchText);
-
+            const embeddingArray = await embed(
+                this.runtime,
+                searchText,
+                params.isUnique
+            );
             const results = await this.searchKnowledge({
                 agentId: this.runtime.agentId,
                 embedding: embeddingArray,
@@ -94,7 +98,8 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
 
     async createKnowledge(
         item: RAGKnowledgeItem,
-        source: string
+        source: string,
+        isUnique: boolean
     ): Promise<void> {
         if (!item.content.text) {
             elizaLogger.warn("Empty content in knowledge item");
@@ -108,7 +113,12 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         }
         try {
             const processedContent = this.preprocess(item.content.text);
-            await this.chunkEmbedAndPersist(processedContent, item, source);
+            await this.chunkEmbedAndPersist(
+                processedContent,
+                item,
+                source,
+                isUnique
+            );
         } catch (error) {
             elizaLogger.error(`Error processing knowledge ${item.id}:`, error);
             throw error;
@@ -222,7 +232,12 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 return;
             }
             const processedContent = this.preprocess(content);
-            await this.chunkEmbedAndPersist(processedContent, item, "file");
+            await this.chunkEmbedAndPersist(
+                processedContent,
+                item,
+                "file",
+                false
+            );
 
             const totalTime = (Date.now() - startTime) / 1000;
             elizaLogger.info(
@@ -354,7 +369,8 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                                 },
                             },
                         },
-                        "character"
+                        "character",
+                        false
                     );
                 }
             } catch (error: any) {
@@ -533,13 +549,18 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     private async chunkEmbedAndPersist(
         processedContent: string,
         item: RAGKnowledgeItem,
-        source: string
+        source: string,
+        isUnique: boolean
     ) {
         const chunks = await splitChunks(processedContent, 512, 20);
 
         if (chunks.length <= 1) {
             elizaLogger.debug("Single chunk, only embedding main item");
-            const embedding = await embed(this.runtime, processedContent);
+            const embedding = await embed(
+                this.runtime,
+                processedContent,
+                isUnique
+            );
             await Promise.all([
                 this.persistVectorData(item, [embedding], source, []),
                 this.persistRelationalData(item, []),
