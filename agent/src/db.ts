@@ -8,14 +8,16 @@ import fs from "fs";
 import path from "path";
 import { PoolConfig } from "pg";
 
-export function initializeDatabase(): IDatabaseAdapter & IDatabaseCacheAdapter {
+export async function initializeDatabase(): Promise<
+    IDatabaseAdapter & IDatabaseCacheAdapter
+> {
     if (!process.env.POSTGRES_URL) {
         throw new Error("POSTGRES_URL is not set");
     }
     return initializePostgres();
 }
 
-function initializePostgres() {
+async function initializePostgres() {
     elizaLogger.info("Initializing PostgreSQL connection...");
 
     const pgConfig = getPostgresConfig();
@@ -24,7 +26,9 @@ function initializePostgres() {
         enableDBSsl(pgConfig);
     }
 
-    return new PostgresDatabaseAdapter(pgConfig);
+    const db = new PostgresDatabaseAdapter(pgConfig);
+    await db.init();
+    return db;
 }
 
 function enableDBSsl(pgConfig: PoolConfig) {
