@@ -82,7 +82,7 @@ export class MessageManager {
         const hasInterest = this._checkInterest(message.channelId);
         const roomId = stringToUuid(channelId + "-" + this.runtime.agentId);
         const userIdUUID = stringToUuid(userId);
-        const messageId = stringToUuid(message.id + "-" + this.runtime.agentId);
+        const messageId = this.buildMemoryId(message);
 
         try {
             await this.runtime.ensureConnection(
@@ -99,7 +99,7 @@ export class MessageManager {
                 userId: userIdUUID,
                 agentId: this.runtime.agentId,
                 roomId,
-                id: stringToUuid(message.id + "-" + this.runtime.agentId),
+                id: this.buildMemoryId(message),
                 createdAt: message.createdTimestamp,
             };
             elizaLogger.debug("memory", {
@@ -178,9 +178,7 @@ export class MessageManager {
                 });
 
                 responseContent.text = responseContent.text?.trim();
-                responseContent.inReplyTo = stringToUuid(
-                    message.id + "-" + this.runtime.agentId
-                );
+                responseContent.inReplyTo = this.buildMemoryId(message);
 
                 if (!responseContent.text) {
                     return;
@@ -191,50 +189,23 @@ export class MessageManager {
                 ) => {
                     try {
                         if (message.id && !content.inReplyTo) {
-                            content.inReplyTo = stringToUuid(
-                                message.id + "-" + this.runtime.agentId
-                            );
+                            content.inReplyTo = this.buildMemoryId(message);
                         }
-                        elizaLogger.debug("sendMessageInChunks");
                         const messages = await sendMessageInChunks(
                             message.channel as TextChannel,
                             content.text,
                             message.id,
                             files
                         );
-                        elizaLogger.debug("messages", {
-                            messages,
-                        });
 
                         const memories: Memory[] = [];
-                        for (const m of messages) {
-                            let action = content.action;
-                            // If there's only one message or it's the last message, keep the original action
-                            // For multiple messages, set all but the last to 'CONTINUE'
-                            if (
-                                messages.length > 1 &&
-                                m !== messages[messages.length - 1]
-                            ) {
-                                action = "CONTINUE";
-                            }
-
-                            const memory: Memory = {
-                                id: stringToUuid(
-                                    m.id + "-" + this.runtime.agentId
-                                ),
-                                userId: this.runtime.agentId,
-                                agentId: this.runtime.agentId,
-                                content: {
-                                    ...content,
-                                    action,
-                                    inReplyTo: messageId,
-                                    url: m.url,
-                                },
-                                roomId,
-                                createdAt: m.createdTimestamp,
-                            };
-                            memories.push(memory);
-                        }
+                        this.populateMemories(
+                            messages,
+                            content,
+                            messageId,
+                            roomId,
+                            memories
+                        );
                         for (const m of memories) {
                             await this.runtime.messageManager.createMemory(m);
                         }
@@ -246,12 +217,7 @@ export class MessageManager {
                 };
 
                 const responseMessages = await callback(responseContent);
-                elizaLogger.debug("responseMessages", {
-                    responseMessages,
-                });
-
                 state = await this.runtime.updateRecentMessageState(state);
-
                 await this.runtime.processActions(
                     memory,
                     responseMessages,
@@ -266,6 +232,42 @@ export class MessageManager {
                 await this.handleErrorInVoiceChannel(userId);
             }
         }
+    }
+
+    private populateMemories(
+        messages: DiscordMessage<boolean>[],
+        content: Content,
+        messageId: UUID,
+        roomId: UUID,
+        memories: Memory[]
+    ) {
+        for (const m of messages) {
+            let action = content.action;
+            // If there's only one message or it's the last message, keep the original action
+            // For multiple messages, set all but the last to 'CONTINUE'
+            if (messages.length > 1 && m !== messages[messages.length - 1]) {
+                action = "CONTINUE";
+            }
+
+            const memory: Memory = {
+                id: this.buildMemoryId(m),
+                userId: this.runtime.agentId,
+                agentId: this.runtime.agentId,
+                content: {
+                    ...content,
+                    action,
+                    inReplyTo: messageId,
+                    url: m.url,
+                },
+                roomId,
+                createdAt: m.createdTimestamp,
+            };
+            memories.push(memory);
+        }
+    }
+
+    private buildMemoryId(message: DiscordMessage<boolean>) {
+        return stringToUuid(message.id + "-" + this.runtime.agentId);
     }
 
     private async handleErrorInVoiceChannel(userId: UUID) {
