@@ -1062,6 +1062,7 @@ Text: ${attachment.text}
             knowledgeData = await this.ragKnowledgeManager.getKnowledge({
                 query: message.content.text,
                 limit: 5,
+                isUnique: true,
             });
 
             formattedKnowledge = formatKnowledge(knowledgeData);
