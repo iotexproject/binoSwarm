@@ -11,29 +11,6 @@
 -- DROP TABLE IF EXISTS accounts CASCADE;
 -- DROP TABLE IF EXISTS knowledge CASCADE;
 
-
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
-
--- Create a function to determine vector dimension
-CREATE OR REPLACE FUNCTION get_embedding_dimension()
-RETURNS INTEGER AS $$
-BEGIN
-    -- Check for OpenAI first
-    IF current_setting('app.use_openai_embedding', TRUE) = 'true' THEN
-        RETURN 1536;  -- OpenAI dimension
-    -- Then check for Ollama
-    ELSIF current_setting('app.use_ollama_embedding', TRUE) = 'true' THEN
-        RETURN 1024;  -- Ollama mxbai-embed-large dimension
-    -- Then check for GAIANET
-    ELSIF current_setting('app.use_gaianet_embedding', TRUE) = 'true' THEN
-        RETURN 768;  -- Gaianet nomic-embed dimension
-    ELSE
-        RETURN 384;   -- BGE/Other embedding dimension
-    END IF;
-END;
-$$ LANGUAGE plpgsql;
-
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS accounts (
@@ -51,28 +28,19 @@ CREATE TABLE IF NOT EXISTS rooms (
     "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-DO $$
-DECLARE
-    vector_dim INTEGER;
-BEGIN
-    vector_dim := get_embedding_dimension();
-
-    EXECUTE format('
-        CREATE TABLE IF NOT EXISTS memories (
-            "id" UUID PRIMARY KEY,
-            "type" TEXT NOT NULL,
-            "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-            "content" JSONB NOT NULL,
-            "embedding" vector(%s),
-            "userId" UUID REFERENCES accounts("id"),
-            "agentId" UUID REFERENCES accounts("id"),
-            "roomId" UUID REFERENCES rooms("id"),
-            "unique" BOOLEAN DEFAULT true NOT NULL,
-            CONSTRAINT fk_room FOREIGN KEY ("roomId") REFERENCES rooms("id") ON DELETE CASCADE,
-            CONSTRAINT fk_user FOREIGN KEY ("userId") REFERENCES accounts("id") ON DELETE CASCADE,
-            CONSTRAINT fk_agent FOREIGN KEY ("agentId") REFERENCES accounts("id") ON DELETE CASCADE
-        )', vector_dim);
-END $$;
+CREATE TABLE IF NOT EXISTS memories (
+    "id" UUID PRIMARY KEY,
+    "type" TEXT NOT NULL,
+    "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    "content" JSONB NOT NULL,
+    "userId" UUID REFERENCES accounts("id"),
+    "agentId" UUID REFERENCES accounts("id"),
+    "roomId" UUID REFERENCES rooms("id"),
+    "unique" BOOLEAN DEFAULT true NOT NULL,
+    CONSTRAINT fk_room FOREIGN KEY ("roomId") REFERENCES rooms("id") ON DELETE CASCADE,
+    CONSTRAINT fk_user FOREIGN KEY ("userId") REFERENCES accounts("id") ON DELETE CASCADE,
+    CONSTRAINT fk_agent FOREIGN KEY ("agentId") REFERENCES accounts("id") ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS  goals (
     "id" UUID PRIMARY KEY,
@@ -154,29 +122,19 @@ CREATE TABLE IF NOT EXISTS characters (
     CONSTRAINT characters_agent_id_fkey FOREIGN KEY ("agent_id") REFERENCES accounts ("id")
 );
 
-DO $$
-DECLARE
-    vector_dim INTEGER;
-BEGIN
-    vector_dim := get_embedding_dimension();
-
-    EXECUTE format('
-        CREATE TABLE IF NOT EXISTS knowledge (
-            "id" UUID PRIMARY KEY,
-            "agentId" UUID REFERENCES accounts("id"),
-            "content" JSONB NOT NULL,
-            "embedding" vector(%s),
-            "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-            "isMain" BOOLEAN DEFAULT FALSE,
-            "originalId" UUID REFERENCES knowledge("id"),
-            "chunkIndex" INTEGER,
-            "isShared" BOOLEAN DEFAULT FALSE,
-            CHECK(("isShared" = true AND "agentId" IS NULL) OR ("isShared" = false AND "agentId" IS NOT NULL))
-        )', vector_dim);
-END $$;
+CREATE TABLE IF NOT EXISTS knowledge (
+    "id" UUID PRIMARY KEY,
+    "agentId" UUID REFERENCES accounts("id"),
+    "content" JSONB NOT NULL,
+    "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    "isMain" BOOLEAN DEFAULT FALSE,
+    "originalId" UUID REFERENCES knowledge("id"),
+    "chunkIndex" INTEGER,
+    "isShared" BOOLEAN DEFAULT FALSE,
+    CHECK(("isShared" = true AND "agentId" IS NULL) OR ("isShared" = false AND "agentId" IS NOT NULL))
+);
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_memories_embedding ON memories USING hnsw ("embedding" vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_memories_type_room ON memories("type", "roomId");
 CREATE INDEX IF NOT EXISTS idx_participants_user ON participants("userId");
 CREATE INDEX IF NOT EXISTS idx_participants_room ON participants("roomId");
@@ -186,6 +144,5 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_agent_main ON knowledge("agentId", "isM
 CREATE INDEX IF NOT EXISTS idx_knowledge_original ON knowledge("originalId");
 CREATE INDEX IF NOT EXISTS idx_knowledge_created ON knowledge("agentId", "createdAt");
 CREATE INDEX IF NOT EXISTS idx_knowledge_shared ON knowledge("isShared");
-CREATE INDEX IF NOT EXISTS idx_knowledge_embedding ON knowledge USING ivfflat (embedding vector_cosine_ops);
 
 COMMIT;
