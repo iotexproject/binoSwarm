@@ -1,11 +1,6 @@
 import express from "express";
 
-import {
-    stringToUuid,
-    Content,
-    Memory,
-    elizaLogger,
-} from "@elizaos/core";
+import { stringToUuid, Content, Memory, elizaLogger } from "@elizaos/core";
 
 import { DirectClient } from "../client";
 import { genRoomId, genUserId, genResponse, composeContent } from "./helpers";

@@ -199,9 +199,7 @@ export class PostgresDatabaseAdapter
             `);
 
             if (!rows[0].exists) {
-                elizaLogger.info(
-                    "Applying database schema - tables missing"
-                );
+                elizaLogger.info("Applying database schema - tables missing");
                 const schema = fs.readFileSync(
                     path.resolve(__dirname, "../schema.sql"),
                     "utf8"

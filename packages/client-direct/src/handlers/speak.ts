@@ -1,11 +1,6 @@
 import express from "express";
 
-import {
-    stringToUuid,
-    Content,
-    Memory,
-    ServiceType,
-} from "@elizaos/core";
+import { stringToUuid, Content, Memory, ServiceType } from "@elizaos/core";
 
 import { DirectClient } from "../client";
 
