@@ -8,13 +8,11 @@ import {
     Account,
     Actor,
     DatabaseAdapter,
-    EmbeddingProvider,
     GoalStatus,
     Participant,
     Prediction,
     RAGKnowledgeItem,
     elizaLogger,
-    getEmbeddingConfig,
     type Goal,
     type IDatabaseCacheAdapter,
     type Memory,
@@ -186,27 +184,6 @@ export class PostgresDatabaseAdapter
         }, "query");
     }
 
-    private async validateVectorSetup(): Promise<boolean> {
-        try {
-            const vectorExt = await this.query(`
-                SELECT 1 FROM pg_extension WHERE extname = 'vector'
-            `);
-            const hasVector = vectorExt.rows.length > 0;
-
-            if (!hasVector) {
-                elizaLogger.error("Vector extension not found in database");
-                return false;
-            }
-
-            return true;
-        } catch (error) {
-            elizaLogger.error("Failed to validate vector extension:", {
-                error: error instanceof Error ? error.message : String(error),
-            });
-            return false;
-        }
-    }
-
     async init() {
         await this.testConnection();
 
@@ -214,26 +191,6 @@ export class PostgresDatabaseAdapter
         try {
             await client.query("BEGIN");
 
-            // Set application settings for embedding dimension
-            const embeddingConfig = getEmbeddingConfig();
-            if (embeddingConfig.provider === EmbeddingProvider.OpenAI) {
-                await client.query("SET app.use_openai_embedding = 'true'");
-                await client.query("SET app.use_ollama_embedding = 'false'");
-                await client.query("SET app.use_gaianet_embedding = 'false'");
-            } else if (embeddingConfig.provider === EmbeddingProvider.Ollama) {
-                await client.query("SET app.use_openai_embedding = 'false'");
-                await client.query("SET app.use_ollama_embedding = 'true'");
-                await client.query("SET app.use_gaianet_embedding = 'false'");
-            } else if (embeddingConfig.provider === EmbeddingProvider.GaiaNet) {
-                await client.query("SET app.use_openai_embedding = 'false'");
-                await client.query("SET app.use_ollama_embedding = 'false'");
-                await client.query("SET app.use_gaianet_embedding = 'true'");
-            } else {
-                await client.query("SET app.use_openai_embedding = 'false'");
-                await client.query("SET app.use_ollama_embedding = 'false'");
-            }
-
-            // Check if schema already exists (check for a core table)
             const { rows } = await client.query(`
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables
@@ -241,10 +198,8 @@ export class PostgresDatabaseAdapter
                 );
             `);
 
-            if (!rows[0].exists || !(await this.validateVectorSetup())) {
-                elizaLogger.info(
-                    "Applying database schema - tables or vector extension missing"
-                );
+            if (!rows[0].exists) {
+                elizaLogger.info("Applying database schema - tables missing");
                 const schema = fs.readFileSync(
                     path.resolve(__dirname, "../schema.sql"),
                     "utf8"
@@ -539,40 +494,19 @@ export class PostgresDatabaseAdapter
         return this.withDatabase(async () => {
             elizaLogger.debug("PostgresAdapter createMemory:", {
                 memoryId: memory.id,
-                embeddingLength: memory.embedding?.length,
                 contentLength: memory.content?.text?.length,
             });
 
-            let isUnique = true;
-
-            if (memory.embedding) {
-                // Check if this is a zero embedding vector
-                const isZeroVector = memory.embedding.every((val) => val === 0);
-                if (isZeroVector) {
-                    elizaLogger.debug(
-                        "Zero embedding vector, skipping similarity search"
-                    );
-                } else {
-                    const similarMemories =
-                        await this.searchMemoriesByEmbedding(memory.embedding, {
-                            tableName,
-                            roomId: memory.roomId,
-                            match_threshold: 0.95,
-                            count: 1,
-                        });
-                    isUnique = similarMemories.length === 0;
-                }
-            }
+            const isUnique = true;
 
             await this.pool.query(
                 `INSERT INTO memories (
-                    id, type, content, embedding, "userId", "roomId", "agentId", "unique", "createdAt"
-                ) VALUES ($1, $2, $3, $4, $5::uuid, $6::uuid, $7::uuid, $8, to_timestamp($9/1000.0))`,
+                    id, type, content, "userId", "roomId", "agentId", "unique", "createdAt"
+                ) VALUES ($1, $2, $3, $4::uuid, $5::uuid, $6::uuid, $7, to_timestamp($8/1000.0))`,
                 [
                     memory.id ?? v4(),
                     tableName,
                     JSON.stringify(memory.content),
-                    memory.embedding ? `[${memory.embedding.join(",")}]` : null,
                     memory.userId,
                     memory.roomId,
                     memory.agentId,
@@ -581,25 +515,6 @@ export class PostgresDatabaseAdapter
                 ]
             );
         }, "createMemory");
-    }
-
-    async searchMemories(params: {
-        tableName: string;
-        agentId: UUID;
-        roomId: UUID;
-        embedding: number[];
-        match_threshold: number;
-        match_count: number;
-        unique: boolean;
-    }): Promise<Memory[]> {
-        return await this.searchMemoriesByEmbedding(params.embedding, {
-            match_threshold: params.match_threshold,
-            count: params.match_count,
-            agentId: params.agentId,
-            roomId: params.roomId,
-            unique: params.unique,
-            tableName: params.tableName,
-        });
     }
 
     async getMemories(params: {
@@ -985,216 +900,6 @@ export class PostgresDatabaseAdapter
         }, "getRelationships");
     }
 
-    async getCachedEmbeddings(opts: {
-        query_table_name: string;
-        query_threshold: number;
-        query_input: string;
-        query_field_name: string;
-        query_field_sub_name: string;
-        query_match_count: number;
-    }): Promise<{ embedding: number[]; levenshtein_score: number }[]> {
-        // Input validation
-        if (!opts.query_table_name)
-            throw new Error("query_table_name is required");
-        if (!opts.query_input) throw new Error("query_input is required");
-        if (!opts.query_field_name)
-            throw new Error("query_field_name is required");
-        if (!opts.query_field_sub_name)
-            throw new Error("query_field_sub_name is required");
-        if (opts.query_match_count <= 0)
-            throw new Error("query_match_count must be positive");
-
-        return this.withDatabase(async () => {
-            try {
-                elizaLogger.debug("Fetching cached embeddings:", {
-                    tableName: opts.query_table_name,
-                    fieldName: opts.query_field_name,
-                    subFieldName: opts.query_field_sub_name,
-                    matchCount: opts.query_match_count,
-                    inputLength: opts.query_input.length,
-                });
-
-                const sql = `
-                    WITH content_text AS (
-                        SELECT
-                            embedding,
-                            COALESCE(
-                                content->$2->>$3,
-                                ''
-                            ) as content_text
-                        FROM memories
-                        WHERE type = $4
-                        AND content->$2->>$3 IS NOT NULL
-                    )
-                    SELECT
-                        embedding,
-                        levenshtein(
-                            $1,
-                            content_text
-                        ) as levenshtein_score
-                    FROM content_text
-                    WHERE levenshtein(
-                        $1,
-                        content_text
-                    ) <= $6  -- Add threshold check
-                    ORDER BY levenshtein_score
-                    LIMIT $5
-                `;
-
-                const { rows } = await this.pool.query(sql, [
-                    opts.query_input,
-                    opts.query_field_name,
-                    opts.query_field_sub_name,
-                    opts.query_table_name,
-                    opts.query_match_count,
-                    opts.query_threshold,
-                ]);
-
-                elizaLogger.debug("Retrieved cached embeddings:", {
-                    count: rows.length,
-                    tableName: opts.query_table_name,
-                    matchCount: opts.query_match_count,
-                });
-
-                return rows
-                    .map(
-                        (
-                            row
-                        ): {
-                            embedding: number[];
-                            levenshtein_score: number;
-                        } | null => {
-                            if (!Array.isArray(row.embedding)) return null;
-                            return {
-                                embedding: row.embedding,
-                                levenshtein_score: Number(
-                                    row.levenshtein_score
-                                ),
-                            };
-                        }
-                    )
-                    .filter(
-                        (
-                            row
-                        ): row is {
-                            embedding: number[];
-                            levenshtein_score: number;
-                        } => row !== null
-                    );
-            } catch (error) {
-                elizaLogger.error("Error in getCachedEmbeddings:", {
-                    error:
-                        error instanceof Error ? error.message : String(error),
-                    tableName: opts.query_table_name,
-                    fieldName: opts.query_field_name,
-                });
-                throw error;
-            }
-        }, "getCachedEmbeddings");
-    }
-
-    async searchMemoriesByEmbedding(
-        embedding: number[],
-        params: {
-            match_threshold?: number;
-            count?: number;
-            agentId?: UUID;
-            roomId?: UUID;
-            unique?: boolean;
-            tableName: string;
-        }
-    ): Promise<Memory[]> {
-        return this.withDatabase(async () => {
-            elizaLogger.debug("Incoming vector:", {
-                length: embedding.length,
-                sample: embedding.slice(0, 5),
-                isArray: Array.isArray(embedding),
-                allNumbers: embedding.every((n) => typeof n === "number"),
-            });
-
-            // Validate embedding dimension
-            if (embedding.length !== getEmbeddingConfig().dimensions) {
-                throw new Error(
-                    `Invalid embedding dimension: expected ${getEmbeddingConfig().dimensions}, got ${embedding.length}`
-                );
-            }
-
-            // Ensure vector is properly formatted
-            const cleanVector = embedding.map((n) => {
-                if (!Number.isFinite(n)) return 0;
-                // Limit precision to avoid floating point issues
-                return Number(n.toFixed(6));
-            });
-
-            // Format for Postgres pgvector
-            const vectorStr = `[${cleanVector.join(",")}]`;
-
-            elizaLogger.debug("Vector debug:", {
-                originalLength: embedding.length,
-                cleanLength: cleanVector.length,
-                sampleStr: vectorStr.slice(0, 100),
-            });
-
-            let sql = `
-                SELECT *,
-                1 - (embedding <-> $1::vector(${getEmbeddingConfig().dimensions})) as similarity
-                FROM memories
-                WHERE type = $2
-            `;
-
-            const values: any[] = [vectorStr, params.tableName];
-
-            // Log the query for debugging
-            elizaLogger.debug("Query debug:", {
-                sql: sql.slice(0, 200),
-                paramTypes: values.map((v) => typeof v),
-                vectorStrLength: vectorStr.length,
-            });
-
-            let paramCount = 2;
-
-            if (params.unique) {
-                sql += ` AND "unique" = true`;
-            }
-
-            if (params.agentId) {
-                paramCount++;
-                sql += ` AND "agentId" = $${paramCount}`;
-                values.push(params.agentId);
-            }
-
-            if (params.roomId) {
-                paramCount++;
-                sql += ` AND "roomId" = $${paramCount}::uuid`;
-                values.push(params.roomId);
-            }
-
-            if (params.match_threshold) {
-                paramCount++;
-                sql += ` AND 1 - (embedding <-> $1::vector) >= $${paramCount}`;
-                values.push(params.match_threshold);
-            }
-
-            sql += ` ORDER BY embedding <-> $1::vector`;
-
-            if (params.count) {
-                paramCount++;
-                sql += ` LIMIT $${paramCount}`;
-                values.push(params.count);
-            }
-
-            const { rows } = await this.pool.query(sql, values);
-            return rows.map((row) => ({
-                ...row,
-                content:
-                    typeof row.content === "string"
-                        ? JSON.parse(row.content)
-                        : row.content,
-                similarity: row.similarity,
-            }));
-        }, "searchMemoriesByEmbedding");
-    }
-
     async addParticipant(userId: UUID, roomId: UUID): Promise<boolean> {
         return this.withDatabase(async () => {
             try {
@@ -1484,27 +1189,19 @@ export class PostgresDatabaseAdapter
         }, "deleteCache");
     }
 
-    async getKnowledge(params: {
-        id?: UUID;
+    async getKnowledgeByIds(params: {
+        ids: UUID[];
         agentId: UUID;
-        limit?: number;
-        query?: string;
     }): Promise<RAGKnowledgeItem[]> {
         return this.withDatabase(async () => {
             let sql = `SELECT * FROM knowledge WHERE ("agentId" = $1 OR "isShared" = true)`;
             const queryParams: any[] = [params.agentId];
             let paramCount = 1;
 
-            if (params.id) {
+            if (params.ids.length > 0) {
                 paramCount++;
-                sql += ` AND id = $${paramCount}`;
-                queryParams.push(params.id);
-            }
-
-            if (params.limit) {
-                paramCount++;
-                sql += ` LIMIT $${paramCount}`;
-                queryParams.push(params.limit);
+                sql += ` AND id IN (${params.ids.map((_, i) => `$${paramCount + i}`).join(",")})`;
+                queryParams.push(...params.ids);
             }
 
             const { rows } = await this.pool.query(sql, queryParams);
@@ -1516,102 +1213,19 @@ export class PostgresDatabaseAdapter
                     typeof row.content === "string"
                         ? JSON.parse(row.content)
                         : row.content,
-                embedding: row.embedding
-                    ? new Float32Array(row.embedding)
-                    : undefined,
                 createdAt: row.createdAt.getTime(),
             }));
         }, "getKnowledge");
     }
 
-    async searchKnowledge(params: {
-        agentId: UUID;
-        embedding: Float32Array;
-        match_threshold: number;
-        match_count: number;
-        searchText?: string;
-    }): Promise<RAGKnowledgeItem[]> {
+    async getKnowledge(id: UUID): Promise<RAGKnowledgeItem | null> {
         return this.withDatabase(async () => {
-            const cacheKey = `embedding_${params.agentId}_${params.searchText}`;
-            const cachedResult = await this.getCache({
-                key: cacheKey,
-                agentId: params.agentId,
-            });
-
-            if (cachedResult) {
-                return JSON.parse(cachedResult);
-            }
-
-            const vectorStr = `[${Array.from(params.embedding).join(",")}]`;
-
-            const sql = `
-                WITH vector_scores AS (
-                    SELECT id,
-                        1 - (embedding <-> $1::vector) as vector_score
-                    FROM knowledge
-                    WHERE ("agentId" IS NULL AND "isShared" = true) OR "agentId" = $2
-                    AND embedding IS NOT NULL
-                ),
-                keyword_matches AS (
-                    SELECT id,
-                    CASE
-                        WHEN content->>'text' ILIKE $3 THEN 3.0
-                        ELSE 1.0
-                    END *
-                    CASE
-                        WHEN (content->'metadata'->>'isChunk')::boolean = true THEN 1.5
-                        WHEN (content->'metadata'->>'isMain')::boolean = true THEN 1.2
-                        ELSE 1.0
-                    END as keyword_score
-                    FROM knowledge
-                    WHERE ("agentId" IS NULL AND "isShared" = true) OR "agentId" = $2
-                )
-                SELECT k.*,
-                    v.vector_score,
-                    kw.keyword_score,
-                    (v.vector_score * kw.keyword_score) as combined_score
-                FROM knowledge k
-                JOIN vector_scores v ON k.id = v.id
-                LEFT JOIN keyword_matches kw ON k.id = kw.id
-                WHERE ("agentId" IS NULL AND "isShared" = true) OR k."agentId" = $2
-                AND (
-                    v.vector_score >= $4
-                    OR (kw.keyword_score > 1.0 AND v.vector_score >= 0.3)
-                )
-                ORDER BY combined_score DESC
-                LIMIT $5
-            `;
-
-            const { rows } = await this.pool.query(sql, [
-                vectorStr,
-                params.agentId,
-                `%${params.searchText || ""}%`,
-                params.match_threshold,
-                params.match_count,
-            ]);
-
-            const results = rows.map((row) => ({
-                id: row.id,
-                agentId: row.agentId,
-                content:
-                    typeof row.content === "string"
-                        ? JSON.parse(row.content)
-                        : row.content,
-                embedding: row.embedding
-                    ? new Float32Array(row.embedding)
-                    : undefined,
-                createdAt: row.createdAt.getTime(),
-                similarity: row.combined_score,
-            }));
-
-            await this.setCache({
-                key: cacheKey,
-                agentId: params.agentId,
-                value: JSON.stringify(results),
-            });
-
-            return results;
-        }, "searchKnowledge");
+            const { rows } = await this.pool.query(
+                `SELECT * FROM knowledge WHERE id = $1`,
+                [id]
+            );
+            return rows[0] ?? null;
+        }, "getKnowledge");
     }
 
     async createKnowledge(knowledge: RAGKnowledgeItem): Promise<void> {
@@ -1621,9 +1235,6 @@ export class PostgresDatabaseAdapter
                 await client.query("BEGIN");
 
                 const metadata = knowledge.content.metadata || {};
-                const vectorStr = knowledge.embedding
-                    ? `[${Array.from(knowledge.embedding).join(",")}]`
-                    : null;
 
                 // If this is a chunk, use createKnowledgeChunk
                 if (metadata.isChunk && metadata.originalId) {
@@ -1632,7 +1243,6 @@ export class PostgresDatabaseAdapter
                         originalId: metadata.originalId,
                         agentId: metadata.isShared ? null : knowledge.agentId,
                         content: knowledge.content,
-                        embedding: knowledge.embedding,
                         chunkIndex: metadata.chunkIndex || 0,
                         isShared: metadata.isShared || false,
                         createdAt: knowledge.createdAt || Date.now(),
@@ -1642,16 +1252,15 @@ export class PostgresDatabaseAdapter
                     await client.query(
                         `
                         INSERT INTO knowledge (
-                            id, "agentId", content, embedding, "createdAt",
+                            id, "agentId", content, "createdAt",
                             "isMain", "originalId", "chunkIndex", "isShared"
-                        ) VALUES ($1, $2, $3, $4, to_timestamp($5/1000.0), $6, $7, $8, $9)
+                        ) VALUES ($1, $2, $3, to_timestamp($4/1000.0), $5, $6, $7, $8)
                         ON CONFLICT (id) DO NOTHING
                     `,
                         [
                             knowledge.id,
                             metadata.isShared ? null : knowledge.agentId,
                             knowledge.content,
-                            vectorStr,
                             knowledge.createdAt || Date.now(),
                             true,
                             null,
@@ -1727,38 +1336,30 @@ export class PostgresDatabaseAdapter
         originalId: UUID;
         agentId: UUID | null;
         content: any;
-        embedding: Float32Array | undefined | null;
         chunkIndex: number;
         isShared: boolean;
         createdAt: number;
     }): Promise<void> {
-        const vectorStr = params.embedding
-            ? `[${Array.from(params.embedding).join(",")}]`
-            : null;
-
-        // Store the pattern-based ID in the content metadata for compatibility
-        const patternId = `${params.originalId}-chunk-${params.chunkIndex}`;
         const contentWithPatternId = {
             ...params.content,
             metadata: {
                 ...params.content.metadata,
-                patternId,
+                patternId: params.id,
             },
         };
 
         await this.pool.query(
             `
             INSERT INTO knowledge (
-                id, "agentId", content, embedding, "createdAt",
+                id, "agentId", content, "createdAt",
                 "isMain", "originalId", "chunkIndex", "isShared"
-            ) VALUES ($1, $2, $3, $4, to_timestamp($5/1000.0), $6, $7, $8, $9)
+            ) VALUES ($1, $2, $3, to_timestamp($4/1000.0), $5, $6, $7, $8)
             ON CONFLICT (id) DO NOTHING
         `,
             [
                 v4(), // Generate a proper UUID for PostgreSQL
                 params.agentId,
                 contentWithPatternId, // Store the pattern ID in metadata
-                vectorStr,
                 params.createdAt,
                 false,
                 params.originalId,

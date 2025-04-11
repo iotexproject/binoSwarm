@@ -35,7 +35,7 @@ async function startAgent(character: Character): Promise<AgentRuntime> {
         character.id ??= stringToUuid(character.name);
         character.username ??= character.name;
 
-        db = initializeDatabase();
+        db = await initializeDatabase();
 
         const runtime = await createAgent(character, db);
         await runtime.initialize();

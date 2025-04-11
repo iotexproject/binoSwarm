@@ -1,7 +1,6 @@
 import { readFile } from "fs/promises";
 import { join } from "path";
 
-import { embed } from "./embedding.ts";
 import { splitChunks } from "./generation.ts";
 import elizaLogger from "./logger.ts";
 import {
@@ -11,30 +10,28 @@ import {
     UUID,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
+import { embed, embedMany, getDimentionZeroEmbedding } from "./embedding.ts";
+import { VectorDB } from "./vectorDB.ts";
 
-/**
- * Manage knowledge in the database.
- */
+type RAGKnowledgeItemMetadata = {
+    type: string;
+    isChunk: boolean;
+    isMain: boolean;
+    source: string;
+    inputHash: string;
+    originalId?: UUID;
+    chunkIndex?: number;
+    isShared?: boolean;
+};
+
+const KNOWLEDGE_METADATA_TYPE = "knowledge";
+
 export class RAGKnowledgeManager implements IRAGKnowledgeManager {
-    /**
-     * The AgentRuntime instance associated with this manager.
-     */
     runtime: IAgentRuntime;
-
-    /**
-     * The name of the database table this manager operates on.
-     */
-    tableName: string;
-
-    /**
-     * Constructs a new KnowledgeManager instance.
-     * @param opts Options for the manager.
-     * @param opts.tableName The name of the table this manager will operate on.
-     * @param opts.runtime The AgentRuntime instance associated with this manager.
-     */
-    constructor(opts: { tableName: string; runtime: IAgentRuntime }) {
+    vectorDB: VectorDB<RAGKnowledgeItemMetadata>;
+    constructor(opts: { runtime: IAgentRuntime }) {
         this.runtime = opts.runtime;
-        this.tableName = opts.tableName;
+        this.vectorDB = new VectorDB<RAGKnowledgeItemMetadata>();
     }
 
     private readonly defaultRAGMatchThreshold = Number(
@@ -44,139 +41,13 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         process.env.DEFAULT_RAG_MATCH_COUNT || "5"
     );
 
-    /**
-     * Common English stop words to filter out from query analysis
-     */
-    private readonly stopWords = new Set([
-        "a",
-        "an",
-        "and",
-        "are",
-        "as",
-        "at",
-        "be",
-        "by",
-        "does",
-        "for",
-        "from",
-        "had",
-        "has",
-        "have",
-        "he",
-        "her",
-        "his",
-        "how",
-        "hey",
-        "i",
-        "in",
-        "is",
-        "it",
-        "its",
-        "of",
-        "on",
-        "or",
-        "that",
-        "the",
-        "this",
-        "to",
-        "was",
-        "what",
-        "when",
-        "where",
-        "which",
-        "who",
-        "will",
-        "with",
-        "would",
-        "there",
-        "their",
-        "they",
-        "your",
-        "you",
-    ]);
-
-    /**
-     * Filters out stop words and returns meaningful terms
-     */
-    private getQueryTerms(query: string): string[] {
-        return query
-            .toLowerCase()
-            .split(" ")
-            .filter((term) => term.length > 3) // Filter very short words
-            .filter((term) => !this.stopWords.has(term)); // Filter stop words
-    }
-
-    /**
-     * Preprocesses text content for better RAG performance.
-     * @param content The text content to preprocess.
-     * @returns The preprocessed text.
-     */
-
-    private preprocess(content: string): string {
-        if (!content || typeof content !== "string") {
-            elizaLogger.warn("Invalid input for preprocessing");
-            return "";
-        }
-
-        return content
-            .replace(/```[\s\S]*?```/g, "")
-            .replace(/`.*?`/g, "")
-            .replace(/#{1,6}\s*(.*)/g, "$1")
-            .replace(/!\[(.*?)\]\(.*?\)/g, "$1")
-            .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-            .replace(/(https?:\/\/)?(www\.)?([^\s]+\.[^\s]+)/g, "$3")
-            .replace(/<@[!&]?\d+>/g, "")
-            .replace(/<[^>]*>/g, "")
-            .replace(/^\s*[-*_]{3,}\s*$/gm, "")
-            .replace(/\/\*[\s\S]*?\*\//g, "")
-            .replace(/\/\/.*/g, "")
-            .replace(/\s+/g, " ")
-            .replace(/\n{3,}/g, "\n\n")
-            .replace(/[^a-zA-Z0-9\s\-_./:?=&]/g, "")
-            .trim()
-            .toLowerCase();
-    }
-
-    private hasProximityMatch(text: string, terms: string[]): boolean {
-        const words = text.toLowerCase().split(" ");
-        const positions = terms
-            .map((term) => words.findIndex((w) => w.includes(term)))
-            .filter((pos) => pos !== -1);
-
-        if (positions.length < 2) return false;
-
-        // Check if any matches are within 5 words of each other
-        for (let i = 0; i < positions.length - 1; i++) {
-            if (Math.abs(positions[i] - positions[i + 1]) <= 5) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     async getKnowledge(params: {
-        query?: string;
-        id?: UUID;
+        query: string;
         conversationContext?: string;
         limit?: number;
         agentId?: UUID;
+        isUnique?: boolean;
     }): Promise<RAGKnowledgeItem[]> {
-        const agentId = params.agentId || this.runtime.agentId;
-
-        // If id is provided, do direct lookup first
-        if (params.id) {
-            const directResults =
-                await this.runtime.databaseAdapter.getKnowledge({
-                    id: params.id,
-                    agentId: agentId,
-                });
-
-            if (directResults.length > 0) {
-                return directResults;
-            }
-        }
-
-        // If no id or no direct results, perform semantic search
         if (!params.query) {
             return [];
         }
@@ -193,14 +64,14 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 searchText = `${relevantContext} ${processedQuery}`;
             }
 
-            const embeddingArray = await embed(this.runtime, searchText);
-
-            const embedding = new Float32Array(embeddingArray);
-
-            // Get results with single query
-            const results = await this.runtime.databaseAdapter.searchKnowledge({
+            const embeddingArray = await embed(
+                this.runtime,
+                searchText,
+                params.isUnique
+            );
+            const results = await this.searchKnowledge({
                 agentId: this.runtime.agentId,
-                embedding: embedding,
+                embedding: embeddingArray,
                 match_threshold: this.defaultRAGMatchThreshold,
                 match_count: (params.limit || this.defaultRAGMatchCount) * 2,
                 searchText: processedQuery,
@@ -225,153 +96,103 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         }
     }
 
-    private rerankResults(
-        results: RAGKnowledgeItem[],
-        processedQuery: string,
-        params: {
-            query?: string;
-            id?: UUID;
-            conversationContext?: string;
-            limit?: number;
-            agentId?: UUID;
-        }
-    ) {
-        return results
-            .map((result) => {
-                let score = result.similarity;
-
-                // Check for direct query term matches
-                const queryTerms = this.getQueryTerms(processedQuery);
-
-                const matchingTerms = queryTerms.filter((term) =>
-                    result.content.text.toLowerCase().includes(term)
-                );
-
-                if (matchingTerms.length > 0) {
-                    // Much stronger boost for matches
-                    score *= 1 + (matchingTerms.length / queryTerms.length) * 2; // Double the boost
-
-                    if (
-                        this.hasProximityMatch(
-                            result.content.text,
-                            matchingTerms
-                        )
-                    ) {
-                        score *= 1.5; // Stronger proximity boost
-                    }
-                } else {
-                    // More aggressive penalty
-                    if (!params.conversationContext) {
-                        score *= 0.3; // Stronger penalty
-                    }
-                }
-
-                return {
-                    ...result,
-                    score,
-                    matchedTerms: matchingTerms, // Add for debugging
-                };
-            })
-            .sort((a, b) => b.score - a.score);
-    }
-
-    async createKnowledge(item: RAGKnowledgeItem): Promise<void> {
+    async createKnowledge(
+        item: RAGKnowledgeItem,
+        source: string,
+        isUnique: boolean
+    ): Promise<void> {
         if (!item.content.text) {
             elizaLogger.warn("Empty content in knowledge item");
             return;
         }
 
+        const existingKnowledge = await this.checkExistingKnowledge(item);
+        if (existingKnowledge) {
+            elizaLogger.debug("Knowledge already exists", existingKnowledge);
+            return;
+        }
         try {
-            // Process main document
             const processedContent = this.preprocess(item.content.text);
-            const mainEmbeddingArray = await embed(
-                this.runtime,
-                processedContent
+            await this.chunkEmbedAndPersist(
+                processedContent,
+                item,
+                source,
+                isUnique
             );
-
-            const mainEmbedding = new Float32Array(mainEmbeddingArray);
-
-            // Create main document
-            await this.runtime.databaseAdapter.createKnowledge({
-                id: item.id,
-                agentId: this.runtime.agentId,
-                content: {
-                    text: item.content.text,
-                    metadata: {
-                        ...item.content.metadata,
-                        isMain: true,
-                    },
-                },
-                embedding: mainEmbedding,
-                createdAt: Date.now(),
-            });
-
-            // Generate and store chunks
-            const chunks = await splitChunks(processedContent, 512, 20);
-
-            for (const [index, chunk] of chunks.entries()) {
-                const chunkEmbeddingArray = await embed(this.runtime, chunk);
-                const chunkEmbedding = new Float32Array(chunkEmbeddingArray);
-                const chunkId = `${item.id}-chunk-${index}` as UUID;
-
-                await this.runtime.databaseAdapter.createKnowledge({
-                    id: chunkId,
-                    agentId: this.runtime.agentId,
-                    content: {
-                        text: chunk,
-                        metadata: {
-                            ...item.content.metadata,
-                            isChunk: true,
-                            originalId: item.id,
-                            chunkIndex: index,
-                        },
-                    },
-                    embedding: chunkEmbedding,
-                    createdAt: Date.now(),
-                });
-            }
         } catch (error) {
             elizaLogger.error(`Error processing knowledge ${item.id}:`, error);
             throw error;
         }
     }
 
+    async getKnowledgeByContentHash(
+        inputHash: string
+    ): Promise<RAGKnowledgeItemMetadata | null> {
+        const matches = await this.vectorDB.search({
+            namespace: this.runtime.agentId.toString(),
+            vector: getDimentionZeroEmbedding(),
+            topK: 1,
+            type: KNOWLEDGE_METADATA_TYPE,
+            filter: {
+                inputHash,
+            },
+        });
+
+        if (matches.length > 0) {
+            elizaLogger.debug("Knowledge match found", matches[0].metadata);
+            return matches[0].metadata;
+        }
+
+        return null;
+    }
+
     async searchKnowledge(params: {
         agentId: UUID;
-        embedding: Float32Array | number[];
+        embedding: number[];
         match_threshold?: number;
         match_count?: number;
         searchText?: string;
     }): Promise<RAGKnowledgeItem[]> {
-        const {
-            match_threshold = this.defaultRAGMatchThreshold,
-            match_count = this.defaultRAGMatchCount,
-            embedding,
-            searchText,
-        } = params;
+        const { match_count = this.defaultRAGMatchCount, embedding } = params;
 
-        const float32Embedding = Array.isArray(embedding)
-            ? new Float32Array(embedding)
-            : embedding;
-
-        return await this.runtime.databaseAdapter.searchKnowledge({
-            agentId: params.agentId || this.runtime.agentId,
-            embedding: float32Embedding,
-            match_threshold,
-            match_count,
-            searchText,
+        const matches = await this.vectorDB.search({
+            namespace: params.agentId.toString(),
+            vector: embedding,
+            topK: match_count,
+            type: KNOWLEDGE_METADATA_TYPE,
+            filter: {
+                isChunk: true,
+            },
         });
+
+        elizaLogger.debug("Pinecone search results:", matches);
+
+        const ids = matches.map((match) => match.id as UUID);
+        const chunks = await this.runtime.databaseAdapter.getKnowledgeByIds({
+            ids,
+            agentId: params.agentId,
+        });
+
+        return chunks;
     }
 
     async removeKnowledge(id: UUID): Promise<void> {
-        await this.runtime.databaseAdapter.removeKnowledge(id);
+        await Promise.all([
+            this.vectorDB.removeVector(id, this.runtime.agentId.toString()),
+            this.runtime.databaseAdapter.removeKnowledge(id),
+        ]);
     }
 
-    async clearKnowledge(shared?: boolean): Promise<void> {
-        await this.runtime.databaseAdapter.clearKnowledge(
-            this.runtime.agentId,
-            shared ? shared : false
-        );
+    async clearKnowledge(): Promise<void> {
+        await Promise.all([
+            this.vectorDB.removeByFilter(
+                {
+                    type: KNOWLEDGE_METADATA_TYPE,
+                },
+                this.runtime.agentId.toString()
+            ),
+            this.runtime.databaseAdapter.clearKnowledge(this.runtime.agentId),
+        ]);
     }
 
     async processFile(file: {
@@ -380,11 +201,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         type: "pdf" | "md" | "txt";
         isShared?: boolean;
     }): Promise<void> {
-        const timeMarker = (label: string) => {
-            const time = (Date.now() - startTime) / 1000;
-            elizaLogger.info(`[Timing] ${label}: ${time.toFixed(2)}s`);
-        };
-
         const startTime = Date.now();
         const content = file.content;
 
@@ -394,21 +210,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 `[File Progress] Starting ${file.path} (${fileSizeKB.toFixed(2)} KB)`
             );
 
-            // Step 1: Preprocessing
-            //const preprocessStart = Date.now();
-            const processedContent = this.preprocess(content);
-            timeMarker("Preprocessing");
-
-            // Step 2: Main document embedding
-            const mainEmbeddingArray = await embed(
-                this.runtime,
-                processedContent
-            );
-            const mainEmbedding = new Float32Array(mainEmbeddingArray);
-            timeMarker("Main embedding");
-
-            // Step 3: Create main document
-            await this.runtime.databaseAdapter.createKnowledge({
+            const item: RAGKnowledgeItem = {
                 id: stringToUuid(file.path),
                 agentId: this.runtime.agentId,
                 content: {
@@ -419,81 +221,29 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         isShared: file.isShared || false,
                     },
                 },
-                embedding: mainEmbedding,
-                createdAt: Date.now(),
-            });
-            timeMarker("Main document storage");
+            };
 
-            // Step 4: Generate chunks
-            const chunks = await splitChunks(processedContent, 512, 20);
-            const totalChunks = chunks.length;
-            elizaLogger.info(`Generated ${totalChunks} chunks`);
-            timeMarker("Chunk generation");
-
-            // Step 5: Process chunks with larger batches
-            const BATCH_SIZE = 10; // Increased batch size
-            let processedChunks = 0;
-
-            for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
-                const batchStart = Date.now();
-                const batch = chunks.slice(
-                    i,
-                    Math.min(i + BATCH_SIZE, chunks.length)
+            const existingKnowledge = await this.checkExistingKnowledge(item);
+            if (existingKnowledge) {
+                elizaLogger.debug(
+                    "Knowledge already exists",
+                    existingKnowledge
                 );
-
-                // Process embeddings in parallel
-                const embeddings = await Promise.all(
-                    batch.map((chunk) => embed(this.runtime, chunk))
-                );
-
-                // Batch database operations
-                await Promise.all(
-                    embeddings.map(async (embeddingArray, index) => {
-                        const chunkId =
-                            `${stringToUuid(file.path)}-chunk-${i + index}` as UUID;
-                        const chunkEmbedding = new Float32Array(embeddingArray);
-
-                        await this.runtime.databaseAdapter.createKnowledge({
-                            id: chunkId,
-                            agentId: this.runtime.agentId,
-                            content: {
-                                text: batch[index],
-                                metadata: {
-                                    source: file.path,
-                                    type: file.type,
-                                    isShared: file.isShared || false,
-                                    isChunk: true,
-                                    originalId: stringToUuid(file.path),
-                                    chunkIndex: i + index,
-                                },
-                            },
-                            embedding: chunkEmbedding,
-                            createdAt: Date.now(),
-                        });
-                    })
-                );
-
-                processedChunks += batch.length;
-                const batchTime = (Date.now() - batchStart) / 1000;
-                elizaLogger.info(
-                    `[Batch Progress] Processed ${processedChunks}/${totalChunks} chunks (${batchTime.toFixed(2)}s for batch)`
-                );
+                return;
             }
+            const processedContent = this.preprocess(content);
+            await this.chunkEmbedAndPersist(
+                processedContent,
+                item,
+                "file",
+                false
+            );
 
             const totalTime = (Date.now() - startTime) / 1000;
             elizaLogger.info(
                 `[Complete] Processed ${file.path} in ${totalTime.toFixed(2)}s`
             );
         } catch (error) {
-            if (
-                file.isShared &&
-                error?.code === "SQLITE_CONSTRAINT_PRIMARYKEY"
-            ) {
-                elizaLogger.info(
-                    `Shared knowledge ${file.path} already exists in database, skipping creation`
-                );
-                return;
-            }
             elizaLogger.error(`Error processing file ${file.path}:`, error);
             throw error;
         }
@@ -544,8 +294,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                             filePath
                         );
 
-                        // Get existing knowledge first
-                        const existingKnowledge = await this.getKnowledge({
+                        const existingKnowledge = await this.getKnowledgeById({
                             id: knowledgeId,
                             agentId: this.runtime.agentId,
                         });
@@ -609,28 +358,20 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         contentItem.slice(0, 100)
                     );
 
-                    const existingKnowledge = await this.getKnowledge({
-                        id: knowledgeId,
-                        agentId: this.runtime.agentId,
-                    });
-
-                    if (existingKnowledge.length > 0) {
-                        elizaLogger.info(
-                            `Direct knowledge ${knowledgeId} already exists, skipping`
-                        );
-                        continue;
-                    }
-
-                    await this.createKnowledge({
-                        id: knowledgeId,
-                        agentId: this.runtime.agentId,
-                        content: {
-                            text: contentItem,
-                            metadata: {
-                                type: "direct",
+                    await this.createKnowledge(
+                        {
+                            id: knowledgeId,
+                            agentId: this.runtime.agentId,
+                            content: {
+                                text: contentItem,
+                                metadata: {
+                                    type: KNOWLEDGE_METADATA_TYPE,
+                                },
                             },
                         },
-                    });
+                        "character",
+                        false
+                    );
                 }
             } catch (error: any) {
                 hasError = true;
@@ -647,5 +388,284 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 "Some knowledge items failed to process, but continuing with available knowledge"
             );
         }
+    }
+
+    private async checkExistingKnowledge(
+        item: RAGKnowledgeItem
+    ): Promise<boolean> {
+        const contentHash = this.vectorDB.hashInput(item.content.text);
+        const res = await this.getKnowledgeByContentHash(contentHash);
+        return res !== null;
+    }
+
+    private rerankResults(
+        results: RAGKnowledgeItem[],
+        processedQuery: string,
+        params: {
+            query?: string;
+            id?: UUID;
+            conversationContext?: string;
+            limit?: number;
+            agentId?: UUID;
+        }
+    ) {
+        return results
+            .map((result) => {
+                let score = result.score;
+
+                // Check for direct query term matches
+                const queryTerms = this.getQueryTerms(processedQuery);
+
+                const matchingTerms = queryTerms.filter((term) =>
+                    result.content.text.toLowerCase().includes(term)
+                );
+
+                if (matchingTerms.length > 0) {
+                    // Much stronger boost for matches
+                    score *= 1 + (matchingTerms.length / queryTerms.length) * 2; // Double the boost
+
+                    if (
+                        this.hasProximityMatch(
+                            result.content.text,
+                            matchingTerms
+                        )
+                    ) {
+                        score *= 1.5; // Stronger proximity boost
+                    }
+                } else {
+                    // More aggressive penalty
+                    if (!params.conversationContext) {
+                        score *= 0.3; // Stronger penalty
+                    }
+                }
+
+                return {
+                    ...result,
+                    score,
+                    matchedTerms: matchingTerms, // Add for debugging
+                };
+            })
+            .sort((a, b) => b.score - a.score);
+    }
+
+    private readonly stopWords = new Set([
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "does",
+        "for",
+        "from",
+        "had",
+        "has",
+        "have",
+        "he",
+        "her",
+        "his",
+        "how",
+        "hey",
+        "i",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "this",
+        "to",
+        "was",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "will",
+        "with",
+        "would",
+        "there",
+        "their",
+        "they",
+        "your",
+        "you",
+    ]);
+
+    private getQueryTerms(query: string): string[] {
+        return query
+            .toLowerCase()
+            .split(" ")
+            .filter((term) => term.length > 3) // Filter very short words
+            .filter((term) => !this.stopWords.has(term)); // Filter stop words
+    }
+
+    private preprocess(content: string): string {
+        if (!content || typeof content !== "string") {
+            elizaLogger.warn("Invalid input for preprocessing");
+            return "";
+        }
+
+        return content
+            .replace(/```[\s\S]*?```/g, "")
+            .replace(/`.*?`/g, "")
+            .replace(/#{1,6}\s*(.*)/g, "$1")
+            .replace(/!\[(.*?)\]\(.*?\)/g, "$1")
+            .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+            .replace(/(https?:\/\/)?(www\.)?([^\s]+\.[^\s]+)/g, "$3")
+            .replace(/<@[!&]?\d+>/g, "")
+            .replace(/<[^>]*>/g, "")
+            .replace(/^\s*[-*_]{3,}\s*$/gm, "")
+            .replace(/\/\*[\s\S]*?\*\//g, "")
+            .replace(/\/\/.*/g, "")
+            .replace(/\s+/g, " ")
+            .replace(/\n{3,}/g, "\n\n")
+            .replace(/[^a-zA-Z0-9\s\-_./:?=&]/g, "")
+            .trim()
+            .toLowerCase();
+    }
+
+    private hasProximityMatch(text: string, terms: string[]): boolean {
+        const words = text.toLowerCase().split(" ");
+        const positions = terms
+            .map((term) => words.findIndex((w) => w.includes(term)))
+            .filter((pos) => pos !== -1);
+
+        if (positions.length < 2) return false;
+
+        // Check if any matches are within 5 words of each other
+        for (let i = 0; i < positions.length - 1; i++) {
+            if (Math.abs(positions[i] - positions[i + 1]) <= 5) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private async chunkEmbedAndPersist(
+        processedContent: string,
+        item: RAGKnowledgeItem,
+        source: string,
+        isUnique: boolean
+    ) {
+        const chunks = await splitChunks(processedContent, 512, 20);
+
+        if (chunks.length <= 1) {
+            elizaLogger.debug("Single chunk, only embedding main item");
+            const embedding = await embed(
+                this.runtime,
+                processedContent,
+                isUnique
+            );
+            await Promise.all([
+                this.persistVectorData(item, [embedding], source, []),
+                this.persistRelationalData(item, []),
+            ]);
+            return;
+        }
+
+        const embeddings = await embedMany([processedContent, ...chunks]);
+        await Promise.all([
+            this.persistVectorData(item, embeddings, source, chunks),
+            this.persistRelationalData(item, chunks),
+        ]);
+    }
+
+    private async persistVectorData(
+        item: RAGKnowledgeItem,
+        embeddings: number[][],
+        source: string,
+        chunks: string[]
+    ) {
+        const metadata = {
+            type: KNOWLEDGE_METADATA_TYPE,
+            ...item.content.metadata,
+            createdAt: Date.now().toString(),
+            source: source,
+        };
+        await this.vectorDB.upsert({
+            namespace: this.runtime.agentId.toString(),
+            values: [
+                {
+                    id: item.id,
+                    values: embeddings[0],
+                    metadata: {
+                        ...metadata,
+                        isMain: true,
+                        isChunk: false,
+                        inputHash: this.vectorDB.hashInput(item.content.text),
+                    },
+                },
+                ...chunks.map((_chunk, index) => ({
+                    id: this.buildChunkId(item, index),
+                    values: embeddings[index + 1],
+                    metadata: {
+                        ...metadata,
+                        isChunk: true,
+                        isMain: false,
+                        originalId: item.id,
+                        chunkIndex: index,
+                        inputHash: this.vectorDB.hashInput(_chunk),
+                    },
+                })),
+            ],
+        });
+    }
+
+    private async persistRelationalData(
+        item: RAGKnowledgeItem,
+        chunks: string[]
+    ) {
+        await Promise.all([
+            this.runtime.databaseAdapter.createKnowledge({
+                id: item.id,
+                agentId: this.runtime.agentId,
+                content: {
+                    text: item.content.text,
+                    metadata: {
+                        ...item.content.metadata,
+                        isMain: true,
+                    },
+                },
+                createdAt: Date.now(),
+            }),
+            ...chunks.map((chunk, index) =>
+                this.runtime.databaseAdapter.createKnowledge({
+                    id: this.buildChunkId(item, index),
+                    agentId: this.runtime.agentId,
+                    content: {
+                        text: chunk,
+                        metadata: {
+                            ...item.content.metadata,
+                            isChunk: true,
+                            originalId: item.id,
+                            chunkIndex: index,
+                        },
+                    },
+                    createdAt: Date.now(),
+                })
+            ),
+        ]);
+    }
+
+    private async getKnowledgeById(params: {
+        id?: UUID;
+        agentId?: UUID;
+    }): Promise<RAGKnowledgeItem[]> {
+        return await this.runtime.databaseAdapter.getKnowledgeByIds({
+            ids: [params.id],
+            agentId: params.agentId,
+        });
+    }
+
+    private buildChunkId(
+        item: RAGKnowledgeItem,
+        index: number
+    ): `${UUID}-chunk-${number}` {
+        return `${item.id}-chunk-${index}`;
     }
 }

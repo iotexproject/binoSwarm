@@ -383,17 +383,11 @@ export interface Memory {
     /** Memory content */
     content: Content;
 
-    /** Optional embedding vector */
-    embedding?: number[];
-
     /** Associated room ID */
     roomId: UUID;
 
     /** Whether memory is unique */
     unique?: boolean;
-
-    /** Embedding similarity score */
-    similarity?: number;
 }
 
 /**
@@ -957,43 +951,12 @@ export interface IDatabaseAdapter {
         userId?: UUID;
     }): Promise<Memory[]>;
 
-    getCachedEmbeddings(params: {
-        query_table_name: string;
-        query_threshold: number;
-        query_input: string;
-        query_field_name: string;
-        query_field_sub_name: string;
-        query_match_count: number;
-    }): Promise<{ embedding: number[]; levenshtein_score: number }[]>;
-
     getActorDetails(params: { roomId: UUID }): Promise<Actor[]>;
-
-    searchMemories(params: {
-        tableName: string;
-        agentId: UUID;
-        roomId: UUID;
-        embedding: number[];
-        match_threshold: number;
-        match_count: number;
-        unique: boolean;
-    }): Promise<Memory[]>;
 
     updateGoalStatus(params: {
         goalId: UUID;
         status: GoalStatus;
     }): Promise<void>;
-
-    searchMemoriesByEmbedding(
-        embedding: number[],
-        params: {
-            match_threshold?: number;
-            count?: number;
-            roomId?: UUID;
-            agentId?: UUID;
-            unique?: boolean;
-            tableName: string;
-        }
-    ): Promise<Memory[]>;
 
     createMemory(
         memory: Memory,
@@ -1065,21 +1028,11 @@ export interface IDatabaseAdapter {
 
     getRelationships(params: { userId: UUID }): Promise<Relationship[]>;
 
-    getKnowledge(params: {
-        id?: UUID;
+    getKnowledgeByIds(params: {
+        ids: UUID[];
         agentId: UUID;
-        limit?: number;
-        query?: string;
-        conversationContext?: string;
     }): Promise<RAGKnowledgeItem[]>;
-
-    searchKnowledge(params: {
-        agentId: UUID;
-        embedding: Float32Array;
-        match_threshold: number;
-        match_count: number;
-        searchText?: string;
-    }): Promise<RAGKnowledgeItem[]>;
+    getKnowledge(id: UUID): Promise<RAGKnowledgeItem | null>;
 
     createKnowledge(knowledge: RAGKnowledgeItem): Promise<void>;
     removeKnowledge(id: UUID): Promise<void>;
@@ -1117,8 +1070,6 @@ export interface IMemoryManager {
     tableName: string;
     constructor: Function;
 
-    addEmbeddingToMemory(memory: Memory): Promise<Memory>;
-
     getMemories(opts: {
         roomId: UUID;
         count?: number;
@@ -1127,9 +1078,7 @@ export interface IMemoryManager {
         end?: number;
     }): Promise<Memory[]>;
 
-    getCachedEmbeddings(
-        content: string
-    ): Promise<{ embedding: number[]; levenshtein_score: number }[]>;
+    getCachedEmbeddings(content: string): Promise<number[]>;
 
     getMemoryById(id: UUID): Promise<Memory | null>;
     getMemoriesByRoomIds(params: {
@@ -1137,17 +1086,13 @@ export interface IMemoryManager {
         limit?: number;
         userId?: UUID;
     }): Promise<Memory[]>;
-    searchMemoriesByEmbedding(
-        embedding: number[],
-        opts: {
-            match_threshold?: number;
-            count?: number;
-            roomId: UUID;
-            unique?: boolean;
-        }
-    ): Promise<Memory[]>;
 
-    createMemory(memory: Memory, unique?: boolean): Promise<void>;
+    createMemory(
+        memory: Memory,
+        source: string,
+        unique: boolean,
+        isVectorRequired: boolean
+    ): Promise<void>;
 
     removeMemory(memoryId: UUID): Promise<void>;
 
@@ -1158,7 +1103,6 @@ export interface IMemoryManager {
 
 export interface IRAGKnowledgeManager {
     runtime: IAgentRuntime;
-    tableName: string;
 
     getKnowledge(params: {
         query?: string;
@@ -1166,8 +1110,13 @@ export interface IRAGKnowledgeManager {
         limit?: number;
         conversationContext?: string;
         agentId?: UUID;
+        isUnique?: boolean;
     }): Promise<RAGKnowledgeItem[]>;
-    createKnowledge(item: RAGKnowledgeItem): Promise<void>;
+    createKnowledge(
+        item: RAGKnowledgeItem,
+        source: string,
+        isUnique: boolean
+    ): Promise<void>;
     removeKnowledge(id: UUID): Promise<void>;
     searchKnowledge(params: {
         agentId: UUID;
@@ -1246,7 +1195,6 @@ export interface IAgentRuntime {
     messageManager: IMemoryManager;
     descriptionManager: IMemoryManager;
     documentsManager: IMemoryManager;
-    knowledgeManager: IMemoryManager;
     ragKnowledgeManager: IRAGKnowledgeManager;
     loreManager: IMemoryManager;
 
@@ -1533,9 +1481,7 @@ export interface RAGKnowledgeItem {
             [key: string]: unknown;
         };
     };
-    embedding?: Float32Array;
     createdAt?: number;
-    similarity?: number;
     score?: number;
 }
 

@@ -9,7 +9,6 @@ import {
     composeContext,
     composeRandomUser,
     elizaLogger,
-    getEmbeddingZeroVector,
     stringToUuid,
     generateShouldRespond,
     ITranscriptionService,
@@ -638,7 +637,6 @@ export class VoiceManager extends EventEmitter {
                 },
                 userId: userIdUUID,
                 roomId,
-                embedding: getEmbeddingZeroVector(),
                 createdAt: Date.now(),
             };
 
@@ -646,7 +644,12 @@ export class VoiceManager extends EventEmitter {
                 return { text: "", action: "IGNORE" };
             }
 
-            await this.runtime.messageManager.createMemory(memory);
+            await this.runtime.messageManager.createMemory(
+                memory,
+                "discord",
+                true,
+                false
+            );
 
             state = await this.runtime.updateRecentMessageState(state);
 
@@ -752,13 +755,17 @@ export class VoiceManager extends EventEmitter {
             userId: agentId,
             agentId,
             content,
-            embedding: getEmbeddingZeroVector(),
             createdAt: Date.now(),
         };
 
         elizaLogger.info("streamedVoiceMessage", responseMessage);
 
-        await runtime.messageManager.createMemory(responseMessage);
+        await runtime.messageManager.createMemory(
+            responseMessage,
+            "discord",
+            false,
+            true
+        );
     }
 
     private async convertOpusToWav(pcmBuffer: Buffer): Promise<Buffer> {

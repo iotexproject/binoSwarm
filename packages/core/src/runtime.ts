@@ -16,7 +16,6 @@ import {
 import { generateObject } from "./generation.ts";
 import { formatGoalsAsString, getGoals } from "./goals.ts";
 import { elizaLogger } from "./index.ts";
-import knowledge from "./knowledge.ts";
 import { MemoryManager } from "./memory.ts";
 import { formatMessages, retrieveActorIdsFromMessages } from "./messages.ts";
 import { stringArraySchema } from "./parsing.ts";
@@ -99,7 +98,6 @@ export class AgentRuntime implements IAgentRuntime {
     descriptionManager: IMemoryManager;
     loreManager: IMemoryManager;
     documentsManager: IMemoryManager;
-    knowledgeManager: IMemoryManager;
     ragKnowledgeManager: IRAGKnowledgeManager;
     services: Map<ServiceType, Service> = new Map();
     memoryManagers: Map<string, IMemoryManager> = new Map();
@@ -238,11 +236,7 @@ export class AgentRuntime implements IAgentRuntime {
 
         const recentMessages = formatMessages({
             actors: state.actorsData ?? [],
-            messages: recentMessagesData.map((memory: Memory) => {
-                const newMemory = { ...memory };
-                delete newMemory.embedding;
-                return newMemory;
-            }),
+            messages: recentMessagesData,
         });
 
         let allAttachments = [];
@@ -685,14 +679,13 @@ Text: ${attachment.text}
             tableName: "documents",
         });
 
-        this.knowledgeManager = new MemoryManager({
-            runtime: this,
-            tableName: "fragments",
-        });
+        // this.knowledgeManager = new MemoryManager({
+        //     runtime: this,
+        //     tableName: "fragments",
+        // });
 
         this.ragKnowledgeManager = new RAGKnowledgeManager({
             runtime: this,
-            tableName: "knowledge",
         });
 
         (opts.managers ?? []).forEach((manager: IMemoryManager) => {
@@ -755,16 +748,9 @@ Text: ${attachment.text}
             return;
         }
 
-        if (this.character.settings.ragKnowledge) {
-            await this.ragKnowledgeManager.processCharacterRAGKnowledge(
-                this.character.knowledge
-            );
-        } else {
-            const stringKnowledge = this.character.knowledge.filter(
-                (item): item is string => typeof item === "string"
-            );
-            await this.processCharacterKnowledge(stringKnowledge);
-        }
+        await this.ragKnowledgeManager.processCharacterRAGKnowledge(
+            this.character.knowledge
+        );
     }
 
     private async initializePluginServices() {
@@ -804,31 +790,6 @@ Text: ${attachment.text}
                 this.character.name
             );
             client.stop();
-        }
-    }
-
-    private async processCharacterKnowledge(items: string[]) {
-        for (const item of items) {
-            const knowledgeId = stringToUuid(item);
-            const existingDocument =
-                await this.documentsManager.getMemoryById(knowledgeId);
-            if (existingDocument) {
-                continue;
-            }
-
-            elizaLogger.info(
-                "Processing knowledge for ",
-                this.character.name,
-                " - ",
-                item.slice(0, 100)
-            );
-
-            await knowledge.set(this, {
-                id: knowledgeId,
-                content: {
-                    text: item,
-                },
-            });
         }
     }
 
@@ -1097,15 +1058,12 @@ Text: ${attachment.text}
         let knowledgeData = [];
         let formattedKnowledge = "";
 
-        if (this.character.settings?.ragKnowledge && !fastMode) {
+        if (!fastMode) {
             knowledgeData = await this.ragKnowledgeManager.getKnowledge({
                 query: message.content.text,
                 limit: 5,
+                isUnique: true,
             });
-
-            formattedKnowledge = formatKnowledge(knowledgeData);
-        } else if (!fastMode) {
-            knowledgeData = await knowledge.get(this, message);
 
             formattedKnowledge = formatKnowledge(knowledgeData);
         }

@@ -5,7 +5,6 @@ import {
     Memory,
     State,
     UUID,
-    getEmbeddingZeroVector,
     elizaLogger,
     stringToUuid,
     ActionTimelineType,
@@ -508,15 +507,21 @@ export class ClientBase extends EventEmitter {
                         break;
                     }
 
-                    await this.runtime.messageManager.createMemory({
-                        id: stringToUuid(tweet.id + "-" + this.runtime.agentId),
-                        userId,
-                        content: content,
-                        agentId: this.runtime.agentId,
-                        roomId,
-                        embedding: getEmbeddingZeroVector(),
-                        createdAt: tweet.timestamp * 1000,
-                    });
+                    await this.runtime.messageManager.createMemory(
+                        {
+                            id: stringToUuid(
+                                tweet.id + "-" + this.runtime.agentId
+                            ),
+                            userId,
+                            content: content,
+                            agentId: this.runtime.agentId,
+                            roomId,
+                            createdAt: tweet.timestamp * 1000,
+                        },
+                        "twitter",
+                        false,
+                        false
+                    );
 
                     await this.cacheTweet(tweet);
                 }
@@ -622,15 +627,19 @@ export class ClientBase extends EventEmitter {
                     : undefined,
             } as Content;
 
-            await this.runtime.messageManager.createMemory({
-                id: stringToUuid(tweet.id + "-" + this.runtime.agentId),
-                userId,
-                content: content,
-                agentId: this.runtime.agentId,
-                roomId,
-                embedding: getEmbeddingZeroVector(),
-                createdAt: tweet.timestamp * 1000,
-            });
+            await this.runtime.messageManager.createMemory(
+                {
+                    id: stringToUuid(tweet.id + "-" + this.runtime.agentId),
+                    userId,
+                    content: content,
+                    agentId: this.runtime.agentId,
+                    roomId,
+                    createdAt: tweet.timestamp * 1000,
+                },
+                "twitter",
+                false,
+                false
+            );
 
             await this.cacheTweet(tweet);
         }
@@ -668,10 +677,14 @@ export class ClientBase extends EventEmitter {
             ) {
                 elizaLogger.debug("Message already saved", recentMessage[0].id);
             } else {
-                await this.runtime.messageManager.createMemory({
-                    ...message,
-                    embedding: getEmbeddingZeroVector(),
-                });
+                await this.runtime.messageManager.createMemory(
+                    {
+                        ...message,
+                    },
+                    "twitter",
+                    false,
+                    false
+                );
             }
 
             await this.runtime.evaluate(message, {

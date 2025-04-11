@@ -11,7 +11,6 @@ import {
     State,
     stringToUuid,
     elizaLogger,
-    getEmbeddingZeroVector,
     IImageDescriptionService,
     ServiceType,
     generateObject,
@@ -440,7 +439,9 @@ For each tweet that contains valuable information (in either text or media), pro
                                                                     .length > 0,
                                                         },
                                                     },
-                                                }
+                                                },
+                                                "twitter",
+                                                false
                                             );
 
                                             elizaLogger.log(
@@ -735,7 +736,10 @@ For each tweet that contains valuable information (in either text or media), pro
                         responseMessage.content.action = "CONTINUE";
                     }
                     await this.runtime.messageManager.createMemory(
-                        responseMessage
+                        responseMessage,
+                        "twitter",
+                        false,
+                        true
                     );
                 }
 
@@ -806,31 +810,35 @@ For each tweet that contains valuable information (in either text or media), pro
                     "twitter"
                 );
 
-                this.runtime.messageManager.createMemory({
-                    id: stringToUuid(
-                        currentTweet.id + "-" + this.runtime.agentId
-                    ),
-                    agentId: this.runtime.agentId,
-                    content: {
-                        text: currentTweet.text,
-                        source: "twitter",
-                        url: currentTweet.permanentUrl,
-                        inReplyTo: currentTweet.inReplyToStatusId
-                            ? stringToUuid(
-                                  currentTweet.inReplyToStatusId +
-                                      "-" +
-                                      this.runtime.agentId
-                              )
-                            : undefined,
+                this.runtime.messageManager.createMemory(
+                    {
+                        id: stringToUuid(
+                            currentTweet.id + "-" + this.runtime.agentId
+                        ),
+                        agentId: this.runtime.agentId,
+                        content: {
+                            text: currentTweet.text,
+                            source: "twitter",
+                            url: currentTweet.permanentUrl,
+                            inReplyTo: currentTweet.inReplyToStatusId
+                                ? stringToUuid(
+                                      currentTweet.inReplyToStatusId +
+                                          "-" +
+                                          this.runtime.agentId
+                                  )
+                                : undefined,
+                        },
+                        createdAt: currentTweet.timestamp * 1000,
+                        roomId,
+                        userId:
+                            currentTweet.userId === this.twitterUserId
+                                ? this.runtime.agentId
+                                : stringToUuid(currentTweet.userId),
                     },
-                    createdAt: currentTweet.timestamp * 1000,
-                    roomId,
-                    userId:
-                        currentTweet.userId === this.twitterUserId
-                            ? this.runtime.agentId
-                            : stringToUuid(currentTweet.userId),
-                    embedding: getEmbeddingZeroVector(),
-                });
+                    "twitter",
+                    false,
+                    false
+                );
             }
 
             if (visited.has(currentTweet.id)) {

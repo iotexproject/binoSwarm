@@ -22,7 +22,6 @@
     "dependencies": {
         "@elizaos/adapter-postgres": "workspace:*",
         "@elizaos/adapter-redis": "workspace:*",
-        "@elizaos/adapter-sqlite": "workspace:*",
         "@elizaos/client-auto": "workspace:*",
         "@elizaos/client-direct": "workspace:*",
         "@elizaos/client-discord": "workspace:*",

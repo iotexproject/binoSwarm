@@ -1,12 +1,6 @@
 import express from "express";
 
-import {
-    stringToUuid,
-    getEmbeddingZeroVector,
-    Content,
-    Memory,
-    ServiceType,
-} from "@elizaos/core";
+import { stringToUuid, Content, Memory, ServiceType } from "@elizaos/core";
 
 import { DirectClient } from "../client";
 
@@ -99,8 +93,7 @@ async function processTextualRequest(
         createdAt: Date.now(),
     };
 
-    await runtime.messageManager.addEmbeddingToMemory(memory);
-    await runtime.messageManager.createMemory(memory);
+    await runtime.messageManager.createMemory(memory, "direct", true, false);
 
     let state = await runtime.composeState(userMessage, {
         agentName: runtime.character.name,
@@ -113,11 +106,15 @@ async function processTextualRequest(
         ...userMessage,
         userId: agentId,
         content: response,
-        embedding: getEmbeddingZeroVector(),
         createdAt: Date.now(),
     };
 
-    await runtime.messageManager.createMemory(responseMessage);
+    await runtime.messageManager.createMemory(
+        responseMessage,
+        "direct",
+        false,
+        true
+    );
 
     state = await runtime.updateRecentMessageState(state);
 

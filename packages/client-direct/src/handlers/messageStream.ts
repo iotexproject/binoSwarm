@@ -2,7 +2,6 @@ import express from "express";
 
 import {
     composeContext,
-    getEmbeddingZeroVector,
     Memory,
     ModelClass,
     streamWithTools,
@@ -66,8 +65,7 @@ async function handle(
         createdAt: Date.now(),
     };
 
-    await runtime.messageManager.addEmbeddingToMemory(memory);
-    await runtime.messageManager.createMemory(memory);
+    await runtime.messageManager.createMemory(memory, "direct", true, false);
 
     const state = await runtime.composeState(userMessage, {
         agentName: runtime.character.name,
@@ -149,11 +147,15 @@ async function buildAndSaveMemory(
         userId: agentId,
         agentId,
         content,
-        embedding: getEmbeddingZeroVector(),
         createdAt: Date.now(),
     };
 
     elizaLogger.info("streamedResponseMessage", responseMessage);
 
-    await runtime.messageManager.createMemory(responseMessage);
+    await runtime.messageManager.createMemory(
+        responseMessage,
+        "direct",
+        false,
+        true
+    );
 }

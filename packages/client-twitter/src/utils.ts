@@ -1,5 +1,4 @@
 import { Tweet } from "agent-twitter-client";
-import { getEmbeddingZeroVector } from "@elizaos/core";
 import { Content, Memory, UUID } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 import { ClientBase } from "./base";
@@ -73,31 +72,35 @@ export async function buildConversationThread(
                 "twitter"
             );
 
-            await client.runtime.messageManager.createMemory({
-                id: stringToUuid(
-                    currentTweet.id + "-" + client.runtime.agentId
-                ),
-                agentId: client.runtime.agentId,
-                content: {
-                    text: currentTweet.text,
-                    source: "twitter",
-                    url: currentTweet.permanentUrl,
-                    inReplyTo: currentTweet.inReplyToStatusId
-                        ? stringToUuid(
-                              currentTweet.inReplyToStatusId +
-                                  "-" +
-                                  client.runtime.agentId
-                          )
-                        : undefined,
+            await client.runtime.messageManager.createMemory(
+                {
+                    id: stringToUuid(
+                        currentTweet.id + "-" + client.runtime.agentId
+                    ),
+                    agentId: client.runtime.agentId,
+                    content: {
+                        text: currentTweet.text,
+                        source: "twitter",
+                        url: currentTweet.permanentUrl,
+                        inReplyTo: currentTweet.inReplyToStatusId
+                            ? stringToUuid(
+                                  currentTweet.inReplyToStatusId +
+                                      "-" +
+                                      client.runtime.agentId
+                              )
+                            : undefined,
+                    },
+                    createdAt: currentTweet.timestamp * 1000,
+                    roomId,
+                    userId:
+                        currentTweet.userId === client.profile.id
+                            ? client.runtime.agentId
+                            : stringToUuid(currentTweet.userId),
                 },
-                createdAt: currentTweet.timestamp * 1000,
-                roomId,
-                userId:
-                    currentTweet.userId === client.profile.id
-                        ? client.runtime.agentId
-                        : stringToUuid(currentTweet.userId),
-                embedding: getEmbeddingZeroVector(),
-            });
+                "twitter",
+                false,
+                false
+            );
         }
 
         if (visited.has(currentTweet.id)) {
@@ -287,7 +290,6 @@ export async function sendTweet(
                 : undefined,
         },
         roomId,
-        embedding: getEmbeddingZeroVector(),
         createdAt: tweet.timestamp * 1000,
     }));
 

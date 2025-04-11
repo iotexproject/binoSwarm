@@ -21,12 +21,8 @@ const mockDatabaseAdapter: IDatabaseAdapter = {
     getMemories: vi.fn().mockResolvedValue([]),
     getMemoryById: vi.fn().mockResolvedValue(null),
     getMemoriesByRoomIds: vi.fn().mockResolvedValue([]),
-    getCachedEmbeddings: vi.fn().mockResolvedValue([]),
-    log: vi.fn().mockResolvedValue(undefined),
     getActorDetails: vi.fn().mockResolvedValue([]),
-    searchMemories: vi.fn().mockResolvedValue([]),
     updateGoalStatus: vi.fn().mockResolvedValue(undefined),
-    searchMemoriesByEmbedding: vi.fn().mockResolvedValue([]),
     createMemory: vi.fn().mockResolvedValue(undefined),
     removeMemory: vi.fn().mockResolvedValue(undefined),
     removeAllMemories: vi.fn().mockResolvedValue(undefined),
@@ -51,7 +47,7 @@ const mockDatabaseAdapter: IDatabaseAdapter = {
     getRelationship: vi.fn().mockResolvedValue(null),
     getRelationships: vi.fn().mockResolvedValue([]),
     getKnowledge: vi.fn().mockResolvedValue([]),
-    searchKnowledge: vi.fn().mockResolvedValue([]),
+    getKnowledgeByIds: vi.fn().mockResolvedValue([]),
     createKnowledge: vi.fn().mockResolvedValue(undefined),
     removeKnowledge: vi.fn().mockResolvedValue(undefined),
     clearKnowledge: vi.fn().mockResolvedValue(undefined),
@@ -78,9 +74,11 @@ const createMockAction = (name: string): Action => ({
 
 describe("AgentRuntime", () => {
     let runtime: AgentRuntime;
-
+    let originalPineconeApiKey: string | undefined;
     beforeEach(() => {
         vi.clearAllMocks();
+        originalPineconeApiKey = process.env.PINECONE_API_KEY;
+        process.env.PINECONE_API_KEY = "test-pinecone-api-key";
         runtime = new AgentRuntime({
             token: "test-token",
             character: defaultCharacter,
@@ -88,6 +86,10 @@ describe("AgentRuntime", () => {
             cacheManager: mockCacheManager,
             modelProvider: ModelProviderName.OPENAI,
         });
+    });
+
+    afterEach(() => {
+        process.env.PINECONE_API_KEY = originalPineconeApiKey;
     });
 
     describe("action management", () => {

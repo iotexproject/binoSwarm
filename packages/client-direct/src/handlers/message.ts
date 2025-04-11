@@ -1,12 +1,6 @@
 import express from "express";
 
-import {
-    stringToUuid,
-    getEmbeddingZeroVector,
-    Content,
-    Memory,
-    elizaLogger,
-} from "@elizaos/core";
+import { stringToUuid, Content, Memory, elizaLogger } from "@elizaos/core";
 
 import { DirectClient } from "../client";
 import { genRoomId, genUserId, genResponse, composeContent } from "./helpers";
@@ -64,8 +58,7 @@ async function handle(
         createdAt: Date.now(),
     };
 
-    await runtime.messageManager.addEmbeddingToMemory(memory);
-    await runtime.messageManager.createMemory(memory);
+    await runtime.messageManager.createMemory(memory, "direct", true, false);
 
     let state = await runtime.composeState(userMessage, {
         agentName: runtime.character.name,
@@ -85,11 +78,15 @@ async function handle(
         ...userMessage,
         userId: agentId,
         content: response,
-        embedding: getEmbeddingZeroVector(),
         createdAt: Date.now(),
     };
 
-    await runtime.messageManager.createMemory(responseMessage);
+    await runtime.messageManager.createMemory(
+        responseMessage,
+        "direct",
+        false,
+        true
+    );
     state = await runtime.updateRecentMessageState(state);
 
     // Process actions and stream any additional messages

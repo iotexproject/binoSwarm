@@ -1,5 +1,4 @@
 import {
-    getEmbeddingZeroVector,
     stringToUuid,
     elizaLogger,
     Character,
@@ -271,11 +270,15 @@ export class DiscordClient extends EventEmitter {
                 },
                 roomId,
                 createdAt: timestamp,
-                embedding: getEmbeddingZeroVector(),
             };
 
             try {
-                await this.runtime.messageManager.createMemory(memory);
+                await this.runtime.messageManager.createMemory(
+                    memory,
+                    "discord",
+                    false,
+                    false
+                );
                 elizaLogger.debug("Reaction memory created", {
                     reactionId: reactionUUID,
                     emoji,
@@ -349,21 +352,25 @@ export class DiscordClient extends EventEmitter {
 
         try {
             // Save the reaction removal as a message
-            await this.runtime.messageManager.createMemory({
-                id: reactionUUID, // This is the ID of the reaction removal message
-                userId: userIdUUID,
-                agentId: this.runtime.agentId,
-                content: {
-                    text: reactionMessage,
-                    source: "discord",
-                    inReplyTo: stringToUuid(
-                        reaction.message.id + "-" + this.runtime.agentId
-                    ), // This is the ID of the original message
+            await this.runtime.messageManager.createMemory(
+                {
+                    id: reactionUUID, // This is the ID of the reaction removal message
+                    userId: userIdUUID,
+                    agentId: this.runtime.agentId,
+                    content: {
+                        text: reactionMessage,
+                        source: "discord",
+                        inReplyTo: stringToUuid(
+                            reaction.message.id + "-" + this.runtime.agentId
+                        ), // This is the ID of the original message
+                    },
+                    roomId,
+                    createdAt: Date.now(),
                 },
-                roomId,
-                createdAt: Date.now(),
-                embedding: getEmbeddingZeroVector(),
-            });
+                "discord",
+                false,
+                false
+            );
         } catch (error) {
             elizaLogger.error(
                 "Error creating reaction removal message:",

@@ -17,3 +17,9 @@ node_modules
 # Ignore build artifacts from the host
 dist
 build
+
+# Ignore SSL certificates
+*.crt
+*.key
+*.pem
+*.csr

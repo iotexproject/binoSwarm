@@ -1,7 +1,6 @@
 import { Tweet } from "agent-twitter-client";
 import {
     composeContext,
-    getEmbeddingZeroVector,
     IAgentRuntime,
     ModelClass,
     stringToUuid,
@@ -338,20 +337,24 @@ export class TwitterActionProcessor {
         );
         await this.runtime.ensureParticipantInRoom(agentId, roomId);
 
-        await this.runtime.messageManager.createMemory({
-            id: stringToUuid(tweet.id + "-" + agentId),
-            userId,
-            content: {
-                text: tweet.text,
-                url: tweet.permanentUrl,
-                source: "twitter",
-                action: executedActions.join(","),
+        await this.runtime.messageManager.createMemory(
+            {
+                id: stringToUuid(tweet.id + "-" + agentId),
+                userId,
+                content: {
+                    text: tweet.text,
+                    url: tweet.permanentUrl,
+                    source: "twitter",
+                    action: executedActions.join(","),
+                },
+                agentId,
+                roomId,
+                createdAt: tweet.timestamp * 1000,
             },
-            agentId,
-            roomId,
-            embedding: getEmbeddingZeroVector(),
-            createdAt: tweet.timestamp * 1000,
-        });
+            "twitter",
+            false,
+            true
+        );
     }
 
     private async processQuote(tweet: Tweet) {

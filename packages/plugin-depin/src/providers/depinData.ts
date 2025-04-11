@@ -12,12 +12,14 @@ import * as path from "path";
 import { getRawDataFromQuicksilver } from "../services/quicksilver";
 import type { DepinScanMetrics, DepinScanProject } from "../types/depin";
 
+const CACHE_TTL = 3600; // 1 hour
+
 export class DePINScanProvider {
     private cache: NodeCache;
     private cacheKey: string = "depin/metrics";
 
     constructor(private cacheManager: ICacheManager) {
-        this.cache = new NodeCache({ stdTTL: 3600 }); // 1 hour
+        this.cache = new NodeCache({ stdTTL: CACHE_TTL });
     }
 
     private async readFromCache<T>(key: string): Promise<T | null> {
@@ -29,7 +31,7 @@ export class DePINScanProvider {
 
     private async writeToCache<T>(key: string, data: T): Promise<void> {
         await this.cacheManager.set(path.join(this.cacheKey, key), data, {
-            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+            expires: Date.now() + CACHE_TTL * 1000,
         });
     }
 

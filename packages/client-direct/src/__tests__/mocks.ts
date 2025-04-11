@@ -13,7 +13,6 @@ export const buildAgentRuntimeMock = (): AgentRuntime =>
         token: "mock-token",
         getSetting: vi.fn().mockReturnValue("mock-setting"),
         messageManager: {
-            addEmbeddingToMemory: vi.fn(),
             createMemory: vi.fn(),
             getMemories: vi.fn().mockResolvedValue([]),
         },

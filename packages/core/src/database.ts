@@ -103,52 +103,11 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
     abstract getMemoryById(id: UUID): Promise<Memory | null>;
 
     /**
-     * Retrieves cached embeddings based on the specified query parameters.
-     * @param params An object containing parameters for the embedding retrieval.
-     * @returns A Promise that resolves to an array of objects containing embeddings and levenshtein scores.
-     */
-    abstract getCachedEmbeddings({
-        query_table_name,
-        query_threshold,
-        query_input,
-        query_field_name,
-        query_field_sub_name,
-        query_match_count,
-    }: {
-        query_table_name: string;
-        query_threshold: number;
-        query_input: string;
-        query_field_name: string;
-        query_field_sub_name: string;
-        query_match_count: number;
-    }): Promise<
-        {
-            embedding: number[];
-            levenshtein_score: number;
-        }[]
-    >;
-
-    /**
      * Retrieves details of actors in a given room.
      * @param params An object containing the roomId to search for actors.
      * @returns A Promise that resolves to an array of Actor objects.
      */
     abstract getActorDetails(params: { roomId: UUID }): Promise<Actor[]>;
-
-    /**
-     * Searches for memories based on embeddings and other specified parameters.
-     * @param params An object containing parameters for the memory search.
-     * @returns A Promise that resolves to an array of Memory objects.
-     */
-    abstract searchMemories(params: {
-        tableName: string;
-        agentId: UUID;
-        roomId: UUID;
-        embedding: number[];
-        match_threshold: number;
-        match_count: number;
-        unique: boolean;
-    }): Promise<Memory[]>;
 
     /**
      * Updates the status of a specific goal.
@@ -159,24 +118,6 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
         goalId: UUID;
         status: GoalStatus;
     }): Promise<void>;
-
-    /**
-     * Searches for memories by embedding and other specified parameters.
-     * @param embedding The embedding vector to search with.
-     * @param params Additional parameters for the search.
-     * @returns A Promise that resolves to an array of Memory objects.
-     */
-    abstract searchMemoriesByEmbedding(
-        embedding: number[],
-        params: {
-            match_threshold?: number;
-            count?: number;
-            roomId?: UUID;
-            agentId?: UUID;
-            unique?: boolean;
-            tableName: string;
-        }
-    ): Promise<Memory[]>;
 
     /**
      * Creates a new memory in the database.
@@ -377,21 +318,12 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
      * @param params Object containing search parameters
      * @returns Promise resolving to array of knowledge items
      */
-    abstract getKnowledge(params: {
-        id?: UUID;
+    abstract getKnowledgeByIds(params: {
+        ids: UUID[];
         agentId: UUID;
-        limit?: number;
-        query?: string;
-        conversationContext?: string;
     }): Promise<RAGKnowledgeItem[]>;
 
-    abstract searchKnowledge(params: {
-        agentId: UUID;
-        embedding: Float32Array;
-        match_threshold: number;
-        match_count: number;
-        searchText?: string;
-    }): Promise<RAGKnowledgeItem[]>;
+    abstract getKnowledge(id: UUID): Promise<RAGKnowledgeItem | null>;
 
     /**
      * Creates a new knowledge item in the database.

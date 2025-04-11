@@ -1,22 +1,17 @@
-import {
-    embed,
-    MemoryManager,
-    formatMessages,
-    AgentRuntime as IAgentRuntime,
-} from "@elizaos/core";
+import { MemoryManager, AgentRuntime as IAgentRuntime } from "@elizaos/core";
 import type { Memory, Provider, State } from "@elizaos/core";
 import { formatFacts } from "../evaluators/fact.ts";
 
 const factsProvider: Provider = {
-    get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
-        const recentMessagesData = state?.recentMessagesData?.slice(-10);
+    get: async (runtime: IAgentRuntime, message: Memory, _state?: State) => {
+        // const recentMessagesData = state?.recentMessagesData?.slice(-10);
 
-        const recentMessages = formatMessages({
-            messages: recentMessagesData,
-            actors: state?.actorsData,
-        });
+        // const recentMessages = formatMessages({
+        //     messages: recentMessagesData,
+        //     actors: state?.actorsData,
+        // });
 
-        const _embedding = await embed(runtime, recentMessages);
+        // const _embedding = await embed(runtime, recentMessages, false);
 
         const memoryManager = new MemoryManager({
             runtime,
