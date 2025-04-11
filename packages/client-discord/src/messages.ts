@@ -658,7 +658,7 @@ export class MessageManager {
     }
 
     private async shouldIgnore(message: DiscordMessage): Promise<boolean> {
-        const messageContent = this.cleanupMessageContent(message);
+        const messageContent = this.normalizeMessageContent(message);
 
         const isShort = this.isShortWithLoseInterestWords(messageContent);
         const isTargeted = this.isAskedToStop(messageContent);
@@ -741,7 +741,7 @@ export class MessageManager {
         );
     }
 
-    private cleanupMessageContent(message: DiscordMessage<boolean>) {
+    private normalizeMessageContent(message: DiscordMessage<boolean>): string {
         let messageContent = message.content.toLowerCase();
 
         messageContent = this.replaceBotIdWithCharacterName(messageContent);
