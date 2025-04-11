@@ -7,8 +7,10 @@ describe("MemoryManager", () => {
     let memoryManager: MemoryManager;
     let mockDatabaseAdapter: any;
     let mockRuntime: IAgentRuntime;
-
+    let originalPineconeApiKey: string | undefined;
     beforeEach(() => {
+        originalPineconeApiKey = process.env.PINECONE_API_KEY;
+        process.env.PINECONE_API_KEY = "test-pinecone-api-key";
         mockDatabaseAdapter = {
             getMemories: vi.fn(),
             createMemory: vi.fn(),
@@ -31,6 +33,10 @@ describe("MemoryManager", () => {
             tableName: "test_memories",
             runtime: mockRuntime,
         });
+    });
+
+    afterEach(() => {
+        process.env.PINECONE_API_KEY = originalPineconeApiKey;
     });
 
     describe("getMemories", () => {

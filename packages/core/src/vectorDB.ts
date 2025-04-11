@@ -6,15 +6,14 @@ import {
     ScoredPineconeRecord,
 } from "@pinecone-database/pinecone";
 
-const pc = new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY,
-});
-
 export class VectorDB<T extends RecordMetadata> {
     index: Index<T>;
 
     constructor() {
-        this.index = pc.index<T>(process.env.PINECONE_INDEX);
+        const pc = new Pinecone({
+            apiKey: process.env.PINECONE_API_KEY || "",
+        });
+        this.index = pc.index<T>(process.env.PINECONE_INDEX || "");
     }
 
     async upsert(params: {
