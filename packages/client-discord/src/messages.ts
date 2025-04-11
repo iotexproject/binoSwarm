@@ -263,26 +263,27 @@ export class MessageManager {
         } catch (error) {
             elizaLogger.error("Error handling message:", error);
             if (message.channel.type === ChannelType.GuildVoice) {
-                // For voice channels, use text-to-speech for the error message
-                const errorMessage = "Sorry, I had a glitch. What was that?";
-
-                const speechService = this.runtime.getService<ISpeechService>(
-                    ServiceType.SPEECH_GENERATION
-                );
-                if (!speechService) {
-                    throw new Error("Speech generation service not found");
-                }
-
-                const audioStream = await speechService.generate(
-                    this.runtime,
-                    errorMessage
-                );
-                await this.voiceManager.playAudioStream(userId, audioStream);
-            } else {
-                // For text channels, send the error message
-                elizaLogger.error("Error sending message:", error);
+                await this.handleErrorInVoiceChannel(userId);
             }
         }
+    }
+
+    private async handleErrorInVoiceChannel(userId: UUID) {
+        // For voice channels, use text-to-speech for the error message
+        const errorMessage = "Sorry, I had a glitch. What was that?";
+
+        const speechService = this.runtime.getService<ISpeechService>(
+            ServiceType.SPEECH_GENERATION
+        );
+        if (!speechService) {
+            throw new Error("Speech generation service not found");
+        }
+
+        const audioStream = await speechService.generate(
+            this.runtime,
+            errorMessage
+        );
+        await this.voiceManager.playAudioStream(userId, audioStream);
     }
 
     private shouldIgnoreIfMuted(
