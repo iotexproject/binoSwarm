@@ -377,28 +377,23 @@ export class MessageManager {
     }
 
     private shouldSkip(message: DiscordMessage<boolean>) {
+        const config = this.runtime.character.clientConfig?.discord;
         const isInteraction = message.interaction;
         const isMyself = message.author.id === this.client.user?.id;
-        const shouldIgnoreBots =
-            this.runtime.character.clientConfig?.discord
-                ?.shouldIgnoreBotMessages;
+        const shouldIgnoreBots = config?.shouldIgnoreBotMessages;
         const isBot = message.author?.bot;
         const isIgnoringBot = shouldIgnoreBots && isBot;
-        const shouldRespondOnlyToMentions =
-            this.runtime.character.clientConfig?.discord
-                ?.shouldRespondOnlyToMentions;
-        const isOnlyMention =
-            shouldRespondOnlyToMentions && !this._isMessageForMe(message);
-        const shouldIgnoreDirectMessages =
-            this.runtime.character.clientConfig?.discord
-                ?.shouldIgnoreDirectMessages;
+        const onlyMentions = config?.shouldRespondOnlyToMentions;
+        const notForMe = onlyMentions && !this._isMessageForMe(message);
+        const shouldIgnoreDirectMessages = config?.shouldIgnoreDirectMessages;
         const isDM = message.channel.type === ChannelType.DM;
         const isIgnoringDM = shouldIgnoreDirectMessages && isDM;
+
         return (
             isInteraction ||
             isMyself ||
             isIgnoringBot ||
-            isOnlyMention ||
+            notForMe ||
             isIgnoringDM
         );
     }
@@ -407,6 +402,7 @@ export class MessageManager {
         const isMentioned = message.mentions.users?.has(
             this.client.user?.id as string
         );
+
         const guild = message.guild;
         const member = guild?.members.cache.get(this.client.user?.id as string);
         const nickname = member?.nickname;
@@ -443,7 +439,8 @@ export class MessageManager {
 
         if (
             this.runtime.character.clientConfig?.discord
-                ?.shouldRespondOnlyToMentions
+                ?.shouldRespondOnlyToMentions &&
+            !this.isMessageDirectedAtBot(message)
         ) {
             return false;
         }
