@@ -439,7 +439,9 @@ For each tweet that contains valuable information (in either text or media), pro
                                                                     .length > 0,
                                                         },
                                                     },
-                                                }
+                                                },
+                                                "twitter",
+                                                false
                                             );
 
                                             elizaLogger.log(

@@ -1109,8 +1109,8 @@ export interface IRAGKnowledgeManager {
     }): Promise<RAGKnowledgeItem[]>;
     createKnowledge(
         item: RAGKnowledgeItem,
-        source?: string,
-        isUnique?: boolean
+        source: string,
+        isUnique: boolean
     ): Promise<void>;
     removeKnowledge(id: UUID): Promise<void>;
     searchKnowledge(params: {
