@@ -77,19 +77,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 searchText: processedQuery,
             });
 
-            const rerankedResults = this.rerankResults(
-                results,
-                processedQuery,
-                params
-            );
-
-            const filteredResults = rerankedResults
-                .filter(
-                    (result) => result.score >= this.defaultRAGMatchThreshold
-                )
-                .slice(0, params.limit || this.defaultRAGMatchCount);
-
-            return filteredResults;
+            return results;
         } catch (error) {
             elizaLogger.error(`[RAG Search Error] ${error}`);
             return [];
@@ -160,19 +148,24 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             vector: embedding,
             topK: match_count,
             type: KNOWLEDGE_METADATA_TYPE,
-            filter: {
-                isChunk: true,
-            },
+            filter: {},
         });
 
         elizaLogger.debug("Pinecone search results:", matches);
 
-        const ids = matches.map((match) => match.id as UUID);
+        const filteredMatches = matches.filter(
+            (m) => m.score >= this.defaultRAGMatchThreshold
+        );
+        const ids = filteredMatches.map((match) => match.id as UUID);
 
         const chunks = await this.runtime.databaseAdapter.getKnowledgeByIds({
             ids,
             agentId: params.agentId,
         });
+
+        elizaLogger.debug(
+            `Retrieved ${chunks.length} knowledge items from database`
+        );
 
         return chunks;
     }
@@ -399,56 +392,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         return res !== null;
     }
 
-    private rerankResults(
-        results: RAGKnowledgeItem[],
-        processedQuery: string,
-        params: {
-            query?: string;
-            id?: UUID;
-            conversationContext?: string;
-            limit?: number;
-            agentId?: UUID;
-        }
-    ) {
-        return results
-            .map((result) => {
-                let score = result.score;
-
-                // Check for direct query term matches
-                const queryTerms = this.getQueryTerms(processedQuery);
-
-                const matchingTerms = queryTerms.filter((term) =>
-                    result.content.text.toLowerCase().includes(term)
-                );
-
-                if (matchingTerms.length > 0) {
-                    // Much stronger boost for matches
-                    score *= 1 + (matchingTerms.length / queryTerms.length) * 2; // Double the boost
-
-                    if (
-                        this.hasProximityMatch(
-                            result.content.text,
-                            matchingTerms
-                        )
-                    ) {
-                        score *= 1.5; // Stronger proximity boost
-                    }
-                } else {
-                    // More aggressive penalty
-                    if (!params.conversationContext) {
-                        score *= 0.3; // Stronger penalty
-                    }
-                }
-
-                return {
-                    ...result,
-                    score,
-                    matchedTerms: matchingTerms, // Add for debugging
-                };
-            })
-            .sort((a, b) => b.score - a.score);
-    }
-
     private readonly stopWords = new Set([
         "a",
         "an",
@@ -528,23 +471,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             .replace(/[^a-zA-Z0-9\s\-_./:?=&]/g, "")
             .trim()
             .toLowerCase();
-    }
-
-    private hasProximityMatch(text: string, terms: string[]): boolean {
-        const words = text.toLowerCase().split(" ");
-        const positions = terms
-            .map((term) => words.findIndex((w) => w.includes(term)))
-            .filter((pos) => pos !== -1);
-
-        if (positions.length < 2) return false;
-
-        // Check if any matches are within 5 words of each other
-        for (let i = 0; i < positions.length - 1; i++) {
-            if (Math.abs(positions[i] - positions[i + 1]) <= 5) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private async chunkEmbedAndPersist(

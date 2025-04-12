@@ -1357,7 +1357,7 @@ export class PostgresDatabaseAdapter
             ON CONFLICT (id) DO NOTHING
         `,
             [
-                v4(), // Generate a proper UUID for PostgreSQL
+                params.id, // Use the UUID that was passed in
                 params.agentId,
                 contentWithPatternId, // Store the pattern ID in metadata
                 params.createdAt,
