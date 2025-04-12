@@ -32,7 +32,6 @@ import {
     IMemoryManager,
     IRAGKnowledgeManager,
     IVerifiableInferenceAdapter,
-    KnowledgeItem,
     Media,
     ModelClass,
     ModelProviderName,
@@ -46,6 +45,7 @@ import {
     type Actor,
     type Evaluator,
     type Memory,
+    RAGKnowledgeItem,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
 
@@ -1205,20 +1205,18 @@ Text: ${attachment.text}
         actorsData: Actor[],
         userId: UUID
     ): string {
-        const formattedInteractions = recentInteractionsData.map(
-            async (message) => {
-                const isSelf = message.userId === this.agentId;
-                let sender: string;
-                if (isSelf) {
-                    sender = this.character.name;
-                } else {
-                    sender =
-                        actorsData.find((actor) => actor.id === userId)?.name ||
-                        "unknown";
-                }
-                return `${sender}: ${message.content.text}`;
+        const formattedInteractions = recentInteractionsData.map((message) => {
+            const isSelf = message.userId === this.agentId;
+            let sender: string;
+            if (isSelf) {
+                sender = this.character.name;
+            } else {
+                sender =
+                    actorsData.find((actor) => actor.id === userId)?.name ||
+                    "unknown";
             }
-        );
+            return `${sender}: ${message.content.text}`;
+        });
 
         return formattedInteractions.join("\n");
     }
@@ -1237,10 +1235,8 @@ Text: ${attachment.text}
     }
 }
 
-const formatKnowledge = (knowledge: KnowledgeItem[]) => {
-    return knowledge
-        .map((knowledge) => `- ${knowledge.content.text}`)
-        .join("\n");
+const formatKnowledge = (knowledge: RAGKnowledgeItem[]) => {
+    return knowledge.map((item) => `- ${item.content.text}`).join("\n");
 };
 
 const formatPostExamples = (runtime: AgentRuntime, postExamples: string[]) => {
