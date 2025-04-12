@@ -168,6 +168,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         elizaLogger.debug("Pinecone search results:", matches);
 
         const ids = matches.map((match) => match.id as UUID);
+
         const chunks = await this.runtime.databaseAdapter.getKnowledgeByIds({
             ids,
             agentId: params.agentId,
@@ -600,18 +601,21 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         inputHash: this.vectorDB.hashInput(item.content.text),
                     },
                 },
-                ...chunks.map((_chunk, index) => ({
-                    id: this.buildChunkId(item, index),
-                    values: embeddings[index + 1],
-                    metadata: {
-                        ...metadata,
-                        isChunk: true,
-                        isMain: false,
-                        originalId: item.id,
-                        chunkIndex: index,
-                        inputHash: this.vectorDB.hashInput(_chunk),
-                    },
-                })),
+                ...chunks.map((_chunk, index) => {
+                    const chunkId = this.buildChunkId(item, index);
+                    return {
+                        id: chunkId,
+                        values: embeddings[index + 1],
+                        metadata: {
+                            ...metadata,
+                            isChunk: true,
+                            isMain: false,
+                            originalId: item.id,
+                            chunkIndex: index,
+                            inputHash: this.vectorDB.hashInput(_chunk),
+                        },
+                    };
+                }),
             ],
         });
     }
@@ -633,9 +637,10 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 },
                 createdAt: Date.now(),
             }),
-            ...chunks.map((chunk, index) =>
-                this.runtime.databaseAdapter.createKnowledge({
-                    id: this.buildChunkId(item, index),
+            ...chunks.map((chunk, index) => {
+                const chunkId = this.buildChunkId(item, index);
+                return this.runtime.databaseAdapter.createKnowledge({
+                    id: chunkId,
                     agentId: this.runtime.agentId,
                     content: {
                         text: chunk,
@@ -647,8 +652,8 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                         },
                     },
                     createdAt: Date.now(),
-                })
-            ),
+                });
+            }),
         ]);
     }
 
@@ -662,10 +667,9 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         });
     }
 
-    private buildChunkId(
-        item: RAGKnowledgeItem,
-        index: number
-    ): `${UUID}-chunk-${number}` {
-        return `${item.id}-chunk-${index}`;
+    private buildChunkId(item: RAGKnowledgeItem, index: number): UUID {
+        // Create a deterministic UUID based on the original ID and chunk index
+        // This ensures we get a valid UUID for the database while maintaining uniqueness
+        return stringToUuid(`${item.id}-chunk-${index}`);
     }
 }
