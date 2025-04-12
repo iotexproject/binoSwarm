@@ -550,37 +550,43 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         item: RAGKnowledgeItem,
         chunks: string[]
     ) {
-        await Promise.all([
-            this.runtime.databaseAdapter.createKnowledge({
-                id: item.id,
-                agentId: this.runtime.agentId,
-                content: {
-                    text: item.content.text,
-                    metadata: {
-                        ...item.content.metadata,
-                        isMain: true,
-                    },
+        // First create the main knowledge item
+        await this.runtime.databaseAdapter.createKnowledge({
+            id: item.id,
+            agentId: this.runtime.agentId,
+            content: {
+                text: item.content.text,
+                metadata: {
+                    ...item.content.metadata,
+                    isMain: true,
                 },
-                createdAt: Date.now(),
-            }),
-            ...chunks.map((chunk, index) => {
-                const chunkId = this.buildChunkId(item, index);
-                return this.runtime.databaseAdapter.createKnowledge({
-                    id: chunkId,
-                    agentId: this.runtime.agentId,
-                    content: {
-                        text: chunk,
-                        metadata: {
-                            ...item.content.metadata,
-                            isChunk: true,
-                            originalId: item.id,
-                            chunkIndex: index,
+            },
+            createdAt: Date.now(),
+        });
+
+        // Then create each chunk after the main item exists
+        if (chunks.length > 0) {
+            // Now that the main item is created, we can safely create all chunks
+            await Promise.all(
+                chunks.map((chunk, index) => {
+                    const chunkId = this.buildChunkId(item, index);
+                    return this.runtime.databaseAdapter.createKnowledge({
+                        id: chunkId,
+                        agentId: this.runtime.agentId,
+                        content: {
+                            text: chunk,
+                            metadata: {
+                                ...item.content.metadata,
+                                isChunk: true,
+                                originalId: item.id,
+                                chunkIndex: index,
+                            },
                         },
-                    },
-                    createdAt: Date.now(),
-                });
-            }),
-        ]);
+                        createdAt: Date.now(),
+                    });
+                })
+            );
+        }
     }
 
     private async getKnowledgeById(params: {
