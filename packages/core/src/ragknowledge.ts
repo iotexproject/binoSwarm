@@ -77,19 +77,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 searchText: processedQuery,
             });
 
-            const rerankedResults = this.rerankResults(
-                results,
-                processedQuery,
-                params
-            );
-
-            const filteredResults = rerankedResults
-                .filter(
-                    (result) => result.score >= this.defaultRAGMatchThreshold
-                )
-                .slice(0, params.limit || this.defaultRAGMatchCount);
-
-            return filteredResults;
+            return results;
         } catch (error) {
             elizaLogger.error(`[RAG Search Error] ${error}`);
             return [];
@@ -160,19 +148,24 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             vector: embedding,
             topK: match_count,
             type: KNOWLEDGE_METADATA_TYPE,
-            filter: {
-                isChunk: true,
-            },
+            filter: {},
         });
 
         elizaLogger.debug("Pinecone search results:", matches);
 
-        const ids = matches.map((match) => match.id as UUID);
+        const filteredMatches = matches.filter(
+            (m) => m.score >= this.defaultRAGMatchThreshold
+        );
+        const ids = filteredMatches.map((match) => match.id as UUID);
 
         const chunks = await this.runtime.databaseAdapter.getKnowledgeByIds({
             ids,
             agentId: params.agentId,
         });
+
+        elizaLogger.debug(
+            `Retrieved ${chunks.length} knowledge items from database`
+        );
 
         return chunks;
     }
