@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
 import { join } from "path";
+import { ScoredPineconeRecord } from "@pinecone-database/pinecone";
 
 import { splitChunks } from "./generation.ts";
 import elizaLogger from "./logger.ts";
@@ -156,7 +157,12 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         const filteredMatches = matches.filter(
             (m) => m.score >= this.defaultRAGMatchThreshold
         );
-        const ids = filteredMatches.map((match) => match.id as UUID);
+
+        // Filter out duplicates based on inputHash
+        // Keep the match with highest score when duplicates are found
+        const uniqueMatches = this.filterDuplicatesByInputHash(filteredMatches);
+
+        const ids = uniqueMatches.map((match) => match.id as UUID);
 
         const chunks = await this.runtime.databaseAdapter.getKnowledgeByIds({
             ids,
@@ -168,6 +174,40 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         );
 
         return chunks;
+    }
+
+    private filterDuplicatesByInputHash(
+        matches: ScoredPineconeRecord<RAGKnowledgeItemMetadata>[]
+    ): ScoredPineconeRecord<RAGKnowledgeItemMetadata>[] {
+        const hashMap = new Map<
+            string,
+            ScoredPineconeRecord<RAGKnowledgeItemMetadata>
+        >();
+
+        // First pass: find highest score for each inputHash
+        for (const match of matches) {
+            const inputHash = match.metadata?.inputHash;
+            if (inputHash) {
+                if (
+                    !hashMap.has(inputHash) ||
+                    match.score > hashMap.get(inputHash)!.score
+                ) {
+                    hashMap.set(inputHash, match);
+                }
+            } else {
+                // If no inputHash, keep the match
+                hashMap.set(match.id, match);
+            }
+        }
+
+        // Check if we filtered any duplicates
+        if (hashMap.size < matches.length) {
+            elizaLogger.debug(
+                `Filtered out ${matches.length - hashMap.size} duplicate matches by inputHash`
+            );
+        }
+
+        return Array.from(hashMap.values());
     }
 
     async removeKnowledge(id: UUID): Promise<void> {
@@ -439,14 +479,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         "your",
         "you",
     ]);
-
-    private getQueryTerms(query: string): string[] {
-        return query
-            .toLowerCase()
-            .split(" ")
-            .filter((term) => term.length > 3) // Filter very short words
-            .filter((term) => !this.stopWords.has(term)); // Filter stop words
-    }
 
     private preprocess(content: string): string {
         if (!content || typeof content !== "string") {
