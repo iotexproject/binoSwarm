@@ -209,6 +209,12 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         // Keep the match with highest score when duplicates are found
         const uniqueMatches = this.filterDuplicatesByInputHash(filteredMatches);
 
+        // If we have no matches that meet the threshold, return empty array
+        if (uniqueMatches.length === 0) {
+            elizaLogger.debug("No matches found with score above threshold");
+            return [];
+        }
+
         const ids = uniqueMatches.map((match) => match.id as UUID);
 
         const chunks = await this.runtime.databaseAdapter.getKnowledgeByIds({
