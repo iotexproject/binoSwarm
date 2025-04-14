@@ -1194,15 +1194,22 @@ export class PostgresDatabaseAdapter
         agentId: UUID;
     }): Promise<RAGKnowledgeItem[]> {
         return this.withDatabase(async () => {
+            // Early return if ids array is empty
+            if (!params.ids || params.ids.length === 0) {
+                elizaLogger.debug(
+                    "Empty IDs array provided to getKnowledgeByIds, returning empty results"
+                );
+                return [];
+            }
+
             let sql = `SELECT * FROM knowledge WHERE ("agentId" = $1 OR "isShared" = true)`;
             const queryParams: any[] = [params.agentId];
             let paramCount = 1;
 
-            if (params.ids.length > 0) {
-                paramCount++;
-                sql += ` AND id IN (${params.ids.map((_, i) => `$${paramCount + i}`).join(",")})`;
-                queryParams.push(...params.ids);
-            }
+            // Since we already checked for empty array, we can safely add the IN clause
+            paramCount++;
+            sql += ` AND id IN (${params.ids.map((_, i) => `$${paramCount + i}`).join(",")})`;
+            queryParams.push(...params.ids);
 
             const { rows } = await this.pool.query(sql, queryParams);
 
