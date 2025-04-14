@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
 import { join } from "path";
+import { ScoredPineconeRecord } from "@pinecone-database/pinecone";
 
 import { splitChunks } from "./generation.ts";
 import elizaLogger from "./logger.ts";
@@ -29,10 +30,6 @@ const KNOWLEDGE_METADATA_TYPE = "knowledge";
 export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     runtime: IAgentRuntime;
     vectorDB: VectorDB<RAGKnowledgeItemMetadata>;
-    constructor(opts: { runtime: IAgentRuntime }) {
-        this.runtime = opts.runtime;
-        this.vectorDB = new VectorDB<RAGKnowledgeItemMetadata>();
-    }
 
     private readonly defaultRAGMatchThreshold = Number(
         process.env.DEFAULT_RAG_MATCH_THRESHOLD || "0.85"
@@ -40,6 +37,15 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     private readonly defaultRAGMatchCount = Number(
         process.env.DEFAULT_RAG_MATCH_COUNT || "5"
     );
+    private readonly chunkSize = Number(process.env.RAG_CHUNK_SIZE || "512");
+    private readonly chunkOverlap = Number(
+        process.env.RAG_CHUNK_OVERLAP || "20"
+    );
+
+    constructor(opts: { runtime: IAgentRuntime }) {
+        this.runtime = opts.runtime;
+        this.vectorDB = new VectorDB<RAGKnowledgeItemMetadata>();
+    }
 
     async getKnowledge(params: {
         query: string;
@@ -156,7 +162,12 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         const filteredMatches = matches.filter(
             (m) => m.score >= this.defaultRAGMatchThreshold
         );
-        const ids = filteredMatches.map((match) => match.id as UUID);
+
+        // Filter out duplicates based on inputHash
+        // Keep the match with highest score when duplicates are found
+        const uniqueMatches = this.filterDuplicatesByInputHash(filteredMatches);
+
+        const ids = uniqueMatches.map((match) => match.id as UUID);
 
         const chunks = await this.runtime.databaseAdapter.getKnowledgeByIds({
             ids,
@@ -167,7 +178,50 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             `Retrieved ${chunks.length} knowledge items from database`
         );
 
-        return chunks;
+        // Truncate main knowledge items that are too long
+        const truncatedChunks = chunks.map((chunk) => {
+            const isMain = chunk.content.metadata?.isMain === true;
+            if (isMain && chunk.content.text.length > this.chunkSize) {
+                return this.truncateMainKnowledge(chunk);
+            }
+            return chunk;
+        });
+
+        return truncatedChunks;
+    }
+
+    private filterDuplicatesByInputHash(
+        matches: ScoredPineconeRecord<RAGKnowledgeItemMetadata>[]
+    ): ScoredPineconeRecord<RAGKnowledgeItemMetadata>[] {
+        const hashMap = new Map<
+            string,
+            ScoredPineconeRecord<RAGKnowledgeItemMetadata>
+        >();
+
+        // First pass: find highest score for each inputHash
+        for (const match of matches) {
+            const inputHash = match.metadata?.inputHash;
+            if (inputHash) {
+                if (
+                    !hashMap.has(inputHash) ||
+                    match.score > hashMap.get(inputHash)!.score
+                ) {
+                    hashMap.set(inputHash, match);
+                }
+            } else {
+                // If no inputHash, keep the match
+                hashMap.set(match.id, match);
+            }
+        }
+
+        // Check if we filtered any duplicates
+        if (hashMap.size < matches.length) {
+            elizaLogger.debug(
+                `Filtered out ${matches.length - hashMap.size} duplicate matches by inputHash`
+            );
+        }
+
+        return Array.from(hashMap.values());
     }
 
     async removeKnowledge(id: UUID): Promise<void> {
@@ -440,14 +494,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         "you",
     ]);
 
-    private getQueryTerms(query: string): string[] {
-        return query
-            .toLowerCase()
-            .split(" ")
-            .filter((term) => term.length > 3) // Filter very short words
-            .filter((term) => !this.stopWords.has(term)); // Filter stop words
-    }
-
     private preprocess(content: string): string {
         if (!content || typeof content !== "string") {
             elizaLogger.warn("Invalid input for preprocessing");
@@ -479,10 +525,15 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         source: string,
         isUnique: boolean
     ) {
-        const chunks = await splitChunks(processedContent, 512, 20);
+        const chunks = await splitChunks(
+            processedContent,
+            this.chunkSize,
+            this.chunkOverlap
+        );
 
-        if (chunks.length <= 1) {
-            elizaLogger.debug("Single chunk, only embedding main item");
+        if (chunks.length === 0) {
+            // No chunks created, just embed the main content
+            elizaLogger.debug("No chunks created, only embedding main item");
             const embedding = await embed(
                 this.runtime,
                 processedContent,
@@ -495,6 +546,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             return;
         }
 
+        // For both single chunk and multiple chunks case, we follow the same pattern
         const embeddings = await embedMany([processedContent, ...chunks]);
         await Promise.all([
             this.persistVectorData(item, embeddings, source, chunks),
@@ -603,5 +655,33 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         // Create a deterministic UUID based on the original ID and chunk index
         // This ensures we get a valid UUID for the database while maintaining uniqueness
         return stringToUuid(`${item.id}-chunk-${index}`);
+    }
+
+    /**
+     * Truncates main knowledge items to the standard chunk size
+     * This prevents huge documents from overwhelming the context
+     */
+    private truncateMainKnowledge(item: RAGKnowledgeItem): RAGKnowledgeItem {
+        if (item.content.text.length <= this.chunkSize) {
+            return item;
+        }
+
+        const truncatedText = item.content.text.substring(0, this.chunkSize);
+        elizaLogger.debug(
+            `Truncated main knowledge item from ${item.content.text.length} to ${truncatedText.length} characters`
+        );
+
+        return {
+            ...item,
+            content: {
+                ...item.content,
+                text: truncatedText,
+                metadata: {
+                    ...item.content.metadata,
+                    isTruncated: true,
+                    originalLength: item.content.text.length,
+                },
+            },
+        };
     }
 }
