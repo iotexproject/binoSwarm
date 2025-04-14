@@ -1058,15 +1058,32 @@ Text: ${attachment.text}
         let knowledgeData = [];
         let formattedKnowledge = "";
 
-        if (!fastMode) {
-            knowledgeData = await this.ragKnowledgeManager.getKnowledge({
-                query: message.content.text,
-                limit: 5,
-                isUnique: true,
-            });
+        if (!fastMode && message?.content?.text) {
+            try {
+                // Validate the message content before passing to getKnowledge
+                const query = message.content.text.trim();
 
-            formattedKnowledge = formatKnowledge(knowledgeData);
+                // Skip RAG for very short or problematic queries
+                if (query.length <= 2 || /^[.…!?,;:\s]+$/.test(query)) {
+                    elizaLogger.debug(
+                        `Skipping RAG for invalid/short message: "${query}"`
+                    );
+                } else {
+                    knowledgeData = await this.ragKnowledgeManager.getKnowledge(
+                        {
+                            query: query,
+                            limit: 5,
+                            isUnique: true,
+                        }
+                    );
+
+                    formattedKnowledge = formatKnowledge(knowledgeData);
+                }
+            } catch (error) {
+                elizaLogger.error(`Error in getAndFormatKnowledge: ${error}`);
+            }
         }
+
         return { formattedKnowledge, knowledgeData };
     }
 

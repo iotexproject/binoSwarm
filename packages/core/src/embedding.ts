@@ -57,13 +57,29 @@ export function getDimentionZeroEmbedding() {
 }
 
 export async function embedMany(values: string[]): Promise<number[][]> {
-    const { embeddings } = await embedManyAi({
-        model: openai.embedding(EMBEDDING_MODEL),
-        values,
-        maxRetries: EMBEDDING_RETRIES,
-    });
+    // Filter out invalid values
+    const validValues = values.filter(
+        (value) => value && typeof value === "string" && value.trim().length > 0
+    );
 
-    return embeddings;
+    // Return early if there are no valid values
+    if (validValues.length === 0) {
+        elizaLogger.warn("No valid values to embed in embedMany call");
+        return [];
+    }
+
+    try {
+        const { embeddings } = await embedManyAi({
+            model: openai.embedding(EMBEDDING_MODEL),
+            values: validValues,
+            maxRetries: EMBEDDING_RETRIES,
+        });
+
+        return embeddings;
+    } catch (error) {
+        elizaLogger.error("Error in embedMany:", error);
+        throw error;
+    }
 }
 
 async function getLocalEmbedding(input: string): Promise<number[]> {

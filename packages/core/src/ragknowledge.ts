@@ -55,11 +55,24 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         isUnique?: boolean;
     }): Promise<RAGKnowledgeItem[]> {
         if (!params.query) {
+            elizaLogger.debug(
+                "Empty query provided to getKnowledge, returning empty results"
+            );
             return [];
         }
 
         try {
             const processedQuery = this.preprocess(params.query);
+
+            // Check if the processed query has meaningful content
+            if (!processedQuery || processedQuery.trim().length === 0) {
+                elizaLogger.debug(
+                    "Query was empty or invalid after preprocessing: '" +
+                        processedQuery +
+                        "'"
+                );
+                return [];
+            }
 
             // Build search text with optional context
             let searchText = processedQuery;
@@ -67,23 +80,52 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 const relevantContext = this.preprocess(
                     params.conversationContext
                 );
-                searchText = `${relevantContext} ${processedQuery}`;
+                if (relevantContext && relevantContext.trim().length > 0) {
+                    searchText = `${relevantContext} ${processedQuery}`;
+                }
             }
 
-            const embeddingArray = await embed(
-                this.runtime,
-                searchText,
-                params.isUnique
-            );
-            const results = await this.searchKnowledge({
-                agentId: this.runtime.agentId,
-                embedding: embeddingArray,
-                match_threshold: this.defaultRAGMatchThreshold,
-                match_count: (params.limit || this.defaultRAGMatchCount) * 2,
-                searchText: processedQuery,
-            });
+            // Validate search text before embedding
+            if (!searchText || searchText.trim().length === 0) {
+                elizaLogger.debug(
+                    "Search text is empty after combining query and context"
+                );
+                return [];
+            }
 
-            return results;
+            // Get the embedding
+            try {
+                const embeddingArray = await embed(
+                    this.runtime,
+                    searchText,
+                    params.isUnique
+                );
+
+                // Verify that embedding has valid dimensions
+                if (!embeddingArray || embeddingArray.length === 0) {
+                    elizaLogger.warn(
+                        "Empty embedding returned for query, skipping vector search"
+                    );
+                    return [];
+                }
+
+                // Proceed with search using valid embedding
+                const results = await this.searchKnowledge({
+                    agentId: params.agentId || this.runtime.agentId,
+                    embedding: embeddingArray,
+                    match_threshold: this.defaultRAGMatchThreshold,
+                    match_count:
+                        (params.limit || this.defaultRAGMatchCount) * 2,
+                    searchText: processedQuery,
+                });
+
+                return results;
+            } catch (embeddingError) {
+                elizaLogger.error(
+                    `Error generating embedding: ${embeddingError}`
+                );
+                return [];
+            }
         } catch (error) {
             elizaLogger.error(`[RAG Search Error] ${error}`);
             return [];
@@ -500,7 +542,8 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             return "";
         }
 
-        return content
+        // First replace common patterns that need to be handled
+        const processed = content
             .replace(/```[\s\S]*?```/g, "")
             .replace(/`.*?`/g, "")
             .replace(/#{1,6}\s*(.*)/g, "$1")
@@ -517,6 +560,29 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             .replace(/[^a-zA-Z0-9\s\-_./:?=&]/g, "")
             .trim()
             .toLowerCase();
+
+        // Check if we have any meaningful content after processing
+        // This handles cases where the input was just symbols or punctuation
+        if (
+            !processed ||
+            processed.trim().length === 0 ||
+            /^[.…!?,;:]+$/.test(processed.trim())
+        ) {
+            elizaLogger.debug(
+                `Input consisted only of punctuation or symbols: "${content}"`
+            );
+            return "";
+        }
+
+        // Final check - if we have a very short result (1-2 chars), it's probably not useful
+        if (processed.trim().length <= 2) {
+            elizaLogger.debug(
+                `Processed content too short: "${processed}" from "${content}"`
+            );
+            return "";
+        }
+
+        return processed;
     }
 
     private async chunkEmbedAndPersist(
