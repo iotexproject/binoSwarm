@@ -30,10 +30,6 @@ const KNOWLEDGE_METADATA_TYPE = "knowledge";
 export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     runtime: IAgentRuntime;
     vectorDB: VectorDB<RAGKnowledgeItemMetadata>;
-    constructor(opts: { runtime: IAgentRuntime }) {
-        this.runtime = opts.runtime;
-        this.vectorDB = new VectorDB<RAGKnowledgeItemMetadata>();
-    }
 
     private readonly defaultRAGMatchThreshold = Number(
         process.env.DEFAULT_RAG_MATCH_THRESHOLD || "0.85"
@@ -41,6 +37,15 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     private readonly defaultRAGMatchCount = Number(
         process.env.DEFAULT_RAG_MATCH_COUNT || "5"
     );
+    private readonly chunkSize = Number(process.env.RAG_CHUNK_SIZE || "512");
+    private readonly chunkOverlap = Number(
+        process.env.RAG_CHUNK_OVERLAP || "20"
+    );
+
+    constructor(opts: { runtime: IAgentRuntime }) {
+        this.runtime = opts.runtime;
+        this.vectorDB = new VectorDB<RAGKnowledgeItemMetadata>();
+    }
 
     async getKnowledge(params: {
         query: string;
@@ -173,7 +178,16 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             `Retrieved ${chunks.length} knowledge items from database`
         );
 
-        return chunks;
+        // Truncate main knowledge items that are too long
+        const truncatedChunks = chunks.map((chunk) => {
+            const isMain = chunk.content.metadata?.isMain === true;
+            if (isMain && chunk.content.text.length > this.chunkSize) {
+                return this.truncateMainKnowledge(chunk);
+            }
+            return chunk;
+        });
+
+        return truncatedChunks;
     }
 
     private filterDuplicatesByInputHash(
@@ -511,7 +525,11 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         source: string,
         isUnique: boolean
     ) {
-        const chunks = await splitChunks(processedContent, 512, 20);
+        const chunks = await splitChunks(
+            processedContent,
+            this.chunkSize,
+            this.chunkOverlap
+        );
 
         if (chunks.length === 0) {
             // No chunks created, just embed the main content
@@ -637,5 +655,33 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         // Create a deterministic UUID based on the original ID and chunk index
         // This ensures we get a valid UUID for the database while maintaining uniqueness
         return stringToUuid(`${item.id}-chunk-${index}`);
+    }
+
+    /**
+     * Truncates main knowledge items to the standard chunk size
+     * This prevents huge documents from overwhelming the context
+     */
+    private truncateMainKnowledge(item: RAGKnowledgeItem): RAGKnowledgeItem {
+        if (item.content.text.length <= this.chunkSize) {
+            return item;
+        }
+
+        const truncatedText = item.content.text.substring(0, this.chunkSize);
+        elizaLogger.debug(
+            `Truncated main knowledge item from ${item.content.text.length} to ${truncatedText.length} characters`
+        );
+
+        return {
+            ...item,
+            content: {
+                ...item.content,
+                text: truncatedText,
+                metadata: {
+                    ...item.content.metadata,
+                    isTruncated: true,
+                    originalLength: item.content.text.length,
+                },
+            },
+        };
     }
 }
