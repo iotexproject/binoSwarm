@@ -481,8 +481,9 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
     ) {
         const chunks = await splitChunks(processedContent, 512, 20);
 
-        if (chunks.length <= 1) {
-            elizaLogger.debug("Single chunk, only embedding main item");
+        if (chunks.length === 0) {
+            // No chunks created, just embed the main content
+            elizaLogger.debug("No chunks created, only embedding main item");
             const embedding = await embed(
                 this.runtime,
                 processedContent,
@@ -495,6 +496,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             return;
         }
 
+        // For both single chunk and multiple chunks case, we follow the same pattern
         const embeddings = await embedMany([processedContent, ...chunks]);
         await Promise.all([
             this.persistVectorData(item, embeddings, source, chunks),
