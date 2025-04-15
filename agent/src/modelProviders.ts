@@ -108,10 +108,6 @@ const providerKeyMap = {
         characterKey: "GROQ_API_KEY",
         settingsKey: "GROQ_API_KEY",
     },
-    [ModelProviderName.GOOGLE]: {
-        characterKey: "GOOGLE_GENERATIVE_AI_API_KEY",
-        settingsKey: "GOOGLE_GENERATIVE_AI_API_KEY",
-    },
     [ModelProviderName.DEEPSEEK]: {
         characterKey: "DEEPSEEK_API_KEY",
         settingsKey: "DEEPSEEK_API_KEY",

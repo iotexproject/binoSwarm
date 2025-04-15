@@ -278,52 +278,6 @@ class GroqImageProvider implements ImageProvider {
     }
 }
 
-class GoogleImageProvider implements ImageProvider {
-    constructor(private runtime: IAgentRuntime) {}
-
-    async initialize(): Promise<void> {}
-
-    async describeImage(
-        imageData: Buffer,
-        mimeType: string
-    ): Promise<{ title: string; description: string }> {
-        const endpoint = getEndpoint(ModelProviderName.GOOGLE);
-        const apiKey = this.runtime.getSetting("GOOGLE_GENERATIVE_AI_API_KEY");
-
-        const response = await fetch(
-            `${endpoint}/v1/models/gemini-1.5-pro:generateContent?key=${apiKey}`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [
-                                { text: IMAGE_DESCRIPTION_PROMPT },
-                                {
-                                    inline_data: {
-                                        mime_type: mimeType,
-                                        data: imageData.toString("base64"),
-                                    },
-                                },
-                            ],
-                        },
-                    ],
-                }),
-            }
-        );
-
-        if (!response.ok) {
-            await handleApiError(response, "Google Gemini");
-        }
-
-        const data = await response.json();
-        return parseImageResponse(data.candidates[0].content.parts[0].text);
-    }
-}
-
 export class ImageDescriptionService
     extends Service
     implements IImageDescriptionService
@@ -351,7 +305,6 @@ export class ImageDescriptionService
         const availableModels = [
             ModelProviderName.LLAMALOCAL,
             ModelProviderName.ANTHROPIC,
-            ModelProviderName.GOOGLE,
             ModelProviderName.OPENAI,
             ModelProviderName.GROQ,
         ].join(", ");
@@ -373,12 +326,6 @@ export class ImageDescriptionService
             ) {
                 this.provider = new AnthropicImageProvider(this.runtime);
                 elizaLogger.debug("Using anthropic for vision model");
-            } else if (
-                this.runtime.imageVisionModelProvider ===
-                ModelProviderName.GOOGLE
-            ) {
-                this.provider = new GoogleImageProvider(this.runtime);
-                elizaLogger.debug("Using google for vision model");
             } else if (
                 this.runtime.imageVisionModelProvider ===
                 ModelProviderName.OPENAI
@@ -407,9 +354,6 @@ export class ImageDescriptionService
         } else if (model === models[ModelProviderName.ANTHROPIC]) {
             this.provider = new AnthropicImageProvider(this.runtime);
             elizaLogger.debug("Using anthropic for vision model");
-        } else if (model === models[ModelProviderName.GOOGLE]) {
-            this.provider = new GoogleImageProvider(this.runtime);
-            elizaLogger.debug("Using google for vision model");
         } else if (model === models[ModelProviderName.GROQ]) {
             this.provider = new GroqImageProvider(this.runtime);
             elizaLogger.debug("Using groq for vision model");

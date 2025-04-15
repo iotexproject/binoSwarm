@@ -336,53 +336,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.GOOGLE]: {
-        endpoint: "https://generativelanguage.googleapis.com",
-        model: {
-            [ModelClass.SMALL]: {
-                name:
-                    settings.SMALL_GOOGLE_MODEL ||
-                    settings.GOOGLE_MODEL ||
-                    "gemini-2.0-flash-exp",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.MEDIUM]: {
-                name:
-                    settings.MEDIUM_GOOGLE_MODEL ||
-                    settings.GOOGLE_MODEL ||
-                    "gemini-2.0-flash-exp",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.LARGE]: {
-                name:
-                    settings.LARGE_GOOGLE_MODEL ||
-                    settings.GOOGLE_MODEL ||
-                    "gemini-2.0-flash-exp",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.EMBEDDING]: {
-                name:
-                    settings.EMBEDDING_GOOGLE_MODEL ||
-                    settings.GOOGLE_MODEL ||
-                    "text-embedding-004",
-            },
-        },
-    },
     [ModelProviderName.OLLAMA]: {
         endpoint: settings.OLLAMA_SERVER_URL || "http://localhost:11434",
         model: {
