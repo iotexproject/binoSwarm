@@ -222,7 +222,6 @@ export type Models = {
     [ModelProviderName.TOGETHER]: Model;
     [ModelProviderName.LLAMALOCAL]: Model;
     [ModelProviderName.GOOGLE]: Model;
-    [ModelProviderName.MISTRAL]: Model;
     [ModelProviderName.CLAUDE_VERTEX]: Model;
     [ModelProviderName.OLLAMA]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
@@ -241,7 +240,6 @@ export enum ModelProviderName {
     TOGETHER = "together",
     LLAMALOCAL = "llama_local",
     GOOGLE = "google",
-    MISTRAL = "mistral",
     CLAUDE_VERTEX = "claude_vertex",
     OLLAMA = "ollama",
     DEEPSEEK = "deepseek",
