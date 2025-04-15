@@ -33,13 +33,6 @@ describe("Environment Configuration", () => {
         );
     });
 
-    it("should throw error for invalid GROQ API key format", () => {
-        process.env.GROQ_API_KEY = "invalid-key";
-        expect(() => validateEnv()).toThrow(
-            "GROQ API key must start with 'gsk_'"
-        );
-    });
-
     it("should throw error for missing required keys", () => {
         delete process.env.OPENAI_API_KEY;
         expect(() => validateEnv()).toThrow("OPENAI_API_KEY: Required");

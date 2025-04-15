@@ -197,42 +197,6 @@ export const models: Models = {
 
         },
     },
-    [ModelProviderName.GROQ]: {
-        endpoint: "https://api.groq.com/openai/v1",
-        model: {
-            [ModelClass.SMALL]: {
-                name: settings.SMALL_GROQ_MODEL || "llama-3.1-8b-instant",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8000,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.MEDIUM]: {
-                name: settings.MEDIUM_GROQ_MODEL || "llama-3.3-70b-versatile",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8000,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.LARGE]: {
-                name:
-                    settings.LARGE_GROQ_MODEL || "llama-3.2-90b-vision-preview",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8000,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.EMBEDDING]: {
-                name: settings.EMBEDDING_GROQ_MODEL || "llama-3.1-8b-instant",
-            },
-        },
-    },
     [ModelProviderName.LLAMALOCAL]: {
         model: {
             [ModelClass.SMALL]: {

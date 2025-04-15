@@ -80,10 +80,6 @@ const providerKeyMap = {
         characterKey: "GROK_API_KEY",
         settingsKey: "GROK_API_KEY",
     },
-    [ModelProviderName.GROQ]: {
-        characterKey: "GROQ_API_KEY",
-        settingsKey: "GROQ_API_KEY",
-    },
     [ModelProviderName.DEEPSEEK]: {
         characterKey: "DEEPSEEK_API_KEY",
         settingsKey: "DEEPSEEK_API_KEY",

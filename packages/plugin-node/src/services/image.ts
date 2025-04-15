@@ -235,49 +235,6 @@ class OpenAIImageProvider implements ImageProvider {
     }
 }
 
-class GroqImageProvider implements ImageProvider {
-    constructor(private runtime: IAgentRuntime) {}
-
-    async initialize(): Promise<void> {}
-
-    async describeImage(
-        imageData: Buffer,
-        mimeType: string
-    ): Promise<{ title: string; description: string }> {
-        const imageUrl = convertToBase64DataUrl(imageData, mimeType);
-
-        const content = [
-            { type: "text", text: IMAGE_DESCRIPTION_PROMPT },
-            { type: "image_url", image_url: { url: imageUrl } },
-        ];
-
-        const endpoint =
-            this.runtime.imageVisionModelProvider === ModelProviderName.GROQ
-                ? getEndpoint(this.runtime.imageVisionModelProvider)
-                : "https://api.groq.com/openai/v1/";
-
-        const response = await fetch(endpoint + "/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${this.runtime.getSetting("GROQ_API_KEY")}`,
-            },
-            body: JSON.stringify({
-                model: /*this.runtime.imageVisionModelName ||*/ "llama-3.2-90b-vision-preview",
-                messages: [{ role: "user", content }],
-                max_tokens: 1024,
-            }),
-        });
-
-        if (!response.ok) {
-            await handleApiError(response, "Groq");
-        }
-
-        const data = await response.json();
-        return parseImageResponse(data.choices[0].message.content);
-    }
-}
-
 export class ImageDescriptionService
     extends Service
     implements IImageDescriptionService
@@ -306,7 +263,6 @@ export class ImageDescriptionService
             ModelProviderName.LLAMALOCAL,
             ModelProviderName.ANTHROPIC,
             ModelProviderName.OPENAI,
-            ModelProviderName.GROQ,
         ].join(", ");
 
         const model = models[this.runtime?.character?.modelProvider];
@@ -332,11 +288,6 @@ export class ImageDescriptionService
             ) {
                 this.provider = new OpenAIImageProvider(this.runtime);
                 elizaLogger.debug("Using openai for vision model");
-            } else if (
-                this.runtime.imageVisionModelProvider === ModelProviderName.GROQ
-            ) {
-                this.provider = new GroqImageProvider(this.runtime);
-                elizaLogger.debug("Using Groq for vision model");
             } else {
                 elizaLogger.warn(
                     `Unsupported image vision model provider: ${this.runtime.imageVisionModelProvider}. ` +
@@ -354,9 +305,6 @@ export class ImageDescriptionService
         } else if (model === models[ModelProviderName.ANTHROPIC]) {
             this.provider = new AnthropicImageProvider(this.runtime);
             elizaLogger.debug("Using anthropic for vision model");
-        } else if (model === models[ModelProviderName.GROQ]) {
-            this.provider = new GroqImageProvider(this.runtime);
-            elizaLogger.debug("Using groq for vision model");
         } else {
             elizaLogger.debug("Using default openai for vision model");
             this.provider = new OpenAIImageProvider(this.runtime);

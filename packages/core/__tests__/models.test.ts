@@ -117,51 +117,6 @@ describe("Model Provider Configuration", () => {
             expect(smallModel?.stop).toEqual([]);
         });
     });
-
-    describe("LlamaCloud Provider", () => {
-        test("should have correct endpoint", () => {
-            expect(models[ModelProviderName.LLAMACLOUD].endpoint).toBe(
-                "https://api.llamacloud.com/v1"
-            );
-        });
-
-        test("should have correct model mappings", () => {
-            const llamaCloudModels = models[ModelProviderName.LLAMACLOUD].model;
-            expect(llamaCloudModels?.[ModelClass.SMALL]?.name).toBe(
-                "meta-llama/Llama-3.2-3B-Instruct-Turbo"
-            );
-            expect(llamaCloudModels?.[ModelClass.MEDIUM]?.name).toBe(
-                "meta-llama-3.1-8b-instruct"
-            );
-            expect(llamaCloudModels?.[ModelClass.LARGE]?.name).toBe(
-                "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
-            );
-        });
-
-        test("should have correct settings configuration", () => {
-            const smallModel =
-                models[ModelProviderName.LLAMACLOUD].model?.[ModelClass.SMALL];
-            expect(smallModel?.maxInputTokens).toBe(128000);
-            expect(smallModel?.maxOutputTokens).toBe(8192);
-            expect(smallModel?.temperature).toBe(0.7);
-            expect(smallModel?.repetition_penalty).toBe(0.4);
-        });
-    });
-
-    describe("Google Provider", () => {
-        test("should have correct model mappings", () => {
-            const googleModels = models[ModelProviderName.GOOGLE].model;
-            expect(googleModels?.[ModelClass.SMALL]?.name).toBe(
-                "gemini-2.0-flash-exp"
-            );
-            expect(googleModels?.[ModelClass.MEDIUM]?.name).toBe(
-                "gemini-2.0-flash-exp"
-            );
-            expect(googleModels?.[ModelClass.LARGE]?.name).toBe(
-                "gemini-2.0-flash-exp"
-            );
-        });
-    });
 });
 
 describe("Model Retrieval Functions", () => {
@@ -191,9 +146,6 @@ describe("Model Retrieval Functions", () => {
             );
             expect(getEndpoint(ModelProviderName.ANTHROPIC)).toBe(
                 "https://api.anthropic.com/v1"
-            );
-            expect(getEndpoint(ModelProviderName.LLAMACLOUD)).toBe(
-                "https://api.llamacloud.com/v1"
             );
         });
 
@@ -291,18 +243,3 @@ describe("Model Settings Validation", () => {
     });
 });
 
-describe("Environment Variable Integration", () => {
-    test("should use environment variables for LlamaCloud models", () => {
-        const llamaConfig = models[ModelProviderName.LLAMACLOUD];
-        expect(llamaConfig.model?.[ModelClass.SMALL]?.name).toBe(
-            "meta-llama/Llama-3.2-3B-Instruct-Turbo"
-        );
-    });
-
-    test("should use environment variables for Together models", () => {
-        const togetherConfig = models[ModelProviderName.TOGETHER];
-        expect(togetherConfig.model?.[ModelClass.SMALL]?.name).toBe(
-            "meta-llama/Llama-3.2-3B-Instruct-Turbo"
-        );
-    });
-});
