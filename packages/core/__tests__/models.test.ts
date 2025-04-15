@@ -1,7 +1,11 @@
-import { getModelSettings, getEndpoint, models } from "../src/models.ts";
+import {
+    getModelSettings,
+    getEndpoint,
+    models,
+    getModel,
+} from "../src/models.ts";
 import { ModelProviderName, ModelClass } from "../src/types.ts";
 import { describe, test, expect, vi } from "vitest";
-
 // Mock settings
 vi.mock("../settings", () => {
     return {
@@ -22,6 +26,27 @@ vi.mock("../settings", () => {
         loadEnv: vi.fn(),
     };
 });
+
+// Mock the ai-sdk modules
+vi.mock("@ai-sdk/openai", () => ({
+    openai: vi
+        .fn()
+        .mockImplementation((model) => ({ type: "openai", modelName: model })),
+}));
+
+vi.mock("@ai-sdk/anthropic", () => ({
+    anthropic: vi.fn().mockImplementation((model) => ({
+        type: "anthropic",
+        modelName: model,
+    })),
+}));
+
+vi.mock("@ai-sdk/deepseek", () => ({
+    deepseek: vi.fn().mockImplementation((model) => ({
+        type: "deepseek",
+        modelName: model,
+    })),
+}));
 
 describe("Model Provider Configuration", () => {
     describe("OpenAI Provider", () => {
@@ -179,6 +204,41 @@ describe("Model Retrieval Functions", () => {
 
         test("should throw error for invalid provider", () => {
             expect(() => getEndpoint("INVALID_PROVIDER" as any)).toThrow();
+        });
+    });
+
+    describe("getModel function", () => {
+        test("should return OpenAI model when OpenAI provider is specified", () => {
+            const result = getModel(ModelProviderName.OPENAI, "gpt-4");
+            expect(result).toEqual({ type: "openai", modelName: "gpt-4" });
+        });
+
+        test("should return Anthropic model when Anthropic provider is specified", () => {
+            const result = getModel(ModelProviderName.ANTHROPIC, "claude-3");
+            expect(result).toEqual({
+                type: "anthropic",
+                modelName: "claude-3",
+            });
+        });
+
+        test("should return DeepSeek model when DeepSeek provider is specified", () => {
+            const result = getModel(
+                ModelProviderName.DEEPSEEK,
+                "deepseek-coder"
+            );
+            expect(result).toEqual({
+                type: "deepseek",
+                modelName: "deepseek-coder",
+            });
+        });
+
+        test("should throw error for unsupported provider", () => {
+            expect(() => {
+                getModel(
+                    "UNSUPPORTED_PROVIDER" as ModelProviderName,
+                    "any-model"
+                );
+            }).toThrow("Unsupported provider: UNSUPPORTED_PROVIDER");
         });
     });
 });
