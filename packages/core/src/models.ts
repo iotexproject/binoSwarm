@@ -269,42 +269,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.TOGETHER]: {
-        endpoint: "https://api.together.ai/v1",
-        model: {
-            [ModelClass.SMALL]: {
-                name: "meta-llama/Llama-3.2-3B-Instruct-Turbo",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                repetition_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.MEDIUM]: {
-                name: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-128K",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                repetition_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.LARGE]: {
-                name: "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                repetition_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.EMBEDDING]: {
-                name: "togethercomputer/m2-bert-80M-32k-retrieval",
-            },
-            [ModelClass.IMAGE]: {
-                name: "black-forest-labs/FLUX.1-schnell",
-                steps: 4,
-            },
-        },
-    },
     [ModelProviderName.LLAMALOCAL]: {
         model: {
             [ModelClass.SMALL]: {
