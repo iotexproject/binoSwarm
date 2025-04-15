@@ -228,7 +228,6 @@ export type Models = {
     [ModelProviderName.OPENROUTER]: Model;
     [ModelProviderName.OLLAMA]: Model;
     [ModelProviderName.HEURIST]: Model;
-    [ModelProviderName.GALADRIEL]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
 
@@ -251,7 +250,6 @@ export enum ModelProviderName {
     OPENROUTER = "openrouter",
     OLLAMA = "ollama",
     HEURIST = "heurist",
-    GALADRIEL = "galadriel",
     DEEPSEEK = "deepseek",
     INFERA = "infera",
 }
