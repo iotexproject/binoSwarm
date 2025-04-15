@@ -231,7 +231,6 @@ export type Models = {
     [ModelProviderName.GALADRIEL]: Model;
     [ModelProviderName.FAL]: Model;
     [ModelProviderName.GAIANET]: Model;
-    [ModelProviderName.ALI_BAILIAN]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
 
@@ -257,14 +256,6 @@ export enum ModelProviderName {
     GALADRIEL = "galadriel",
     FAL = "falai",
     GAIANET = "gaianet",
-    ALI_BAILIAN = "ali_bailian",
-    VOLENGINE = "volengine",
-    NANOGPT = "nanogpt",
-    HYPERBOLIC = "hyperbolic",
-    VENICE = "venice",
-    NINETEEN_AI = "nineteen_ai",
-    AKASH_CHAT_API = "akash_chat_api",
-    LIVEPEER = "livepeer",
     DEEPSEEK = "deepseek",
     INFERA = "infera",
 }

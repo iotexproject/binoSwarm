@@ -687,41 +687,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.ALI_BAILIAN]: {
-        endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        model: {
-            [ModelClass.SMALL]: {
-                name: "qwen-turbo",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.6,
-            },
-            [ModelClass.MEDIUM]: {
-                name: "qwen-plus",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.6,
-            },
-            [ModelClass.LARGE]: {
-                name: "qwen-max",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.6,
-            },
-            [ModelClass.IMAGE]: {
-                name: "wanx-v1",
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {
