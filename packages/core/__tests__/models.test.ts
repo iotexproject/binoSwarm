@@ -48,6 +48,13 @@ vi.mock("@ai-sdk/deepseek", () => ({
     })),
 }));
 
+vi.mock("@ai-sdk/xai", () => ({
+    xai: vi.fn().mockImplementation((model) => ({
+        type: "xai",
+        modelName: model,
+    })),
+}));
+
 describe("Model Provider Configuration", () => {
     describe("OpenAI Provider", () => {
         test("should have correct endpoint", () => {
@@ -229,6 +236,17 @@ describe("Model Retrieval Functions", () => {
             expect(result).toEqual({
                 type: "deepseek",
                 modelName: "deepseek-coder",
+            });
+        });
+
+        test("should return Grok model when Grok provider is specified", () => {
+            const result = getModel(
+                ModelProviderName.GROK,
+                "grok-3-mini-latest"
+            );
+            expect(result).toEqual({
+                type: "xai",
+                modelName: "grok-3-mini-latest",
             });
         });
 

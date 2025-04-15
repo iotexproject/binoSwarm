@@ -1,6 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { deepseek } from "@ai-sdk/deepseek";
+import { xai } from "@ai-sdk/xai";
 import type { LanguageModelV1 } from "ai";
 
 import settings from "./settings.ts";
@@ -167,7 +168,7 @@ export const models: Models = {
         endpoint: "https://api.x.ai/v1",
         model: {
             [ModelClass.SMALL]: {
-                name: settings.SMALL_GROK_MODEL || "grok-2-1212",
+                name: settings.SMALL_GROK_MODEL || "grok-3-mini-latest",
                 stop: [],
                 maxInputTokens: 128000,
                 maxOutputTokens: 8192,
@@ -185,7 +186,7 @@ export const models: Models = {
                 temperature: 0.7,
             },
             [ModelClass.LARGE]: {
-                name: settings.LARGE_GROK_MODEL || "grok-2-1212",
+                name: settings.LARGE_GROK_MODEL || "grok-3-latest",
                 stop: [],
                 maxInputTokens: 128000,
                 maxOutputTokens: 8192,
@@ -193,9 +194,7 @@ export const models: Models = {
                 presence_penalty: 0.4,
                 temperature: 0.7,
             },
-            [ModelClass.EMBEDDING]: {
-                name: settings.EMBEDDING_GROK_MODEL || "grok-2-1212", // not sure about this one
-            },
+
         },
     },
     [ModelProviderName.GROQ]: {
@@ -1041,6 +1040,7 @@ export function getModel(
         [ModelProviderName.OPENAI]: openai,
         [ModelProviderName.ANTHROPIC]: anthropic,
         [ModelProviderName.DEEPSEEK]: deepseek,
+        [ModelProviderName.GROK]: xai,
     };
 
     const modelProvider = modelProviders[provider];
