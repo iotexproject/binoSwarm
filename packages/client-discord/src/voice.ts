@@ -4,13 +4,10 @@ import {
     Memory,
     ModelClass,
     ServiceType,
-    State,
     UUID,
     composeContext,
-    composeRandomUser,
     elizaLogger,
     stringToUuid,
-    generateShouldRespond,
     ITranscriptionService,
     ISpeechService,
     streamWithTools,
@@ -41,10 +38,7 @@ import EventEmitter from "events";
 import prism from "prism-media";
 import { Readable, pipeline } from "stream";
 import { DiscordClient } from "./index.ts";
-import {
-    discordShouldRespondTemplate,
-    discordVoiceHandlerTemplate,
-} from "./templates.ts";
+import { discordVoiceHandlerTemplate } from "./templates.ts";
 import { getWavHeader } from "./utils.ts";
 import { qsSchema } from "@elizaos/plugin-depin";
 import { AudioMonitor } from "./AudioMonitor.ts";
@@ -783,66 +777,6 @@ export class VoiceManager extends EventEmitter {
         } catch (error) {
             elizaLogger.error("Error converting PCM to WAV:", error);
             throw error;
-        }
-    }
-
-    private async _shouldRespond(
-        message: string,
-        userId: UUID,
-        channel: BaseGuildVoiceChannel,
-        state: State
-    ): Promise<boolean> {
-        if (userId === this.client.user?.id) return false;
-        const lowerMessage = message.toLowerCase();
-        const botName = this.client.user.username.toLowerCase();
-        const characterName = this.runtime.character.name.toLowerCase();
-        const guild = channel.guild;
-        const member = guild?.members.cache.get(this.client.user?.id as string);
-        const nickname = member?.nickname;
-
-        if (
-            lowerMessage.includes(botName as string) ||
-            lowerMessage.includes(characterName) ||
-            lowerMessage.includes(
-                this.client.user?.tag.toLowerCase() as string
-            ) ||
-            (nickname && lowerMessage.includes(nickname.toLowerCase()))
-        ) {
-            return true;
-        }
-
-        if (!channel.guild) {
-            return true;
-        }
-
-        // If none of the above conditions are met, use the generateText to decide
-        const shouldRespondContext = composeContext({
-            state,
-            template:
-                this.runtime.character.templates
-                    ?.discordShouldRespondTemplate ||
-                this.runtime.character.templates?.shouldRespondTemplate ||
-                composeRandomUser(discordShouldRespondTemplate, 2),
-        });
-
-        const response = await generateShouldRespond({
-            runtime: this.runtime,
-            context: shouldRespondContext,
-            modelClass: ModelClass.SMALL,
-        });
-
-        if (response === "RESPOND") {
-            return true;
-        } else if (response === "IGNORE") {
-            return false;
-        } else if (response === "STOP") {
-            return false;
-        } else {
-            elizaLogger.error(
-                "Invalid response from response generateText:",
-                response
-            );
-            return false;
         }
     }
 
