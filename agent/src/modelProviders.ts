@@ -68,18 +68,6 @@ const providerKeyMap = {
         characterKey: "ETERNALAI_API_KEY",
         settingsKey: "ETERNALAI_API_KEY",
     },
-    [ModelProviderName.LLAMACLOUD]: {
-        characterKeys: [
-            "LLAMACLOUD_API_KEY",
-            "TOGETHER_API_KEY",
-            "OPENAI_API_KEY",
-        ],
-        settingsKeys: [
-            "LLAMACLOUD_API_KEY",
-            "TOGETHER_API_KEY",
-            "OPENAI_API_KEY",
-        ],
-    },
     [ModelProviderName.CLAUDE_VERTEX]: {
         characterKeys: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
         settingsKeys: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
