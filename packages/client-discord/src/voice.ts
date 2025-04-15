@@ -852,7 +852,7 @@ export class VoiceManager extends EventEmitter {
             context,
             modelClass: ModelClass.FAST,
             tools: [qsSchema],
-            smoothStreamBy: "line",
+            smoothStreamBy: /[.!?]\s+/,
         });
 
         return response;

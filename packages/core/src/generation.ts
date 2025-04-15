@@ -555,7 +555,7 @@ export function streamWithTools({
         parameters: ZodSchema;
         execute: (args: any) => Promise<any>;
     }[];
-    smoothStreamBy?: "word" | "line";
+    smoothStreamBy?: "word" | "line" | RegExp;
 }): any {
     if (!context) {
         throw new Error("generateObject context is empty");
@@ -587,6 +587,7 @@ export function streamWithTools({
         tools: buildToolSet(tools),
         maxSteps: TOOL_CALL_LIMIT,
         experimental_continueSteps: true,
+        toolCallStreaming: true,
         experimental_transform: smoothStream({ chunking: smoothStreamBy }),
         onStepFinish(step: any) {
             logStep(step);
