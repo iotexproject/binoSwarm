@@ -58,13 +58,13 @@ describe("Model Provider Configuration", () => {
 
         test("should have correct model mappings", () => {
             const openAIModels = models[ModelProviderName.OPENAI].model;
-            expect(openAIModels[ModelClass.SMALL].name).toBe("gpt-4o-mini");
-            expect(openAIModels[ModelClass.MEDIUM].name).toBe("gpt-4o");
-            expect(openAIModels[ModelClass.LARGE].name).toBe("gpt-4o");
-            expect(openAIModels[ModelClass.EMBEDDING].name).toBe(
+            expect(openAIModels?.[ModelClass.SMALL]?.name).toBe("gpt-4o-mini");
+            expect(openAIModels?.[ModelClass.MEDIUM]?.name).toBe("gpt-4o");
+            expect(openAIModels?.[ModelClass.LARGE]?.name).toBe("gpt-4o");
+            expect(openAIModels?.[ModelClass.EMBEDDING]?.name).toBe(
                 "text-embedding-3-small"
             );
-            expect(openAIModels[ModelClass.IMAGE].name).toBe("dall-e-3");
+            expect(openAIModels?.[ModelClass.IMAGE]?.name).toBe("dall-e-3");
         });
 
         test("should have correct settings configuration", () => {
@@ -88,13 +88,13 @@ describe("Model Provider Configuration", () => {
 
         test("should have correct model mappings", () => {
             const anthropicModels = models[ModelProviderName.ANTHROPIC].model;
-            expect(anthropicModels[ModelClass.SMALL].name).toBe(
+            expect(anthropicModels?.[ModelClass.SMALL]?.name).toBe(
                 "claude-3-5-haiku-20241022"
             );
-            expect(anthropicModels[ModelClass.MEDIUM].name).toBe(
+            expect(anthropicModels?.[ModelClass.MEDIUM]?.name).toBe(
                 "claude-3-5-sonnet-20241022"
             );
-            expect(anthropicModels[ModelClass.LARGE].name).toBe(
+            expect(anthropicModels?.[ModelClass.LARGE]?.name).toBe(
                 "claude-3-5-sonnet-20241022"
             );
         });
@@ -120,13 +120,13 @@ describe("Model Provider Configuration", () => {
 
         test("should have correct model mappings", () => {
             const llamaCloudModels = models[ModelProviderName.LLAMACLOUD].model;
-            expect(llamaCloudModels[ModelClass.SMALL].name).toBe(
+            expect(llamaCloudModels?.[ModelClass.SMALL]?.name).toBe(
                 "meta-llama/Llama-3.2-3B-Instruct-Turbo"
             );
-            expect(llamaCloudModels[ModelClass.MEDIUM].name).toBe(
+            expect(llamaCloudModels?.[ModelClass.MEDIUM]?.name).toBe(
                 "meta-llama-3.1-8b-instruct"
             );
-            expect(llamaCloudModels[ModelClass.LARGE].name).toBe(
+            expect(llamaCloudModels?.[ModelClass.LARGE]?.name).toBe(
                 "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
             );
         });
@@ -144,13 +144,13 @@ describe("Model Provider Configuration", () => {
     describe("Google Provider", () => {
         test("should have correct model mappings", () => {
             const googleModels = models[ModelProviderName.GOOGLE].model;
-            expect(googleModels[ModelClass.SMALL].name).toBe(
+            expect(googleModels?.[ModelClass.SMALL]?.name).toBe(
                 "gemini-2.0-flash-exp"
             );
-            expect(googleModels[ModelClass.MEDIUM].name).toBe(
+            expect(googleModels?.[ModelClass.MEDIUM]?.name).toBe(
                 "gemini-2.0-flash-exp"
             );
-            expect(googleModels[ModelClass.LARGE].name).toBe(
+            expect(googleModels?.[ModelClass.LARGE]?.name).toBe(
                 "gemini-2.0-flash-exp"
             );
         });
@@ -161,22 +161,22 @@ describe("Model Retrieval Functions", () => {
     describe("getModel function", () => {
         test("should retrieve correct models for different providers and classes", () => {
             expect(
-                models[ModelProviderName.OPENAI].model[ModelClass.SMALL].name
+                models[ModelProviderName.OPENAI].model?.[ModelClass.SMALL]?.name
             ).toBe("gpt-4o-mini");
             expect(
-                models[ModelProviderName.ANTHROPIC].model[ModelClass.MEDIUM]
-                    .name
+                models[ModelProviderName.ANTHROPIC].model?.[ModelClass.MEDIUM]
+                    ?.name
             ).toBe("claude-3-5-sonnet-20241022");
         });
 
         test("should handle environment variable overrides", () => {
             expect(
-                models[ModelProviderName.OPENROUTER].model[ModelClass.SMALL]
-                    .name
+                models[ModelProviderName.OPENROUTER].model?.[ModelClass.SMALL]
+                    ?.name
             ).toBe("nousresearch/hermes-3-llama-3.1-405b");
             expect(
-                models[ModelProviderName.OPENROUTER].model[ModelClass.LARGE]
-                    .name
+                models[ModelProviderName.OPENROUTER].model?.[ModelClass.LARGE]
+                    ?.name
             ).toBe("nousresearch/hermes-3-llama-3.1-405b");
         });
 
@@ -288,14 +288,14 @@ describe("Model Settings Validation", () => {
 describe("Environment Variable Integration", () => {
     test("should use environment variables for LlamaCloud models", () => {
         const llamaConfig = models[ModelProviderName.LLAMACLOUD];
-        expect(llamaConfig.model[ModelClass.SMALL].name).toBe(
+        expect(llamaConfig.model?.[ModelClass.SMALL]?.name).toBe(
             "meta-llama/Llama-3.2-3B-Instruct-Turbo"
         );
     });
 
     test("should use environment variables for Together models", () => {
         const togetherConfig = models[ModelProviderName.TOGETHER];
-        expect(togetherConfig.model[ModelClass.SMALL].name).toBe(
+        expect(togetherConfig.model?.[ModelClass.SMALL]?.name).toBe(
             "meta-llama/Llama-3.2-3B-Instruct-Turbo"
         );
     });
