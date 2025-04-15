@@ -225,7 +225,6 @@ export type Models = {
     [ModelProviderName.MISTRAL]: Model;
     [ModelProviderName.CLAUDE_VERTEX]: Model;
     [ModelProviderName.REDPILL]: Model;
-    [ModelProviderName.OPENROUTER]: Model;
     [ModelProviderName.OLLAMA]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
@@ -246,7 +245,6 @@ export enum ModelProviderName {
     MISTRAL = "mistral",
     CLAUDE_VERTEX = "claude_vertex",
     REDPILL = "redpill",
-    OPENROUTER = "openrouter",
     OLLAMA = "ollama",
     DEEPSEEK = "deepseek",
     INFERA = "infera",

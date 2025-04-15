@@ -48,12 +48,10 @@ describe("Environment Configuration", () => {
     it("should throw error for multiple missing required keys", () => {
         delete process.env.REDPILL_API_KEY;
         delete process.env.GROK_API_KEY;
-        delete process.env.OPENROUTER_API_KEY;
         expect(() => validateEnv()).toThrow(
             "Environment validation failed:\n" +
                 "REDPILL_API_KEY: Required\n" +
-                "GROK_API_KEY: Required\n" +
-                "OPENROUTER_API_KEY: Required"
+                "GROK_API_KEY: Required"
         );
     });
 });

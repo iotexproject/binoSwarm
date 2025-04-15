@@ -104,10 +104,6 @@ const providerKeyMap = {
         characterKey: "REDPILL_API_KEY",
         settingsKey: "REDPILL_API_KEY",
     },
-    [ModelProviderName.OPENROUTER]: {
-        characterKey: "OPENROUTER",
-        settingsKey: "OPENROUTER_API_KEY",
-    },
     [ModelProviderName.GROK]: {
         characterKey: "GROK_API_KEY",
         settingsKey: "GROK_API_KEY",

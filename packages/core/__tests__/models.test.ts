@@ -175,18 +175,6 @@ describe("Model Retrieval Functions", () => {
                     ?.name
             ).toBe("claude-3-5-sonnet-20241022");
         });
-
-        test("should handle environment variable overrides", () => {
-            expect(
-                models[ModelProviderName.OPENROUTER].model?.[ModelClass.SMALL]
-                    ?.name
-            ).toBe("nousresearch/hermes-3-llama-3.1-405b");
-            expect(
-                models[ModelProviderName.OPENROUTER].model?.[ModelClass.LARGE]
-                    ?.name
-            ).toBe("nousresearch/hermes-3-llama-3.1-405b");
-        });
-
         test("should throw error for invalid model provider", () => {
             const model = getModelSettings(
                 "INVALID_PROVIDER" as any,
