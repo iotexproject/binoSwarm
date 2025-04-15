@@ -55,44 +55,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.ETERNALAI]: {
-        endpoint: settings.ETERNALAI_URL,
-        model: {
-            [ModelClass.SMALL]: {
-                name:
-                    settings.ETERNALAI_MODEL ||
-                    "neuralmagic/Meta-Llama-3.1-405B-Instruct-quantized.w4a16",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                temperature: 0.6,
-            },
-            [ModelClass.MEDIUM]: {
-                name:
-                    settings.ETERNALAI_MODEL ||
-                    "neuralmagic/Meta-Llama-3.1-405B-Instruct-quantized.w4a16",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                temperature: 0.6,
-            },
-            [ModelClass.LARGE]: {
-                name:
-                    settings.ETERNALAI_MODEL ||
-                    "neuralmagic/Meta-Llama-3.1-405B-Instruct-quantized.w4a16",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                temperature: 0.6,
-            },
-        },
-    },
     [ModelProviderName.ANTHROPIC]: {
         endpoint: "https://api.anthropic.com/v1",
         model: {

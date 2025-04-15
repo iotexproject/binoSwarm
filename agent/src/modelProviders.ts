@@ -64,10 +64,6 @@ const providerKeyMap = {
         characterKey: "OPENAI_API_KEY",
         settingsKey: "OPENAI_API_KEY",
     },
-    [ModelProviderName.ETERNALAI]: {
-        characterKey: "ETERNALAI_API_KEY",
-        settingsKey: "ETERNALAI_API_KEY",
-    },
     [ModelProviderName.ANTHROPIC]: {
         characterKeys: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
         settingsKeys: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
