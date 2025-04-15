@@ -48,6 +48,7 @@ const DECODE_FRAME_SIZE = 1024;
 const DECODE_SAMPLE_RATE = 16000;
 const VOLUME_WINDOW_SIZE = 30;
 const SPEAKING_THRESHOLD = 0.05;
+const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 500; // wait for x ms of silence
 
 type Message = {
     content: ResContent[];
@@ -141,13 +142,18 @@ export class VoiceManager extends EventEmitter {
         });
 
         try {
+            const CONNECTION_TIMEOUT_MS = 20_000;
             // Wait for either Ready or Signalling state
             await Promise.race([
-                entersState(connection, VoiceConnectionStatus.Ready, 20_000),
+                entersState(
+                    connection,
+                    VoiceConnectionStatus.Ready,
+                    CONNECTION_TIMEOUT_MS
+                ),
                 entersState(
                     connection,
                     VoiceConnectionStatus.Signalling,
-                    20_000
+                    CONNECTION_TIMEOUT_MS
                 ),
             ]);
 
@@ -490,8 +496,6 @@ export class VoiceManager extends EventEmitter {
         userName: string,
         channel: BaseGuildVoiceChannel
     ) {
-        const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 1500; // wait for 1.5 seconds of silence
-
         if (this.activeAudioPlayer?.state?.status === "idle") {
             elizaLogger.log("Cleaning up idle audio player.");
             this.cleanupAudioPlayer(this.activeAudioPlayer);
