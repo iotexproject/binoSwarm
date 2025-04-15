@@ -69,13 +69,13 @@ describe("Model Provider Configuration", () => {
 
         test("should have correct settings configuration", () => {
             const smallModel =
-                models[ModelProviderName.OPENAI].model[ModelClass.SMALL];
-            expect(smallModel.maxInputTokens).toBe(128000);
-            expect(smallModel.maxOutputTokens).toBe(8192);
-            expect(smallModel.temperature).toBe(0.6);
-            expect(smallModel.frequency_penalty).toBe(0.0);
-            expect(smallModel.presence_penalty).toBe(0.0);
-            expect(smallModel.stop).toEqual([]);
+                models[ModelProviderName.OPENAI].model?.[ModelClass.SMALL];
+            expect(smallModel?.maxInputTokens).toBe(128000);
+            expect(smallModel?.maxOutputTokens).toBe(8192);
+            expect(smallModel?.temperature).toBe(0.6);
+            expect(smallModel?.frequency_penalty).toBe(0.0);
+            expect(smallModel?.presence_penalty).toBe(0.0);
+            expect(smallModel?.stop).toEqual([]);
         });
     });
 
@@ -101,13 +101,13 @@ describe("Model Provider Configuration", () => {
 
         test("should have correct settings configuration", () => {
             const smallModel =
-                models[ModelProviderName.ANTHROPIC].model[ModelClass.SMALL];
-            expect(smallModel.maxInputTokens).toBe(200000);
-            expect(smallModel.maxOutputTokens).toBe(4096);
-            expect(smallModel.temperature).toBe(0.7);
-            expect(smallModel.frequency_penalty).toBe(0.4);
-            expect(smallModel.presence_penalty).toBe(0.4);
-            expect(smallModel.stop).toEqual([]);
+                models[ModelProviderName.ANTHROPIC].model?.[ModelClass.SMALL];
+            expect(smallModel?.maxInputTokens).toBe(200000);
+            expect(smallModel?.maxOutputTokens).toBe(4096);
+            expect(smallModel?.temperature).toBe(0.7);
+            expect(smallModel?.frequency_penalty).toBe(0.4);
+            expect(smallModel?.presence_penalty).toBe(0.4);
+            expect(smallModel?.stop).toEqual([]);
         });
     });
 
@@ -133,11 +133,11 @@ describe("Model Provider Configuration", () => {
 
         test("should have correct settings configuration", () => {
             const smallModel =
-                models[ModelProviderName.LLAMACLOUD].model[ModelClass.SMALL];
-            expect(smallModel.maxInputTokens).toBe(128000);
-            expect(smallModel.maxOutputTokens).toBe(8192);
-            expect(smallModel.temperature).toBe(0.7);
-            expect(smallModel.repetition_penalty).toBe(0.4);
+                models[ModelProviderName.LLAMACLOUD].model?.[ModelClass.SMALL];
+            expect(smallModel?.maxInputTokens).toBe(128000);
+            expect(smallModel?.maxOutputTokens).toBe(8192);
+            expect(smallModel?.temperature).toBe(0.7);
+            expect(smallModel?.repetition_penalty).toBe(0.4);
         });
     });
 
