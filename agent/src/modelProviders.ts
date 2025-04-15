@@ -133,10 +133,6 @@ const providerKeyMap = {
         characterKey: "ALI_BAILIAN_API_KEY",
         settingsKey: "ALI_BAILIAN_API_KEY",
     },
-    [ModelProviderName.VOLENGINE]: {
-        characterKey: "VOLENGINE_API_KEY",
-        settingsKey: "VOLENGINE_API_KEY",
-    },
     [ModelProviderName.GOOGLE]: {
         characterKey: "GOOGLE_GENERATIVE_AI_API_KEY",
         settingsKey: "GOOGLE_GENERATIVE_AI_API_KEY",

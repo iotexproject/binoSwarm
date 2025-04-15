@@ -722,52 +722,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.VOLENGINE]: {
-        endpoint:
-            settings.VOLENGINE_API_URL ||
-            "https://open.volcengineapi.com/api/v3/",
-        model: {
-            [ModelClass.SMALL]: {
-                name:
-                    settings.SMALL_VOLENGINE_MODEL ||
-                    settings.VOLENGINE_MODEL ||
-                    "doubao-lite-128k",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.6,
-            },
-            [ModelClass.MEDIUM]: {
-                name:
-                    settings.MEDIUM_VOLENGINE_MODEL ||
-                    settings.VOLENGINE_MODEL ||
-                    "doubao-pro-128k",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.6,
-            },
-            [ModelClass.LARGE]: {
-                name:
-                    settings.LARGE_VOLENGINE_MODEL ||
-                    settings.VOLENGINE_MODEL ||
-                    "doubao-pro-256k",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.6,
-            },
-            [ModelClass.EMBEDDING]: {
-                name: settings.VOLENGINE_EMBEDDING_MODEL || "doubao-embedding",
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {

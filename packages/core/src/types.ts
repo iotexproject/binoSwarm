@@ -232,7 +232,6 @@ export type Models = {
     [ModelProviderName.FAL]: Model;
     [ModelProviderName.GAIANET]: Model;
     [ModelProviderName.ALI_BAILIAN]: Model;
-    [ModelProviderName.VOLENGINE]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
 
