@@ -240,7 +240,6 @@ export type Models = {
     [ModelProviderName.AKASH_CHAT_API]: Model;
     [ModelProviderName.LIVEPEER]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
-    [ModelProviderName.INFERA]: Model;
 };
 
 /**

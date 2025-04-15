@@ -945,32 +945,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.INFERA]: {
-        endpoint: "https://api.infera.org",
-        model: {
-            [ModelClass.SMALL]: {
-                name: settings.SMALL_INFERA_MODEL || "llama3.2:3b",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.MEDIUM]: {
-                name: settings.MEDIUM_INFERA_MODEL || "mistral-nemo:latest",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.LARGE]: {
-                name: settings.LARGE_INFERA_MODEL || "mistral-small:latest",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {

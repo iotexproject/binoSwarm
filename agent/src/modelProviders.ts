@@ -161,10 +161,6 @@ const providerKeyMap = {
         characterKey: "MISTRAL_API_KEY",
         settingsKey: "MISTRAL_API_KEY",
     },
-    [ModelProviderName.INFERA]: {
-        characterKey: "INFERA_API_KEY",
-        settingsKey: "INFERA_API_KEY",
-    },
     [ModelProviderName.DEEPSEEK]: {
         characterKey: "DEEPSEEK_API_KEY",
         settingsKey: "DEEPSEEK_API_KEY",
