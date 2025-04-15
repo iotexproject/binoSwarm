@@ -224,7 +224,6 @@ export type Models = {
     [ModelProviderName.GOOGLE]: Model;
     [ModelProviderName.MISTRAL]: Model;
     [ModelProviderName.CLAUDE_VERTEX]: Model;
-    [ModelProviderName.REDPILL]: Model;
     [ModelProviderName.OLLAMA]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
@@ -244,7 +243,6 @@ export enum ModelProviderName {
     GOOGLE = "google",
     MISTRAL = "mistral",
     CLAUDE_VERTEX = "claude_vertex",
-    REDPILL = "redpill",
     OLLAMA = "ollama",
     DEEPSEEK = "deepseek",
     INFERA = "infera",

@@ -423,54 +423,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.REDPILL]: {
-        endpoint: "https://api.red-pill.ai/v1",
-        // Available models: https://docs.red-pill.ai/get-started/supported-models
-        // To test other models, change the models below
-        model: {
-            [ModelClass.SMALL]: {
-                name:
-                    settings.SMALL_REDPILL_MODEL ||
-                    settings.REDPILL_MODEL ||
-                    "gpt-4o-mini",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                temperature: 0.6,
-            },
-            [ModelClass.MEDIUM]: {
-                name:
-                    settings.MEDIUM_REDPILL_MODEL ||
-                    settings.REDPILL_MODEL ||
-                    "gpt-4o",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                temperature: 0.6,
-            },
-
-            [ModelClass.LARGE]: {
-                name:
-                    settings.LARGE_REDPILL_MODEL ||
-                    settings.REDPILL_MODEL ||
-                    "gpt-4o",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                temperature: 0.6,
-            },
-
-            [ModelClass.EMBEDDING]: {
-                name: "text-embedding-3-small",
-            },
-        },
-    },
     [ModelProviderName.OLLAMA]: {
         endpoint: settings.OLLAMA_SERVER_URL || "http://localhost:11434",
         model: {

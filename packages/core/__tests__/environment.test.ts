@@ -41,16 +41,16 @@ describe("Environment Configuration", () => {
     });
 
     it("should throw error for missing required keys", () => {
-        delete process.env.REDPILL_API_KEY;
-        expect(() => validateEnv()).toThrow("REDPILL_API_KEY: Required");
+        delete process.env.OPENAI_API_KEY;
+        expect(() => validateEnv()).toThrow("OPENAI_API_KEY: Required");
     });
 
     it("should throw error for multiple missing required keys", () => {
-        delete process.env.REDPILL_API_KEY;
+        delete process.env.OPENAI_API_KEY;
         delete process.env.GROK_API_KEY;
         expect(() => validateEnv()).toThrow(
             "Environment validation failed:\n" +
-                "REDPILL_API_KEY: Required\n" +
+                "OPENAI_API_KEY: Required\n" +
                 "GROK_API_KEY: Required"
         );
     });

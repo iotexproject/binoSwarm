@@ -100,10 +100,6 @@ const providerKeyMap = {
         characterKeys: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
         settingsKeys: ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
     },
-    [ModelProviderName.REDPILL]: {
-        characterKey: "REDPILL_API_KEY",
-        settingsKey: "REDPILL_API_KEY",
-    },
     [ModelProviderName.GROK]: {
         characterKey: "GROK_API_KEY",
         settingsKey: "GROK_API_KEY",

@@ -8,7 +8,6 @@ export const envSchema = z.object({
     OPENAI_API_KEY: z
         .string()
         .startsWith("sk-", "OpenAI API key must start with 'sk-'"),
-    REDPILL_API_KEY: z.string().min(1, "REDPILL API key is required"),
     GROK_API_KEY: z.string().min(1, "GROK API key is required"),
     GROQ_API_KEY: z
         .string()
