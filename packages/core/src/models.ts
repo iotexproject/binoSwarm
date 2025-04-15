@@ -838,35 +838,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.VENICE]: {
-        endpoint: "https://api.venice.ai/api/v1",
-        model: {
-            [ModelClass.SMALL]: {
-                name: settings.SMALL_VENICE_MODEL || "llama-3.3-70b",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.MEDIUM]: {
-                name: settings.MEDIUM_VENICE_MODEL || "llama-3.3-70b",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.LARGE]: {
-                name: settings.LARGE_VENICE_MODEL || "llama-3.1-405b",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.IMAGE]: {
-                name: settings.IMAGE_VENICE_MODEL || "fluently-xl",
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {

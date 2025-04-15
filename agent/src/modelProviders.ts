@@ -145,10 +145,6 @@ const providerKeyMap = {
         characterKey: "HYPERBOLIC_API_KEY",
         settingsKey: "HYPERBOLIC_API_KEY",
     },
-    [ModelProviderName.VENICE]: {
-        characterKey: "VENICE_API_KEY",
-        settingsKey: "VENICE_API_KEY",
-    },
     [ModelProviderName.GOOGLE]: {
         characterKey: "GOOGLE_GENERATIVE_AI_API_KEY",
         settingsKey: "GOOGLE_GENERATIVE_AI_API_KEY",

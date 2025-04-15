@@ -336,8 +336,6 @@ export const generateImage = async (
                           return runtime.getSetting("FAL_API_KEY");
                       case ModelProviderName.OPENAI:
                           return runtime.getSetting("OPENAI_API_KEY");
-                      case ModelProviderName.VENICE:
-                          return runtime.getSetting("VENICE_API_KEY");
                       default:
                           // If no specific match, try the fallback chain
                           return (
@@ -500,45 +498,6 @@ export const generateImage = async (
             });
 
             const base64s = await Promise.all(base64Promises);
-            return { success: true, data: base64s };
-        } else if (runtime.imageModelProvider === ModelProviderName.VENICE) {
-            const response = await fetch(
-                "https://api.venice.ai/api/v1/image/generate",
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${apiKey}`,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        model: model,
-                        prompt: data.prompt,
-                        negative_prompt: data.negativePrompt,
-                        width: data.width,
-                        height: data.height,
-                        steps: data.numIterations,
-                        seed: data.seed,
-                        style_preset: data.stylePreset,
-                        hide_watermark: data.hideWatermark,
-                    }),
-                }
-            );
-
-            const result = await response.json();
-
-            if (!result.images || !Array.isArray(result.images)) {
-                throw new Error("Invalid response format from Venice AI");
-            }
-
-            const base64s = result.images.map((base64String) => {
-                if (!base64String) {
-                    throw new Error(
-                        "Empty base64 string in Venice AI response"
-                    );
-                }
-                return `data:image/png;base64,${base64String}`;
-            });
-
             return { success: true, data: base64s };
         } else {
             let targetSize = `${data.width}x${data.height}`;
