@@ -233,7 +233,6 @@ export type Models = {
     [ModelProviderName.GAIANET]: Model;
     [ModelProviderName.ALI_BAILIAN]: Model;
     [ModelProviderName.VOLENGINE]: Model;
-    [ModelProviderName.NANOGPT]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
 

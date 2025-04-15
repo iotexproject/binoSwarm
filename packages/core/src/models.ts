@@ -768,38 +768,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.NANOGPT]: {
-        endpoint: "https://nano-gpt.com/api/v1",
-        model: {
-            [ModelClass.SMALL]: {
-                name: settings.SMALL_NANOGPT_MODEL || "gpt-4o-mini",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                temperature: 0.6,
-            },
-            [ModelClass.MEDIUM]: {
-                name: settings.MEDIUM_NANOGPT_MODEL || "gpt-4o",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                temperature: 0.6,
-            },
-            [ModelClass.LARGE]: {
-                name: settings.LARGE_NANOGPT_MODEL || "gpt-4o",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                temperature: 0.6,
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {

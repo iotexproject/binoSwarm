@@ -137,10 +137,6 @@ const providerKeyMap = {
         characterKey: "VOLENGINE_API_KEY",
         settingsKey: "VOLENGINE_API_KEY",
     },
-    [ModelProviderName.NANOGPT]: {
-        characterKey: "NANOGPT_API_KEY",
-        settingsKey: "NANOGPT_API_KEY",
-    },
     [ModelProviderName.GOOGLE]: {
         characterKey: "GOOGLE_GENERATIVE_AI_API_KEY",
         settingsKey: "GOOGLE_GENERATIVE_AI_API_KEY",
