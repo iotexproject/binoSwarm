@@ -57,7 +57,6 @@ function validateConfig(config: any, provider: ModelProviderName) {
 const noKeyProviders = [
     ModelProviderName.LLAMALOCAL,
     ModelProviderName.OLLAMA,
-    ModelProviderName.GAIANET,
 ];
 
 const providerKeyMap = {

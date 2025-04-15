@@ -645,48 +645,6 @@ export const models: Models = {
             [ModelClass.IMAGE]: { name: "fal-ai/flux-lora", steps: 28 },
         },
     },
-    [ModelProviderName.GAIANET]: {
-        endpoint: settings.GAIANET_SERVER_URL,
-        model: {
-            [ModelClass.SMALL]: {
-                name:
-                    settings.GAIANET_MODEL ||
-                    settings.SMALL_GAIANET_MODEL ||
-                    "llama3b",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                repetition_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.MEDIUM]: {
-                name:
-                    settings.GAIANET_MODEL ||
-                    settings.MEDIUM_GAIANET_MODEL ||
-                    "llama",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                repetition_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.LARGE]: {
-                name:
-                    settings.GAIANET_MODEL ||
-                    settings.LARGE_GAIANET_MODEL ||
-                    "qwen72b",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                repetition_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.EMBEDDING]: {
-                name: settings.GAIANET_EMBEDDING_MODEL || "nomic-embed",
-                dimensions: 768,
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {
