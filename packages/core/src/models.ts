@@ -107,7 +107,7 @@ export const models: Models = {
                 temperature: 0.7,
             },
             [ModelClass.MEDIUM]: {
-                name: settings.MEDIUM_GROK_MODEL || "grok-2-1212",
+                name: settings.MEDIUM_GROK_MODEL || "grok-3-latest",
                 stop: [],
                 maxInputTokens: 128000,
                 maxOutputTokens: 8192,
@@ -124,7 +124,6 @@ export const models: Models = {
                 presence_penalty: 0.4,
                 temperature: 0.7,
             },
-
         },
     },
     [ModelProviderName.LLAMALOCAL]: {
