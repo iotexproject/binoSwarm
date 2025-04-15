@@ -218,7 +218,6 @@ export type Models = {
     [ModelProviderName.ANTHROPIC]: Model;
     [ModelProviderName.GROK]: Model;
     [ModelProviderName.LLAMALOCAL]: Model;
-    [ModelProviderName.CLAUDE_VERTEX]: Model;
     [ModelProviderName.OLLAMA]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
@@ -232,7 +231,6 @@ export enum ModelProviderName {
     ANTHROPIC = "anthropic",
     GROK = "grok",
     LLAMALOCAL = "llama_local",
-    CLAUDE_VERTEX = "claude_vertex",
     OLLAMA = "ollama",
     DEEPSEEK = "deepseek",
     INFERA = "infera",

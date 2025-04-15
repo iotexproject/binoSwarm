@@ -132,38 +132,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.CLAUDE_VERTEX]: {
-        endpoint: "https://api.anthropic.com/v1", // TODO: check
-        model: {
-            [ModelClass.SMALL]: {
-                name: "claude-3-5-sonnet-20241022",
-                stop: [],
-                maxInputTokens: 200000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.MEDIUM]: {
-                name: "claude-3-5-sonnet-20241022",
-                stop: [],
-                maxInputTokens: 200000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.LARGE]: {
-                name: "claude-3-opus-20240229",
-                stop: [],
-                maxInputTokens: 200000,
-                maxOutputTokens: 8192,
-                frequency_penalty: 0.4,
-                presence_penalty: 0.4,
-                temperature: 0.7,
-            },
-        },
-    },
     [ModelProviderName.GROK]: {
         endpoint: "https://api.x.ai/v1",
         model: {
