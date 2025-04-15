@@ -66,10 +66,11 @@ describe("Model Provider Configuration", () => {
         });
 
         test("should have correct model mappings", () => {
-            const openAIModels = models[ModelProviderName.OPENAI].model;
+            const openAIModels = models[ModelProviderName.OPENAI]?.model;
             expect(openAIModels?.[ModelClass.SMALL]?.name).toBe("gpt-4o-mini");
             expect(openAIModels?.[ModelClass.MEDIUM]?.name).toBe("gpt-4o");
             expect(openAIModels?.[ModelClass.LARGE]?.name).toBe("gpt-4o");
+            expect(openAIModels?.[ModelClass.FAST]?.name).toBe("gpt-4o-mini");
             expect(openAIModels?.[ModelClass.EMBEDDING]?.name).toBe(
                 "text-embedding-3-small"
             );
@@ -96,7 +97,7 @@ describe("Model Provider Configuration", () => {
         });
 
         test("should have correct model mappings", () => {
-            const anthropicModels = models[ModelProviderName.ANTHROPIC].model;
+            const anthropicModels = models[ModelProviderName.ANTHROPIC]?.model;
             expect(anthropicModels?.[ModelClass.SMALL]?.name).toBe(
                 "claude-3-5-haiku-20241022"
             );
@@ -105,6 +106,9 @@ describe("Model Provider Configuration", () => {
             );
             expect(anthropicModels?.[ModelClass.LARGE]?.name).toBe(
                 "claude-3-5-sonnet-20241022"
+            );
+            expect(anthropicModels?.[ModelClass.FAST]?.name).toBe(
+                "claude-3-5-haiku-20241022"
             );
         });
 
@@ -138,6 +142,9 @@ describe("Model Provider Configuration", () => {
             expect(deepSeekModels?.[ModelClass.LARGE]?.name).toBe(
                 "deepseek-chat"
             );
+            expect(deepSeekModels?.[ModelClass.FAST]?.name).toBe(
+                "deepseek-chat"
+            );
         });
 
         test("should have correct settings configuration", () => {
@@ -166,6 +173,9 @@ describe("Model Provider Configuration", () => {
             );
             expect(grokModels?.[ModelClass.MEDIUM]?.name).toBe("grok-3-latest");
             expect(grokModels?.[ModelClass.LARGE]?.name).toBe("grok-3-latest");
+            expect(grokModels?.[ModelClass.FAST]?.name).toBe(
+                "grok-3-fast-latest"
+            );
         });
 
         test("should have correct settings configuration", () => {
@@ -192,6 +202,7 @@ describe("Model Provider Configuration", () => {
             expect(ollamaModels?.[ModelClass.SMALL]?.name).toBe("llama3.2");
             expect(ollamaModels?.[ModelClass.MEDIUM]?.name).toBe("hermes3");
             expect(ollamaModels?.[ModelClass.LARGE]?.name).toBe("hermes3:70b");
+            expect(ollamaModels?.[ModelClass.FAST]?.name).toBe("hermes3:70b");
             expect(ollamaModels?.[ModelClass.EMBEDDING]?.name).toBe(
                 "mxbai-embed-large"
             );
@@ -228,6 +239,9 @@ describe("Model Provider Configuration", () => {
                 "NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q8_0.gguf?download=true"
             );
             expect(llamaLocalModels?.[ModelClass.LARGE]?.name).toBe(
+                "NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q8_0.gguf?download=true"
+            );
+            expect(llamaLocalModels?.[ModelClass.FAST]?.name).toBe(
                 "NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q8_0.gguf?download=true"
             );
             expect(llamaLocalModels?.[ModelClass.EMBEDDING]?.name).toBe(
@@ -413,6 +427,49 @@ describe("Model Retrieval Functions", () => {
                     "any-model"
                 );
             }).toThrow("Unsupported provider: UNSUPPORTED_PROVIDER");
+        });
+    });
+
+    describe("getModelSettings for FAST models", () => {
+        test("should retrieve FAST model settings for all providers", () => {
+            // Test retrieving FAST models for various providers
+            const openAIFast = getModelSettings(
+                ModelProviderName.OPENAI,
+                ModelClass.FAST
+            );
+            expect(openAIFast?.name).toBe("gpt-4o-mini");
+
+            const anthropicFast = getModelSettings(
+                ModelProviderName.ANTHROPIC,
+                ModelClass.FAST
+            );
+            expect(anthropicFast?.name).toBe("claude-3-5-haiku-20241022");
+
+            const deepseekFast = getModelSettings(
+                ModelProviderName.DEEPSEEK,
+                ModelClass.FAST
+            );
+            expect(deepseekFast?.name).toBe("deepseek-chat");
+
+            const grokFast = getModelSettings(
+                ModelProviderName.GROK,
+                ModelClass.FAST
+            );
+            expect(grokFast?.name).toBe("grok-3-fast-latest");
+
+            const ollamaFast = getModelSettings(
+                ModelProviderName.OLLAMA,
+                ModelClass.FAST
+            );
+            expect(ollamaFast?.name).toBe("hermes3:70b");
+
+            const llamaLocalFast = getModelSettings(
+                ModelProviderName.LLAMALOCAL,
+                ModelClass.FAST
+            );
+            expect(llamaLocalFast?.name).toBe(
+                "NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q8_0.gguf?download=true"
+            );
         });
     });
 });

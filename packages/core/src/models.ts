@@ -45,6 +45,15 @@ export const models: Models = {
                 presence_penalty: 0.0,
                 temperature: 0.6,
             },
+            [ModelClass.FAST]: {
+                name: settings.FAST_OPENAI_MODEL || "gpt-4o-mini",
+                stop: [],
+                maxInputTokens: 128000,
+                maxOutputTokens: 8192,
+                frequency_penalty: 0.0,
+                presence_penalty: 0.0,
+                temperature: 0.6,
+            },
             [ModelClass.EMBEDDING]: {
                 name:
                     settings.EMBEDDING_OPENAI_MODEL || "text-embedding-3-small",
@@ -92,6 +101,17 @@ export const models: Models = {
                 presence_penalty: 0.4,
                 temperature: 0.7,
             },
+            [ModelClass.FAST]: {
+                name:
+                    settings.FAST_ANTHROPIC_MODEL ||
+                    "claude-3-5-haiku-20241022",
+                stop: [],
+                maxInputTokens: 200000,
+                maxOutputTokens: 4096,
+                frequency_penalty: 0.4,
+                presence_penalty: 0.4,
+                temperature: 0.7,
+            },
         },
     },
     [ModelProviderName.GROK]: {
@@ -124,6 +144,15 @@ export const models: Models = {
                 presence_penalty: 0.4,
                 temperature: 0.7,
             },
+            [ModelClass.FAST]: {
+                name: settings.FAST_GROK_MODEL || "grok-3-fast-latest",
+                stop: [],
+                maxInputTokens: 128000,
+                maxOutputTokens: 8192,
+                frequency_penalty: 0.4,
+                presence_penalty: 0.4,
+                temperature: 0.7,
+            },
         },
     },
     [ModelProviderName.LLAMALOCAL]: {
@@ -146,6 +175,14 @@ export const models: Models = {
             },
             [ModelClass.LARGE]: {
                 name: "NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q8_0.gguf?download=true", // "RichardErkhov/NousResearch_-_Meta-Llama-3.1-70B-gguf", // TODO:
+                stop: ["<|eot_id|>", "<|eom_id|>"],
+                maxInputTokens: 32768,
+                maxOutputTokens: 8192,
+                repetition_penalty: 0.4,
+                temperature: 0.7,
+            },
+            [ModelClass.FAST]: {
+                name: "NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q8_0.gguf?download=true", // TODO:
                 stop: ["<|eot_id|>", "<|eom_id|>"],
                 maxInputTokens: 32768,
                 maxOutputTokens: 8192,
@@ -197,7 +234,15 @@ export const models: Models = {
                 presence_penalty: 0.4,
                 temperature: 0.7,
             },
-
+            [ModelClass.FAST]: {
+                name: settings.FAST_OLLAMA_MODEL || "hermes3:70b",
+                stop: [],
+                maxInputTokens: 128000,
+                maxOutputTokens: 8192,
+                frequency_penalty: 0.4,
+                presence_penalty: 0.4,
+                temperature: 0.7,
+            },
             [ModelClass.EMBEDDING]: {
                 name: settings.OLLAMA_EMBEDDING_MODEL || "mxbai-embed-large",
                 dimensions: 1024,
@@ -227,6 +272,15 @@ export const models: Models = {
             },
             [ModelClass.LARGE]: {
                 name: settings.LARGE_DEEPSEEK_MODEL || "deepseek-chat",
+                stop: [],
+                maxInputTokens: 128000,
+                maxOutputTokens: 8192,
+                frequency_penalty: 0.0,
+                presence_penalty: 0.0,
+                temperature: 0.7,
+            },
+            [ModelClass.FAST]: {
+                name: settings.FAST_DEEPSEEK_MODEL || "deepseek-chat",
                 stop: [],
                 maxInputTokens: 128000,
                 maxOutputTokens: 8192,

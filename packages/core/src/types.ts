@@ -146,6 +146,7 @@ export enum ModelClass {
     LARGE = "large",
     EMBEDDING = "embedding",
     IMAGE = "image",
+    FAST = "fast", // for latency-sensitive applications, eg voice
 }
 
 /**
@@ -204,6 +205,7 @@ export type Model = {
         [ModelClass.SMALL]?: ModelSettings;
         [ModelClass.MEDIUM]?: ModelSettings;
         [ModelClass.LARGE]?: ModelSettings;
+        [ModelClass.FAST]?: ModelSettings;
         [ModelClass.EMBEDDING]?: EmbeddingModelSettings;
         [ModelClass.IMAGE]?: ImageModelSettings;
     };
