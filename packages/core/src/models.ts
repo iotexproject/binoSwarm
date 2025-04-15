@@ -1,3 +1,8 @@
+import { anthropic } from "@ai-sdk/anthropic";
+import { openai } from "@ai-sdk/openai";
+import { deepseek } from "@ai-sdk/deepseek";
+import type { LanguageModelV1 } from "ai";
+
 import settings from "./settings.ts";
 import {
     EmbeddingModelSettings,
@@ -1026,4 +1031,23 @@ export function getEmbeddingModelSettings(
 
 export function getEndpoint(provider: ModelProviderName) {
     return models[provider].endpoint;
+}
+
+export function getModel(
+    provider: ModelProviderName,
+    model: string
+): LanguageModelV1 {
+    const modelProviders = {
+        [ModelProviderName.OPENAI]: openai,
+        [ModelProviderName.ANTHROPIC]: anthropic,
+        [ModelProviderName.DEEPSEEK]: deepseek,
+    };
+
+    const modelProvider = modelProviders[provider];
+
+    if (!modelProvider) {
+        throw new Error(`Unsupported provider: ${provider}`);
+    }
+
+    return modelProvider(model);
 }

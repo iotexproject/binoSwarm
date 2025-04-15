@@ -1,6 +1,3 @@
-import { anthropic } from "@ai-sdk/anthropic";
-import { openai } from "@ai-sdk/openai";
-import { deepseek } from "@ai-sdk/deepseek";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import {
     generateObject as aiGenerateObject,
@@ -9,7 +6,6 @@ import {
     StepResult as AIStepResult,
     Message,
     Tool,
-    LanguageModelV1,
     ToolSet,
     tool,
     streamText,
@@ -23,7 +19,7 @@ import { fal } from "@fal-ai/client";
 import { tavily } from "@tavily/core";
 
 import { elizaLogger } from "./index.ts";
-import { getModelSettings, getImageModelSettings } from "./models.ts";
+import { getModelSettings, getImageModelSettings, getModel } from "./models.ts";
 import { parseJSONObjectFromText, parseTagContent } from "./parsing.ts";
 import {
     Content,
@@ -810,22 +806,6 @@ export async function generateObject<T>({
     elizaLogger.debug("generateObject result:", result.object);
     schema.parse(result.object);
     return result;
-}
-
-function getModel(provider: ModelProviderName, model: string): LanguageModelV1 {
-    const modelProviders = {
-        [ModelProviderName.OPENAI]: openai,
-        [ModelProviderName.ANTHROPIC]: anthropic,
-        [ModelProviderName.DEEPSEEK]: deepseek,
-    };
-
-    const modelProvider = modelProviders[provider];
-
-    if (!modelProvider) {
-        throw new Error(`Unsupported provider: ${provider}`);
-    }
-
-    return modelProvider(model);
 }
 
 export async function generateTextWithTools({
