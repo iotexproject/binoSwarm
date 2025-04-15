@@ -69,6 +69,7 @@
         "@ai-sdk/anthropic": "^1.1.9",
         "@ai-sdk/deepseek": "^0.1.15",
         "@ai-sdk/openai": "^1.1.13",
+        "@ai-sdk/xai": "^1.2.13",
         "@fal-ai/client": "1.2.0",
         "@pinecone-database/pinecone": "^5.1.1",
         "@types/uuid": "10.0.0",
