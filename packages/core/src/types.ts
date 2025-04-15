@@ -236,7 +236,6 @@ export type Models = {
     [ModelProviderName.NANOGPT]: Model;
     [ModelProviderName.HYPERBOLIC]: Model;
     [ModelProviderName.VENICE]: Model;
-    [ModelProviderName.NINETEEN_AI]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
 

@@ -540,45 +540,6 @@ export const generateImage = async (
             });
 
             return { success: true, data: base64s };
-        } else if (
-            runtime.imageModelProvider === ModelProviderName.NINETEEN_AI
-        ) {
-            const response = await fetch(
-                "https://api.nineteen.ai/v1/text-to-image",
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${apiKey}`,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        model: model,
-                        prompt: data.prompt,
-                        negative_prompt: data.negativePrompt,
-                        width: data.width,
-                        height: data.height,
-                        steps: data.numIterations,
-                        cfg_scale: data.guidanceScale || 3,
-                    }),
-                }
-            );
-
-            const result = await response.json();
-
-            if (!result.images || !Array.isArray(result.images)) {
-                throw new Error("Invalid response format from Nineteen AI");
-            }
-
-            const base64s = result.images.map((base64String) => {
-                if (!base64String) {
-                    throw new Error(
-                        "Empty base64 string in Nineteen AI response"
-                    );
-                }
-                return `data:image/png;base64,${base64String}`;
-            });
-
-            return { success: true, data: base64s };
         } else {
             let targetSize = `${data.width}x${data.height}`;
             if (
