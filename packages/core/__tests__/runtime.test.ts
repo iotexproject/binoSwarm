@@ -402,7 +402,11 @@ describe("AgentRuntime", () => {
             // Check that only the recent attachment is included in the formatted result
             expect(result).toHaveProperty("attachments");
             expect(result.attachments).toContain("Recent Attachment");
-            expect(result.attachments).not.toContain("Old Attachment");
+            expect(result.attachments).toContain("Image content");
+
+            expect(result.attachments).toContain("Old Attachment");
+            expect(result.attachments).toContain("[Hidden]");
+            expect(result.attachments).not.toContain("Old image content");
         });
 
         it("should handle empty message lists", async () => {
