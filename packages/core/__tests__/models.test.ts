@@ -117,6 +117,124 @@ describe("Model Provider Configuration", () => {
             expect(smallModel?.stop).toEqual([]);
         });
     });
+
+    describe("DeepSeek Provider", () => {
+        test("should have correct endpoint", () => {
+            expect(models[ModelProviderName.DEEPSEEK]?.endpoint).toBe(
+                "https://api.deepseek.com"
+            );
+        });
+
+        test("should have correct model mappings", () => {
+            const deepSeekModels = models[ModelProviderName.DEEPSEEK]?.model;
+            expect(deepSeekModels?.[ModelClass.SMALL]?.name).toBe(
+                "deepseek-chat"
+            );
+            expect(deepSeekModels?.[ModelClass.MEDIUM]?.name).toBe(
+                "deepseek-chat"
+            );
+            expect(deepSeekModels?.[ModelClass.LARGE]?.name).toBe(
+                "deepseek-chat"
+            );
+        });
+
+        test("should have correct settings configuration", () => {
+            const smallModel =
+                models[ModelProviderName.DEEPSEEK]?.model?.[ModelClass.SMALL];
+            expect(smallModel?.maxInputTokens).toBe(128000);
+            expect(smallModel?.maxOutputTokens).toBe(8192);
+            expect(smallModel?.temperature).toBe(0.7);
+            expect(smallModel?.frequency_penalty).toBe(0.0);
+            expect(smallModel?.presence_penalty).toBe(0.0);
+            expect(smallModel?.stop).toEqual([]);
+        });
+    });
+
+    describe("Grok Provider", () => {
+        test("should have correct endpoint", () => {
+            expect(models[ModelProviderName.GROK]?.endpoint).toBe(
+                "https://api.x.ai/v1"
+            );
+        });
+
+        test("should have correct model mappings", () => {
+            const grokModels = models[ModelProviderName.GROK]?.model;
+            expect(grokModels?.[ModelClass.SMALL]?.name).toBe(
+                "grok-3-mini-latest"
+            );
+            expect(grokModels?.[ModelClass.MEDIUM]?.name).toBe("grok-3-latest");
+            expect(grokModels?.[ModelClass.LARGE]?.name).toBe("grok-3-latest");
+        });
+
+        test("should have correct settings configuration", () => {
+            const smallModel =
+                models[ModelProviderName.GROK]?.model?.[ModelClass.SMALL];
+            expect(smallModel?.maxInputTokens).toBe(128000);
+            expect(smallModel?.maxOutputTokens).toBe(8192);
+            expect(smallModel?.temperature).toBe(0.7);
+            expect(smallModel?.frequency_penalty).toBe(0.4);
+            expect(smallModel?.presence_penalty).toBe(0.4);
+            expect(smallModel?.stop).toEqual([]);
+        });
+    });
+
+    describe("OLLAMA Provider", () => {
+        test("should have correct endpoint", () => {
+            expect(models[ModelProviderName.OLLAMA]?.endpoint).toBe(
+                "http://localhost:11434"
+            );
+        });
+
+        test("should have correct model mappings", () => {
+            const ollamaModels = models[ModelProviderName.OLLAMA]?.model;
+            expect(ollamaModels?.[ModelClass.SMALL]?.name).toBe("llama3.2");
+            expect(ollamaModels?.[ModelClass.MEDIUM]?.name).toBe("hermes3");
+            expect(ollamaModels?.[ModelClass.LARGE]?.name).toBe("hermes3:70b");
+            expect(ollamaModels?.[ModelClass.EMBEDDING]?.name).toBe(
+                "mxbai-embed-large"
+            );
+        });
+
+        test("should have correct settings configuration", () => {
+            const smallModel =
+                models[ModelProviderName.OLLAMA]?.model?.[ModelClass.SMALL];
+            expect(smallModel?.maxInputTokens).toBe(128000);
+            expect(smallModel?.maxOutputTokens).toBe(8192);
+            expect(smallModel?.temperature).toBe(0.7);
+            expect(smallModel?.frequency_penalty).toBe(0.4);
+            expect(smallModel?.presence_penalty).toBe(0.4);
+            expect(smallModel?.stop).toEqual([]);
+        });
+    });
+
+    describe("LLAMALOCAL Provider", () => {
+        test("should have correct model mappings", () => {
+            const llamaLocalModels =
+                models[ModelProviderName.LLAMALOCAL]?.model;
+            expect(llamaLocalModels?.[ModelClass.SMALL]?.name).toBe(
+                "NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q8_0.gguf?download=true"
+            );
+            expect(llamaLocalModels?.[ModelClass.MEDIUM]?.name).toBe(
+                "NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q8_0.gguf?download=true"
+            );
+            expect(llamaLocalModels?.[ModelClass.LARGE]?.name).toBe(
+                "NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q8_0.gguf?download=true"
+            );
+            expect(llamaLocalModels?.[ModelClass.EMBEDDING]?.name).toBe(
+                "togethercomputer/m2-bert-80M-32k-retrieval"
+            );
+        });
+
+        test("should have correct settings configuration", () => {
+            const smallModel =
+                models[ModelProviderName.LLAMALOCAL]?.model?.[ModelClass.SMALL];
+            expect(smallModel?.maxInputTokens).toBe(32768);
+            expect(smallModel?.maxOutputTokens).toBe(8192);
+            expect(smallModel?.temperature).toBe(0.7);
+            expect(smallModel?.repetition_penalty).toBe(0.4);
+            expect(smallModel?.stop).toEqual(["<|eot_id|>", "<|eom_id|>"]);
+        });
+    });
 });
 
 describe("Model Retrieval Functions", () => {
@@ -191,6 +309,17 @@ describe("Model Retrieval Functions", () => {
         });
 
         test("should throw error for unsupported provider", () => {
+            // Test for OLLAMA which is not in the modelProviders map
+            expect(() => {
+                getModel(ModelProviderName.OLLAMA, "llama3.2");
+            }).toThrow(`Unsupported provider: ${ModelProviderName.OLLAMA}`);
+
+            // Test for LLAMALOCAL which is not in the modelProviders map
+            expect(() => {
+                getModel(ModelProviderName.LLAMALOCAL, "hermes3");
+            }).toThrow(`Unsupported provider: ${ModelProviderName.LLAMALOCAL}`);
+
+            // Test for completely unknown provider
             expect(() => {
                 getModel(
                     "UNSUPPORTED_PROVIDER" as ModelProviderName,
@@ -242,4 +371,3 @@ describe("Model Settings Validation", () => {
         });
     });
 });
-
