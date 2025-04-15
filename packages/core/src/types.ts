@@ -234,7 +234,6 @@ export type Models = {
     [ModelProviderName.ALI_BAILIAN]: Model;
     [ModelProviderName.VOLENGINE]: Model;
     [ModelProviderName.NANOGPT]: Model;
-    [ModelProviderName.HYPERBOLIC]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
 

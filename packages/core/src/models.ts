@@ -800,44 +800,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.HYPERBOLIC]: {
-        endpoint: "https://api.hyperbolic.xyz/v1",
-        model: {
-            [ModelClass.SMALL]: {
-                name:
-                    settings.SMALL_HYPERBOLIC_MODEL ||
-                    settings.HYPERBOLIC_MODEL ||
-                    "meta-llama/Llama-3.2-3B-Instruct",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.MEDIUM]: {
-                name:
-                    settings.MEDIUM_HYPERBOLIC_MODEL ||
-                    settings.HYPERBOLIC_MODEL ||
-                    "meta-llama/Meta-Llama-3.1-70B-Instruct",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.LARGE]: {
-                name:
-                    settings.LARGE_HYPERBOLIC_MODEL ||
-                    settings.HYPERBOLIC_MODEL ||
-                    "meta-llama/Meta-Llama-3.1-405-Instruct",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.IMAGE]: {
-                name: settings.IMAGE_HYPERBOLIC_MODEL || "FLUX.1-dev",
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {

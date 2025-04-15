@@ -141,10 +141,6 @@ const providerKeyMap = {
         characterKey: "NANOGPT_API_KEY",
         settingsKey: "NANOGPT_API_KEY",
     },
-    [ModelProviderName.HYPERBOLIC]: {
-        characterKey: "HYPERBOLIC_API_KEY",
-        settingsKey: "HYPERBOLIC_API_KEY",
-    },
     [ModelProviderName.GOOGLE]: {
         characterKey: "GOOGLE_GENERATIVE_AI_API_KEY",
         settingsKey: "GOOGLE_GENERATIVE_AI_API_KEY",
