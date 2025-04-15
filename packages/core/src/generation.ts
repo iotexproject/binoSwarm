@@ -813,16 +813,19 @@ export async function generateObject<T>({
 }
 
 function getModel(provider: ModelProviderName, model: string): LanguageModelV1 {
-    switch (provider) {
-        case ModelProviderName.OPENAI:
-            return openai(model);
-        case ModelProviderName.ANTHROPIC:
-            return anthropic(model);
-        case ModelProviderName.DEEPSEEK:
-            return deepseek(model);
-        default:
-            throw new Error(`Unsupported provider: ${provider}`);
+    const modelProviders = {
+        [ModelProviderName.OPENAI]: openai,
+        [ModelProviderName.ANTHROPIC]: anthropic,
+        [ModelProviderName.DEEPSEEK]: deepseek,
+    };
+
+    const modelProvider = modelProviders[provider];
+
+    if (!modelProvider) {
+        throw new Error(`Unsupported provider: ${provider}`);
     }
+
+    return modelProvider(model);
 }
 
 export async function generateTextWithTools({
