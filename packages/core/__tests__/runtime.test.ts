@@ -6,6 +6,8 @@ import {
     Action,
     Memory,
     UUID,
+    State,
+    Actor,
 } from "../src/types";
 import { defaultCharacter } from "../src/defaultCharacter";
 import { formatMessageExamples } from "../src/runtime";
@@ -231,6 +233,408 @@ describe("AgentRuntime", () => {
             );
             // Restore the spy
             consoleSpy.mockRestore();
+        });
+    });
+
+    describe("updateRecentMessageState", () => {
+        const testRoomId = "123e4567-e89b-12d3-a456-426614174003" as UUID;
+        const testUserId = "123e4567-e89b-12d3-a456-426614174004" as UUID;
+        const messageId1 = "123e4567-e89b-12d3-a456-426614174101" as UUID;
+        const messageId2 = "123e4567-e89b-12d3-a456-426614174102" as UUID;
+        let mockActors: Actor[];
+
+        beforeEach(() => {
+            vi.clearAllMocks();
+            // Setup a spy on the formatMessages function which is imported in the runtime
+            vi.mock("../src/messages", () => ({
+                formatMessages: vi
+                    .fn()
+                    .mockReturnValue("Formatted messages content"),
+                retrieveActorIdsFromMessages: vi.fn(),
+            }));
+
+            // Create mock actors with all required properties after runtime is initialized
+            mockActors = [
+                {
+                    id: runtime.agentId,
+                    name: "Agent",
+                    username: "agent",
+                    details: {
+                        summary: "Test agent",
+                        tagline: "Test agent tagline",
+                        quote: "Test agent quote",
+                    },
+                },
+                {
+                    id: testUserId,
+                    name: "User",
+                    username: "testuser",
+                    details: {
+                        summary: "Test user",
+                        tagline: "Test user tagline",
+                        quote: "Test user quote",
+                    },
+                },
+            ];
+        });
+
+        it("should update state with recent messages", async () => {
+            // Setup initial state
+            const initialState: Partial<State> = {
+                roomId: testRoomId,
+                actorsData: mockActors,
+            };
+
+            // Setup mock messages to return
+            const mockMessages: Memory[] = [
+                {
+                    id: messageId1,
+                    roomId: testRoomId,
+                    userId: testUserId,
+                    agentId: runtime.agentId,
+                    content: { type: "text", text: "Hello" },
+                },
+                {
+                    id: messageId2,
+                    roomId: testRoomId,
+                    userId: runtime.agentId,
+                    agentId: runtime.agentId,
+                    content: { type: "text", text: "Hi there" },
+                },
+            ];
+
+            // Mock the memory manager getMemories method
+            const getMemoriesSpy = vi.spyOn(
+                runtime.messageManager,
+                "getMemories"
+            );
+            getMemoriesSpy.mockResolvedValue(mockMessages);
+
+            // Call the method
+            const result = await runtime.updateRecentMessageState(
+                initialState as State
+            );
+
+            // Verify memory manager was called
+            expect(getMemoriesSpy).toHaveBeenCalledWith({
+                roomId: testRoomId,
+                count: runtime.getConversationLength(),
+                unique: false,
+            });
+
+            // Check that the state was updated
+            expect(result).toHaveProperty("recentMessages");
+            expect(result).toHaveProperty("recentMessagesData", mockMessages);
+            expect(result.recentMessages).toContain(
+                "Formatted messages content"
+            );
+        });
+
+        it("should handle attachments in recent messages", async () => {
+            // Setup initial state
+            const initialState: Partial<State> = {
+                roomId: testRoomId,
+                actorsData: mockActors,
+            };
+
+            // Current timestamp for testing
+            const now = Date.now();
+            const twoHoursAgo = now - 2 * 60 * 60 * 1000;
+
+            // Setup mock messages with attachments
+            const mockMessages: Memory[] = [
+                {
+                    id: messageId1,
+                    roomId: testRoomId,
+                    userId: testUserId,
+                    agentId: runtime.agentId,
+                    createdAt: now,
+                    content: {
+                        type: "text",
+                        text: "Check this out",
+                        attachments: [
+                            {
+                                id: "att1",
+                                title: "Recent Attachment",
+                                url: "https://example.com/recent.jpg",
+                                source: "upload",
+                                description: "A recent image",
+                                text: "Image content",
+                            },
+                        ],
+                    },
+                },
+                {
+                    id: messageId2,
+                    roomId: testRoomId,
+                    userId: runtime.agentId,
+                    agentId: runtime.agentId,
+                    createdAt: twoHoursAgo,
+                    content: {
+                        type: "text",
+                        text: "Old attachment",
+                        attachments: [
+                            {
+                                id: "att2",
+                                title: "Old Attachment",
+                                url: "https://example.com/old.jpg",
+                                source: "upload",
+                                description: "An old image",
+                                text: "Old image content",
+                            },
+                        ],
+                    },
+                },
+            ];
+
+            // Mock the memory manager getMemories method
+            const getMemoriesSpy = vi.spyOn(
+                runtime.messageManager,
+                "getMemories"
+            );
+            getMemoriesSpy.mockResolvedValue(mockMessages);
+
+            // Call the method
+            const result = await runtime.updateRecentMessageState(
+                initialState as State
+            );
+
+            // Check that only the recent attachment is included in the formatted result
+            expect(result).toHaveProperty("attachments");
+            expect(result.attachments).toContain("Recent Attachment");
+            expect(result.attachments).toContain("Image content");
+
+            expect(result.attachments).toContain("Old Attachment");
+            expect(result.attachments).toContain("[Hidden]");
+            expect(result.attachments).not.toContain("Old image content");
+        });
+
+        it("should handle empty message lists", async () => {
+            // Setup initial state
+            const initialState: Partial<State> = {
+                roomId: testRoomId,
+                actorsData: [],
+            };
+
+            // Mock empty messages array
+            const getMemoriesSpy = vi.spyOn(
+                runtime.messageManager,
+                "getMemories"
+            );
+            getMemoriesSpy.mockResolvedValue([]);
+
+            // Call the method
+            const result = await runtime.updateRecentMessageState(
+                initialState as State
+            );
+
+            // Verify expected behavior with empty messages
+            expect(getMemoriesSpy).toHaveBeenCalled();
+            expect(result).toHaveProperty("recentMessages");
+            expect(result).toHaveProperty("recentMessagesData", []);
+            expect(result).toHaveProperty("attachments", "");
+        });
+
+        it("should handle messages without attachments", async () => {
+            // Setup initial state
+            const initialState: Partial<State> = {
+                roomId: testRoomId,
+                actorsData: mockActors,
+            };
+
+            // Setup mock messages without attachments
+            const mockMessages: Memory[] = [
+                {
+                    id: messageId1,
+                    roomId: testRoomId,
+                    userId: testUserId,
+                    agentId: runtime.agentId,
+                    content: { type: "text", text: "Hello" },
+                },
+                {
+                    id: messageId2,
+                    roomId: testRoomId,
+                    userId: runtime.agentId,
+                    agentId: runtime.agentId,
+                    content: { type: "text", text: "Hi there" },
+                },
+            ];
+
+            // Mock the memory manager getMemories method
+            const getMemoriesSpy = vi.spyOn(
+                runtime.messageManager,
+                "getMemories"
+            );
+            getMemoriesSpy.mockResolvedValue(mockMessages);
+
+            // Call the method
+            const result = await runtime.updateRecentMessageState(
+                initialState as State
+            );
+
+            // Check that attachments are empty
+            expect(result).toHaveProperty("attachments", "");
+        });
+
+        it("should format attachments correctly", async () => {
+            // Setup initial state
+            const initialState: Partial<State> = {
+                roomId: testRoomId,
+                actorsData: mockActors,
+            };
+
+            // Current timestamp for testing
+            const now = Date.now();
+
+            // Setup a mock message with a well-defined attachment
+            const mockAttachment = {
+                id: "test-attachment-id",
+                title: "Test Attachment",
+                url: "https://example.com/test.jpg",
+                source: "upload",
+                description: "Test description",
+                text: "Test attachment text content",
+            };
+
+            const mockMessages: Memory[] = [
+                {
+                    id: messageId1,
+                    roomId: testRoomId,
+                    userId: testUserId,
+                    agentId: runtime.agentId,
+                    createdAt: now,
+                    content: {
+                        type: "text",
+                        text: "Message with attachment",
+                        attachments: [mockAttachment],
+                    },
+                },
+            ];
+
+            // Mock the memory manager getMemories method
+            const getMemoriesSpy = vi.spyOn(
+                runtime.messageManager,
+                "getMemories"
+            );
+            getMemoriesSpy.mockResolvedValue(mockMessages);
+
+            // Call the method
+            const result = await runtime.updateRecentMessageState(
+                initialState as State
+            );
+
+            // Verify the exact attachment formatting
+            expect(result.attachments).toContain(`ID: ${mockAttachment.id}`);
+            expect(result.attachments).toContain(
+                `Name: ${mockAttachment.title}`
+            );
+            expect(result.attachments).toContain(`URL: ${mockAttachment.url}`);
+            expect(result.attachments).toContain(
+                `Type: ${mockAttachment.source}`
+            );
+            expect(result.attachments).toContain(
+                `Description: ${mockAttachment.description}`
+            );
+            expect(result.attachments).toContain(
+                `Text: ${mockAttachment.text}`
+            );
+
+            // Verify the overall structure with proper spacing
+            const expectedFormatPattern = new RegExp(
+                `ID: ${mockAttachment.id}\\s+` +
+                    `Name: ${mockAttachment.title}\\s+` +
+                    `URL: ${mockAttachment.url}\\s+` +
+                    `Type: ${mockAttachment.source}\\s+` +
+                    `Description: ${mockAttachment.description}\\s+` +
+                    `Text: ${mockAttachment.text}`
+            );
+            expect(result.attachments).toMatch(expectedFormatPattern);
+        });
+
+        it("should handle multiple attachments correctly", async () => {
+            // Setup initial state
+            const initialState: Partial<State> = {
+                roomId: testRoomId,
+                actorsData: mockActors,
+            };
+
+            // Current timestamp for testing
+            const now = Date.now();
+
+            // Setup mock message with multiple attachments
+            const mockAttachments = [
+                {
+                    id: "attachment-1",
+                    title: "First Attachment",
+                    url: "https://example.com/first.jpg",
+                    source: "upload",
+                    description: "First description",
+                    text: "First attachment text",
+                },
+                {
+                    id: "attachment-2",
+                    title: "Second Attachment",
+                    url: "https://example.com/second.pdf",
+                    source: "document",
+                    description: "Second description",
+                    text: "Second attachment text",
+                },
+            ];
+
+            const mockMessages: Memory[] = [
+                {
+                    id: messageId1,
+                    roomId: testRoomId,
+                    userId: testUserId,
+                    agentId: runtime.agentId,
+                    createdAt: now,
+                    content: {
+                        type: "text",
+                        text: "Message with multiple attachments",
+                        attachments: mockAttachments,
+                    },
+                },
+            ];
+
+            // Mock the memory manager getMemories method
+            const getMemoriesSpy = vi.spyOn(
+                runtime.messageManager,
+                "getMemories"
+            );
+            getMemoriesSpy.mockResolvedValue(mockMessages);
+
+            // Call the method
+            const result = await runtime.updateRecentMessageState(
+                initialState as State
+            );
+
+            // Check that both attachments are included in the formatted result
+            for (const attachment of mockAttachments) {
+                expect(result.attachments).toContain(`ID: ${attachment.id}`);
+                expect(result.attachments).toContain(
+                    `Name: ${attachment.title}`
+                );
+                expect(result.attachments).toContain(`URL: ${attachment.url}`);
+                expect(result.attachments).toContain(
+                    `Type: ${attachment.source}`
+                );
+                expect(result.attachments).toContain(
+                    `Description: ${attachment.description}`
+                );
+                expect(result.attachments).toContain(
+                    `Text: ${attachment.text}`
+                );
+            }
+
+            // Verify the attachments are separated by newlines
+            const attachmentTextBlocks = mockAttachments.map(
+                (attachment) =>
+                    `ID: ${attachment.id}\nName: ${attachment.title}\nURL: ${attachment.url}\nType: ${attachment.source}\nDescription: ${attachment.description}\nText: ${attachment.text}`
+            );
+
+            // Check if attachments are joined with newlines
+            expect(result.attachments).toContain(attachmentTextBlocks[0]);
+            expect(result.attachments).toContain(attachmentTextBlocks[1]);
         });
     });
 

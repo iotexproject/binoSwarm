@@ -4,13 +4,10 @@ import {
     Memory,
     ModelClass,
     ServiceType,
-    State,
     UUID,
     composeContext,
-    composeRandomUser,
     elizaLogger,
     stringToUuid,
-    generateShouldRespond,
     ITranscriptionService,
     ISpeechService,
     streamWithTools,
@@ -40,11 +37,10 @@ import {
 import EventEmitter from "events";
 import prism from "prism-media";
 import { Readable, pipeline } from "stream";
+import * as FVAD from "@echogarden/fvad-wasm";
+
 import { DiscordClient } from "./index.ts";
-import {
-    discordShouldRespondTemplate,
-    discordVoiceHandlerTemplate,
-} from "./templates.ts";
+import { discordVoiceHandlerTemplate } from "./templates.ts";
 import { getWavHeader } from "./utils.ts";
 import { qsSchema } from "@elizaos/plugin-depin";
 import { AudioMonitor } from "./AudioMonitor.ts";
@@ -54,6 +50,9 @@ const DECODE_FRAME_SIZE = 1024;
 const DECODE_SAMPLE_RATE = 16000;
 const VOLUME_WINDOW_SIZE = 30;
 const SPEAKING_THRESHOLD = 0.05;
+const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 100; // wait for x ms of silence
+const VAD_MODE = 3; // 0-3, with 3 being most aggressive
+const SILENT_FRAMES_THRESHOLD = 15; // Number of consecutive silent frames to consider as end of speech
 
 type Message = {
     content: ResContent[];
@@ -87,6 +86,9 @@ export class VoiceManager extends EventEmitter {
         string,
         { channel: BaseGuildVoiceChannel; monitor: AudioMonitor }
     > = new Map();
+    private vadProcessors: Map<string, any> = new Map();
+    private silentFrameCounters: Map<string, number> = new Map();
+    private isSpeaking: Map<string, boolean> = new Map();
 
     constructor(client: DiscordClient) {
         super();
@@ -147,13 +149,18 @@ export class VoiceManager extends EventEmitter {
         });
 
         try {
+            const CONNECTION_TIMEOUT_MS = 20_000;
             // Wait for either Ready or Signalling state
             await Promise.race([
-                entersState(connection, VoiceConnectionStatus.Ready, 20_000),
+                entersState(
+                    connection,
+                    VoiceConnectionStatus.Ready,
+                    CONNECTION_TIMEOUT_MS
+                ),
                 entersState(
                     connection,
                     VoiceConnectionStatus.Signalling,
-                    20_000
+                    CONNECTION_TIMEOUT_MS
                 ),
             ]);
 
@@ -316,6 +323,23 @@ export class VoiceManager extends EventEmitter {
         if (!receiveStream || receiveStream.readableLength === 0) {
             return;
         }
+
+        // Initialize the VAD processor
+        try {
+            const vadProcessor = new FVAD.VAD({
+                sampleRate: DECODE_SAMPLE_RATE,
+                mode: VAD_MODE,
+            });
+            this.vadProcessors.set(userId, vadProcessor);
+            this.silentFrameCounters.set(userId, 0);
+            this.isSpeaking.set(userId, false);
+            elizaLogger.log(
+                `Initialized VAD processor for user ${name} (${userId})`
+            );
+        } catch (error) {
+            elizaLogger.error(`Failed to initialize VAD processor: ${error}`);
+        }
+
         const opusDecoder = new prism.opus.Decoder({
             channels: 1,
             rate: DECODE_SAMPLE_RATE,
@@ -324,7 +348,7 @@ export class VoiceManager extends EventEmitter {
         const volumeBuffer: number[] = [];
 
         opusDecoder.on("data", (pcmData: Buffer) => {
-            this.handleOnOpusData(pcmData, volumeBuffer);
+            this.handleOnPCMData(pcmData, volumeBuffer, userId);
         });
         pipeline(
             receiveStream as AudioReceiveStream,
@@ -366,6 +390,56 @@ export class VoiceManager extends EventEmitter {
             channel,
             opusDecoder
         );
+    }
+
+    private handleOnPCMData(
+        pcmData: Buffer,
+        volumeBuffer: number[],
+        userId: string
+    ) {
+        // Keep existing volume detection for interrupting the bot while speaking
+        this.handleOnOpusData(pcmData, volumeBuffer);
+
+        // Process with VAD
+        const vadProcessor = this.vadProcessors.get(userId);
+        if (!vadProcessor) return;
+
+        try {
+            // Check if frame contains speech
+            const isSpeech = vadProcessor.process(pcmData);
+
+            if (isSpeech) {
+                // Reset silent frame counter when speech detected
+                this.silentFrameCounters.set(userId, 0);
+
+                // If we weren't speaking before, mark as speaking now
+                if (!this.isSpeaking.get(userId)) {
+                    this.isSpeaking.set(userId, true);
+                    elizaLogger.log(
+                        `VAD detected speech start for user ${userId}`
+                    );
+                    // Could emit speech start event if needed
+                }
+            } else {
+                // Increment silent frame counter
+                const currentCount = this.silentFrameCounters.get(userId) || 0;
+                this.silentFrameCounters.set(userId, currentCount + 1);
+
+                // If we have enough consecutive silent frames and were speaking before
+                if (
+                    currentCount + 1 >= SILENT_FRAMES_THRESHOLD &&
+                    this.isSpeaking.get(userId)
+                ) {
+                    this.isSpeaking.set(userId, false);
+                    elizaLogger.log(
+                        `VAD detected speech end for user ${userId}`
+                    );
+                    this.streams.get(userId)?.emit("speakingStopped");
+                }
+            }
+        } catch (error) {
+            elizaLogger.error(`VAD processing error: ${error}`);
+        }
     }
 
     private handleOnOpusData(
@@ -425,6 +499,12 @@ export class VoiceManager extends EventEmitter {
             monitorInfo.monitor.stop();
             this.activeMonitors.delete(memberId);
             this.streams.delete(memberId);
+
+            // Clean up VAD resources
+            this.vadProcessors.delete(memberId);
+            this.silentFrameCounters.delete(memberId);
+            this.isSpeaking.delete(memberId);
+
             elizaLogger.log(`Stopped monitoring user ${memberId}`);
         }
     }
@@ -496,8 +576,6 @@ export class VoiceManager extends EventEmitter {
         userName: string,
         channel: BaseGuildVoiceChannel
     ) {
-        const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 1500; // wait for 1.5 seconds of silence
-
         if (this.activeAudioPlayer?.state?.status === "idle") {
             elizaLogger.log("Cleaning up idle audio player.");
             this.cleanupAudioPlayer(this.activeAudioPlayer);
@@ -653,7 +731,7 @@ export class VoiceManager extends EventEmitter {
 
             state = await this.runtime.updateRecentMessageState(state);
 
-            const shouldIgnore = await this._shouldIgnore(memory);
+            const shouldIgnore = this._shouldIgnore(memory);
 
             if (shouldIgnore) {
                 return { text: "", action: "IGNORE" };
@@ -786,79 +864,19 @@ export class VoiceManager extends EventEmitter {
         }
     }
 
-    private async _shouldRespond(
-        message: string,
-        userId: UUID,
-        channel: BaseGuildVoiceChannel,
-        state: State
-    ): Promise<boolean> {
-        if (userId === this.client.user?.id) return false;
-        const lowerMessage = message.toLowerCase();
-        const botName = this.client.user.username.toLowerCase();
-        const characterName = this.runtime.character.name.toLowerCase();
-        const guild = channel.guild;
-        const member = guild?.members.cache.get(this.client.user?.id as string);
-        const nickname = member?.nickname;
-
-        if (
-            lowerMessage.includes(botName as string) ||
-            lowerMessage.includes(characterName) ||
-            lowerMessage.includes(
-                this.client.user?.tag.toLowerCase() as string
-            ) ||
-            (nickname && lowerMessage.includes(nickname.toLowerCase()))
-        ) {
-            return true;
-        }
-
-        if (!channel.guild) {
-            return true;
-        }
-
-        // If none of the above conditions are met, use the generateText to decide
-        const shouldRespondContext = composeContext({
-            state,
-            template:
-                this.runtime.character.templates
-                    ?.discordShouldRespondTemplate ||
-                this.runtime.character.templates?.shouldRespondTemplate ||
-                composeRandomUser(discordShouldRespondTemplate, 2),
-        });
-
-        const response = await generateShouldRespond({
-            runtime: this.runtime,
-            context: shouldRespondContext,
-            modelClass: ModelClass.SMALL,
-        });
-
-        if (response === "RESPOND") {
-            return true;
-        } else if (response === "IGNORE") {
-            return false;
-        } else if (response === "STOP") {
-            return false;
-        } else {
-            elizaLogger.error(
-                "Invalid response from response generateText:",
-                response
-            );
-            return false;
-        }
-    }
-
     private _generateResponse(context: string): any {
         const response = streamWithTools({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.LARGE,
+            modelClass: ModelClass.FAST,
             tools: [qsSchema],
-            smoothStreamBy: "line",
+            smoothStreamBy: /[.!?]\s+/,
         });
 
         return response;
     }
 
-    private async _shouldIgnore(message: Memory): Promise<boolean> {
+    private _shouldIgnore(message: Memory): boolean {
         // console.log("message: ", message);
         elizaLogger.debug("message.content: ", message.content);
         // if the message is 3 characters or less, ignore it

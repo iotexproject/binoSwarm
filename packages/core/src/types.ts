@@ -146,6 +146,7 @@ export enum ModelClass {
     LARGE = "large",
     EMBEDDING = "embedding",
     IMAGE = "image",
+    FAST = "fast", // for latency-sensitive applications, eg voice
 }
 
 /**
@@ -204,6 +205,7 @@ export type Model = {
         [ModelClass.SMALL]?: ModelSettings;
         [ModelClass.MEDIUM]?: ModelSettings;
         [ModelClass.LARGE]?: ModelSettings;
+        [ModelClass.FAST]?: ModelSettings;
         [ModelClass.EMBEDDING]?: EmbeddingModelSettings;
         [ModelClass.IMAGE]?: ImageModelSettings;
     };
@@ -214,33 +216,11 @@ export type Model = {
  */
 export type Models = {
     [ModelProviderName.OPENAI]: Model;
-    [ModelProviderName.ETERNALAI]: Model;
     [ModelProviderName.ANTHROPIC]: Model;
     [ModelProviderName.GROK]: Model;
-    [ModelProviderName.GROQ]: Model;
-    [ModelProviderName.LLAMACLOUD]: Model;
-    [ModelProviderName.TOGETHER]: Model;
     [ModelProviderName.LLAMALOCAL]: Model;
-    [ModelProviderName.GOOGLE]: Model;
-    [ModelProviderName.MISTRAL]: Model;
-    [ModelProviderName.CLAUDE_VERTEX]: Model;
-    [ModelProviderName.REDPILL]: Model;
-    [ModelProviderName.OPENROUTER]: Model;
     [ModelProviderName.OLLAMA]: Model;
-    [ModelProviderName.HEURIST]: Model;
-    [ModelProviderName.GALADRIEL]: Model;
-    [ModelProviderName.FAL]: Model;
-    [ModelProviderName.GAIANET]: Model;
-    [ModelProviderName.ALI_BAILIAN]: Model;
-    [ModelProviderName.VOLENGINE]: Model;
-    [ModelProviderName.NANOGPT]: Model;
-    [ModelProviderName.HYPERBOLIC]: Model;
-    [ModelProviderName.VENICE]: Model;
-    [ModelProviderName.NINETEEN_AI]: Model;
-    [ModelProviderName.AKASH_CHAT_API]: Model;
-    [ModelProviderName.LIVEPEER]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
-    [ModelProviderName.INFERA]: Model;
 };
 
 /**
@@ -248,31 +228,10 @@ export type Models = {
  */
 export enum ModelProviderName {
     OPENAI = "openai",
-    ETERNALAI = "eternalai",
     ANTHROPIC = "anthropic",
     GROK = "grok",
-    GROQ = "groq",
-    LLAMACLOUD = "llama_cloud",
-    TOGETHER = "together",
     LLAMALOCAL = "llama_local",
-    GOOGLE = "google",
-    MISTRAL = "mistral",
-    CLAUDE_VERTEX = "claude_vertex",
-    REDPILL = "redpill",
-    OPENROUTER = "openrouter",
     OLLAMA = "ollama",
-    HEURIST = "heurist",
-    GALADRIEL = "galadriel",
-    FAL = "falai",
-    GAIANET = "gaianet",
-    ALI_BAILIAN = "ali_bailian",
-    VOLENGINE = "volengine",
-    NANOGPT = "nanogpt",
-    HYPERBOLIC = "hyperbolic",
-    VENICE = "venice",
-    NINETEEN_AI = "nineteen_ai",
-    AKASH_CHAT_API = "akash_chat_api",
-    LIVEPEER = "livepeer",
     DEEPSEEK = "deepseek",
     INFERA = "infera",
 }

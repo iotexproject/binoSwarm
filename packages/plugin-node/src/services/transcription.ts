@@ -23,6 +23,8 @@ const __dirname = path.dirname(__filename);
 
 const execAsync = promisify(exec);
 
+const OPENAI_TRANSCRIPTION_MODEL = process.env.OPENAI_TRANSCRIPTION_MODEL || "gpt-4o-mini-transcribe";
+
 export class TranscriptionService
     extends Service
     implements ITranscriptionService
@@ -370,7 +372,7 @@ export class TranscriptionService
             });
 
             const result = await this.openai!.audio.transcriptions.create({
-                model: "whisper-1",
+                model: OPENAI_TRANSCRIPTION_MODEL,
                 language: "en",
                 response_format: "text",
                 file: file,

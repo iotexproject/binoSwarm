@@ -239,42 +239,17 @@ export class AgentRuntime implements IAgentRuntime {
             messages: recentMessagesData,
         });
 
+        // Use the existing attachment collection logic
         let allAttachments = [];
-
         if (recentMessagesData && Array.isArray(recentMessagesData)) {
-            const lastMessageWithAttachment = recentMessagesData.find(
-                (msg) =>
-                    msg.content.attachments &&
-                    msg.content.attachments.length > 0
+            // We only want attachments from recent messages
+            allAttachments = this.collectAndFilterAttachments(
+                recentMessagesData,
+                []
             );
-
-            if (lastMessageWithAttachment) {
-                const lastMessageTime =
-                    lastMessageWithAttachment?.createdAt ?? Date.now();
-                const oneHourBeforeLastMessage =
-                    lastMessageTime - 60 * 60 * 1000; // 1 hour before last message
-
-                allAttachments = recentMessagesData
-                    .filter((msg) => {
-                        const msgTime = msg.createdAt ?? Date.now();
-                        return msgTime >= oneHourBeforeLastMessage;
-                    })
-                    .flatMap((msg) => msg.content.attachments || []);
-            }
         }
 
-        const formattedAttachments = allAttachments
-            .map(
-                (attachment) =>
-                    `ID: ${attachment.id}
-Name: ${attachment.title}
-URL: ${attachment.url}
-Type: ${attachment.source}
-Description: ${attachment.description}
-Text: ${attachment.text}
-    `
-            )
-            .join("\n");
+        const formattedAttachments = formatAttachments(allAttachments);
 
         return {
             ...state,
