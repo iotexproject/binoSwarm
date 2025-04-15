@@ -651,7 +651,7 @@ export class VoiceManager extends EventEmitter {
 
             state = await this.runtime.updateRecentMessageState(state);
 
-            const shouldIgnore = await this._shouldIgnore(memory);
+            const shouldIgnore = this._shouldIgnore(memory);
 
             if (shouldIgnore) {
                 return { text: "", action: "IGNORE" };
@@ -796,7 +796,7 @@ export class VoiceManager extends EventEmitter {
         return response;
     }
 
-    private async _shouldIgnore(message: Memory): Promise<boolean> {
+    private _shouldIgnore(message: Memory): boolean {
         // console.log("message: ", message);
         elizaLogger.debug("message.content: ", message.content);
         // if the message is 3 characters or less, ignore it
