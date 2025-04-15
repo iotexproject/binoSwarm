@@ -338,8 +338,6 @@ export const generateImage = async (
                           return runtime.getSetting("OPENAI_API_KEY");
                       case ModelProviderName.VENICE:
                           return runtime.getSetting("VENICE_API_KEY");
-                      case ModelProviderName.LIVEPEER:
-                          return runtime.getSetting("LIVEPEER_GATEWAY_URL");
                       default:
                           // If no specific match, try the fallback chain
                           return (
@@ -581,64 +579,6 @@ export const generateImage = async (
             });
 
             return { success: true, data: base64s };
-        } else if (runtime.imageModelProvider === ModelProviderName.LIVEPEER) {
-            if (!apiKey) {
-                throw new Error("Livepeer Gateway is not defined");
-            }
-            try {
-                const baseUrl = new URL(apiKey);
-                if (!baseUrl.protocol.startsWith("http")) {
-                    throw new Error("Invalid Livepeer Gateway URL protocol");
-                }
-                const response = await fetch(
-                    `${baseUrl.toString()}text-to-image`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            model_id: model,
-                            prompt: data.prompt,
-                            width: data.width || 1024,
-                            height: data.height || 1024,
-                        }),
-                    }
-                );
-                const result = await response.json();
-                if (!result.images?.length) {
-                    throw new Error("No images generated");
-                }
-                const base64Images = await Promise.all(
-                    result.images.map(async (image) => {
-                        elizaLogger.log("imageUrl console log", image.url);
-                        let imageUrl;
-                        if (image.url.includes("http")) {
-                            imageUrl = image.url;
-                        } else {
-                            imageUrl = `${apiKey}${image.url}`;
-                        }
-                        const imageResponse = await fetch(imageUrl);
-                        if (!imageResponse.ok) {
-                            throw new Error(
-                                `Failed to fetch image: ${imageResponse.statusText}`
-                            );
-                        }
-                        const blob = await imageResponse.blob();
-                        const arrayBuffer = await blob.arrayBuffer();
-                        const base64 =
-                            Buffer.from(arrayBuffer).toString("base64");
-                        return `data:image/jpeg;base64,${base64}`;
-                    })
-                );
-                return {
-                    success: true,
-                    data: base64Images,
-                };
-            } catch (error) {
-                elizaLogger.error(error);
-                return { success: false, error: error };
-            }
         } else {
             let targetSize = `${data.width}x${data.height}`;
             if (

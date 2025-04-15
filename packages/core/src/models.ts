@@ -936,15 +936,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.LIVEPEER]: {
-        // livepeer endpoint is handled from the sdk
-        model: {
-            [ModelClass.IMAGE]: {
-                name:
-                    settings.LIVEPEER_IMAGE_MODEL || "ByteDance/SDXL-Lightning",
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {

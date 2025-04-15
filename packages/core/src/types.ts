@@ -238,7 +238,6 @@ export type Models = {
     [ModelProviderName.VENICE]: Model;
     [ModelProviderName.NINETEEN_AI]: Model;
     [ModelProviderName.AKASH_CHAT_API]: Model;
-    [ModelProviderName.LIVEPEER]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
 
