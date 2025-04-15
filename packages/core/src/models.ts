@@ -639,12 +639,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.FAL]: {
-        endpoint: "https://api.fal.ai/v1",
-        model: {
-            [ModelClass.IMAGE]: { name: "fal-ai/flux-lora", steps: 28 },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {

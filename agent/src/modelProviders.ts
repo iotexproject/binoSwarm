@@ -124,10 +124,6 @@ const providerKeyMap = {
         characterKey: "GALADRIEL_API_KEY",
         settingsKey: "GALADRIEL_API_KEY",
     },
-    [ModelProviderName.FAL]: {
-        characterKey: "FAL_API_KEY",
-        settingsKey: "FAL_API_KEY",
-    },
     [ModelProviderName.GOOGLE]: {
         characterKey: "GOOGLE_GENERATIVE_AI_API_KEY",
         settingsKey: "GOOGLE_GENERATIVE_AI_API_KEY",

@@ -15,7 +15,6 @@ import { Buffer } from "buffer";
 import OpenAI from "openai";
 import Together from "together-ai";
 import { ZodSchema, z } from "zod";
-import { fal } from "@fal-ai/client";
 import { tavily } from "@tavily/core";
 
 import { elizaLogger } from "./index.ts";
@@ -332,20 +331,14 @@ export const generateImage = async (
                           return runtime.getSetting("HEURIST_API_KEY");
                       case ModelProviderName.TOGETHER:
                           return runtime.getSetting("TOGETHER_API_KEY");
-                      case ModelProviderName.FAL:
-                          return runtime.getSetting("FAL_API_KEY");
                       case ModelProviderName.OPENAI:
                           return runtime.getSetting("OPENAI_API_KEY");
                       default:
                           // If no specific match, try the fallback chain
                           return (
                               runtime.getSetting("HEURIST_API_KEY") ??
-                              runtime.getSetting("NINETEEN_AI_API_KEY") ??
                               runtime.getSetting("TOGETHER_API_KEY") ??
-                              runtime.getSetting("FAL_API_KEY") ??
-                              runtime.getSetting("OPENAI_API_KEY") ??
-                              runtime.getSetting("VENICE_API_KEY") ??
-                              runtime.getSetting("LIVEPEER_GATEWAY_URL")
+                              runtime.getSetting("OPENAI_API_KEY")
                           );
                   }
               })();
@@ -444,60 +437,6 @@ export const generateImage = async (
             }
 
             elizaLogger.debug(`Generated ${base64s.length} images`);
-            return { success: true, data: base64s };
-        } else if (runtime.imageModelProvider === ModelProviderName.FAL) {
-            fal.config({
-                credentials: apiKey as string,
-            });
-
-            // Prepare the input parameters according to their schema
-            const input = {
-                prompt: data.prompt,
-                image_size: "square" as const,
-                num_inference_steps: modelSettings?.steps ?? 50,
-                guidance_scale: data.guidanceScale || 3.5,
-                num_images: data.count,
-                enable_safety_checker:
-                    runtime.getSetting("FAL_AI_ENABLE_SAFETY_CHECKER") ===
-                    "true",
-                safety_tolerance: Number(
-                    runtime.getSetting("FAL_AI_SAFETY_TOLERANCE") || "2"
-                ),
-                output_format: "png" as const,
-                seed: data.seed ?? 6252023,
-                ...(runtime.getSetting("FAL_AI_LORA_PATH")
-                    ? {
-                          loras: [
-                              {
-                                  path: runtime.getSetting("FAL_AI_LORA_PATH"),
-                                  scale: 1,
-                              },
-                          ],
-                      }
-                    : {}),
-            };
-
-            // Subscribe to the model
-            const result = await fal.subscribe(model, {
-                input,
-                logs: true,
-                onQueueUpdate: (update) => {
-                    if (update.status === "IN_PROGRESS") {
-                        elizaLogger.info(update.logs.map((log) => log.message));
-                    }
-                },
-            });
-
-            // Convert the returned image URLs to base64 to match existing functionality
-            const base64Promises = result.data.images.map(async (image) => {
-                const response = await fetch(image.url);
-                const blob = await response.blob();
-                const buffer = await blob.arrayBuffer();
-                const base64 = Buffer.from(buffer).toString("base64");
-                return `data:${image.content_type};base64,${base64}`;
-            });
-
-            const base64s = await Promise.all(base64Promises);
             return { success: true, data: base64s };
         } else {
             let targetSize = `${data.width}x${data.height}`;
