@@ -327,8 +327,6 @@ export const generateImage = async (
             : (() => {
                   // First try to match the specific provider
                   switch (runtime.imageModelProvider) {
-                      case ModelProviderName.HEURIST:
-                          return runtime.getSetting("HEURIST_API_KEY");
                       case ModelProviderName.TOGETHER:
                           return runtime.getSetting("TOGETHER_API_KEY");
                       case ModelProviderName.OPENAI:
@@ -336,51 +334,13 @@ export const generateImage = async (
                       default:
                           // If no specific match, try the fallback chain
                           return (
-                              runtime.getSetting("HEURIST_API_KEY") ??
                               runtime.getSetting("TOGETHER_API_KEY") ??
                               runtime.getSetting("OPENAI_API_KEY")
                           );
                   }
               })();
     try {
-        if (runtime.imageModelProvider === ModelProviderName.HEURIST) {
-            const response = await fetch(
-                "http://sequencer.heurist.xyz/submit_job",
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${apiKey}`,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        job_id: data.jobId || crypto.randomUUID(),
-                        model_input: {
-                            SD: {
-                                prompt: data.prompt,
-                                neg_prompt: data.negativePrompt,
-                                num_iterations: data.numIterations || 20,
-                                width: data.width || 512,
-                                height: data.height || 512,
-                                guidance_scale: data.guidanceScale || 3,
-                                seed: data.seed || -1,
-                            },
-                        },
-                        model_id: model,
-                        deadline: 60,
-                        priority: 1,
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(
-                    `Heurist image generation failed: ${response.statusText}`
-                );
-            }
-
-            const imageURL = await response.json();
-            return { success: true, data: [imageURL] };
-        } else if (
+        if (
             runtime.imageModelProvider === ModelProviderName.TOGETHER ||
             // for backwards compat
             runtime.imageModelProvider === ModelProviderName.LLAMACLOUD

@@ -564,49 +564,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.HEURIST]: {
-        endpoint: "https://llm-gateway.heurist.xyz",
-        model: {
-            [ModelClass.SMALL]: {
-                name:
-                    settings.SMALL_HEURIST_MODEL ||
-                    "meta-llama/llama-3-70b-instruct",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                repetition_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.MEDIUM]: {
-                name:
-                    settings.MEDIUM_HEURIST_MODEL ||
-                    "meta-llama/llama-3-70b-instruct",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                repetition_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.LARGE]: {
-                name:
-                    settings.LARGE_HEURIST_MODEL ||
-                    "meta-llama/llama-3.3-70b-instruct",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                repetition_penalty: 0.4,
-                temperature: 0.7,
-            },
-            [ModelClass.IMAGE]: {
-                name: settings.HEURIST_IMAGE_MODEL || "FLUX.1-dev",
-                steps: 20,
-            },
-            [ModelClass.EMBEDDING]: {
-                name: "BAAI/bge-large-en-v1.5",
-                dimensions: 1024,
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {
