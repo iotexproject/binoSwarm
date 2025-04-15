@@ -3,6 +3,8 @@ import {
     getEndpoint,
     models,
     getModel,
+    getImageModelSettings,
+    getEmbeddingModelSettings,
 } from "../src/models.ts";
 import { ModelProviderName, ModelClass } from "../src/types.ts";
 import { describe, test, expect, vi } from "vitest";
@@ -205,6 +207,14 @@ describe("Model Provider Configuration", () => {
             expect(smallModel?.presence_penalty).toBe(0.4);
             expect(smallModel?.stop).toEqual([]);
         });
+
+        test("should have embedding model settings", () => {
+            const embeddingModel =
+                models[ModelProviderName.OLLAMA]?.model?.[ModelClass.EMBEDDING];
+            expect(embeddingModel).toBeDefined();
+            expect(embeddingModel?.name).toBe("mxbai-embed-large");
+            expect(embeddingModel?.dimensions).toBe(1024);
+        });
     });
 
     describe("LLAMALOCAL Provider", () => {
@@ -269,6 +279,83 @@ describe("Model Retrieval Functions", () => {
 
         test("should throw error for invalid provider", () => {
             expect(() => getEndpoint("INVALID_PROVIDER" as any)).toThrow();
+        });
+    });
+
+    describe("getImageModelSettings function", () => {
+        test("should return image model settings for OpenAI provider", () => {
+            const imageSettings = getImageModelSettings(
+                ModelProviderName.OPENAI
+            );
+            expect(imageSettings).toBeDefined();
+            expect(imageSettings?.name).toBe("dall-e-3");
+        });
+
+        test("should return undefined for providers without image models", () => {
+            // Test for providers that don't have image models defined
+            expect(
+                getImageModelSettings(ModelProviderName.ANTHROPIC)
+            ).toBeUndefined();
+            expect(
+                getImageModelSettings(ModelProviderName.DEEPSEEK)
+            ).toBeUndefined();
+            expect(
+                getImageModelSettings(ModelProviderName.GROK)
+            ).toBeUndefined();
+        });
+
+        test("should return undefined for unknown provider", () => {
+            expect(
+                getImageModelSettings("UNKNOWN_PROVIDER" as ModelProviderName)
+            ).toBeUndefined();
+        });
+    });
+
+    describe("getEmbeddingModelSettings function", () => {
+        test("should return embedding model settings for OpenAI provider", () => {
+            const embeddingSettings = getEmbeddingModelSettings(
+                ModelProviderName.OPENAI
+            );
+            expect(embeddingSettings).toBeDefined();
+            expect(embeddingSettings?.name).toBe("text-embedding-3-small");
+            expect(embeddingSettings?.dimensions).toBe(1536);
+        });
+
+        test("should return embedding model settings for OLLAMA provider", () => {
+            const embeddingSettings = getEmbeddingModelSettings(
+                ModelProviderName.OLLAMA
+            );
+            expect(embeddingSettings).toBeDefined();
+            expect(embeddingSettings?.name).toBe("mxbai-embed-large");
+            expect(embeddingSettings?.dimensions).toBe(1024);
+        });
+
+        test("should return embedding model settings for LLAMALOCAL provider", () => {
+            const embeddingSettings = getEmbeddingModelSettings(
+                ModelProviderName.LLAMALOCAL
+            );
+            expect(embeddingSettings).toBeDefined();
+            expect(embeddingSettings?.name).toBe(
+                "togethercomputer/m2-bert-80M-32k-retrieval"
+            );
+        });
+
+        test("should return undefined for providers without embedding models", () => {
+            // Test for providers that don't have embedding models defined
+            expect(
+                getEmbeddingModelSettings(ModelProviderName.ANTHROPIC)
+            ).toBeUndefined();
+            expect(
+                getEmbeddingModelSettings(ModelProviderName.GROK)
+            ).toBeUndefined();
+        });
+
+        test("should return undefined for unknown provider", () => {
+            expect(
+                getEmbeddingModelSettings(
+                    "UNKNOWN_PROVIDER" as ModelProviderName
+                )
+            ).toBeUndefined();
         });
     });
 
