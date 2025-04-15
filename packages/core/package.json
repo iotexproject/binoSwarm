@@ -72,7 +72,7 @@
         "@ai-sdk/xai": "^1.2.13",
         "@pinecone-database/pinecone": "^5.1.1",
         "@types/uuid": "10.0.0",
-        "ai": "^4.1.61",
+        "ai": "^4.3.7",
         "anthropic-vertex-ai": "1.0.2",
         "fastembed": "1.14.1",
         "fastestsmallesttextencoderdecoder": "1.0.22",
