@@ -402,4 +402,67 @@ describe("Generation Module", () => {
             });
         });
     });
+
+    describe("Model Provider handling", () => {
+        it("should handle OpenAI provider correctly", async () => {
+            // Setup
+            runtime.modelProvider = ModelProviderName.OPENAI;
+
+            // Execute
+            await generateText({
+                runtime,
+                context: "Test OpenAI provider",
+                modelClass: ModelClass.LARGE,
+            });
+
+            // Verify that the OpenAI model was used
+            expect(ai.generateText).toHaveBeenCalled();
+        });
+
+        it("should handle Anthropic provider correctly", async () => {
+            // Setup
+            runtime.modelProvider = ModelProviderName.ANTHROPIC;
+
+            // Execute
+            await generateText({
+                runtime,
+                context: "Test Anthropic provider",
+                modelClass: ModelClass.LARGE,
+            });
+
+            // Verify that the Anthropic model was used
+            expect(ai.generateText).toHaveBeenCalled();
+        });
+
+        it("should handle DeepSeek provider correctly", async () => {
+            // Setup
+            runtime.modelProvider = ModelProviderName.DEEPSEEK;
+
+            // Execute
+            await generateText({
+                runtime,
+                context: "Test DeepSeek provider",
+                modelClass: ModelClass.LARGE,
+            });
+
+            // Verify that the DeepSeek model was used
+            expect(ai.generateText).toHaveBeenCalled();
+        });
+
+        it("should throw error for unsupported provider", async () => {
+            // Setup
+            runtime.modelProvider = "UNSUPPORTED_PROVIDER" as ModelProviderName;
+
+            // Execute & Verify
+            await expect(
+                generateText({
+                    runtime,
+                    context: "Test unsupported provider",
+                    modelClass: ModelClass.LARGE,
+                })
+            ).rejects.toThrow(
+                "Model settings not found for provider: UNSUPPORTED_PROVIDER"
+            );
+        });
+    });
 });
