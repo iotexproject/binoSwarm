@@ -237,7 +237,6 @@ export type Models = {
     [ModelProviderName.HYPERBOLIC]: Model;
     [ModelProviderName.VENICE]: Model;
     [ModelProviderName.NINETEEN_AI]: Model;
-    [ModelProviderName.AKASH_CHAT_API]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
 };
 

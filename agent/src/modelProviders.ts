@@ -149,10 +149,6 @@ const providerKeyMap = {
         characterKey: "VENICE_API_KEY",
         settingsKey: "VENICE_API_KEY",
     },
-    [ModelProviderName.AKASH_CHAT_API]: {
-        characterKey: "AKASH_CHAT_API_KEY",
-        settingsKey: "AKASH_CHAT_API_KEY",
-    },
     [ModelProviderName.GOOGLE]: {
         characterKey: "GOOGLE_GENERATIVE_AI_API_KEY",
         settingsKey: "GOOGLE_GENERATIVE_AI_API_KEY",

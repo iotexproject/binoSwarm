@@ -904,38 +904,6 @@ export const models: Models = {
             },
         },
     },
-    [ModelProviderName.AKASH_CHAT_API]: {
-        endpoint: "https://chatapi.akash.network/api/v1",
-        model: {
-            [ModelClass.SMALL]: {
-                name:
-                    settings.SMALL_AKASH_CHAT_API_MODEL ||
-                    "Meta-Llama-3-2-3B-Instruct",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.MEDIUM]: {
-                name:
-                    settings.MEDIUM_AKASH_CHAT_API_MODEL ||
-                    "Meta-Llama-3-3-70B-Instruct",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-            [ModelClass.LARGE]: {
-                name:
-                    settings.LARGE_AKASH_CHAT_API_MODEL ||
-                    "Meta-Llama-3-1-405B-Instruct-FP8",
-                stop: [],
-                maxInputTokens: 128000,
-                maxOutputTokens: 8192,
-                temperature: 0.6,
-            },
-        },
-    },
     [ModelProviderName.DEEPSEEK]: {
         endpoint: settings.DEEPSEEK_API_URL || "https://api.deepseek.com",
         model: {
