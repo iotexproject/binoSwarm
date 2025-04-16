@@ -424,7 +424,7 @@ export class AgentRuntime implements IAgentRuntime {
     async composeState(
         message: Memory,
         additionalKeys: { [key: string]: unknown } = {},
-        _fastMode: boolean = false
+        fastMode: boolean = false
     ) {
         const { userId, roomId } = message;
 
@@ -437,7 +437,7 @@ export class AgentRuntime implements IAgentRuntime {
             messagesAndActorsRes,
         ] = await Promise.all([
             this.getAndFormatGoals(roomId, userId),
-            this.getAndFormatKnowledge(message),
+            this.getAndFormatKnowledge(fastMode, message),
             this.getRecentInteractions(userId, this.agentId, roomId),
             this.getMssgsAndActors(roomId),
         ]);
@@ -1019,11 +1019,11 @@ export class AgentRuntime implements IAgentRuntime {
             : "";
     }
 
-    private async getAndFormatKnowledge(message: Memory) {
+    private async getAndFormatKnowledge(isFastMode: boolean, message: Memory) {
         let knowledgeData = [];
         let formattedKnowledge = "";
 
-        if (message?.content?.text) {
+        if (!isFastMode && message?.content?.text) {
             try {
                 // Validate the message content before passing to getKnowledge
                 const query = message.content.text.trim();
