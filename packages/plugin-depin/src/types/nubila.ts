@@ -24,10 +24,10 @@ export type WeatherData = {
     address: string;
     source: string;
     tag: string;
-  };
+};
 
-  export type WeatherForecast = WeatherForecastDP[];
-  export type WeatherForecastDP = {
+export type WeatherForecast = WeatherForecastDP[];
+export type WeatherForecastDP = {
     latitude: number;
     longitude: number;
     temperature: number;
@@ -51,4 +51,4 @@ export type WeatherData = {
     location_name: string;
     source: string;
     tag: string;
-  };
+};
