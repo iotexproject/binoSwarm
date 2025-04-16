@@ -47,6 +47,7 @@ describe("MemoryManager", () => {
         // Mock VectorDB methods
         memoryManager.vectorDB.upsert = vi.fn().mockResolvedValue(undefined);
         memoryManager.vectorDB.hashInput = vi.fn().mockReturnValue("test-hash");
+        memoryManager.vectorDB.search = vi.fn().mockResolvedValue([]);
     });
 
     afterEach(() => {
@@ -289,6 +290,64 @@ describe("MemoryManager", () => {
 
             // Wait for the async persistVectorData to complete
             await new Promise(process.nextTick);
+        });
+    });
+
+    describe("getCachedEmbeddings", () => {
+        it("should return cached embedding when found", async () => {
+            // Setup
+            const content = "test content";
+            const expectedEmbedding = [0.1, 0.2, 0.3];
+
+            // Mock VectorDB search to return a match with values
+            memoryManager.vectorDB.search = vi.fn().mockResolvedValue([
+                {
+                    id: "cached-memory",
+                    values: expectedEmbedding,
+                    metadata: { inputHash: "test-hash" },
+                    score: 0.95,
+                },
+            ]);
+
+            // Execute
+            const result = await memoryManager.getCachedEmbeddings(content);
+
+            // Assert
+            expect(memoryManager.vectorDB.search).toHaveBeenCalledWith({
+                vector: expect.any(Array),
+                namespace: "test-agent-id",
+                topK: 1,
+                type: "test_memories",
+                filter: { inputHash: "test-hash" },
+            });
+            expect(result).toEqual(expectedEmbedding);
+        });
+
+        it("should return null when no cached embedding is found", async () => {
+            // Setup
+            const content = "uncached content";
+
+            // Mock VectorDB search to return empty results
+            memoryManager.vectorDB.search = vi.fn().mockResolvedValue([]);
+
+            // Execute
+            const result = await memoryManager.getCachedEmbeddings(content);
+
+            // Assert
+            expect(memoryManager.vectorDB.search).toHaveBeenCalled();
+            expect(result).toBeNull();
+        });
+
+        it("should handle empty content gracefully", async () => {
+            // Setup
+            const content = "";
+
+            // Execute
+            const result = await memoryManager.getCachedEmbeddings(content);
+
+            // Assert
+            expect(memoryManager.vectorDB.search).not.toHaveBeenCalled();
+            expect(result).toBeNull();
         });
     });
 });

@@ -53,8 +53,11 @@ export class MemoryManager implements IMemoryManager {
     }
 
     async getCachedEmbeddings(content: string): Promise<number[]> {
-        const contentHash = this.vectorDB.hashInput(content);
+        if (!content) {
+            return null;
+        }
 
+        const contentHash = this.vectorDB.hashInput(content);
         const matches = await this.vectorDB.search({
             vector: getDimentionZeroEmbedding(),
             namespace: this.runtime.agentId.toString(),
