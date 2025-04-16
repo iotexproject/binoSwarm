@@ -41,7 +41,19 @@ import { Readable, pipeline } from "stream";
 import { DiscordClient } from "./index.ts";
 import { discordVoiceHandlerTemplate } from "./templates.ts";
 import { getWavHeader } from "./utils.ts";
-import { qsSchema } from "@elizaos/plugin-depin";
+import {
+    qsSchema,
+    GetHeadlinesToolSchema,
+    CurrentWeatherToolSchema,
+    ForecastWeatherToolSchema,
+    CalculatorToolSchema,
+    GetProjectsToolSchema,
+    GetL1StatsToolSchema,
+    GetL1DailyStatsToolSchema,
+    GetCoordinatesToolSchema,
+    GetLocationFromCoordinatesToolSchema,
+    GetDirectionsToolSchema,
+} from "@elizaos/plugin-depin";
 import { AudioMonitor } from "./AudioMonitor.ts";
 import { SileroVAD } from "./VAD.ts";
 
@@ -483,6 +495,14 @@ export class VoiceManager extends EventEmitter {
         }
 
         try {
+            // --- Continuous Buffering ---
+            // Always push the latest PCM data to the buffer
+            userState.buffers.push(pcmData);
+            userState.totalLength += pcmData.length;
+            userState.lastActive = Date.now();
+            // Optional: Add logic here later to trim the buffer if it gets excessively long during prolonged silence
+            // --- End Continuous Buffering ---
+
             const pcmFloat32 = SileroVAD.bufferToFloat32(pcmData);
             const speechProbability = await vad.process(pcmFloat32);
 
@@ -490,44 +510,35 @@ export class VoiceManager extends EventEmitter {
                 const isSpeaking = speechProbability > SPEAKING_THRESHOLD;
                 const wasSpeaking = this.userSpeechState.get(userId) || false;
 
-                userState.lastActive = Date.now();
-
-                if (isSpeaking) {
-                    if (!wasSpeaking)
-                        elizaLogger.debug(
-                            `User ${userId} started speaking (Prob: ${speechProbability.toFixed(2)})`
-                        );
-                    userState.buffers.push(pcmData);
-                    userState.totalLength += pcmData.length;
-
-                    // Clear silence timeout if user starts speaking again
+                // --- Use VAD state change for logic ---
+                if (isSpeaking && !wasSpeaking) {
+                    // Transition: Silent -> Speaking
+                    elizaLogger.debug(
+                        `User ${userId} started speaking (Prob: ${speechProbability.toFixed(2)})`
+                    );
+                    // Clear any pending transcription timeout, user started talking again
                     if (this.transcriptionTimeout) {
-                        // Clear timeout immediately on speech start
                         clearTimeout(this.transcriptionTimeout);
                         this.transcriptionTimeout = null;
                         elizaLogger.debug(
-                            `Cleared pending transcription timeout for ${userId} due to speech restart.`
+                            `Cleared pending transcription timeout for ${userId} due to speech start.`
                         );
                     }
-                    // *** REMOVED call to debouncedProcessTranscription from here ***
-                    // this.debouncedProcessTranscription(...);
-                } else {
-                    // User is not speaking according to VAD
-                    if (wasSpeaking) {
-                        // User *just* stopped speaking
-                        elizaLogger.debug(
-                            `User ${userId} stopped speaking (Prob: ${speechProbability.toFixed(2)})`
-                        );
-                        // Trigger debounce logic *now* that silence is detected
-                        this.debouncedProcessTranscription(
-                            userId,
-                            userState.name,
-                            userState.userName
-                            // No need to pass channel, it's retrieved from state inside debounced func
-                        );
-                    }
-                    // If !isSpeaking and !wasSpeaking, do nothing (continued silence)
+                } else if (!isSpeaking && wasSpeaking) {
+                    // Transition: Speaking -> Silent
+                    elizaLogger.debug(
+                        `User ${userId} stopped speaking (Prob: ${speechProbability.toFixed(2)})`
+                    );
+                    // Trigger the transcription process after debounce period
+                    this.debouncedProcessTranscription(
+                        userId,
+                        userState.name,
+                        userState.userName
+                    );
                 }
+                // --- End VAD state change logic ---
+
+                // Update the state for the next check
                 this.userSpeechState.set(userId, isSpeaking);
             }
         } catch (error) {
@@ -535,6 +546,11 @@ export class VoiceManager extends EventEmitter {
                 `Error processing VAD for user ${userId}: ${error}`
             );
             vad.reset();
+            // Clear buffer on error?
+            if (userState) {
+                userState.buffers = [];
+                userState.totalLength = 0;
+            }
         }
     }
 
@@ -967,11 +983,24 @@ export class VoiceManager extends EventEmitter {
     }
 
     private _generateResponse(context: string): any {
+        elizaLogger.debug("context: ", context);
         const response = streamWithTools({
             runtime: this.runtime,
             context,
             modelClass: ModelClass.FAST,
-            tools: [qsSchema],
+            tools: [
+                qsSchema,
+                GetCoordinatesToolSchema,
+                GetLocationFromCoordinatesToolSchema,
+                GetDirectionsToolSchema,
+                GetHeadlinesToolSchema,
+                ForecastWeatherToolSchema,
+                CurrentWeatherToolSchema,
+                GetL1StatsToolSchema,
+                GetL1DailyStatsToolSchema,
+                GetProjectsToolSchema,
+                CalculatorToolSchema,
+            ],
             smoothStreamBy: /[.!?]\s+/,
         });
 
