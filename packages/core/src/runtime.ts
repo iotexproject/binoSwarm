@@ -508,6 +508,7 @@ export class AgentRuntime implements IAgentRuntime {
             recentInteractionsData,
             characterPostExamples,
             characterMessageExamples,
+            currentMessage: message.content.text,
             ...additionalKeys,
         } as State;
 
