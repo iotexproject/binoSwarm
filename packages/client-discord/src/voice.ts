@@ -842,7 +842,7 @@ export class VoiceManager extends EventEmitter {
             responseMessage,
             "discord",
             false,
-            true
+            false
         );
     }
 
