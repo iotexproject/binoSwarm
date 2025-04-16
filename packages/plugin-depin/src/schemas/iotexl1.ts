@@ -226,7 +226,6 @@ export class L1DataTool {
         const res = await this.sendRestRequest("totalStakedIotx");
         const totalStaked = await res.text();
         elizaLogger.info("totalStakedIotx", totalStaked);
-        // @ts-ignore string has replaceAll method
         const withoutQuotes = totalStaked.replaceAll('"', "");
         const value = formatEther(withoutQuotes);
         return Number(value);

@@ -231,7 +231,7 @@ export const GetProjectsToolSchema: {
                 .array(DepinScanProjectSchema)
                 .parse(projectsData);
 
-            let filteredProjects = filterProjects(projects, args);
+            const filteredProjects = filterProjects(projects, args);
 
             return {
                 totalProjects: filteredProjects.length,
