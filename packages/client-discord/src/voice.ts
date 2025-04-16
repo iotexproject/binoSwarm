@@ -37,7 +37,6 @@ import {
 import EventEmitter from "events";
 import prism from "prism-media";
 import { Readable, pipeline } from "stream";
-import * as FVAD from "@echogarden/fvad-wasm";
 
 import { DiscordClient } from "./index.ts";
 import { discordVoiceHandlerTemplate } from "./templates.ts";
@@ -51,8 +50,6 @@ const DECODE_SAMPLE_RATE = 16000;
 const VOLUME_WINDOW_SIZE = 30;
 const SPEAKING_THRESHOLD = 0.1;
 const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 300;
-const VAD_MODE = 2;
-const SILENT_FRAMES_THRESHOLD = 20;
 const MIN_AUDIO_LENGTH_FOR_PROCESSING = 1024 * 8;
 
 type Message = {
@@ -87,9 +84,6 @@ export class VoiceManager extends EventEmitter {
         string,
         { channel: BaseGuildVoiceChannel; monitor: AudioMonitor }
     > = new Map();
-    private vadProcessors: Map<string, any> = new Map();
-    private silentFrameCounters: Map<string, number> = new Map();
-    private isSpeaking: Map<string, boolean> = new Map();
 
     constructor(client: DiscordClient) {
         super();
@@ -325,22 +319,6 @@ export class VoiceManager extends EventEmitter {
             return;
         }
 
-        // Initialize the VAD processor
-        try {
-            const vadProcessor = new FVAD.VAD({
-                sampleRate: DECODE_SAMPLE_RATE,
-                mode: VAD_MODE,
-            });
-            this.vadProcessors.set(userId, vadProcessor);
-            this.silentFrameCounters.set(userId, 0);
-            this.isSpeaking.set(userId, false);
-            elizaLogger.log(
-                `Initialized VAD processor for user ${name} (${userId})`
-            );
-        } catch (error) {
-            elizaLogger.error(`Failed to initialize VAD processor: ${error}`);
-        }
-
         const opusDecoder = new prism.opus.Decoder({
             channels: 1,
             rate: DECODE_SAMPLE_RATE,
@@ -349,7 +327,7 @@ export class VoiceManager extends EventEmitter {
         const volumeBuffer: number[] = [];
 
         opusDecoder.on("data", (pcmData: Buffer) => {
-            this.handleOnPCMData(pcmData, volumeBuffer, userId);
+            this.handleOnOpusData(pcmData, volumeBuffer);
         });
         pipeline(
             receiveStream as AudioReceiveStream,
@@ -391,56 +369,6 @@ export class VoiceManager extends EventEmitter {
             channel,
             opusDecoder
         );
-    }
-
-    private handleOnPCMData(
-        pcmData: Buffer,
-        volumeBuffer: number[],
-        userId: string
-    ) {
-        // Keep existing volume detection for interrupting the bot while speaking
-        this.handleOnOpusData(pcmData, volumeBuffer);
-
-        // Process with VAD
-        const vadProcessor = this.vadProcessors.get(userId);
-        if (!vadProcessor) return;
-
-        try {
-            // Check if frame contains speech
-            const isSpeech = vadProcessor.process(pcmData);
-
-            if (isSpeech) {
-                // Reset silent frame counter when speech detected
-                this.silentFrameCounters.set(userId, 0);
-
-                // If we weren't speaking before, mark as speaking now
-                if (!this.isSpeaking.get(userId)) {
-                    this.isSpeaking.set(userId, true);
-                    elizaLogger.log(
-                        `VAD detected speech start for user ${userId}`
-                    );
-                    // Could emit speech start event if needed
-                }
-            } else {
-                // Increment silent frame counter
-                const currentCount = this.silentFrameCounters.get(userId) || 0;
-                this.silentFrameCounters.set(userId, currentCount + 1);
-
-                // If we have enough consecutive silent frames and were speaking before
-                if (
-                    currentCount + 1 >= SILENT_FRAMES_THRESHOLD &&
-                    this.isSpeaking.get(userId)
-                ) {
-                    this.isSpeaking.set(userId, false);
-                    elizaLogger.log(
-                        `VAD detected speech end for user ${userId}`
-                    );
-                    this.streams.get(userId)?.emit("speakingStopped");
-                }
-            }
-        } catch (error) {
-            elizaLogger.error(`VAD processing error: ${error}`);
-        }
     }
 
     private handleOnOpusData(
@@ -500,11 +428,6 @@ export class VoiceManager extends EventEmitter {
             monitorInfo.monitor.stop();
             this.activeMonitors.delete(memberId);
             this.streams.delete(memberId);
-
-            // Clean up VAD resources
-            this.vadProcessors.delete(memberId);
-            this.silentFrameCounters.delete(memberId);
-            this.isSpeaking.delete(memberId);
 
             elizaLogger.log(`Stopped monitoring user ${memberId}`);
         }
@@ -1038,7 +961,7 @@ export class VoiceManager extends EventEmitter {
                         elizaLogger.log(
                             `Audio playback took: ${idleTime - audioStartTime}ms`
                         );
-                        resolve();
+                        resolve(undefined);
                     }
                 }
             );
