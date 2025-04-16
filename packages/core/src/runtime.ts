@@ -508,15 +508,12 @@ export class AgentRuntime implements IAgentRuntime {
             recentInteractionsData,
             characterPostExamples,
             characterMessageExamples,
+            currentMessage: message.content.text,
             ...additionalKeys,
         } as State;
 
         const actionStateStart = Date.now();
-        const actionState = await this.buildActionState(
-            message,
-            initialState,
-            fastMode
-        );
+        const actionState = await this.buildActionState(message, initialState);
         const actionStateTime = Date.now() - actionStateStart;
         elizaLogger.info(`Action state took ${actionStateTime}ms`);
         return { ...initialState, ...actionState } as State;
@@ -858,11 +855,7 @@ export class AgentRuntime implements IAgentRuntime {
         });
     }
 
-    private async buildActionState(
-        message: Memory,
-        initialState: State,
-        fastMode: boolean
-    ) {
+    private async buildActionState(message: Memory, initialState: State) {
         const actionPromises = this.getActionValidationPromises(
             message,
             initialState
@@ -871,15 +864,12 @@ export class AgentRuntime implements IAgentRuntime {
             message,
             initialState
         );
-        const providersPromise = !fastMode
-            ? getProviders(this, message, initialState)
-            : "";
 
         const [resolvedEvaluators, resolvedActions, providers] =
             await Promise.all([
                 Promise.all(evaluatorPromises),
                 Promise.all(actionPromises),
-                providersPromise,
+                getProviders(this, message, initialState),
             ]);
 
         const evaluatorsData = resolvedEvaluators.filter(
@@ -1029,11 +1019,11 @@ export class AgentRuntime implements IAgentRuntime {
             : "";
     }
 
-    private async getAndFormatKnowledge(fastMode: boolean, message: Memory) {
+    private async getAndFormatKnowledge(isFastMode: boolean, message: Memory) {
         let knowledgeData = [];
         let formattedKnowledge = "";
 
-        if (!fastMode && message?.content?.text) {
+        if (!isFastMode && message?.content?.text) {
             try {
                 // Validate the message content before passing to getKnowledge
                 const query = message.content.text.trim();

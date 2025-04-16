@@ -23,7 +23,8 @@ const __dirname = path.dirname(__filename);
 
 const execAsync = promisify(exec);
 
-const OPENAI_TRANSCRIPTION_MODEL = process.env.OPENAI_TRANSCRIPTION_MODEL || "gpt-4o-mini-transcribe";
+const OPENAI_TRANSCRIPTION_MODEL =
+    process.env.OPENAI_TRANSCRIPTION_MODEL || "gpt-4o-mini-transcribe";
 
 export class TranscriptionService
     extends Service

@@ -130,7 +130,7 @@ export class MessageManager {
                 return;
             }
 
-            const shouldIgnore = await this.shouldIgnore(message);
+            const shouldIgnore = this.shouldIgnore(message);
             if (shouldIgnore) {
                 return;
             }
@@ -327,24 +327,34 @@ export class MessageManager {
         userName: string,
         content: Content
     ) {
-        if (this.interestChannels[message.channelId]) {
-            // Add new message
-            this.interestChannels[message.channelId].messages.push({
-                userId: userIdUUID,
-                userName,
-                content,
-            });
+        // Initialize the channel interest if it doesn't exist
+        if (!this.interestChannels[message.channelId]) {
+            this.interestChannels[message.channelId] = {
+                currentHandler: this.client.user?.id,
+                lastMessageSent: Date.now(),
+                messages: [],
+            };
+        }
 
-            // Trim to keep only recent messages
-            if (
-                this.interestChannels[message.channelId].messages.length >
-                MESSAGE_CONSTANTS.MAX_MESSAGES
-            ) {
-                this.interestChannels[message.channelId].messages =
-                    this.interestChannels[message.channelId].messages.slice(
-                        -MESSAGE_CONSTANTS.MAX_MESSAGES
-                    );
-            }
+        // Add new message
+        this.interestChannels[message.channelId].messages.push({
+            userId: userIdUUID,
+            userName,
+            content,
+        });
+
+        // Update the last message sent timestamp
+        this.interestChannels[message.channelId].lastMessageSent = Date.now();
+
+        // Trim to keep only recent messages
+        if (
+            this.interestChannels[message.channelId].messages.length >
+            MESSAGE_CONSTANTS.MAX_MESSAGES
+        ) {
+            this.interestChannels[message.channelId].messages =
+                this.interestChannels[message.channelId].messages.slice(
+                    -MESSAGE_CONSTANTS.MAX_MESSAGES
+                );
         }
     }
 
@@ -585,9 +595,6 @@ export class MessageManager {
         message: DiscordMessage,
         channelState: InterestChannels[string]
     ): Promise<boolean> {
-        // Always respond if directly mentioned
-        if (this._isMessageForMe(message)) return true;
-
         // Check if we have messages to compare
         if (!channelState.messages?.length) return false;
 
@@ -663,7 +670,7 @@ export class MessageManager {
         return true;
     }
 
-    private async shouldIgnore(message: DiscordMessage): Promise<boolean> {
+    private shouldIgnore(message: DiscordMessage): boolean {
         const messageContent = this.normalizeMessageContent(message);
 
         const isShort = this.isShortWithLoseInterestWords(messageContent);
@@ -784,18 +791,32 @@ export class MessageManager {
         }
         const channelState = this.interestChannels[message.channelId];
 
+        if (this.isMessageDirectedAtBot(message)) {
+            this.interestChannels[message.channelId] = {
+                currentHandler: this.client.user?.id,
+                lastMessageSent: Date.now(),
+                messages: [],
+            };
+            return true;
+        }
+
         if (channelState?.previousContext) {
             const shouldRespondContext =
                 await this._shouldRespondBasedOnContext(message, channelState);
             if (!shouldRespondContext) {
                 delete this.interestChannels[message.channelId];
-                return false;
+            } else {
+                return true;
             }
         }
 
-        if (this.isMessageDirectedAtBot(message)) return true;
-
         if (!message.guild) {
+            // Initialize interest for DMs
+            this.interestChannels[message.channelId] = {
+                currentHandler: this.client.user?.id,
+                lastMessageSent: Date.now(),
+                messages: [],
+            };
             return true;
         }
 
@@ -816,7 +837,14 @@ export class MessageManager {
         });
 
         if (parsedResponse === "RESPOND") {
-            if (channelState) {
+            // Initialize channel interest if it doesn't exist yet
+            if (!channelState) {
+                this.interestChannels[message.channelId] = {
+                    currentHandler: this.client.user?.id,
+                    lastMessageSent: Date.now(),
+                    messages: [],
+                };
+            } else {
                 channelState.previousContext = {
                     content: message.content,
                     timestamp: Date.now(),

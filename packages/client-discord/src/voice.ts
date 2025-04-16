@@ -37,23 +37,31 @@ import {
 import EventEmitter from "events";
 import prism from "prism-media";
 import { Readable, pipeline } from "stream";
-import * as FVAD from "@echogarden/fvad-wasm";
 
 import { DiscordClient } from "./index.ts";
 import { discordVoiceHandlerTemplate } from "./templates.ts";
 import { getWavHeader } from "./utils.ts";
-import { qsSchema } from "@elizaos/plugin-depin";
+import {
+    qsSchema,
+    GetHeadlinesToolSchema,
+    CurrentWeatherToolSchema,
+    ForecastWeatherToolSchema,
+    CalculatorToolSchema,
+    GetProjectsToolSchema,
+    GetL1StatsToolSchema,
+    GetL1DailyStatsToolSchema,
+    GetCoordinatesToolSchema,
+    GetLocationFromCoordinatesToolSchema,
+    GetDirectionsToolSchema,
+} from "@elizaos/plugin-depin";
 import { AudioMonitor } from "./AudioMonitor.ts";
+import { SileroVAD } from "./VAD.ts";
 
 // These values are chosen for compatibility with picovoice components
 const DECODE_FRAME_SIZE = 1024;
 const DECODE_SAMPLE_RATE = 16000;
-const VOLUME_WINDOW_SIZE = 30;
-const SPEAKING_THRESHOLD = 0.1;
-const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 300;
-const VAD_MODE = 2;
-const SILENT_FRAMES_THRESHOLD = 20;
-const MIN_AUDIO_LENGTH_FOR_PROCESSING = 1024 * 8;
+const SPEAKING_THRESHOLD = 0.6;
+const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 800;
 
 type Message = {
     content: ResContent[];
@@ -76,6 +84,9 @@ export class VoiceManager extends EventEmitter {
             totalLength: number;
             lastActive: number;
             transcriptionText: string;
+            name: string;
+            userName: string;
+            channel: BaseGuildVoiceChannel;
         }
     > = new Map();
     private activeAudioPlayer: AudioPlayer | null = null;
@@ -87,14 +98,23 @@ export class VoiceManager extends EventEmitter {
         string,
         { channel: BaseGuildVoiceChannel; monitor: AudioMonitor }
     > = new Map();
-    private vadProcessors: Map<string, any> = new Map();
-    private silentFrameCounters: Map<string, number> = new Map();
-    private isSpeaking: Map<string, boolean> = new Map();
+    private vadProcessors: Map<string, SileroVAD> = new Map();
+    private userSpeechState: Map<string, boolean> = new Map();
 
     constructor(client: DiscordClient) {
         super();
         this.client = client.client;
         this.runtime = client.runtime;
+        SileroVAD.create()
+            .then((_vad) => {
+                elizaLogger.log("Silero VAD pre-initialized.");
+            })
+            .catch((error) => {
+                elizaLogger.error(
+                    "Failed to pre-initialize Silero VAD: ",
+                    error
+                );
+            });
     }
 
     async handleVoiceStateUpdate(oldState: VoiceState, newState: VoiceState) {
@@ -316,72 +336,139 @@ export class VoiceManager extends EventEmitter {
         const userId = member?.id;
         const userName = member?.user?.username;
         const name = member?.user?.displayName;
-        const connection = this.getVoiceConnection(member?.guild?.id);
-        const receiveStream = connection?.receiver.subscribe(userId, {
-            autoDestroy: true,
-            emitClose: true,
-        });
-        if (!receiveStream || receiveStream.readableLength === 0) {
+        if (!userId || !userName || !name) {
+            elizaLogger.warn("Could not get user details for monitoring");
             return;
         }
 
-        // Initialize the VAD processor
-        try {
-            const vadProcessor = new FVAD.VAD({
-                sampleRate: DECODE_SAMPLE_RATE,
-                mode: VAD_MODE,
-            });
-            this.vadProcessors.set(userId, vadProcessor);
-            this.silentFrameCounters.set(userId, 0);
-            this.isSpeaking.set(userId, false);
+        if (this.streams.has(userId)) {
             elizaLogger.log(
-                `Initialized VAD processor for user ${name} (${userId})`
+                `monitorMember: Already monitoring user ${userId}, skipping redundant setup.`
             );
-        } catch (error) {
-            elizaLogger.error(`Failed to initialize VAD processor: ${error}`);
+            return;
         }
+
+        elizaLogger.log(
+            `monitorMember: Starting monitoring setup for user ${userId}`
+        );
+
+        // Initialize VAD for this user
+        if (!this.vadProcessors.has(userId)) {
+            try {
+                const vad = await SileroVAD.create();
+                this.vadProcessors.set(userId, vad);
+                this.userSpeechState.set(userId, false);
+                elizaLogger.log(`Silero VAD initialized for user ${userId}`);
+            } catch (error) {
+                elizaLogger.error(
+                    `Failed to initialize Silero VAD for user ${userId}: ${error}`
+                );
+                return;
+            }
+        }
+
+        // Initialize user state if it doesn't exist (can happen if user joins before stream starts)
+        if (!this.userStates.has(userId)) {
+            this.userStates.set(userId, {
+                buffers: [],
+                totalLength: 0,
+                lastActive: Date.now(),
+                transcriptionText: "",
+                name: name,
+                userName: userName,
+                channel: channel,
+            });
+        }
+
+        const connection = this.getVoiceConnection(member?.guild?.id);
+
+        if (!connection) {
+            elizaLogger.error(
+                `monitorMember: No voice connection found for guild ${member?.guild?.id} when trying to monitor ${userId}`
+            );
+            this.vadProcessors.delete(userId); // Clean up VAD if connection fails
+            this.userSpeechState.delete(userId);
+            return;
+        }
+        elizaLogger.log(
+            `monitorMember: Connection status for ${userId} before subscribe: ${connection.state.status}`
+        );
+
+        const receiveStream = connection.receiver.subscribe(userId, {
+            autoDestroy: true,
+            emitClose: true,
+        });
+
+        if (!receiveStream) {
+            elizaLogger.error(
+                `monitorMember: connection.receiver.subscribe failed for user ${userId} (returned null/undefined)`
+            );
+            this.vadProcessors.delete(userId); // Clean up VAD
+            this.userSpeechState.delete(userId);
+            return;
+        }
+
+        elizaLogger.log(
+            `monitorMember: Successfully subscribed to receive stream for user ${userId}. Setting up decoder.`
+        );
 
         const opusDecoder = new prism.opus.Decoder({
             channels: 1,
             rate: DECODE_SAMPLE_RATE,
             frameSize: DECODE_FRAME_SIZE,
         });
-        const volumeBuffer: number[] = [];
 
-        opusDecoder.on("data", (pcmData: Buffer) => {
-            this.handleOnPCMData(pcmData, volumeBuffer, userId);
+        this.streams.set(userId, opusDecoder);
+        this.connections.set(userId, connection);
+
+        opusDecoder.on("data", async (pcmData: Buffer) => {
+            await this.handleVADProcessing(userId, pcmData);
         });
+
         pipeline(
             receiveStream as AudioReceiveStream,
             opusDecoder as any,
             (err: Error | null) => {
                 if (err) {
-                    elizaLogger.log(`Opus decoding pipeline error: ${err}`);
+                    elizaLogger.log(
+                        `Opus decoding pipeline error for ${userId}: ${err}`
+                    );
                 }
             }
         );
-        this.streams.set(userId, opusDecoder);
-        this.connections.set(userId, connection as VoiceConnection);
-        opusDecoder.on("error", (err: any) => {
-            elizaLogger.log(`Opus decoding error: ${err}`);
-        });
+
         const errorHandler = (err: any) => {
-            elizaLogger.log(`Opus decoding error: ${err}`);
+            elizaLogger.log(`Opus decoding error for ${userId}: ${err}`);
+            streamCloseHandler();
         };
+
         const streamCloseHandler = () => {
-            elizaLogger.log(`voice stream from ${member?.displayName} closed`);
+            elizaLogger.log(
+                `Stream/Decoder closed for user ${member?.displayName} (${userId})`
+            );
+            if (!this.streams.has(userId)) return;
+
             this.streams.delete(userId);
+            this.vadProcessors.delete(userId);
+            this.userSpeechState.delete(userId);
             this.connections.delete(userId);
-        };
-        const closeHandler = () => {
-            elizaLogger.log(`Opus decoder for ${member?.displayName} closed`);
+            if (this.userStates.has(userId)) {
+                this.userStates.delete(userId);
+            }
+            if (this.transcriptionTimeout) {
+                clearTimeout(this.transcriptionTimeout);
+                this.transcriptionTimeout = null;
+            }
+            opusDecoder.removeListener("data", this.handleVADProcessing);
             opusDecoder.removeListener("error", errorHandler);
-            opusDecoder.removeListener("close", closeHandler);
+            opusDecoder.removeListener("close", streamCloseHandler);
             receiveStream?.removeListener("close", streamCloseHandler);
+            receiveStream?.destroy();
         };
+
         opusDecoder.on("error", errorHandler);
-        opusDecoder.on("close", closeHandler);
-        receiveStream?.on("close", streamCloseHandler);
+        opusDecoder.on("close", streamCloseHandler);
+        receiveStream.on("close", streamCloseHandler);
 
         this.client.emit(
             "userStream",
@@ -393,83 +480,76 @@ export class VoiceManager extends EventEmitter {
         );
     }
 
-    private handleOnPCMData(
-        pcmData: Buffer,
-        volumeBuffer: number[],
-        userId: string
-    ) {
-        // Keep existing volume detection for interrupting the bot while speaking
-        this.handleOnOpusData(pcmData, volumeBuffer);
+    private async handleVADProcessing(
+        userId: string,
+        pcmData: Buffer
+    ): Promise<void> {
+        const vad = this.vadProcessors.get(userId);
+        const userState = this.userStates.get(userId);
 
-        // Process with VAD
-        const vadProcessor = this.vadProcessors.get(userId);
-        if (!vadProcessor) return;
+        if (!vad || !userState) {
+            elizaLogger.debug(
+                `No VAD processor or user state ready for user ${userId}`
+            );
+            return;
+        }
 
         try {
-            // Check if frame contains speech
-            const isSpeech = vadProcessor.process(pcmData);
+            // --- Continuous Buffering ---
+            // Always push the latest PCM data to the buffer
+            userState.buffers.push(pcmData);
+            userState.totalLength += pcmData.length;
+            userState.lastActive = Date.now();
+            // Optional: Add logic here later to trim the buffer if it gets excessively long during prolonged silence
+            // --- End Continuous Buffering ---
 
-            if (isSpeech) {
-                // Reset silent frame counter when speech detected
-                this.silentFrameCounters.set(userId, 0);
+            const pcmFloat32 = SileroVAD.bufferToFloat32(pcmData);
+            const speechProbability = await vad.process(pcmFloat32);
 
-                // If we weren't speaking before, mark as speaking now
-                if (!this.isSpeaking.get(userId)) {
-                    this.isSpeaking.set(userId, true);
-                    elizaLogger.log(
-                        `VAD detected speech start for user ${userId}`
+            if (speechProbability !== null) {
+                const isSpeaking = speechProbability > SPEAKING_THRESHOLD;
+                const wasSpeaking = this.userSpeechState.get(userId) || false;
+
+                // --- Use VAD state change for logic ---
+                if (isSpeaking && !wasSpeaking) {
+                    // Transition: Silent -> Speaking
+                    elizaLogger.debug(
+                        `User ${userId} started speaking (Prob: ${speechProbability.toFixed(2)})`
                     );
-                    // Could emit speech start event if needed
-                }
-            } else {
-                // Increment silent frame counter
-                const currentCount = this.silentFrameCounters.get(userId) || 0;
-                this.silentFrameCounters.set(userId, currentCount + 1);
-
-                // If we have enough consecutive silent frames and were speaking before
-                if (
-                    currentCount + 1 >= SILENT_FRAMES_THRESHOLD &&
-                    this.isSpeaking.get(userId)
-                ) {
-                    this.isSpeaking.set(userId, false);
-                    elizaLogger.log(
-                        `VAD detected speech end for user ${userId}`
+                    // Clear any pending transcription timeout, user started talking again
+                    if (this.transcriptionTimeout) {
+                        clearTimeout(this.transcriptionTimeout);
+                        this.transcriptionTimeout = null;
+                        elizaLogger.debug(
+                            `Cleared pending transcription timeout for ${userId} due to speech start.`
+                        );
+                    }
+                } else if (!isSpeaking && wasSpeaking) {
+                    // Transition: Speaking -> Silent
+                    elizaLogger.debug(
+                        `User ${userId} stopped speaking (Prob: ${speechProbability.toFixed(2)})`
                     );
-                    this.streams.get(userId)?.emit("speakingStopped");
+                    // Trigger the transcription process after debounce period
+                    this.debouncedProcessTranscription(
+                        userId,
+                        userState.name,
+                        userState.userName
+                    );
                 }
+                // --- End VAD state change logic ---
+
+                // Update the state for the next check
+                this.userSpeechState.set(userId, isSpeaking);
             }
         } catch (error) {
-            elizaLogger.error(`VAD processing error: ${error}`);
-        }
-    }
-
-    private handleOnOpusData(
-        pcmData: Buffer<ArrayBufferLike>,
-        volumeBuffer: number[]
-    ) {
-        // Monitor the audio volume while the agent is speaking.
-        // If the average volume of the user's audio exceeds the defined threshold, it indicates active speaking.
-        // When active speaking is detected, stop the agent's current audio playback to avoid overlap.
-        if (this.activeAudioPlayer) {
-            const samples = new Int16Array(
-                pcmData.buffer,
-                pcmData.byteOffset,
-                pcmData.length / 2
+            elizaLogger.error(
+                `Error processing VAD for user ${userId}: ${error}`
             );
-            const maxAmplitude = Math.max(...samples.map(Math.abs)) / 32768;
-            volumeBuffer.push(maxAmplitude);
-
-            if (volumeBuffer.length > VOLUME_WINDOW_SIZE) {
-                volumeBuffer.shift();
-            }
-            const avgVolume =
-                volumeBuffer.reduce((sum, v) => sum + v, 0) /
-                VOLUME_WINDOW_SIZE;
-
-            if (avgVolume > SPEAKING_THRESHOLD) {
-                volumeBuffer.length = 0;
-                this.cleanupAudioPlayer(this.activeAudioPlayer);
-                this.processingVoice = false;
+            vad.reset();
+            // Clear buffer on error?
+            if (userState) {
+                userState.buffers = [];
+                userState.totalLength = 0;
             }
         }
     }
@@ -480,7 +560,6 @@ export class VoiceManager extends EventEmitter {
             connection.destroy();
             this.connections.delete(channel.id);
         }
-
         // Stop monitoring all members in this channel
         for (const [memberId, monitorInfo] of this.activeMonitors) {
             if (
@@ -490,24 +569,24 @@ export class VoiceManager extends EventEmitter {
                 this.stopMonitoringMember(memberId);
             }
         }
-
         elizaLogger.log(`Left voice channel: ${channel.name} (${channel.id})`);
     }
 
     stopMonitoringMember(memberId: string) {
         const monitorInfo = this.activeMonitors.get(memberId);
         if (monitorInfo) {
-            monitorInfo.monitor.stop();
+            monitorInfo.monitor.stop(); // Assuming monitor has a stop method
             this.activeMonitors.delete(memberId);
-            this.streams.delete(memberId);
-
-            // Clean up VAD resources
-            this.vadProcessors.delete(memberId);
-            this.silentFrameCounters.delete(memberId);
-            this.isSpeaking.delete(memberId);
-
-            elizaLogger.log(`Stopped monitoring user ${memberId}`);
         }
+        // Also clean up VAD, stream, connection, state associated with this memberId
+        this.streams.delete(memberId);
+        this.vadProcessors.delete(memberId);
+        this.userSpeechState.delete(memberId);
+        this.connections.delete(memberId);
+        if (this.userStates.has(memberId)) {
+            this.userStates.delete(memberId);
+        }
+        elizaLogger.log(`Stopped monitoring user ${memberId}`);
     }
 
     async handleGuildCreate(guild: Guild) {
@@ -516,166 +595,179 @@ export class VoiceManager extends EventEmitter {
     }
 
     async handleUserStream(
-        userId: UUID,
-        name: string,
-        userName: string,
-        channel: BaseGuildVoiceChannel,
-        audioStream: Readable
+        userId: string,
+        _name: string,
+        _userName: string,
+        _channel: BaseGuildVoiceChannel,
+        _audioStream: Readable // Raw stream might be less relevant now
     ) {
-        elizaLogger.log(`Starting audio monitor for user: ${userId}`);
-        if (!this.userStates.has(userId)) {
-            this.userStates.set(userId, {
-                buffers: [],
-                totalLength: 0,
-                lastActive: Date.now(),
-                transcriptionText: "",
-            });
-        }
-
-        const state = this.userStates.get(userId);
-
-        const processBuffer = async (buffer: Buffer) => {
-            try {
-                state!.buffers.push(buffer);
-                state!.totalLength += buffer.length;
-                state!.lastActive = Date.now();
-                this.debouncedProcessTranscription(
-                    userId,
-                    name,
-                    userName,
-                    channel
-                );
-            } catch (error) {
-                elizaLogger.error(
-                    `Error processing buffer for user ${userId}:`,
-                    error
-                );
-            }
-        };
-
-        new AudioMonitor(
-            audioStream,
-            10000000,
-            () => {
-                if (this.transcriptionTimeout) {
-                    clearTimeout(this.transcriptionTimeout);
-                }
-            },
-            async (buffer) => {
-                if (!buffer) {
-                    elizaLogger.error("Received empty buffer");
-                    return;
-                }
-                await processBuffer(buffer);
-            }
+        elizaLogger.log(
+            `Handling user stream start trigger for user: ${userId}`
         );
+        // User state initialization is now handled within monitorMember
+        // Buffering is handled by handleVADProcessing via the opusDecoder 'data' event
     }
 
     private async debouncedProcessTranscription(
-        userId: UUID,
-        name: string,
-        userName: string,
-        channel: BaseGuildVoiceChannel
+        userId: string,
+        _name: string,
+        _userName: string
     ) {
-        if (this.activeAudioPlayer?.state?.status === "idle") {
-            elizaLogger.log("Cleaning up idle audio player.");
-            this.cleanupAudioPlayer(this.activeAudioPlayer);
+        // Prevent processing if bot is speaking or already processing
+        if (
+            this.activeAudioPlayer?.state?.status !== "idle" &&
+            this.activeAudioPlayer
+        ) {
+            elizaLogger.log(
+                "Bot is speaking, delaying transcription processing."
+            );
+            return;
         }
-
-        if (this.activeAudioPlayer || this.processingVoice) {
-            const state = this.userStates.get(userId);
-            state.buffers.length = 0;
-            state.totalLength = 0;
+        if (this.processingVoice) {
+            elizaLogger.log(
+                "Already processing voice, delaying transcription processing."
+            );
             return;
         }
 
+        // Clear any existing timeout for this user (ensures only the latest silence triggers)
         if (this.transcriptionTimeout) {
             clearTimeout(this.transcriptionTimeout);
+            elizaLogger.debug(
+                `Cleared previous transcription timeout for ${userId}`
+            );
         }
 
+        // Since this function is now only called after silence is detected,
+        // we can directly set the timeout.
+        elizaLogger.debug(
+            `Starting transcription timeout for ${userId} after silence.`
+        );
         this.transcriptionTimeout = setTimeout(async () => {
             this.processingVoice = true;
+            elizaLogger.log(`Transcription timeout fired for ${userId}`);
             try {
-                await this.processTranscription(
-                    userId,
-                    channel.id,
-                    channel,
-                    name,
-                    userName
+                const state = this.userStates.get(userId);
+                if (state && state.channel && state.buffers.length > 0) {
+                    await this.processTranscription(
+                        userId,
+                        state.channel.id,
+                        state.channel,
+                        state.name,
+                        state.userName
+                    );
+                    if (this.userStates.has(userId)) {
+                        this.userStates.get(userId)!.buffers = [];
+                        this.userStates.get(userId)!.totalLength = 0;
+                    }
+                } else {
+                    elizaLogger.warn(
+                        `No state, channel, or buffers for user ${userId} during transcription timeout execution.`
+                    );
+                }
+            } catch (error) {
+                elizaLogger.error(
+                    `Error during debounced transcription execution for ${userId}: ${error}`
                 );
-
-                // Clean all users' previous buffers
-                this.userStates.forEach((state, _) => {
-                    state.buffers.length = 0;
-                    state.totalLength = 0;
-                });
             } finally {
                 this.processingVoice = false;
+                this.transcriptionTimeout = null;
             }
         }, DEBOUNCE_TRANSCRIPTION_THRESHOLD);
     }
 
     private async processTranscription(
-        userId: UUID,
+        userId: string,
         channelId: string,
         channel: BaseGuildVoiceChannel,
         name: string,
         userName: string
     ) {
         const state = this.userStates.get(userId);
-        if (!state || state.buffers.length === 0) return;
+        if (!state || state.buffers.length === 0) {
+            elizaLogger.debug(
+                `No user state or buffers for ${userId}, skipping transcription processing.`
+            );
+            return;
+        }
         try {
             const inputBuffer = Buffer.concat(state.buffers, state.totalLength);
+            // Clear buffers immediately before async call to prevent race conditions if user speaks again quickly
+            // state.buffers = [];
+            // state.totalLength = 0;
+            // -> Moved buffer clearing to *after* processing in debouncedProcessTranscription
+            elizaLogger.log(
+                `Processing ${inputBuffer.length} bytes for transcription for user ${userId}`
+            );
 
-            // Skip processing if the audio is too short (likely noise)
-            if (inputBuffer.length < MIN_AUDIO_LENGTH_FOR_PROCESSING) {
-                elizaLogger.log(
-                    `Skipping short audio from ${name} (${inputBuffer.length} bytes)`
+            const pcmWavBuffer = await this.convertPcmToWav(inputBuffer);
+
+            elizaLogger.log("Starting transcription service call...");
+
+            let rawBuffer = pcmWavBuffer.buffer;
+            if (rawBuffer instanceof SharedArrayBuffer) {
+                elizaLogger.debug(
+                    "Converting SharedArrayBuffer to ArrayBuffer for transcription."
                 );
-                state.buffers.length = 0; // Clear the buffers
-                state.totalLength = 0;
-                return;
+                const newArrayBuffer = new ArrayBuffer(rawBuffer.byteLength);
+                new Uint8Array(newArrayBuffer).set(new Uint8Array(rawBuffer));
+                rawBuffer = newArrayBuffer;
             }
+            // Ensure the slice operation uses the potentially new ArrayBuffer (rawBuffer)
+            const arrayBufferForTranscription = rawBuffer.slice(
+                pcmWavBuffer.byteOffset,
+                pcmWavBuffer.byteOffset + pcmWavBuffer.byteLength
+            );
 
-            state.buffers.length = 0; // Clear the buffers
-            state.totalLength = 0;
-            // Convert Opus to WAV
-            const wavBuffer = await this.convertOpusToWav(inputBuffer);
-            elizaLogger.log("Starting transcription...");
+            if (!(arrayBufferForTranscription instanceof ArrayBuffer)) {
+                elizaLogger.error(
+                    "Buffer conversion failed, expected ArrayBuffer!"
+                );
+                throw new Error(
+                    "Failed to convert Buffer to ArrayBuffer for transcription"
+                );
+            }
 
             const transcriptionText = await this.runtime
                 .getService<ITranscriptionService>(ServiceType.TRANSCRIPTION)
-                .transcribe(wavBuffer);
+                .transcribe(arrayBufferForTranscription);
+
+            elizaLogger.log(
+                `Transcription result for ${userId}: ${transcriptionText ? `"${transcriptionText}"` : "null or empty"}`
+            );
 
             function isValidTranscription(text: string): boolean {
                 // Check for empty or explicit blank audio markers
-                if (!text || text.includes("[BLANK_AUDIO]")) return false;
-
+                if (
+                    !text ||
+                    text.trim().length === 0 ||
+                    text.includes("[BLANK_AUDIO]")
+                )
+                    return false;
                 // Filter out short transcriptions that are likely noise
                 if (text.trim().length < 3) return false;
-
                 // Filter out transcriptions that are just sounds/noise markers
                 const noisePatterns = [
-                    /^\s*[[({\w]*[\])}]\s*$/, // Text only in brackets/parentheses like [sound] or (noise)
-                    /^\s*[^a-zA-Z0-9]+\s*$/, // No alphanumeric characters
-                    /^\s*(um+|uh+|er+|hmm+)\s*$/i, // Just filler sounds
-                    /^\s*(inaudible|unintelligible|background noise)\s*$/i, // Explicitly marked as unintelligible
+                    /^s*[[({\w]*[\])}]\s*$/, // Text only in brackets/parentheses like [sound] or (noise)
+                    /^s*[^a-zA-Z0-9]+\s*$/, // No alphanumeric characters
+                    /^s*(um+|uh+|er+|hmm+)\s*$/i, // Just filler sounds
+                    /^s*(inaudible|unintelligible|background noise)\s*$/i, // Explicitly marked as unintelligible
                 ];
-
                 if (noisePatterns.some((pattern) => pattern.test(text)))
                     return false;
-
                 return true;
             }
 
             if (transcriptionText && isValidTranscription(transcriptionText)) {
-                state.transcriptionText += transcriptionText;
-            }
+                // Append to cumulative transcription text for the current utterance
+                // state.transcriptionText += transcriptionText + " "; // Add space between segments
+                // -> Simpler: process the whole buffer at once, no need to append
+                const finalText = transcriptionText.trim(); // Use the full result directly
+                state.transcriptionText = ""; // Reset for next utterance
 
-            if (state.transcriptionText.length) {
-                this.cleanupAudioPlayer(this.activeAudioPlayer);
-                const finalText = state.transcriptionText;
-                state.transcriptionText = "";
+                elizaLogger.log(
+                    `Handling user message for ${userId}: "${finalText}"`
+                );
                 await this.handleUserMessage(
                     finalText,
                     userId,
@@ -684,10 +776,14 @@ export class VoiceManager extends EventEmitter {
                     name,
                     userName
                 );
+            } else {
+                elizaLogger.log(
+                    `Transcription for ${userId} was invalid or empty, skipping message handling.`
+                );
             }
         } catch (error) {
             elizaLogger.error(
-                `Error transcribing audio for user ${userId}:`,
+                `Error processing transcription for user ${userId}:`,
                 error
             );
         }
@@ -695,7 +791,7 @@ export class VoiceManager extends EventEmitter {
 
     private async handleUserMessage(
         message: string,
-        userId: UUID,
+        userId: string,
         channelId: string,
         channel: BaseGuildVoiceChannel,
         name: string,
@@ -732,8 +828,11 @@ export class VoiceManager extends EventEmitter {
                 return null;
             }
 
+            const memoryId = stringToUuid(
+                channelId + "-voice-message-" + Date.now()
+            );
             const memory = {
-                id: stringToUuid(channelId + "-voice-message-" + Date.now()),
+                id: memoryId,
                 agentId: this.runtime.agentId,
                 content: {
                     text: message,
@@ -764,17 +863,6 @@ export class VoiceManager extends EventEmitter {
                 return { text: "", action: "IGNORE" };
             }
 
-            // const shouldRespond = await this._shouldRespond(
-            //     message,
-            //     userId,
-            //     channel,
-            //     state
-            // );
-
-            // if (!shouldRespond) {
-            //     return;
-            // }
-
             const context = composeContext({
                 state,
                 template:
@@ -789,20 +877,25 @@ export class VoiceManager extends EventEmitter {
             const result = this._generateResponse(context);
 
             for await (const textPart of result.textStream) {
-                console.log("textPart: ", textPart);
                 const responseStream = await this.runtime
                     .getService<ISpeechService>(ServiceType.SPEECH_GENERATION)
                     .generate(this.runtime, textPart);
-                await this.playAudioStream(userId, responseStream as Readable);
+                await this.playAudioStream(
+                    userId as UUID,
+                    responseStream as Readable
+                );
             }
 
             const response = await result.response;
+
+            // Explicitly type replyToId as UUID
+            const replyToId: UUID = memory.id;
 
             this.processAssistantMessages(
                 response.messages,
                 this.runtime,
                 roomId,
-                stringToUuid(memory.id + "-voice-response-" + Date.now())
+                replyToId
             );
         } catch (error) {
             elizaLogger.error("Error processing transcribed text:", error);
@@ -873,17 +966,15 @@ export class VoiceManager extends EventEmitter {
         );
     }
 
-    private async convertOpusToWav(pcmBuffer: Buffer): Promise<Buffer> {
+    private async convertPcmToWav(pcmBuffer: Buffer): Promise<Buffer> {
         try {
-            // Generate the WAV header
+            // Use imported function
             const wavHeader = getWavHeader(
                 pcmBuffer.length,
-                DECODE_SAMPLE_RATE
+                DECODE_SAMPLE_RATE,
+                1 // Mono channel
             );
-
-            // Concatenate the WAV header and PCM data
             const wavBuffer = Buffer.concat([wavHeader, pcmBuffer]);
-
             return wavBuffer;
         } catch (error) {
             elizaLogger.error("Error converting PCM to WAV:", error);
@@ -892,11 +983,24 @@ export class VoiceManager extends EventEmitter {
     }
 
     private _generateResponse(context: string): any {
+        elizaLogger.debug("context: ", context);
         const response = streamWithTools({
             runtime: this.runtime,
             context,
             modelClass: ModelClass.FAST,
-            tools: [qsSchema],
+            tools: [
+                qsSchema,
+                GetCoordinatesToolSchema,
+                GetLocationFromCoordinatesToolSchema,
+                GetDirectionsToolSchema,
+                GetHeadlinesToolSchema,
+                ForecastWeatherToolSchema,
+                CurrentWeatherToolSchema,
+                GetL1StatsToolSchema,
+                GetL1DailyStatsToolSchema,
+                GetProjectsToolSchema,
+                CalculatorToolSchema,
+            ],
             smoothStreamBy: /[.!?]\s+/,
         });
 
@@ -904,7 +1008,6 @@ export class VoiceManager extends EventEmitter {
     }
 
     private _shouldIgnore(message: Memory): boolean {
-        // console.log("message: ", message);
         elizaLogger.debug("message.content: ", message.content);
         // if the message is 3 characters or less, ignore it
         if ((message.content as Content).text.length < 3) {
@@ -1038,7 +1141,7 @@ export class VoiceManager extends EventEmitter {
                         elizaLogger.log(
                             `Audio playback took: ${idleTime - audioStartTime}ms`
                         );
-                        resolve();
+                        resolve(undefined);
                     }
                 }
             );
