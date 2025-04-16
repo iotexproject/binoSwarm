@@ -48,6 +48,12 @@ describe("MemoryManager", () => {
         memoryManager.vectorDB.upsert = vi.fn().mockResolvedValue(undefined);
         memoryManager.vectorDB.hashInput = vi.fn().mockReturnValue("test-hash");
         memoryManager.vectorDB.search = vi.fn().mockResolvedValue([]);
+        memoryManager.vectorDB.removeVector = vi
+            .fn()
+            .mockResolvedValue(undefined);
+        memoryManager.vectorDB.removeByFilter = vi
+            .fn()
+            .mockResolvedValue(undefined);
     });
 
     afterEach(() => {
@@ -348,6 +354,290 @@ describe("MemoryManager", () => {
             // Assert
             expect(memoryManager.vectorDB.search).not.toHaveBeenCalled();
             expect(result).toBeNull();
+        });
+    });
+
+    describe("getMemoriesByRoomIds", () => {
+        it("should get memories by multiple room IDs", async () => {
+            // Setup
+            const roomIds = [
+                "00000000-0000-0000-0000-000000000001",
+                "00000000-0000-0000-0000-000000000002",
+            ] as UUID[];
+            const mockMemories = [
+                {
+                    id: "memory-1",
+                    roomId: "00000000-0000-0000-0000-000000000001",
+                },
+                {
+                    id: "memory-2",
+                    roomId: "00000000-0000-0000-0000-000000000002",
+                },
+            ];
+
+            // Mock the database adapter to return test memories
+            mockDatabaseAdapter.getMemoriesByRoomIds.mockResolvedValue(
+                mockMemories
+            );
+
+            // Execute
+            const result = await memoryManager.getMemoriesByRoomIds({
+                roomIds,
+            });
+
+            // Assert
+            expect(
+                mockDatabaseAdapter.getMemoriesByRoomIds
+            ).toHaveBeenCalledWith({
+                tableName: "test_memories",
+                agentId: "test-agent-id",
+                roomIds,
+                limit: undefined,
+                userId: undefined,
+            });
+            expect(result).toEqual(mockMemories);
+        });
+
+        it("should apply limit parameter when provided", async () => {
+            // Setup
+            const roomIds = [
+                "00000000-0000-0000-0000-000000000001",
+                "00000000-0000-0000-0000-000000000002",
+                "00000000-0000-0000-0000-000000000003",
+            ] as UUID[];
+            const limit = 5;
+            const mockMemories = [
+                {
+                    id: "memory-1",
+                    roomId: "00000000-0000-0000-0000-000000000001",
+                },
+                {
+                    id: "memory-2",
+                    roomId: "00000000-0000-0000-0000-000000000002",
+                },
+            ];
+
+            // Mock the database adapter
+            mockDatabaseAdapter.getMemoriesByRoomIds.mockResolvedValue(
+                mockMemories
+            );
+
+            // Execute
+            const result = await memoryManager.getMemoriesByRoomIds({
+                roomIds,
+                limit,
+            });
+
+            // Assert
+            expect(
+                mockDatabaseAdapter.getMemoriesByRoomIds
+            ).toHaveBeenCalledWith({
+                tableName: "test_memories",
+                agentId: "test-agent-id",
+                roomIds,
+                limit,
+                userId: undefined,
+            });
+            expect(result).toEqual(mockMemories);
+        });
+
+        it("should filter by userId when provided", async () => {
+            // Setup
+            const roomIds = ["00000000-0000-0000-0000-000000000001"] as UUID[];
+            const userId = "00000000-0000-0000-0000-000000000123" as UUID;
+            const mockMemories = [
+                {
+                    id: "memory-1",
+                    roomId: "00000000-0000-0000-0000-000000000001",
+                    userId,
+                },
+            ];
+
+            // Mock the database adapter
+            mockDatabaseAdapter.getMemoriesByRoomIds.mockResolvedValue(
+                mockMemories
+            );
+
+            // Execute
+            const result = await memoryManager.getMemoriesByRoomIds({
+                roomIds,
+                userId,
+            });
+
+            // Assert
+            expect(
+                mockDatabaseAdapter.getMemoriesByRoomIds
+            ).toHaveBeenCalledWith({
+                tableName: "test_memories",
+                agentId: "test-agent-id",
+                roomIds,
+                limit: undefined,
+                userId,
+            });
+            expect(result).toEqual(mockMemories);
+        });
+
+        it("should handle empty array of room IDs", async () => {
+            // Setup
+            const roomIds = [] as UUID[];
+
+            // Mock the database adapter
+            mockDatabaseAdapter.getMemoriesByRoomIds.mockResolvedValue([]);
+
+            // Execute
+            const result = await memoryManager.getMemoriesByRoomIds({
+                roomIds,
+            });
+
+            // Assert
+            expect(
+                mockDatabaseAdapter.getMemoriesByRoomIds
+            ).toHaveBeenCalledWith({
+                tableName: "test_memories",
+                agentId: "test-agent-id",
+                roomIds: [],
+                limit: undefined,
+                userId: undefined,
+            });
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe("getMemoryById", () => {
+        it("should return memory when found and belongs to agent", async () => {
+            // Setup
+            const memoryId = "00000000-0000-0000-0000-000000000001" as UUID;
+            const mockMemory = {
+                id: memoryId,
+                agentId: "test-agent-id" as UUID,
+                content: { text: "Test memory content" },
+            };
+            mockDatabaseAdapter.getMemoryById.mockResolvedValue(mockMemory);
+
+            // Execute
+            const result = await memoryManager.getMemoryById(memoryId);
+
+            // Assert
+            expect(mockDatabaseAdapter.getMemoryById).toHaveBeenCalledWith(
+                memoryId
+            );
+            expect(result).toEqual(mockMemory);
+        });
+
+        it("should return null when memory belongs to different agent", async () => {
+            // Setup
+            const memoryId = "00000000-0000-0000-0000-000000000001" as UUID;
+            const mockMemory = {
+                id: memoryId,
+                agentId: "different-agent-id" as UUID,
+                content: { text: "Test memory content" },
+            };
+            mockDatabaseAdapter.getMemoryById.mockResolvedValue(mockMemory);
+
+            // Execute
+            const result = await memoryManager.getMemoryById(memoryId);
+
+            // Assert
+            expect(mockDatabaseAdapter.getMemoryById).toHaveBeenCalledWith(
+                memoryId
+            );
+            expect(result).toBeNull();
+        });
+
+        it("should return null when memory not found", async () => {
+            // Setup
+            const memoryId = "00000000-0000-0000-0000-000000000001" as UUID;
+            mockDatabaseAdapter.getMemoryById.mockResolvedValue(null);
+
+            // Execute
+            const result = await memoryManager.getMemoryById(memoryId);
+
+            // Assert
+            expect(mockDatabaseAdapter.getMemoryById).toHaveBeenCalledWith(
+                memoryId
+            );
+            expect(result).toBeNull();
+        });
+    });
+
+    describe("removeMemory", () => {
+        it("should remove memory from database and vector store", async () => {
+            // Setup
+            const memoryId = "00000000-0000-0000-0000-000000000001" as UUID;
+
+            // Execute
+            await memoryManager.removeMemory(memoryId);
+
+            // Assert
+            expect(memoryManager.vectorDB.removeVector).toHaveBeenCalledWith(
+                memoryId,
+                "test-agent-id"
+            );
+            expect(mockDatabaseAdapter.removeMemory).toHaveBeenCalledWith(
+                memoryId,
+                "test_memories"
+            );
+        });
+    });
+
+    describe("removeAllMemories", () => {
+        it("should remove all memories for a room", async () => {
+            // Setup
+            const roomId = "00000000-0000-0000-0000-000000000001" as UUID;
+
+            // Execute
+            await memoryManager.removeAllMemories(roomId);
+
+            // Assert
+            expect(memoryManager.vectorDB.removeByFilter).toHaveBeenCalledWith(
+                {
+                    type: "test_memories",
+                    roomId,
+                },
+                "test-agent-id"
+            );
+            expect(mockDatabaseAdapter.removeAllMemories).toHaveBeenCalledWith(
+                roomId,
+                "test_memories"
+            );
+        });
+    });
+
+    describe("countMemories", () => {
+        it("should count memories with default unique parameter", async () => {
+            // Setup
+            const roomId = "00000000-0000-0000-0000-000000000001" as UUID;
+            const count = 5;
+            mockDatabaseAdapter.countMemories.mockResolvedValue(count);
+
+            // Execute
+            const result = await memoryManager.countMemories(roomId);
+
+            // Assert
+            expect(mockDatabaseAdapter.countMemories).toHaveBeenCalledWith(
+                roomId,
+                true,
+                "test_memories"
+            );
+            expect(result).toBe(count);
+        });
+
+        it("should count memories with unique parameter set to false", async () => {
+            // Setup
+            const roomId = "00000000-0000-0000-0000-000000000001" as UUID;
+            const count = 10;
+            mockDatabaseAdapter.countMemories.mockResolvedValue(count);
+
+            // Execute
+            const result = await memoryManager.countMemories(roomId, false);
+
+            // Assert
+            expect(mockDatabaseAdapter.countMemories).toHaveBeenCalledWith(
+                roomId,
+                false,
+                "test_memories"
+            );
+            expect(result).toBe(count);
         });
     });
 });
