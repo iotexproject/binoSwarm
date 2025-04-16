@@ -130,7 +130,7 @@ export class MessageManager {
                 return;
             }
 
-            const shouldIgnore = await this.shouldIgnore(message);
+            const shouldIgnore = this.shouldIgnore(message);
             if (shouldIgnore) {
                 return;
             }
@@ -663,7 +663,7 @@ export class MessageManager {
         return true;
     }
 
-    private async shouldIgnore(message: DiscordMessage): Promise<boolean> {
+    private shouldIgnore(message: DiscordMessage): boolean {
         const messageContent = this.normalizeMessageContent(message);
 
         const isShort = this.isShortWithLoseInterestWords(messageContent);
