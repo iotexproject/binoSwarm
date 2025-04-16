@@ -53,8 +53,11 @@ export class MemoryManager implements IMemoryManager {
     }
 
     async getCachedEmbeddings(content: string): Promise<number[]> {
-        const contentHash = this.vectorDB.hashInput(content);
+        if (!content) {
+            return null;
+        }
 
+        const contentHash = this.vectorDB.hashInput(content);
         const matches = await this.vectorDB.search({
             vector: getDimentionZeroEmbedding(),
             namespace: this.runtime.agentId.toString(),
@@ -86,7 +89,7 @@ export class MemoryManager implements IMemoryManager {
             return;
         }
 
-        elizaLogger.log("Creating Memory", memory.id, memory.content.text);
+        elizaLogger.log("Creating Memory", memory.id, memory.content?.text);
         await this.embedAndPersist(memory, source, unique, isVectorRequired);
     }
 
@@ -156,10 +159,24 @@ export class MemoryManager implements IMemoryManager {
             unique
         );
 
+        if (!memory.content || typeof memory.content.text !== "string") {
+            elizaLogger.warn(
+                `Invalid memory content for memory ${memory.id}, proceeding without vector storage`
+            );
+            return;
+        }
+
         if (!isVectorRequired) {
             return;
         }
-        // don't await this, continue handle user message as soon as possible
+
+        if (!memory.content.text.trim()) {
+            elizaLogger.debug(
+                `Empty content for memory ${memory.id}, skipping vector creation`
+            );
+            return;
+        }
+
         this.persistVectorData(memory, source, unique);
     }
 
@@ -168,23 +185,44 @@ export class MemoryManager implements IMemoryManager {
         source: string,
         unique: boolean
     ) {
-        const embedding = await embed(this.runtime, item.content.text, unique);
-        await this.vectorDB.upsert({
-            namespace: this.runtime.agentId.toString(),
-            values: [
-                {
-                    id: item.id,
-                    values: embedding,
-                    metadata: {
-                        type: this.tableName,
-                        createdAt: Date.now().toString(),
-                        userId: item.userId,
-                        roomId: item.roomId,
-                        source: source,
-                        inputHash: this.vectorDB.hashInput(item.content.text),
+        try {
+            const embedding = await embed(
+                this.runtime,
+                item.content.text,
+                unique
+            );
+
+            if (!embedding || embedding.length === 0) {
+                elizaLogger.warn(
+                    `Empty embedding returned for memory ${item.id}, skipping vector storage`
+                );
+                return;
+            }
+
+            await this.vectorDB.upsert({
+                namespace: this.runtime.agentId.toString(),
+                values: [
+                    {
+                        id: item.id,
+                        values: embedding,
+                        metadata: {
+                            type: this.tableName,
+                            createdAt: Date.now().toString(),
+                            userId: item.userId,
+                            roomId: item.roomId,
+                            source: source,
+                            inputHash: this.vectorDB.hashInput(
+                                item.content.text
+                            ),
+                        },
                     },
-                },
-            ],
-        });
+                ],
+            });
+        } catch (error) {
+            elizaLogger.error(
+                `Error creating vector for memory ${item.id}:`,
+                error
+            );
+        }
     }
 }
