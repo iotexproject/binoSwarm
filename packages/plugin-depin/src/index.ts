@@ -1,6 +1,13 @@
 export * from "./actions/sentai";
 export * from "./services/quicksilver";
+
 export * from "./schemas/quicksilver";
+export * from "./schemas/calculator";
+export * from "./schemas/news";
+export * from "./schemas/nubila";
+export * from "./schemas/depinscan";
+export * from "./schemas/iotexl1";
+export * from "./schemas/mapbox";
 
 import type { Plugin } from "@elizaos/core";
 

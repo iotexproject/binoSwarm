@@ -3,7 +3,6 @@ import { z } from "zod";
 const description = `
 Provides real-time data access for answering factual questions about the world.
 Use for NEWS, BLOCKCHAIN, ENVIRONMENT, FINANCE, NAVIGATION, UTILITIES questions.
-HIGHLY DISCOURAGE TO USE IN VOICE CHANNELS, REQUIRES HIGH LATENCY AND HIGH COST.
 `;
 export const qsSchema = {
     name: "quicksilver",
