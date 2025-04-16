@@ -424,7 +424,7 @@ export class AgentRuntime implements IAgentRuntime {
     async composeState(
         message: Memory,
         additionalKeys: { [key: string]: unknown } = {},
-        fastMode: boolean = false
+        _fastMode: boolean = false
     ) {
         const { userId, roomId } = message;
 
@@ -437,7 +437,7 @@ export class AgentRuntime implements IAgentRuntime {
             messagesAndActorsRes,
         ] = await Promise.all([
             this.getAndFormatGoals(roomId, userId),
-            this.getAndFormatKnowledge(fastMode, message),
+            this.getAndFormatKnowledge(message),
             this.getRecentInteractions(userId, this.agentId, roomId),
             this.getMssgsAndActors(roomId),
         ]);
@@ -513,11 +513,7 @@ export class AgentRuntime implements IAgentRuntime {
         } as State;
 
         const actionStateStart = Date.now();
-        const actionState = await this.buildActionState(
-            message,
-            initialState,
-            fastMode
-        );
+        const actionState = await this.buildActionState(message, initialState);
         const actionStateTime = Date.now() - actionStateStart;
         elizaLogger.info(`Action state took ${actionStateTime}ms`);
         return { ...initialState, ...actionState } as State;
@@ -859,11 +855,7 @@ export class AgentRuntime implements IAgentRuntime {
         });
     }
 
-    private async buildActionState(
-        message: Memory,
-        initialState: State,
-        fastMode: boolean
-    ) {
+    private async buildActionState(message: Memory, initialState: State) {
         const actionPromises = this.getActionValidationPromises(
             message,
             initialState
@@ -872,15 +864,12 @@ export class AgentRuntime implements IAgentRuntime {
             message,
             initialState
         );
-        const providersPromise = !fastMode
-            ? getProviders(this, message, initialState)
-            : "";
 
         const [resolvedEvaluators, resolvedActions, providers] =
             await Promise.all([
                 Promise.all(evaluatorPromises),
                 Promise.all(actionPromises),
-                providersPromise,
+                getProviders(this, message, initialState),
             ]);
 
         const evaluatorsData = resolvedEvaluators.filter(
@@ -1030,11 +1019,11 @@ export class AgentRuntime implements IAgentRuntime {
             : "";
     }
 
-    private async getAndFormatKnowledge(fastMode: boolean, message: Memory) {
+    private async getAndFormatKnowledge(message: Memory) {
         let knowledgeData = [];
         let formattedKnowledge = "";
 
-        if (!fastMode && message?.content?.text) {
+        if (message?.content?.text) {
             try {
                 // Validate the message content before passing to getKnowledge
                 const query = message.content.text.trim();
