@@ -49,10 +49,11 @@ import { AudioMonitor } from "./AudioMonitor.ts";
 const DECODE_FRAME_SIZE = 1024;
 const DECODE_SAMPLE_RATE = 16000;
 const VOLUME_WINDOW_SIZE = 30;
-const SPEAKING_THRESHOLD = 0.05;
-const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 100; // wait for x ms of silence
-const VAD_MODE = 3; // 0-3, with 3 being most aggressive
-const SILENT_FRAMES_THRESHOLD = 15; // Number of consecutive silent frames to consider as end of speech
+const SPEAKING_THRESHOLD = 0.1;
+const DEBOUNCE_TRANSCRIPTION_THRESHOLD = 300;
+const VAD_MODE = 2;
+const SILENT_FRAMES_THRESHOLD = 20;
+const MIN_AUDIO_LENGTH_FOR_PROCESSING = 1024 * 8;
 
 type Message = {
     content: ResContent[];
@@ -626,6 +627,16 @@ export class VoiceManager extends EventEmitter {
         try {
             const inputBuffer = Buffer.concat(state.buffers, state.totalLength);
 
+            // Skip processing if the audio is too short (likely noise)
+            if (inputBuffer.length < MIN_AUDIO_LENGTH_FOR_PROCESSING) {
+                elizaLogger.log(
+                    `Skipping short audio from ${name} (${inputBuffer.length} bytes)`
+                );
+                state.buffers.length = 0; // Clear the buffers
+                state.totalLength = 0;
+                return;
+            }
+
             state.buffers.length = 0; // Clear the buffers
             state.totalLength = 0;
             // Convert Opus to WAV
@@ -637,7 +648,23 @@ export class VoiceManager extends EventEmitter {
                 .transcribe(wavBuffer);
 
             function isValidTranscription(text: string): boolean {
+                // Check for empty or explicit blank audio markers
                 if (!text || text.includes("[BLANK_AUDIO]")) return false;
+
+                // Filter out short transcriptions that are likely noise
+                if (text.trim().length < 3) return false;
+
+                // Filter out transcriptions that are just sounds/noise markers
+                const noisePatterns = [
+                    /^\s*[[({\w]*[\])}]\s*$/, // Text only in brackets/parentheses like [sound] or (noise)
+                    /^\s*[^a-zA-Z0-9]+\s*$/, // No alphanumeric characters
+                    /^\s*(um+|uh+|er+|hmm+)\s*$/i, // Just filler sounds
+                    /^\s*(inaudible|unintelligible|background noise)\s*$/i, // Explicitly marked as unintelligible
+                ];
+
+                if (noisePatterns.some((pattern) => pattern.test(text)))
+                    return false;
+
                 return true;
             }
 
