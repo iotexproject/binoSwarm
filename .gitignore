@@ -70,3 +70,7 @@ eliza.sig
 *.csr.pem
 *.csr.pem.crt
 *.csr.pem.key
+
+scripts/cleaned_tweets.json
+scripts/responses.json
+scripts/tweets.json
