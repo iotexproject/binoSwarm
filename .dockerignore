@@ -23,3 +23,7 @@ build
 *.key
 *.pem
 *.csr
+
+scripts/cleaned_tweets.json
+scripts/responses.json
+scripts/tweets.json
