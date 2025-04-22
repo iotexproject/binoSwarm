@@ -8,6 +8,7 @@ import {
     ModelClass,
     Evaluator,
 } from "@elizaos/core";
+import { factsTemplate } from "../templates";
 
 export const formatFacts = (facts: Memory[]) => {
     const messageStrings = facts
@@ -16,41 +17,6 @@ export const formatFacts = (facts: Memory[]) => {
     const finalMessageStrings = messageStrings.join("\n");
     return finalMessageStrings;
 };
-
-const factsTemplate =
-    // {{actors}}
-    `TASK: Extract Claims from the conversation as an array of claims in JSON format.
-
-# START OF EXAMPLES
-These are an examples of the expected output of this task:
-{{evaluationExamples}}
-# END OF EXAMPLES
-
-# INSTRUCTIONS
-
-Extract any claims from the conversation that are not already present in the list of known facts above:
-- Try not to include already-known facts. If you think a fact is already known, but you're not sure, respond with already_known: true.
-- If the fact is already in the user's description, set in_bio to true
-- If we've already extracted this fact, set already_known to true
-- Set the claim type to 'status', 'fact' or 'opinion'
-- For true facts about the world or the character that do not change, set the claim type to 'fact'
-- For facts that are true but change over time, set the claim type to 'status'
-- For non-facts, set the type to 'opinion'
-- 'opinion' inlcudes non-factual opinions and also includes the character's thoughts, feelings, judgments or recommendations
-- Include any factual detail, including where the user lives, works, or goes to school, what they do for a living, their hobbies, and any other relevant information
-
-Recent Messages:
-{{recentMessages}}
-
-Response should be a JSON object array inside a JSON markdown block. Correct response format:
-<response>
-[
-  {"claim": string, "type": enum<fact|opinion|status>, in_bio: boolean, already_known: boolean },
-  {"claim": string, "type": enum<fact|opinion|status>, in_bio: boolean, already_known: boolean },
-  ...
-]
-</response>
-`;
 
 async function handler(runtime: IAgentRuntime, message: Memory) {
     const state = await runtime.composeState(message);
@@ -88,6 +54,7 @@ async function handler(runtime: IAgentRuntime, message: Memory) {
         schema: factsSchema,
         schemaName: "facts",
         schemaDescription: "The facts extracted from the conversation",
+        customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
     });
 
     const facts = factsRes.object?.facts || [];

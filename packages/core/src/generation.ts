@@ -146,6 +146,7 @@ export async function generateShouldRespond({
             schema: shouldRespondSchema,
             schemaName: "ShouldRespond",
             schemaDescription: "A boolean value",
+            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
         });
 
         return response.object.response;
@@ -190,6 +191,7 @@ export async function generateTrueOrFalse({
             schema: booleanSchema,
             schemaName: "Boolean",
             schemaDescription: "A boolean value",
+            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
         });
 
         return response.object.response;
@@ -415,6 +417,7 @@ export async function generateTweetActions({
             schema: actionsSchema,
             schemaName: "Actions",
             schemaDescription: "The actions to take on the tweet",
+            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
         });
 
         return response.object;

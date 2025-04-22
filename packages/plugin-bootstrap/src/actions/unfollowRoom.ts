@@ -8,19 +8,7 @@ import {
     ModelClass,
     State,
 } from "@elizaos/core";
-
-const shouldUnfollowTemplate = `Based on the conversation so far:
-
-{{recentMessages}}
-
-Should {{agentName}} stop closely following this previously followed room and only respond when mentioned?
-Respond with true if:
-- The user has suggested that {{agentName}} is over-participating or being disruptive
-- {{agentName}}'s eagerness to contribute is not well-received by the users
-- The conversation has shifted to a topic where {{agentName}} has less to add
-
-Otherwise, respond with false.
-`;
+import { shouldUnfollowTemplate } from "../templates";
 
 export const unfollowRoomAction: Action = {
     name: "UNFOLLOW_ROOM",

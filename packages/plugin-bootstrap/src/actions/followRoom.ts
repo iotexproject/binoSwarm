@@ -8,19 +8,7 @@ import {
     ModelClass,
     State,
 } from "@elizaos/core";
-
-export const shouldFollowTemplate = `Based on the conversation so far:
-
-{{recentMessages}}
-
-Should {{agentName}} start following this room, eagerly participating without explicit mentions?
-Respond with true if:
-- The user has directly asked {{agentName}} to follow the conversation or participate more actively
-- The conversation topic is highly engaging and {{agentName}}'s input would add significant value
-- {{agentName}} has unique insights to contribute and the users seem receptive
-
-Otherwise, respond with false.
-`;
+import { shouldFollowTemplate } from "../templates";
 
 export const followRoomAction: Action = {
     name: "FOLLOW_ROOM",

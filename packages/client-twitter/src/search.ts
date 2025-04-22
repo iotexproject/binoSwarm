@@ -13,32 +13,7 @@ import {
 import { stringToUuid } from "@elizaos/core";
 import { ClientBase } from "./base";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
-
-const twitterSearchTemplate = `{{timeline}}
-
-{{providers}}
-
-Recent interactions between {{agentName}} and other users:
-{{recentPostInteractions}}
-
-About {{agentName}} (@{{twitterUserName}}):
-{{bio}}
-{{lore}}
-{{topics}}
-
-{{postDirections}}
-
-{{recentPosts}}
-
-# Task: Respond to the following post in the style and perspective of {{agentName}} (aka @{{twitterUserName}}). Write a {{adjective}} response for {{agentName}} to say directly in response to the post. don't generalize.
-{{currentPost}}
-
-IMPORTANT: Your response CANNOT be longer than 20 words.
-Aim for 1-2 short sentences maximum. Be concise and direct.
-
-Your response should not contain any questions. Brief, concise statements only. No emojis. Use \\n\\n (double spaces) between statements.
-
-`;
+import { twitterSearchTemplate } from "./templates";
 
 export class TwitterSearchClient {
     client: ClientBase;

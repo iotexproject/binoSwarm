@@ -43,6 +43,7 @@ export const describeImage: Action = {
             schemaName: "fileLocationResult",
             schemaDescription: "The file location result",
             stop: ["\n"],
+            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
 
         if (

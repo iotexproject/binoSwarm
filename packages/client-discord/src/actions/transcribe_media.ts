@@ -10,19 +10,7 @@ import {
     State,
 } from "@elizaos/core";
 import { z } from "zod";
-
-export const transcriptionTemplate = `# Transcription of media file
-{{mediaTranscript}}
-
-# Instructions: Return only the full transcript of the media file without any additional context or commentary.`;
-
-export const mediaAttachmentIdTemplate = `# Messages we are transcribing
-{{recentMessages}}
-
-# Instructions: {{senderName}} is requesting a transcription of a specific media file (audio or video). Your goal is to determine the ID of the attachment they want transcribed.
-The "attachmentId" is the ID of the media file attachment that the user wants transcribed. If not specified, return null.
-\`\`\`
-`;
+import { mediaAttachmentIdTemplate } from "./templates";
 
 const getMediaAttachmentId = async (
     runtime: IAgentRuntime,
@@ -52,6 +40,7 @@ const getMediaAttachmentId = async (
             schema: mediaAttachmentIdSchema,
             schemaName: "mediaAttachmentId",
             schemaDescription: "The ID of the media file to transcribe",
+            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
         });
         elizaLogger.log("response", response);
         const parsedResponse = mediaAttachmentIdSchema.parse(response.object);

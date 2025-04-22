@@ -10,46 +10,12 @@ import {
     ModelClass,
     State,
 } from "@elizaos/core";
+import {
+    continueMessageHandlerTemplate,
+    shouldContinueTemplate,
+} from "../templates";
 
 const maxContinuesInARow = 3;
-
-export const messageHandlerTemplate =
-    // {{goals}}
-    `# Action Examples
-{{actionExamples}}
-(Action examples are for reference only. Do not use the information from them in your response.)
-
-# Task: Generate dialog and actions for the character {{agentName}}.
-About {{agentName}}:
-{{bio}}
-{{lore}}
-{{knowledge}}
-
-{{providers}}
-
-{{attachments}}
-
-# Capabilities
-Note that {{agentName}} is capable of reading/seeing/hearing various forms of media, including images, videos, audio, plaintext and PDFs. Recent attachments have been included above under the "Attachments" section.
-
-{{messageDirections}}
-
-{{recentMessages}}
-
-{{actions}}
-
-# Instructions: Write the next message for {{agentName}}.
-`;
-
-export const shouldContinueTemplate = `# Task: Decide if {{agentName}} should continue, or wait for others in the conversation so speak.
-
-{{agentName}} is brief, and doesn't want to be annoying. {{agentName}} will only continue if the message requires a continuation to finish the thought.
-
-Based on the following conversation, should {{agentName}} continue? true or false
-
-{{recentMessages}}
-
-Should {{agentName}} continue? `;
 
 export const continueAction: Action = {
     name: "CONTINUE",
@@ -185,7 +151,7 @@ export const continueAction: Action = {
             template:
                 runtime.character.templates?.continueMessageHandlerTemplate ||
                 runtime.character.templates?.messageHandlerTemplate ||
-                messageHandlerTemplate,
+                continueMessageHandlerTemplate,
         });
         const { userId, roomId } = message;
 
