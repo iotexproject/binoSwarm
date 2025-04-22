@@ -66,6 +66,7 @@ async function handler(
         schema: updatesSchema,
         schemaName: "updates",
         schemaDescription: "The updates to the goals",
+        customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
     });
 
     const updates = updatesRes.object?.updates || [];
