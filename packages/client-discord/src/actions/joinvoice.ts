@@ -20,6 +20,7 @@ import {
     GuildMember,
 } from "discord.js";
 import { joinVoiceChannel } from "@discordjs/voice";
+import { joinVoiceTemplate } from "./templates";
 
 export default {
     name: "JOIN_VOICE",
@@ -141,18 +142,6 @@ export default {
                 return true;
             }
 
-            const messageTemplate = `
-The user has requested to join a voice channel.
-Here is the list of channels available in the server:
-{{voiceChannels}}
-
-Here is the user's request:
-{{userMessage}}
-
-Please respond with the name of the voice channel which the bot should join. Try to infer what channel the user is talking about. If the user didn't specify a voice channel, respond with "none".
-You should only respond with the name of the voice channel or none, no commentary or additional information should be included.
-`;
-
             const guessState = {
                 userMessage: message.content.text,
                 voiceChannels: voiceChannels
@@ -161,7 +150,7 @@ You should only respond with the name of the voice channel or none, no commentar
             };
 
             const context = composeContext({
-                template: messageTemplate,
+                template: joinVoiceTemplate,
                 state: guessState as unknown as State,
             });
 

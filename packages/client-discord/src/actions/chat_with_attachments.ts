@@ -17,24 +17,10 @@ import {
 } from "@elizaos/core";
 import * as fs from "fs";
 import { z } from "zod";
-
-export const summarizationTemplate = `# Summarized so far (we are adding to this)
-{{currentSummary}}
-
-# Current attachments we are summarizing
-{{attachmentsWithText}}
-
-Summarization objective: {{objective}}
-
-# Instructions: Summarize the attachments. Return the summary. Do not acknowledge this request, just summarize and continue the existing summary if there is one. Capture any important details based on the objective. Only respond with the new summary text.`;
-
-export const attachmentIdsTemplate = `# Messages we are summarizing
-{{recentMessages}}
-
-# Instructions: {{senderName}} is requesting a summary of specific attachments. Your goal is to determine their objective, along with the list of attachment IDs to summarize.
-The "objective" is a detailed description of what the user wants to summarize based on the conversation.
-The "attachmentIds" is an array of attachment IDs that the user wants to summarize. If not specified, default to including all attachments from the conversation.
-`;
+import {
+    attachmentIdsTemplate,
+    summarizationWithAttachmentsTemplate,
+} from "./templates";
 
 const getAttachmentIds = async (
     runtime: IAgentRuntime,
@@ -202,7 +188,7 @@ const summarizeAction = {
         state.attachmentsWithText = attachmentsWithText;
         state.objective = objective;
         const template = await trimTokens(
-            summarizationTemplate,
+            summarizationWithAttachmentsTemplate,
             chunkSize + 500,
             runtime
         );
