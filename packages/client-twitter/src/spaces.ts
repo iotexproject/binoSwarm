@@ -17,6 +17,10 @@ import {
     SpeakerRequest,
 } from "agent-twitter-client";
 import { SttTtsPlugin } from "./plugins/SttTtsSpacesPlugin.ts";
+import {
+    twitterSpaceFillerTemplate,
+    twitterSpaceTopicSuggestionTemplate,
+} from "./templates";
 
 interface SpaceDecisionOptions {
     maxSpeakers?: number;
@@ -53,14 +57,7 @@ async function generateFiller(
     try {
         const context = composeContext({
             state: { fillerType },
-            template: `
-# INSTRUCTIONS:
-You are generating a short filler message for a Twitter Space. The filler type is "{{fillerType}}".
-Keep it brief, friendly, and relevant. No more than two sentences.
-Only return the text, no additional formatting.
-
----
-`,
+            template: twitterSpaceFillerTemplate,
         });
         const output = await generateText({
             runtime,
@@ -104,15 +101,7 @@ async function generateTopicsIfEmpty(
     try {
         const context = composeContext({
             state: {},
-            template: `
-# INSTRUCTIONS:
-Please generate 5 short topic ideas for a Twitter Space about technology or random interesting subjects.
-Return them as a comma-separated list, no additional formatting or numbering.
-
-Example:
-"AI Advances, Futuristic Gadgets, Space Exploration, Quantum Computing, Digital Ethics"
----
-`,
+            template: twitterSpaceTopicSuggestionTemplate,
         });
         const response = await generateText({
             runtime,

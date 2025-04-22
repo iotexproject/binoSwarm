@@ -92,3 +92,120 @@ Remember:
 
 Your final output should consist only of the SENTAI's answer, without duplicating or rehashing any of the thought process from your thinking block.
 `;
+
+export const twitterMessageHandlerTemplate = `
+# Areas of Expertise
+{{knowledge}}
+
+# About {{agentName}} (@{{twitterUserName}}):
+{{bio}}
+{{lore}}
+{{topics}}
+
+{{providers}}
+
+{{characterPostExamples}}
+
+{{postDirections}}
+
+Recent interactions between {{agentName}} and other users:
+{{recentPostInteractions}}
+
+{{recentPosts}}
+
+# TASK: Generate a post/reply in the voice, style and perspective of {{agentName}} (@{{twitterUserName}}) while using the thread of tweets as additional context:
+
+Current Post:
+{{currentPost}}
+Here is the descriptions of images in the Current post.
+{{imageDescriptions}}
+
+Thread of Tweets You Are Replying To:
+{{formattedConversation}}
+
+# INSTRUCTIONS: Generate a post in the voice, style and perspective of {{agentName}} (@{{twitterUserName}}). You MUST include an action if the current post text includes a prompt that is similar to one of the available actions mentioned here:
+{{actionNames}}
+{{actions}}
+
+Here is the current post text again. Remember to include an action if the current post text includes a prompt that asks for one of the available actions mentioned above (does not need to be exact)
+{{currentPost}}
+Here is the descriptions of images in the Current post.
+{{imageDescriptions}}
+`;
+
+export const twitterShouldRespondTemplate = (targetUsersStr: string) =>
+    `# INSTRUCTIONS: Determine if {{agentName}} (@{{twitterUserName}}) should respond to the message and participate in the conversation. Do not comment. Just respond with "true" or "false".
+
+Response options are RESPOND, IGNORE and STOP.
+
+PRIORITY RULE: ALWAYS RESPOND to these users regardless of topic or message content: ${targetUsersStr}. Topic relevance should be ignored for these users.
+
+For other users:
+- {{agentName}} should RESPOND to messages directed at them
+- {{agentName}} should RESPOND to conversations relevant to their background
+- {{agentName}} should IGNORE irrelevant messages
+- {{agentName}} should IGNORE very short messages unless directly addressed
+- {{agentName}} should STOP if asked to stop
+- {{agentName}} should STOP if conversation is concluded
+- {{agentName}} is in a room with other users and wants to be conversational, but not annoying.
+
+IMPORTANT:
+- {{agentName}} (aka @{{twitterUserName}}) is particularly sensitive about being annoying, so if there is any doubt, it is better to IGNORE than to RESPOND.
+- For users not in the priority list, {{agentName}} (@{{twitterUserName}}) should err on the side of IGNORE rather than RESPOND if in doubt.
+
+Recent Posts:
+{{recentPosts}}
+
+Current Post:
+{{currentPost}}
+
+Thread of Tweets You Are Replying To:
+{{formattedConversation}}
+
+# INSTRUCTIONS: Respond with [RESPOND] if {{agentName}} should respond, or [IGNORE] if {{agentName}} should not respond to the last message and [STOP] if {{agentName}} should stop participating in the conversation.
+`;
+
+export const twitterSearchTemplate = `{{timeline}}
+
+{{providers}}
+
+Recent interactions between {{agentName}} and other users:
+{{recentPostInteractions}}
+
+About {{agentName}} (@{{twitterUserName}}):
+{{bio}}
+{{lore}}
+{{topics}}
+
+{{postDirections}}
+
+{{recentPosts}}
+
+# Task: Respond to the following post in the style and perspective of {{agentName}} (aka @{{twitterUserName}}). Write a {{adjective}} response for {{agentName}} to say directly in response to the post. don't generalize.
+{{currentPost}}
+
+IMPORTANT: Your response CANNOT be longer than 20 words.
+Aim for 1-2 short sentences maximum. Be concise and direct.
+
+Your response should not contain any questions. Brief, concise statements only. No emojis. Use \\n\\n (double spaces) between statements.
+
+`;
+
+export const twitterSpaceFillerTemplate = `
+# INSTRUCTIONS:
+You are generating a short filler message for a Twitter Space. The filler type is "{{fillerType}}".
+Keep it brief, friendly, and relevant. No more than two sentences.
+Only return the text, no additional formatting.
+
+---
+`;
+
+export const twitterSpaceTopicSuggestionTemplate = `
+# INSTRUCTIONS:
+Please generate 5 short topic ideas for a Twitter Space about technology or random interesting subjects.
+Return them as a comma-separated list, no additional formatting or numbering.
+
+Example:
+"AI Advances, Futuristic Gadgets, Space Exploration, Quantum Computing, Digital Ethics"
+---
+`
