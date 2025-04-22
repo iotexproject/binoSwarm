@@ -8,20 +8,7 @@ import {
     ModelClass,
     State,
 } from "@elizaos/core";
-
-export const shouldMuteTemplate = `Based on the conversation so far:
-
-{{recentMessages}}
-
-Should {{agentName}} mute this room and stop responding unless explicitly mentioned?
-
-Respond with true if:
-- The user is being aggressive, rude, or inappropriate
-- The user has directly asked {{agentName}} to stop responding or be quiet
-- {{agentName}}'s responses are not well-received or are annoying the user(s)
-
-Otherwise, respond with false.
-`;
+import { shouldMuteTemplate } from "../templates";
 
 export const muteRoomAction: Action = {
     name: "MUTE_ROOM",

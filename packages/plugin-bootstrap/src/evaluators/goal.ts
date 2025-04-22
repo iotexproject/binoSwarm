@@ -10,32 +10,7 @@ import {
     type State,
     Evaluator,
 } from "@elizaos/core";
-
-const goalsTemplate = `TASK: Update Goal
-Analyze the conversation and update the status of the goals based on the new information provided.
-
-# INSTRUCTIONS
-
-- Review the conversation and identify any progress towards the objectives of the current goals.
-- Update the objectives if they have been completed or if there is new information about them.
-- Update the status of the goal to 'DONE' if all objectives are completed.
-- If no progress is made, do not change the status of the goal.
-
-# START OF ACTUAL TASK INFORMATION
-
-{{goals}}
-{{recentMessages}}
-
-TASK: Analyze the conversation and update the status of the goals based on the new information provided. Respond with a JSON array of goals to update.
-- Each item must include the goal ID, as well as the fields in the goal to update.
-- For updating objectives, include the entire objectives array including unchanged fields.
-- Only include goals which need to be updated.
-- Goal status options are 'IN_PROGRESS', 'DONE' and 'FAILED'. If the goal is active it should always be 'IN_PROGRESS'.
-- If the goal has been successfully completed, set status to DONE. If the goal cannot be completed, set status to FAILED.
-- If those goal is still in progress, do not include the status field.
-
-// NOTE: If updating objectives, include the entire objectives array including unchanged fields.
-`;
+import { goalsTemplate } from "../templates";
 
 async function handler(
     runtime: IAgentRuntime,
