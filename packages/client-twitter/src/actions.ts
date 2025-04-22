@@ -19,7 +19,7 @@ import { ClientBase } from "./base.ts";
 
 import { twitterActionTemplate, twitterPostTemplate } from "./templates.ts";
 import { buildConversationThread } from "./utils.ts";
-import { twitterMessageHandlerTemplate } from "./interactions.ts";
+import { twitterMessageHandlerTemplate } from "./templates.ts";
 import TwitterQuoteClient from "./quote.ts";
 import TwitterLikeClient from "./like.ts";
 import TwitterRetweetClient from "./retweet.ts";
