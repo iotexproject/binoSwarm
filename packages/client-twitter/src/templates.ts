@@ -196,7 +196,19 @@ Here are some tweets related to the search term "{{searchTerm}}":
 
   {{formattedTweets}}
 
-  Which tweet is the most interesting and relevant for {{twitterUserName}} to reply to? Please provide only the ID of the tweet in your response.
+  Which tweet is the most interesting and relevant for {{twitterUserName}} to reply to?
+
+  Here is some information about {{twitterUserName}}:
+  <bio>
+  {{bio}}
+  </bio>
+
+  Here are some topics of interest for {{twitterUserName}}:
+  <topics>
+  {{topics}}
+  </topics>
+
+  Please provide only the ID of the tweet in your response.
   Notes:
     - Respond to tweets that don't have a lot of hashtags, links, URLs or images
     - Respond to tweets that are not retweets

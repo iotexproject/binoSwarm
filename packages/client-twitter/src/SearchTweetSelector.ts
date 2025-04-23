@@ -102,6 +102,8 @@ export class SearchTweetSelector {
             twitterUserName: this.twitterUsername,
             searchTerm,
             formattedTweets: this.formatTweets(slicedTweets),
+            bio: this.runtime.character.bio,
+            topics: [...this.runtime.character.topics],
         };
 
         const prompt = composeContext({
