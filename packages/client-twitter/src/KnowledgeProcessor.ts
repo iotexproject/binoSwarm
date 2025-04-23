@@ -1,3 +1,4 @@
+import { twitterKnowledgeProcessorTemplate } from "./templates";
 import { SearchMode, Tweet } from "agent-twitter-client";
 import {
     IAgentRuntime,
@@ -7,6 +8,7 @@ import {
     IImageDescriptionService,
     ServiceType,
     generateObject,
+    composeContext,
 } from "@elizaos/core";
 import { z } from "zod";
 import { ClientBase } from "./base";
@@ -234,32 +236,60 @@ export class KnowledgeProcessor {
         tweets: Tweet[],
         tweetMediaDescriptions: { tweetId: string; descriptions: any[] }[]
     ) {
-        return `Analyze the following tweets and their media from ${username} and extract key information, insights, or knowledge. Pay special attention to both text content and media descriptions. Ignore promotional or non-informative content.
-
-${tweets
-    .map((tweet) => {
-        const mediaDesc = tweetMediaDescriptions.find(
-            (t) => t.tweetId === tweet.id
+        const formattedTweets = this.formatTweets(
+            tweets,
+            tweetMediaDescriptions
         );
-        return `Tweet ${tweet.id}:
-Text: ${tweet.text}
-${
-    mediaDesc?.descriptions.length
-        ? `Media Descriptions:
-${mediaDesc.descriptions
-    .map(
-        (desc, i) => `Image ${i + 1}: Title: ${desc.title}
-Description: ${desc.description}`
-    )
-    .join("\n")}`
-        : "No media attached"
-}
-`;
-    })
-    .join("\n\n")}
 
-For each tweet that contains valuable information (in either text or media), provide a concise summary and any key knowledge points.
-`;
+        const state = {
+            twitterUserName: username,
+            formattedTweets: formattedTweets,
+        };
+
+        const prompt = composeContext({
+            // @ts-expect-error: current state is enough to generate the prompt
+            state: state,
+            twitterKnowledgeProcessorTemplate,
+        });
+
+        return prompt;
+    }
+
+    private formatTweets(
+        tweets: Tweet[],
+        tweetMediaDescriptions: { tweetId: string; descriptions: any[] }[]
+    ) {
+        return tweets
+            .map((tweet) => {
+                const mediaDesc = tweetMediaDescriptions.find(
+                    (t) => t.tweetId === tweet.id
+                );
+
+                // Format the tweet header and text
+                let formattedTweet = `Tweet ${tweet.id}:\n    Text: ${tweet.text}\n`;
+
+                // Add media descriptions if available
+                if (mediaDesc?.descriptions.length) {
+                    const mediaContent = this.formatMediaDescriptions(
+                        mediaDesc.descriptions
+                    );
+                    formattedTweet += `    Media Descriptions:\n${mediaContent}`;
+                } else {
+                    formattedTweet += "    No media attached\n";
+                }
+
+                return formattedTweet;
+            })
+            .join("\n\n");
+    }
+
+    private formatMediaDescriptions(descriptions: any[]) {
+        return descriptions
+            .map(
+                (desc, i) =>
+                    `Image ${i + 1}: Title: ${desc.title}\nDescription: ${desc.description}`
+            )
+            .join("\n");
     }
 
     private async describeMedia(tweets: Tweet[]) {

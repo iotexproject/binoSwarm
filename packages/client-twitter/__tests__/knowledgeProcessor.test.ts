@@ -21,6 +21,7 @@ vi.mock("@elizaos/core", async () => {
             log: vi.fn(),
             error: vi.fn(),
         },
+        composeContext: vi.fn().mockReturnValue(""),
         stringToUuid: vi.fn((str) => `uuid-${str}`),
         generateObject: vi.fn().mockResolvedValue({
             object: {
