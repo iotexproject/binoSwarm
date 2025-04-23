@@ -159,8 +159,32 @@ export class SearchTweetSelector {
     }
 
     private getSearchTerm() {
-        return [...this.runtime.character.topics][
-            Math.floor(Math.random() * this.runtime.character.topics.length)
-        ];
+        // Use TWITTER_SEARCH_TERMS from environment if available
+        const searchTerms = this.client.twitterConfig.TWITTER_SEARCH_TERMS;
+
+        if (searchTerms && searchTerms.length > 0) {
+            const searchTerm =
+                searchTerms[Math.floor(Math.random() * searchTerms.length)];
+            elizaLogger.log("Using configured search term:", searchTerm);
+            return searchTerm;
+        }
+
+        // Fall back to character topics if no search terms configured
+        const topics = [...this.runtime.character.topics];
+
+        // Ensure we have topics to choose from
+        if (topics && topics.length > 0) {
+            const topicTerm = topics[Math.floor(Math.random() * topics.length)];
+            elizaLogger.log("Using character topic as search term:", topicTerm);
+            return topicTerm;
+        }
+
+        // Default fallback if no topics are available
+        const defaultTerm = "technology";
+        elizaLogger.log(
+            "No topics available, using default search term:",
+            defaultTerm
+        );
+        return defaultTerm;
     }
 }
