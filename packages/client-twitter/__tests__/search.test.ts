@@ -584,5 +584,86 @@ describe("TwitterSearchClient", () => {
             expect(tweetContext).not.toContain("Images in Post (Described)");
             expect(tweetContext).not.toContain("URLs:");
         });
+
+        it("should handle retweets correctly", async () => {
+            // Create a retweet mock
+            const retweetMock = createMockTweet({
+                id: "retweet-123456",
+                text: "RT @originalauthor: Original tweet content",
+                conversationId: "conversation-rt-123",
+                userId: "retweeter-456",
+                username: "retweeter",
+                name: "Retweeter User",
+                isRetweet: true,
+                retweetedTweet: {
+                    id: "original-123456",
+                    text: "Original tweet content",
+                    username: "originalauthor",
+                    name: "Original Author",
+                },
+                timestamp: 1630000000,
+            });
+
+            // Mock the getTweet method to return the original tweet
+            const originalTweetMock = createMockTweet({
+                id: "original-123456",
+                text: "Original tweet content",
+                username: "originalauthor",
+                name: "Original Author",
+            });
+
+            baseClient.twitterClient.getTweet = vi
+                .fn()
+                .mockResolvedValue(originalTweetMock);
+            baseClient.requestQueue.add = vi.fn((fn) => fn());
+
+            // Setup mock for composeState
+            mockRuntime.composeState = vi.fn().mockResolvedValue({
+                stateKey: "stateValue",
+            });
+
+            // Mock the message creation and other methods
+            (searchClient as any).createMessageFromTweet = vi
+                .fn()
+                .mockResolvedValue({
+                    id: "message-id",
+                    content: { text: "Test content" },
+                });
+            (searchClient as any).buildReplyContext = vi
+                .fn()
+                .mockReturnValue("");
+
+            // Create and mock the getTweetBackground method directly
+            // This ensures we're testing the retweet specific code path
+            const tweetBackgroundContent =
+                "Retweeting @originalauthor: Original tweet content";
+            (searchClient as any).getTweetBackground = vi
+                .fn()
+                .mockResolvedValue(tweetBackgroundContent);
+
+            // Mock tweet selector
+            const mockSelector = {
+                selectTweet: vi.fn().mockResolvedValue(retweetMock),
+            };
+            vi.mocked(SearchTweetSelector).mockImplementation(
+                () => mockSelector as any
+            );
+
+            // Call engageWithSearchTerms
+            await (searchClient as any).engageWithSearchTerms();
+
+            // Verify composeState was called
+            expect(mockRuntime.composeState).toHaveBeenCalled();
+            const composeStateCall = mockRuntime.composeState.mock.calls[0];
+
+            // Verify the tweet context includes our retweet background
+            const tweetContext = composeStateCall[1].tweetContext;
+            expect(tweetContext).toContain(tweetBackgroundContent);
+            expect(tweetContext).toContain("Original Post:");
+            expect(tweetContext).toContain("@retweeter");
+            expect(tweetContext).toContain(
+                "RT @originalauthor: Original tweet content"
+            );
+        });
     });
 });
