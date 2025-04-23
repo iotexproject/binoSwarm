@@ -337,7 +337,7 @@ export class KnowledgeProcessor {
         const userTweets = await this.fetchUserTweets(username);
         const unprocessedTweets = this.filterUnprocessed(userTweets);
         const recentTweets = this.filterRecent(unprocessedTweets);
-        const notInKnowledge = this.filterNotInKnowledge(recentTweets);
+        const notInKnowledge = await this.filterNotInKnowledge(recentTweets);
 
         return notInKnowledge;
     }
