@@ -469,6 +469,79 @@ describe("SearchTweetSelector", () => {
             expect(filteredTweets.length).toBe(mockTweets.length);
             expect(filteredTweets).toEqual(mockTweets);
         });
+
+        it("should filter out tweets from the bot itself regardless of case", () => {
+            // The configured bot username with lowercase
+            const botUsername = mockConfig.TWITTER_USERNAME.toLowerCase();
+
+            // Create tweets with different cases of the bot username
+            const mockTweets = [
+                createMockTweet({
+                    id: "123456789",
+                    text: "Tweet from bot (lowercase)",
+                    username: botUsername,
+                    thread: [],
+                }),
+                createMockTweet({
+                    id: "987654321",
+                    text: "Tweet from bot (uppercase)",
+                    username: botUsername.toUpperCase(),
+                    thread: [],
+                }),
+                createMockTweet({
+                    id: "246813579",
+                    text: "Tweet from bot (mixed case)",
+                    username: botUsername.charAt(0).toUpperCase() + botUsername.slice(1),
+                    thread: [],
+                }),
+                createMockTweet({
+                    id: "135792468",
+                    text: "Tweet from regular user",
+                    username: "regular_user",
+                    thread: [],
+                }),
+            ];
+
+            // Test the filterOutBotTweets method directly
+            const filteredTweets = (selector as any).filterOutBotTweets(mockTweets);
+
+            // Verify that all bot tweets are filtered out regardless of case
+            expect(filteredTweets.length).toBe(1);
+            expect(filteredTweets[0].id).toBe("135792468");
+            expect(filteredTweets[0].username).toBe("regular_user");
+        });
+
+        it("should throw error when selected tweet is from bot itself with different case", async () => {
+            // Create tweet with different case than the configured username
+            const mockTweets = [
+                createMockTweet({
+                    id: "123456789",
+                    text: "Tweet from bot with different case",
+                    username: mockConfig.TWITTER_USERNAME.toUpperCase(),
+                }),
+            ];
+
+            // Mock setup
+            mockClient.twitterClient.fetchSearchTweets = vi
+                .fn()
+                .mockResolvedValue({
+                    tweets: mockTweets,
+                });
+
+            vi.mocked(generateObject).mockResolvedValueOnce({
+                object: { tweetId: "123456789" },
+            } as any);
+
+            // Execute and assert - should throw despite case difference
+            await expect(selector.selectTweet()).rejects.toThrow(
+                "Skipping tweet from bot itself"
+            );
+
+            // Verify logging
+            expect(elizaLogger.log).toHaveBeenCalledWith(
+                "Skipping tweet from bot itself"
+            );
+        });
     });
 
     describe("getSearchTerm", () => {
