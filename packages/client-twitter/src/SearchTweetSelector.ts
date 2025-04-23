@@ -145,11 +145,15 @@ export class SearchTweetSelector {
 
     private async getRecentTweets(searchTerm: string) {
         elizaLogger.log("Fetching search tweets");
-        const recentTweets = await this.client.fetchSearchTweets(
-            searchTerm,
-            TWEETS_TO_FETCH,
-            SearchMode.Latest
+
+        const recentTweets = await this.client.requestQueue.add(() =>
+            this.client.twitterClient.fetchSearchTweets(
+                searchTerm,
+                TWEETS_TO_FETCH,
+                SearchMode.Latest
+            )
         );
+
         elizaLogger.log("Search tweets fetched");
         return recentTweets.tweets;
     }
