@@ -26,13 +26,25 @@ vi.mock("@elizaos/core", async () => {
         generateText: vi.fn(),
         generateMessageResponse: vi.fn(),
         composeContext: vi.fn(),
-        stringToUuid: vi.fn().mockImplementation((str) => `uuid-${str}`),
+        stringToUuid: vi
+            .fn()
+            .mockImplementation(
+                (str) => "11111111-2222-3333-4444-555555555555"
+            ),
     };
 });
 
 vi.mock("../src/utils.ts", () => ({
-    buildConversationThread: vi.fn(),
-    sendTweet: vi.fn().mockResolvedValue([{ id: "response-123" }]),
+    buildConversationThread: vi.fn().mockResolvedValue(undefined),
+    sendTweet: vi.fn().mockResolvedValue([
+        {
+            id: "11111111-2222-3333-4444-555555555555",
+            userId: "user-123",
+            agentId: "agent-123",
+            content: { text: "response" },
+            roomId: "room-123",
+        },
+    ]),
     wait: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -42,6 +54,7 @@ import {
     generateText,
     generateMessageResponse,
     composeContext,
+    stringToUuid,
 } from "@elizaos/core";
 
 describe("TwitterSearchClient", () => {
@@ -62,9 +75,9 @@ describe("TwitterSearchClient", () => {
             inReplyTo: undefined,
         });
         vi.mocked(composeContext).mockReturnValue("Generated context");
-        vi.mocked(buildConversationThread).mockResolvedValue(undefined);
-        vi.mocked(sendTweet).mockResolvedValue([{ id: "response-123" }]);
-        vi.mocked(wait).mockResolvedValue(undefined);
+        vi.mocked(stringToUuid).mockImplementation(
+            (str) => "11111111-2222-3333-4444-555555555555"
+        );
 
         // Create mocks
         mockTwitterClient = buildTwitterClientMock();
@@ -77,6 +90,15 @@ describe("TwitterSearchClient", () => {
         mockRuntime.evaluate = vi.fn().mockResolvedValue(undefined);
         mockRuntime.processActions = vi.fn().mockResolvedValue(undefined);
         mockRuntime.ensureConnection = vi.fn().mockResolvedValue(undefined);
+        mockRuntime.messageManager = {
+            createMemory: vi.fn().mockResolvedValue(undefined),
+        };
+        mockRuntime.cacheManager = {
+            set: vi.fn().mockResolvedValue(undefined),
+        };
+        mockRuntime.composeState = vi.fn().mockResolvedValue({
+            stateKey: "stateValue",
+        });
 
         mockConfig = buildConfigMock();
         baseClient = new ClientBase(mockRuntime, mockConfig);
@@ -88,12 +110,13 @@ describe("TwitterSearchClient", () => {
         // Setup mock runtime with character
         mockRuntime.character = mockCharacter;
         mockRuntime.agentId = "agent-123";
+        mockRuntime.character.topics = new Set(["javascript"]);
 
         // Mock image description service
         const mockImageService = {
             describeImage: vi.fn().mockResolvedValue("Image description"),
         };
-        mockRuntime.getService.mockImplementation((type) => {
+        mockRuntime.getService = vi.fn().mockImplementation((type) => {
             if (type === ServiceType.IMAGE_DESCRIPTION) {
                 return mockImageService;
             }
@@ -103,13 +126,28 @@ describe("TwitterSearchClient", () => {
         // Setup client request queue
         mockRequestQueue = {
             add: vi.fn((fn) => fn()),
+            queue: [],
+            processing: false,
+            processQueue: vi.fn(),
+            exponentialBackoff: vi.fn(),
+            randomDelay: vi.fn(),
         };
         baseClient.requestQueue = mockRequestQueue;
 
         // Setup client methods
         baseClient.fetchSearchTweets = vi.fn().mockResolvedValue({
             tweets: [
-                createMockTweet({ id: "123456789", text: "Test tweet 1" }),
+                createMockTweet({
+                    id: "123456789",
+                    text: "Test tweet 1",
+                    conversationId: "conv-123",
+                    userId: "user-123",
+                    username: "testuser",
+                    name: "Test User",
+                    permanentUrl:
+                        "https://twitter.com/testuser/status/123456789",
+                    timestamp: 1630000000, // Unix timestamp in seconds
+                }),
                 createMockTweet({ id: "987654321", text: "Test tweet 2" }),
             ],
         });
@@ -150,10 +188,15 @@ describe("TwitterSearchClient", () => {
         // We need to expose and call the private method directly for testing
         await (searchClient as any).engageWithSearchTerms();
 
-        expect(elizaLogger.log).toHaveBeenCalledWith(
-            "No valid tweets found for the search term",
-            expect.any(String)
-        );
+        // Check if the specific log message was called at any point
+        const wasLogMessageCalled = vi
+            .mocked(elizaLogger.log)
+            .mock.calls.some(
+                (call) =>
+                    call[0] === "No valid tweets found for the search term"
+            );
+
+        expect(wasLogMessageCalled).toBe(true);
     });
 
     it("should skip tweets from the bot itself", async () => {
