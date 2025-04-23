@@ -35,7 +35,7 @@ export class SearchTweetSelector {
         const selectedTweet = this.selectTweetToReply(recentTweets, tweetId);
         this.validateNotSelf(selectedTweet);
 
-        return { selectedTweet };
+        return selectedTweet;
     }
 
     private validateNotSelf(selectedTweet: Tweet) {

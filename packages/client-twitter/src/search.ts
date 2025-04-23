@@ -54,7 +54,7 @@ export class TwitterSearchClient {
                 this.runtime,
                 this.client
             );
-            const { selectedTweet } = await tweetSelector.selectTweet();
+            const selectedTweet = await tweetSelector.selectTweet();
 
             const conversationId = selectedTweet.conversationId;
             const roomId = stringToUuid(
