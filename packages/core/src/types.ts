@@ -1094,6 +1094,7 @@ export interface IRAGKnowledgeManager {
     processCharacterRAGKnowledge(
         items: (string | { path: string; shared?: boolean })[]
     ): Promise<void>;
+    checkExistingKnowledge(text: string): Promise<boolean>;
 }
 
 export type CacheOptions = {
