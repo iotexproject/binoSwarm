@@ -1,7 +1,8 @@
 import { Tweet } from "agent-twitter-client";
-import { composeContext, elizaLogger } from "@elizaos/core";
-import { generateMessageResponse } from "@elizaos/core";
 import {
+    composeContext,
+    elizaLogger,
+    generateMessageResponse,
     Content,
     HandlerCallback,
     IAgentRuntime,
@@ -9,13 +10,14 @@ import {
     ModelClass,
     ServiceType,
     State,
+    stringToUuid,
+    Memory,
 } from "@elizaos/core";
-import { stringToUuid } from "@elizaos/core";
+
 import { ClientBase } from "./base";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
 import { twitterSearchTemplate } from "./templates";
 import { SearchTweetSelector } from "./SearchTweetSelector";
-import { Memory } from "@elizaos/core";
 
 export class TwitterSearchClient {
     client: ClientBase;
