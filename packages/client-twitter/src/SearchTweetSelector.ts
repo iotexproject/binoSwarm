@@ -86,6 +86,14 @@ export class SearchTweetSelector {
                 "The response from the user about which tweet is the most interesting and relevant for the agent to reply to",
         });
 
+        elizaLogger.log("TWITTER_CHOOSE_SEARCH_TWEET_RES", {
+            body: {
+                prompt,
+                mostInterestingTweetResponse,
+            },
+            type: "response",
+        });
+
         if (!mostInterestingTweetResponse.object) {
             elizaLogger.warn("No tweet ID found in the response");
             throw new Error(
