@@ -386,6 +386,89 @@ describe("SearchTweetSelector", () => {
                 formatTweets.mockRestore();
             }
         });
+
+        it("should filter out tweets from users in TWITTER_TARGET_USERS list", () => {
+            // Create tweets with one user from the target list and one not in the list
+            const targetUsername = "targeted_user";
+            const nonTargetUsername = "regular_user";
+
+            // Setup target users in config
+            mockClient.twitterConfig.TWITTER_TARGET_USERS = [targetUsername];
+
+            const mockTweets = [
+                createMockTweet({
+                    id: "123456789",
+                    text: "Tweet from targeted user",
+                    username: targetUsername,
+                    thread: [],
+                }),
+                createMockTweet({
+                    id: "987654321",
+                    text: "Tweet from regular user",
+                    username: nonTargetUsername,
+                    thread: [],
+                }),
+            ];
+
+            // Directly test the filterOutTargetUsers method
+            const filterOutTargetUsers = vi.spyOn(
+                selector as any,
+                "filterOutTargetUsers"
+            );
+
+            try {
+                // Call formatTweets which internally calls filterOutTargetUsers
+                const formattedTweets = (selector as any).formatTweets(
+                    mockTweets
+                );
+
+                // Verify filterOutTargetUsers was called
+                expect(filterOutTargetUsers).toHaveBeenCalled();
+
+                // Verify the result doesn't contain the tweet from targeted user
+                expect(formattedTweets).not.toContain(targetUsername);
+                expect(formattedTweets).not.toContain("123456789");
+
+                // Verify the result contains the tweet from non-targeted user
+                expect(formattedTweets).toContain(nonTargetUsername);
+                expect(formattedTweets).toContain("987654321");
+            } finally {
+                filterOutTargetUsers.mockRestore();
+            }
+        });
+
+        it("should not filter any tweets when TWITTER_TARGET_USERS is empty", () => {
+            // Create test tweets
+            const username1 = "user1";
+            const username2 = "user2";
+
+            // Ensure target users is empty
+            mockClient.twitterConfig.TWITTER_TARGET_USERS = [];
+
+            const mockTweets = [
+                createMockTweet({
+                    id: "123456789",
+                    text: "Tweet from user 1",
+                    username: username1,
+                    thread: [],
+                }),
+                createMockTweet({
+                    id: "987654321",
+                    text: "Tweet from user 2",
+                    username: username2,
+                    thread: [],
+                }),
+            ];
+
+            // Test that all tweets pass through when no target users are specified
+            const filteredTweets = (selector as any).filterOutTargetUsers(
+                mockTweets
+            );
+
+            // Verify that no tweets were filtered out
+            expect(filteredTweets.length).toBe(mockTweets.length);
+            expect(filteredTweets).toEqual(mockTweets);
+        });
     });
 
     describe("getSearchTerm", () => {

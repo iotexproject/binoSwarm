@@ -115,9 +115,9 @@ export class SearchTweetSelector {
 
     private formatTweets(slicedTweets: Tweet[]) {
         const tweetsWithoutBot = this.filterOutBotTweets(slicedTweets);
-        
+        const eligibleTweets = this.filterOutTargetUsers(tweetsWithoutBot);
 
-        const formattedTweets = tweetsWithoutBot
+        const formattedTweets = eligibleTweets
             .map(
                 (tweet) => `
       ID: ${tweet.id}${tweet.inReplyToStatusId ? ` In reply to: ${tweet.inReplyToStatusId}` : ""}
@@ -128,6 +128,19 @@ export class SearchTweetSelector {
             .join("\n");
 
         return formattedTweets;
+    }
+
+    private filterOutTargetUsers(tweets: Tweet[]) {
+        const targetUsers =
+            this.client.twitterConfig.TWITTER_TARGET_USERS || [];
+
+        if (targetUsers.length === 0) {
+            return tweets;
+        }
+
+        return tweets.filter((tweet) => {
+            return !targetUsers.includes(tweet.username);
+        });
     }
 
     private filterOutBotTweets(slicedTweets: Tweet[]) {
