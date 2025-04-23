@@ -266,7 +266,7 @@ export class KnowledgeProcessor {
         const prompt = composeContext({
             // @ts-expect-error: current state is enough to generate the prompt
             state: state,
-            twitterKnowledgeProcessorTemplate,
+            template: twitterKnowledgeProcessorTemplate,
         });
 
         return prompt;
