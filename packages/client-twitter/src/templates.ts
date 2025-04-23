@@ -234,3 +234,11 @@ Example:
 "AI Advances, Futuristic Gadgets, Space Exploration, Quantum Computing, Digital Ethics"
 ---
 `;
+
+export const twitterKnowledgeProcessorTemplate = `
+Analyze the following tweets and their media from {{twitterUserName}} and extract key information, insights, or knowledge. Pay special attention to both text content and media descriptions. Ignore promotional or non-informative content.
+
+{{formattedTweets}}
+
+For each tweet that contains valuable information (in either text or media), provide a concise summary and any key knowledge points.
+`
