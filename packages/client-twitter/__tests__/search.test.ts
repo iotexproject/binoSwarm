@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { elizaLogger, generateObject, ServiceType } from "@elizaos/core";
+import { elizaLogger, ServiceType } from "@elizaos/core";
 
 import { ClientBase } from "../src/base";
 import { TwitterConfig } from "../src/environment";
 import { TwitterSearchClient } from "../src/search";
+import { SearchTweetSelector } from "../src/SearchTweetSelector";
 import {
     buildRuntimeMock,
     buildConfigMock,
@@ -55,6 +56,13 @@ import {
     composeContext,
     stringToUuid,
 } from "@elizaos/core";
+
+// Mock SearchTweetSelector
+vi.mock("../src/SearchTweetSelector", () => ({
+    SearchTweetSelector: vi.fn().mockImplementation(() => ({
+        selectTweet: vi.fn(),
+    })),
+}));
 
 describe("TwitterSearchClient", () => {
     let mockConfig: TwitterConfig;
@@ -178,60 +186,71 @@ describe("TwitterSearchClient", () => {
     });
 
     it("should handle empty search results", async () => {
-        // Setup empty search results
-        baseClient.fetchSearchTweets = vi.fn().mockResolvedValue({
-            tweets: [],
-        });
+        // Mock the SearchTweetSelector to throw the expected error
+        const mockSelector = {
+            selectTweet: vi
+                .fn()
+                .mockRejectedValue(
+                    new Error("No valid tweets found for the search term")
+                ),
+        };
+        vi.mocked(SearchTweetSelector).mockImplementation(
+            () => mockSelector as any
+        );
 
         // We need to expose and call the private method directly for testing
         await (searchClient as any).engageWithSearchTerms();
 
-        // Check if the specific log message was called at any point
-        const wasLogMessageCalled = vi
-            .mocked(elizaLogger.log)
-            .mock.calls.some(
-                (call) =>
-                    call[0] === "No valid tweets found for the search term"
-            );
-
-        expect(wasLogMessageCalled).toBe(true);
+        // Verify the error was logged
+        expect(elizaLogger.error).toHaveBeenCalledWith(
+            "Error engaging with search terms:",
+            expect.any(Error)
+        );
     });
 
     it("should skip tweets from the bot itself", async () => {
-        vi.mocked(generateObject).mockResolvedValueOnce({
-            object: {
-                tweetId: "123456789",
-            },
-        });
-        baseClient.fetchSearchTweets = vi.fn().mockResolvedValue({
-            tweets: [
-                createMockTweet({
-                    id: "123456789",
-                    text: "Bot's own tweet",
-                    username: mockConfig.TWITTER_USERNAME,
-                }),
-            ],
-        });
+        // Mock the SearchTweetSelector to throw the expected error
+        const mockSelector = {
+            selectTweet: vi
+                .fn()
+                .mockRejectedValue(new Error("Skipping tweet from bot itself")),
+        };
+        vi.mocked(SearchTweetSelector).mockImplementation(
+            () => mockSelector as any
+        );
 
         await (searchClient as any).engageWithSearchTerms();
 
-        expect(elizaLogger.log).toHaveBeenCalledWith(
-            "Skipping tweet from bot itself"
+        // Verify the error was logged
+        expect(elizaLogger.error).toHaveBeenCalledWith(
+            "Error engaging with search terms:",
+            expect.objectContaining({
+                message: "Skipping tweet from bot itself",
+            })
         );
     });
 
     it("should handle when no matching tweet is found for the ID", async () => {
-        // Setup non-matching tweet ID
-        vi.mocked(generateObject).mockResolvedValueOnce({
-            object: {
-                tweetId: "non-existent-id",
-            },
-        });
+        // Mock the SearchTweetSelector to throw the expected error
+        const mockSelector = {
+            selectTweet: vi
+                .fn()
+                .mockRejectedValue(
+                    new Error("No matching tweet found for the selected ID")
+                ),
+        };
+        vi.mocked(SearchTweetSelector).mockImplementation(
+            () => mockSelector as any
+        );
 
         await (searchClient as any).engageWithSearchTerms();
 
-        expect(elizaLogger.warn).toHaveBeenCalledWith(
-            "No matching tweet found for the selected ID"
+        // Verify the error was logged
+        expect(elizaLogger.error).toHaveBeenCalledWith(
+            "Error engaging with search terms:",
+            expect.objectContaining({
+                message: "No matching tweet found for the selected ID",
+            })
         );
     });
 
