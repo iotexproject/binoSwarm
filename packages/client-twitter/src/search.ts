@@ -15,6 +15,7 @@ import { ClientBase } from "./base";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
 import { twitterSearchTemplate } from "./templates";
 import { SearchTweetSelector } from "./SearchTweetSelector";
+import { Memory } from "@elizaos/core";
 
 export class TwitterSearchClient {
     client: ClientBase;
@@ -56,35 +57,7 @@ export class TwitterSearchClient {
             );
             const selectedTweet = await tweetSelector.selectTweet();
             const message = await this.createMessageFromTweet(selectedTweet);
-            const replyContext = this.buildReplyContext(selectedTweet);
-
-            const tweetBackground =
-                await this.getTweetBackground(selectedTweet);
-
-            // Generate image descriptions using GPT-4 vision API
-            const imageDescriptions = [];
-            for (const photo of selectedTweet.photos) {
-                const description = await this.runtime
-                    .getService<IImageDescriptionService>(
-                        ServiceType.IMAGE_DESCRIPTION
-                    )
-                    .describeImage(photo.url);
-                imageDescriptions.push(description);
-            }
-
-            let state = await this.runtime.composeState(message, {
-                twitterClient: this.client.twitterClient,
-                twitterUserName: this.twitterUsername,
-                tweetContext: `${tweetBackground}
-
-  Original Post:
-  By @${selectedTweet.username}
-  ${selectedTweet.text}${replyContext.length > 0 && `\nReplies to original post:\n${replyContext}`}
-  ${`Original post text: ${selectedTweet.text}`}
-  ${selectedTweet.urls.length > 0 ? `URLs: ${selectedTweet.urls.join(", ")}\n` : ""}${imageDescriptions.length > 0 ? `\nImages in Post (Described): ${imageDescriptions.join(", ")}\n` : ""}
-  `,
-            });
-
+            let state = await this.composeState(message, selectedTweet);
             await this.client.saveRequestMessage(message, state as State);
 
             const context = composeContext({
@@ -160,11 +133,58 @@ export class TwitterSearchClient {
         }
     }
 
+    private async composeState(message: Memory, selectedTweet: Tweet) {
+        const replyContext = this.buildReplyContext(selectedTweet);
+        const tweetBg = await this.getTweetBackground(selectedTweet);
+        const imageDescriptions = await this.describeImages(selectedTweet);
+        const tweetContext = this.buildTweetContext(
+            tweetBg,
+            selectedTweet,
+            replyContext,
+            imageDescriptions
+        );
+
+        return await this.runtime.composeState(message, {
+            twitterClient: this.client.twitterClient,
+            twitterUserName: this.twitterUsername,
+            tweetContext,
+        });
+    }
+
+    private buildTweetContext(
+        tweetBg: string,
+        selectedTweet: Tweet,
+        replyContext: string,
+        imageDescriptions: any[]
+    ) {
+        return `${tweetBg}
+
+  Original Post:
+  By @${selectedTweet.username}
+  ${selectedTweet.text}${replyContext.length > 0 && `\nReplies to original post:\n${replyContext}`}
+  ${`Original post text: ${selectedTweet.text}`}
+  ${selectedTweet.urls.length > 0 ? `URLs: ${selectedTweet.urls.join(", ")}\n` : ""}${imageDescriptions.length > 0 ? `\nImages in Post (Described): ${imageDescriptions.join(", ")}\n` : ""}
+  `;
+    }
+
+    private async describeImages(selectedTweet: Tweet) {
+        const imageDescriptions = [];
+        for (const photo of selectedTweet.photos) {
+            const description = await this.runtime
+                .getService<IImageDescriptionService>(
+                    ServiceType.IMAGE_DESCRIPTION
+                )
+                .describeImage(photo.url);
+            imageDescriptions.push(description);
+        }
+        return imageDescriptions;
+    }
+
     private async getTweetBackground(selectedTweet: Tweet) {
         if (!selectedTweet.isRetweet) {
             return "";
         }
-        
+
         const originalTweet = await this.client.requestQueue.add(() =>
             this.client.twitterClient.getTweet(selectedTweet.id)
         );
