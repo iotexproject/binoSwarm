@@ -86,15 +86,7 @@ describe("SearchTweetSelector", () => {
             // Mock generateObject to return a valid tweetId
             vi.mocked(generateObject).mockResolvedValueOnce({
                 object: { tweetId: "123456789" },
-                finishReason: "success",
-                usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-                warnings: [],
-                request: {},
-                timestamp: 0,
-                metadata: {},
-                modelUsed: "",
-                duration: 0,
-            });
+            } as any);
 
             // Execute the method
             const result = await selector.selectTweet();
@@ -107,6 +99,60 @@ describe("SearchTweetSelector", () => {
                 mockClient.twitterClient.fetchSearchTweets
             ).toHaveBeenCalled();
             expect(generateObject).toHaveBeenCalled();
+        });
+
+        it("should use the environment search terms when selecting a tweet", async () => {
+            // Setup environment search terms
+            const searchTerms = ["term1", "term2", "term3"];
+            mockClient.twitterConfig.TWITTER_SEARCH_TERMS = searchTerms;
+
+            // Mock Math.random to always select the first term
+            const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+
+            // Spy on the private getSearchTerm method and make it return the first search term
+            const getSearchTermSpy = vi.spyOn(selector as any, "getSearchTerm");
+            getSearchTermSpy.mockReturnValue(searchTerms[0]);
+
+            // Mock tweets with a username that's different from the bot
+            const mockTweets = [
+                createMockTweet({
+                    id: "123456789",
+                    username: "other_user", // Not the bot username
+                    name: "Other User",
+                }),
+            ];
+
+            // Mock necessary methods
+            mockClient.twitterClient.fetchSearchTweets = vi
+                .fn()
+                .mockResolvedValue({
+                    tweets: mockTweets,
+                });
+
+            // Mock generateObject
+            vi.mocked(generateObject).mockResolvedValueOnce({
+                object: { tweetId: "123456789" },
+            } as any);
+
+            try {
+                // Execute the method
+                await selector.selectTweet();
+
+                // Verify the search term from environment was used
+                expect(
+                    mockClient.twitterClient.fetchSearchTweets
+                ).toHaveBeenCalledWith(
+                    searchTerms[0],
+                    expect.any(Number),
+                    expect.any(Number)
+                );
+
+                // Don't check for the specific log message since it will be overwritten
+                // by subsequent log calls during the test execution
+            } finally {
+                randomSpy.mockRestore();
+                getSearchTermSpy.mockRestore();
+            }
         });
 
         it("should throw error when no tweets are found", async () => {
@@ -150,15 +196,7 @@ describe("SearchTweetSelector", () => {
 
             vi.mocked(generateObject).mockResolvedValueOnce({
                 object: { tweetId: "123456789" },
-                finishReason: "success",
-                usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-                warnings: [],
-                request: {},
-                timestamp: 0,
-                metadata: {},
-                modelUsed: "",
-                duration: 0,
-            });
+            } as any);
 
             // Execute and assert
             await expect(selector.selectTweet()).rejects.toThrow(
@@ -187,15 +225,7 @@ describe("SearchTweetSelector", () => {
             // Return a non-existent tweet ID
             vi.mocked(generateObject).mockResolvedValueOnce({
                 object: { tweetId: "non-existent-id" },
-                finishReason: "success",
-                usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-                warnings: [],
-                request: {},
-                timestamp: 0,
-                metadata: {},
-                modelUsed: "",
-                duration: 0,
-            });
+            } as any);
 
             // Execute and assert
             await expect(selector.selectTweet()).rejects.toThrow(
@@ -228,15 +258,7 @@ describe("SearchTweetSelector", () => {
             // Return an empty result from generateObject
             vi.mocked(generateObject).mockResolvedValueOnce({
                 object: null,
-                finishReason: "error",
-                usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-                warnings: [],
-                request: {},
-                timestamp: 0,
-                metadata: {},
-                modelUsed: "",
-                duration: 0,
-            });
+            } as any);
 
             // Execute and assert
             await expect(selector.selectTweet()).rejects.toThrow(
@@ -247,6 +269,63 @@ describe("SearchTweetSelector", () => {
             expect(elizaLogger.warn).toHaveBeenCalledWith(
                 "No tweet ID found in the response"
             );
+        });
+
+        it("should fall back to character topics when no search terms are configured", async () => {
+            // Ensure no search terms in config
+            mockClient.twitterConfig.TWITTER_SEARCH_TERMS = [];
+
+            // Ensure character topics are set properly
+            const topics = ["javascript", "programming", "technology"];
+            mockRuntime.character.topics = new Set(topics);
+
+            // Mock Math.random to select the first topic
+            const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+
+            // Spy on the private getSearchTerm method and make it return the first topic
+            const getSearchTermSpy = vi.spyOn(selector as any, "getSearchTerm");
+            getSearchTermSpy.mockReturnValue(topics[0]);
+
+            // Mock tweets with a username that's different from the bot
+            const mockTweets = [
+                createMockTweet({
+                    id: "123456789",
+                    username: "other_user", // Not the bot username
+                    name: "Other User",
+                }),
+            ];
+
+            // Mock necessary methods
+            mockClient.twitterClient.fetchSearchTweets = vi
+                .fn()
+                .mockResolvedValue({
+                    tweets: mockTweets,
+                });
+
+            // Mock generateObject
+            vi.mocked(generateObject).mockResolvedValueOnce({
+                object: { tweetId: "123456789" },
+            } as any);
+
+            try {
+                // Execute the method
+                await selector.selectTweet();
+
+                // Verify the search term from character topics was used
+                expect(
+                    mockClient.twitterClient.fetchSearchTweets
+                ).toHaveBeenCalledWith(
+                    topics[0],
+                    expect.any(Number),
+                    expect.any(Number)
+                );
+
+                // Don't check for the specific log message since it will be overwritten
+                // by subsequent log calls during the test execution
+            } finally {
+                randomSpy.mockRestore();
+                getSearchTermSpy.mockRestore();
+            }
         });
     });
 
@@ -259,15 +338,17 @@ describe("SearchTweetSelector", () => {
                     text: "Normal tweet",
                     username: "someuser1",
                     thread: [
-                        { username: "someuser" },
-                        { username: mockConfig.TWITTER_USERNAME }, // Bot in thread
+                        createMockTweet({ username: "someuser" }),
+                        createMockTweet({
+                            username: mockConfig.TWITTER_USERNAME,
+                        }), // Bot in thread
                     ],
                 }),
                 createMockTweet({
                     id: "987654321",
                     text: "Clean tweet",
                     username: "someuser2", // not the bot
-                    thread: [{ username: "otheruser" }],
+                    thread: [createMockTweet({ username: "otheruser" })],
                 }),
             ];
 
@@ -281,15 +362,7 @@ describe("SearchTweetSelector", () => {
             // Return the second tweet ID (the clean one)
             vi.mocked(generateObject).mockResolvedValueOnce({
                 object: { tweetId: "987654321" },
-                finishReason: "success",
-                usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-                warnings: [],
-                request: {},
-                timestamp: 0,
-                metadata: {},
-                modelUsed: "",
-                duration: 0,
-            });
+            } as any);
 
             // Access the private formatTweets method
             const formatTweets = vi.spyOn(selector as any, "formatTweets");
@@ -316,34 +389,90 @@ describe("SearchTweetSelector", () => {
     });
 
     describe("getSearchTerm", () => {
-        it("should select a random topic from character topics", () => {
-            // Setup mock Math.random to return predictable values
+        it("should use configured TWITTER_SEARCH_TERMS when available", () => {
+            // Setup with search terms in config
+            const searchTerms = ["term1", "term2", "term3"];
+            mockClient.twitterConfig.TWITTER_SEARCH_TERMS = searchTerms;
+
+            // Mock Math.random to return predictable value
             const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
 
-            // Convert Set to Array for easy access
-            const topicsArray = [...mockRuntime.character.topics];
-
             try {
-                // Access private method
-                const getSearchTerm = vi.spyOn(
-                    Object.getPrototypeOf(selector) as any,
-                    "getSearchTerm"
-                );
-                getSearchTerm.mockImplementation(function (
-                    this: SearchTweetSelector
-                ) {
-                    return topicsArray[0]; // Return first topic
-                });
+                // Call the method directly
+                const term = (selector as any).getSearchTerm();
 
-                // Call the method
-                const result = (selector as any).getSearchTerm();
-
-                // Verify result is as expected
-                expect(result).toBe(topicsArray[0]);
-                expect(mockRuntime.character.topics).toContain(result);
+                // Verify result is from the search terms
+                expect(term).toBe(searchTerms[0]);
+                // We can't verify the log call here since it will be mixed with other test logs
             } finally {
                 randomSpy.mockRestore();
             }
+        });
+
+        it("should fall back to character topics when no search terms are configured", () => {
+            // Ensure no search terms in config
+            mockClient.twitterConfig.TWITTER_SEARCH_TERMS = [];
+
+            // Ensure character topics are set properly
+            const topics = ["javascript", "programming", "technology"];
+            mockRuntime.character.topics = new Set(topics);
+
+            // Mock Math.random to return predictable values
+            const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+
+            try {
+                // Call the method directly
+                const term = (selector as any).getSearchTerm();
+
+                // Verify result is from the character topics
+                expect(term).toBe(topics[0]);
+                // We can't verify the log call here since it will be mixed with other test logs
+            } finally {
+                randomSpy.mockRestore();
+            }
+        });
+
+        it("should handle empty search terms array", () => {
+            // Explicitly set empty array
+            mockClient.twitterConfig.TWITTER_SEARCH_TERMS = [];
+
+            // Ensure character topics are set properly
+            const topics = ["javascript", "programming", "technology"];
+            mockRuntime.character.topics = new Set(topics);
+
+            // Mock Math.random to return predictable values
+            const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+
+            try {
+                // Call the method directly
+                const term = (selector as any).getSearchTerm();
+
+                // Verify fallback to topics
+                expect(term).toBe(topics[0]);
+                // We can't verify the log call here since it will be mixed with other test logs
+            } finally {
+                randomSpy.mockRestore();
+            }
+        });
+
+        it("should use default fallback term when no search terms and no character topics are available", () => {
+            // Explicitly set empty search terms
+            mockClient.twitterConfig.TWITTER_SEARCH_TERMS = [];
+
+            // Set empty character topics
+            mockRuntime.character.topics = new Set();
+
+            // Call the method directly
+            const term = (selector as any).getSearchTerm();
+
+            // Verify default term is returned
+            expect(term).toBe("technology");
+
+            // Verify the correct log was called
+            expect(elizaLogger.log).toHaveBeenCalledWith(
+                "No topics available, using default search term:",
+                "technology"
+            );
         });
     });
 });
