@@ -78,7 +78,7 @@ export class KnowledgeProcessor {
 
     private async processKnowledgeUser(username: string) {
         try {
-            const validTweets = await this.fetchValidTweets(username);
+            const validTweets = await this.fetchAndValidateTweets(username);
 
             if (validTweets.length === 0) {
                 elizaLogger.log(
@@ -333,12 +333,13 @@ export class KnowledgeProcessor {
         );
     }
 
-    private async fetchValidTweets(username: string) {
+    private async fetchAndValidateTweets(username: string) {
         const userTweets = await this.fetchUserTweets(username);
         const unprocessedTweets = this.filterUnprocessed(userTweets);
         const recentTweets = this.filterRecent(unprocessedTweets);
+        const notInKnowledge = this.filterNotInKnowledge(recentTweets);
 
-        return recentTweets;
+        return notInKnowledge;
     }
 
     private filterRecent(tweets: Tweet[]) {
@@ -353,6 +354,22 @@ export class KnowledgeProcessor {
             (tweet) =>
                 !this.client.lastCheckedTweetId ||
                 parseInt(tweet.id) > this.client.lastCheckedTweetId
+        );
+    }
+
+    private async filterNotInKnowledge(tweets: Tweet[]) {
+        const knowledgeChecks = await Promise.all(
+            tweets.map(async (tweet) => {
+                const existingKnowledge =
+                    await this.runtime.ragKnowledgeManager.checkExistingKnowledge(
+                        tweet.text
+                    );
+                return { tweet, existingKnowledge };
+            })
+        );
+
+        return tweets.filter(
+            (_, index) => !knowledgeChecks[index].existingKnowledge
         );
     }
 

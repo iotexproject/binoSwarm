@@ -96,6 +96,7 @@ describe("KnowledgeProcessor", () => {
             }),
             ragKnowledgeManager: {
                 createKnowledge: vi.fn().mockResolvedValue({}),
+                checkExistingKnowledge: vi.fn().mockResolvedValue(false),
             },
         } as unknown as IAgentRuntime;
 
