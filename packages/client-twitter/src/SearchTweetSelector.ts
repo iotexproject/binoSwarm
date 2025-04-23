@@ -26,15 +26,15 @@ export class SearchTweetSelector {
     async selectTweet() {
         const searchTerm = this.getSearchTerm();
         const recentTweets = await this.getRecentTweets(searchTerm);
-        const slicedTweets = this.sliceTweets(recentTweets.tweets, 20);
-        this.validateTweetsLength(slicedTweets, searchTerm);
+        this.validateTweetsLength(recentTweets, searchTerm);
 
         const tweetId = await this.chooseMostInterestingTweet(
             searchTerm,
-            slicedTweets
+            recentTweets
         );
-        const selectedTweet = this.selectTweetToReply(slicedTweets, tweetId);
+        const selectedTweet = this.selectTweetToReply(recentTweets, tweetId);
         this.validateNotSelf(selectedTweet);
+
         return { selectedTweet };
     }
 
@@ -143,13 +143,6 @@ export class SearchTweetSelector {
         }
     }
 
-    private sliceTweets(recentTweets: Tweet[], numberOfTweets: number) {
-        // randomly slice .tweets down to 20
-        return recentTweets
-            .sort(() => Math.random() - 0.5)
-            .slice(0, numberOfTweets);
-    }
-
     private async getRecentTweets(searchTerm: string) {
         elizaLogger.log("Fetching search tweets");
         const recentTweets = await this.client.fetchSearchTweets(
@@ -158,7 +151,7 @@ export class SearchTweetSelector {
             SearchMode.Latest
         );
         elizaLogger.log("Search tweets fetched");
-        return recentTweets;
+        return recentTweets.tweets;
     }
 
     private getSearchTerm() {
