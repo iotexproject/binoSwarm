@@ -15,6 +15,7 @@ describe("Twitter Environment Configuration", () => {
             TWITTER_SEARCH_ENABLE: "false",
             TWITTER_SPACES_ENABLE: "false",
             TWITTER_TARGET_USERS: "user1,user2,user3",
+            TWITTER_SEARCH_TERMS: "term1,term2,term3",
             TWITTER_MAX_TWEETS_PER_DAY: "10",
             TWITTER_MAX_TWEET_LENGTH: "280",
             TWITTER_POST_INTERVAL_MIN: "90",
@@ -130,6 +131,52 @@ describe("Twitter Environment Configuration", () => {
             expect(config.TWITTER_TARGET_USERS).toHaveLength(0);
         });
 
+        it("should handle empty search terms", async () => {
+            const runtimeWithoutSearchTerms = {
+                ...mockRuntime,
+                env: {
+                    ...mockRuntime.env,
+                    TWITTER_SEARCH_TERMS: "",
+                },
+                getEnv: function (key: string) {
+                    return this.env[key] || null;
+                },
+                getSetting: function (key: string) {
+                    return this.env[key] || null;
+                },
+            } as IAgentRuntime;
+
+            const config = await validateTwitterConfig(
+                runtimeWithoutSearchTerms
+            );
+            expect(config.TWITTER_SEARCH_TERMS).toHaveLength(0);
+        });
+
+        it("should correctly parse search terms with whitespace", async () => {
+            const runtimeWithSpacySearchTerms = {
+                ...mockRuntime,
+                env: {
+                    ...mockRuntime.env,
+                    TWITTER_SEARCH_TERMS: " term1 , term2  ,  term3 ",
+                },
+                getEnv: function (key: string) {
+                    return this.env[key] || null;
+                },
+                getSetting: function (key: string) {
+                    return this.env[key] || null;
+                },
+            } as IAgentRuntime;
+
+            const config = await validateTwitterConfig(
+                runtimeWithSpacySearchTerms
+            );
+            expect(config.TWITTER_SEARCH_TERMS).toEqual([
+                "term1",
+                "term2",
+                "term3",
+            ]);
+        });
+
         it("should reject invalid usernames", async () => {
             const invalidUsernames = [
                 "",
@@ -155,6 +202,11 @@ describe("Twitter Environment Configuration", () => {
             "user1",
             "user2",
             "user3",
+        ]);
+        expect(config.TWITTER_SEARCH_TERMS).toEqual([
+            "term1",
+            "term2",
+            "term3",
         ]);
         expect(config.MAX_TWEET_LENGTH).toBe(280);
         expect(config.POST_INTERVAL_MIN).toBe(90);

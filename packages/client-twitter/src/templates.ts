@@ -191,6 +191,31 @@ Your response should not contain any questions. Brief, concise statements only. 
 
 `;
 
+export const twitterChooseSearchTweetTemplate = `
+Here are some tweets related to the search term "{{searchTerm}}":
+
+  {{formattedTweets}}
+
+  Which tweet is the most interesting and relevant for {{twitterUserName}} to reply to?
+
+  Here is some information about {{twitterUserName}}:
+  <bio>
+  {{bio}}
+  </bio>
+
+  Here are some topics of interest for {{twitterUserName}}:
+  <topics>
+  {{topics}}
+  </topics>
+
+  Please provide only the ID of the tweet in your response.
+  Notes:
+    - Respond to tweets that don't have a lot of hashtags, links, URLs or images
+    - Respond to tweets that are not retweets
+    - Respond to tweets where there is an easy exchange of ideas to have with the user
+    - ONLY respond with the ID of the tweet
+`;
+
 export const twitterSpaceFillerTemplate = `
 # INSTRUCTIONS:
 You are generating a short filler message for a Twitter Space. The filler type is "{{fillerType}}".
@@ -208,4 +233,4 @@ Return them as a comma-separated list, no additional formatting or numbering.
 Example:
 "AI Advances, Futuristic Gadgets, Space Exploration, Quantum Computing, Digital Ethics"
 ---
-`
+`;
