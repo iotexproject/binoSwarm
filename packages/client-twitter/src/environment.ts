@@ -39,6 +39,7 @@ export const twitterEnvSchema = z.object({
     TWITTER_POLL_INTERVAL: z.number().int(),
     TWITTER_TARGET_USERS: z.array(twitterUsernameSchema).default([]),
     TWITTER_KNOWLEDGE_USERS: z.array(twitterUsernameSchema).default([]),
+    TWITTER_SEARCH_TERMS: z.array(z.string()).default([]),
     POST_INTERVAL_MIN: z.number().int(),
     POST_INTERVAL_MAX: z.number().int(),
     ENABLE_ACTION_PROCESSING: z.boolean(),
@@ -70,6 +71,16 @@ function safeParsePositiveInt(
     if (!value) return defaultValue;
     const parsed = parseInt(value, 10);
     return isNaN(parsed) ? defaultValue : Math.max(defaultValue, parsed);
+}
+
+function parseSearchTerms(searchTermsStr?: string | null): string[] {
+    if (!searchTermsStr?.trim()) {
+        return [];
+    }
+    return searchTermsStr
+        .split(",")
+        .map((term) => term.trim())
+        .filter(Boolean);
 }
 
 /**
@@ -167,6 +178,10 @@ export async function validateTwitterConfig(
 
             ACTION_TIMELINE_TYPE:
                 runtime.getSetting("ACTION_TIMELINE_TYPE") || undefined,
+
+            TWITTER_SEARCH_TERMS: parseSearchTerms(
+                runtime.getSetting("TWITTER_SEARCH_TERMS")
+            ),
         };
 
         return twitterEnvSchema.parse(twitterConfig);
