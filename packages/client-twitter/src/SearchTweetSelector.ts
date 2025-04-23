@@ -114,15 +114,10 @@ export class SearchTweetSelector {
     }
 
     private formatTweets(slicedTweets: Tweet[]) {
-        return slicedTweets
-            .filter((tweet) => {
-                // ignore tweets where any of the thread tweets contain a tweet by the bot
-                const thread = tweet.thread;
-                const botTweet = thread.find(
-                    (t) => t.username === this.twitterUsername
-                );
-                return !botTweet;
-            })
+        const tweetsWithoutBot = this.filterOutBotTweets(slicedTweets);
+        
+
+        const formattedTweets = tweetsWithoutBot
             .map(
                 (tweet) => `
       ID: ${tweet.id}${tweet.inReplyToStatusId ? ` In reply to: ${tweet.inReplyToStatusId}` : ""}
@@ -131,6 +126,19 @@ export class SearchTweetSelector {
     `
             )
             .join("\n");
+
+        return formattedTweets;
+    }
+
+    private filterOutBotTweets(slicedTweets: Tweet[]) {
+        return slicedTweets.filter((tweet) => {
+            // ignore tweets where any of the thread tweets contain a tweet by the bot
+            const thread = tweet.thread;
+            const botTweet = thread.find(
+                (t) => t.username === this.twitterUsername
+            );
+            return !botTweet;
+        });
     }
 
     private validateTweetsLength(slicedTweets: Tweet[], searchTerm: string) {
