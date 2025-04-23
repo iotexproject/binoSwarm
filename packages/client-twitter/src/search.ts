@@ -58,13 +58,8 @@ export class TwitterSearchClient {
             const message = await this.createMessageFromTweet(selectedTweet);
             const replyContext = this.buildReplyContext(selectedTweet);
 
-            let tweetBackground = "";
-            if (selectedTweet.isRetweet) {
-                const originalTweet = await this.client.requestQueue.add(() =>
-                    this.client.twitterClient.getTweet(selectedTweet.id)
-                );
-                tweetBackground = `Retweeting @${originalTweet.username}: ${originalTweet.text}`;
-            }
+            const tweetBackground =
+                await this.getTweetBackground(selectedTweet);
 
             // Generate image descriptions using GPT-4 vision API
             const imageDescriptions = [];
@@ -163,6 +158,17 @@ export class TwitterSearchClient {
         } catch (error) {
             elizaLogger.error("Error engaging with search terms:", error);
         }
+    }
+
+    private async getTweetBackground(selectedTweet: Tweet) {
+        if (!selectedTweet.isRetweet) {
+            return "";
+        }
+        
+        const originalTweet = await this.client.requestQueue.add(() =>
+            this.client.twitterClient.getTweet(selectedTweet.id)
+        );
+        return `Retweeting @${originalTweet.username}: ${originalTweet.text}`;
     }
 
     private buildReplyContext(selectedTweet: Tweet) {
