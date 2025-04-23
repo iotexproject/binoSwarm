@@ -39,7 +39,10 @@ export class SearchTweetSelector {
     }
 
     private validateNotSelf(selectedTweet: Tweet) {
-        if (selectedTweet.username === this.twitterUsername) {
+        if (
+            selectedTweet.username.toLowerCase() ===
+            this.twitterUsername.toLowerCase()
+        ) {
             elizaLogger.log("Skipping tweet from bot itself");
             throw new Error("Skipping tweet from bot itself");
         }
@@ -155,10 +158,20 @@ export class SearchTweetSelector {
 
     private filterOutBotTweets(slicedTweets: Tweet[]) {
         return slicedTweets.filter((tweet) => {
-            // ignore tweets where any of the thread tweets contain a tweet by the bot
+            // Skip if the tweet is from the bot itself
+            if (
+                tweet.username.toLowerCase() ===
+                this.twitterUsername.toLowerCase()
+            ) {
+                return false;
+            }
+
+            // Also ignore tweets where any of the thread tweets contain a tweet by the bot
             const thread = tweet.thread;
             const botTweet = thread.find(
-                (t) => t.username === this.twitterUsername
+                (t) =>
+                    t.username.toLowerCase() ===
+                    this.twitterUsername.toLowerCase()
             );
             return !botTweet;
         });
