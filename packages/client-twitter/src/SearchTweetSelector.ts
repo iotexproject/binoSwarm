@@ -153,7 +153,7 @@ export class SearchTweetSelector {
         const recentTweets = await this.client.fetchSearchTweets(
             searchTerm,
             20,
-            SearchMode.Top
+            SearchMode.Latest
         );
         elizaLogger.log("Search tweets fetched");
         return recentTweets;
