@@ -17,17 +17,27 @@ const RELEVANCE_THRESHOLD = 0.5;
 
 const analysisSchema = z.object({
     tweetId: z.string().describe("The ID of the tweet"),
-    summary: z.string().describe("A concise summary of the tweet"),
+    summary: z
+        .string()
+        .nullable()
+        .default("")
+        .describe("A concise summary of the tweet"),
     knowledgePoints: z
         .array(z.string())
+        .nullable()
+        .default([])
         .describe(
             "Specific facts or insights extracted from both text and media"
         ),
     mediaInsights: z
         .array(z.string())
+        .nullable()
+        .default([])
         .describe("Insights extracted from media"),
     topics: z
         .array(z.string())
+        .nullable()
+        .default([])
         .describe("Topics or categories relevant to the tweet"),
     relevanceScore: z
         .number()
@@ -150,7 +160,14 @@ export class KnowledgeProcessor {
             (t) => t.tweetId === tweet.id
         );
 
-        if (analysis && analysis.relevanceScore > RELEVANCE_THRESHOLD) {
+        if (!analysis) {
+            elizaLogger.log(
+                `No analysis found for tweet ${tweet.id}, skipping`
+            );
+            return;
+        }
+
+        if (analysis.relevanceScore > RELEVANCE_THRESHOLD) {
             await this.storeTweetInKnowledge(
                 tweet,
                 mediaDesc,
@@ -171,10 +188,10 @@ export class KnowledgeProcessor {
         mediaDesc: { tweetId: string; descriptions: any[] },
         analysis: {
             tweetId?: string;
-            summary?: string;
-            knowledgePoints?: string[];
-            mediaInsights?: string[];
-            topics?: string[];
+            summary?: string | null;
+            knowledgePoints?: string[] | null;
+            mediaInsights?: string[] | null;
+            topics?: string[] | null;
             relevanceScore?: number;
         },
         username: string
@@ -197,7 +214,7 @@ export class KnowledgeProcessor {
                         author: username,
                         tweetId: tweet.id,
                         timestamp: tweet.timestamp,
-                        topics: analysis.topics,
+                        topics: analysis.topics || [],
                         relevanceScore: analysis.relevanceScore,
                         hasMedia: mediaDesc?.descriptions.length > 0,
                     },
@@ -222,10 +239,10 @@ export class KnowledgeProcessor {
             url: tweet.permanentUrl,
             images: mediaDesc?.descriptions || [],
             analysis: {
-                summary: analysis.summary,
-                knowledgePoints: analysis.knowledgePoints,
-                mediaInsights: analysis.mediaInsights,
-                topics: analysis.topics,
+                summary: analysis.summary || "",
+                knowledgePoints: analysis.knowledgePoints || [],
+                mediaInsights: analysis.mediaInsights || [],
+                topics: analysis.topics || [],
             },
         };
         return { tweetId, tweetContent };
