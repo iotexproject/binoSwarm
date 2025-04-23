@@ -54,8 +54,7 @@ export class TwitterSearchClient {
                 this.runtime,
                 this.client
             );
-            const { selectedTweet, formattedHomeTimeline } =
-                await tweetSelector.selectTweet();
+            const { selectedTweet } = await tweetSelector.selectTweet();
 
             const conversationId = selectedTweet.conversationId;
             const roomId = stringToUuid(
@@ -113,7 +112,6 @@ export class TwitterSearchClient {
             let state = await this.runtime.composeState(message, {
                 twitterClient: this.client.twitterClient,
                 twitterUserName: this.twitterUsername,
-                timeline: formattedHomeTimeline,
                 tweetContext: `${tweetBackground}
 
   Original Post:

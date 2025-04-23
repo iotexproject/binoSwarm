@@ -24,20 +24,16 @@ export class SearchTweetSelector {
     async selectTweet() {
         const searchTerm = this.getSearchTerm();
         const recentTweets = await this.getRecentTweets(searchTerm);
-        const homeTimeline = await this.client.fetchHomeTimeline(50);
-        await this.client.cacheTimeline(homeTimeline);
-        const formattedHomeTimeline = this.formatTimeline(homeTimeline);
         const slicedTweets = this.sliceTweets(recentTweets.tweets, 20);
         this.validateTweetsLength(slicedTweets, searchTerm);
 
         const tweetId = await this.chooseMostInterestingTweet(
             searchTerm,
-            slicedTweets,
-            homeTimeline
+            slicedTweets
         );
         const selectedTweet = this.selectTweetToReply(slicedTweets, tweetId);
         this.validateNotSelf(selectedTweet);
-        return { selectedTweet, formattedHomeTimeline };
+        return { selectedTweet };
     }
 
     private validateNotSelf(selectedTweet: Tweet) {
@@ -66,14 +62,9 @@ export class SearchTweetSelector {
 
     private async chooseMostInterestingTweet(
         searchTerm: string,
-        slicedTweets: Tweet[],
-        homeTimeline: Tweet[]
+        slicedTweets: Tweet[]
     ) {
-        const prompt = this.buildSearchPrompt(
-            searchTerm,
-            slicedTweets,
-            homeTimeline
-        );
+        const prompt = this.buildSearchPrompt(searchTerm, slicedTweets);
 
         const schema = z.object({
             tweetId: z.string().describe("The ID of the tweet to reply to"),
@@ -104,15 +95,11 @@ export class SearchTweetSelector {
         return tweetId;
     }
 
-    private buildSearchPrompt(
-        searchTerm: string,
-        slicedTweets: Tweet[],
-        homeTimeline: Tweet[]
-    ) {
+    private buildSearchPrompt(searchTerm: string, slicedTweets: Tweet[]) {
         const state = {
             twitterUserName: this.twitterUsername,
             searchTerm,
-            formattedTweets: this.formatTweets(slicedTweets, homeTimeline),
+            formattedTweets: this.formatTweets(slicedTweets),
         };
 
         const prompt = composeContext({
@@ -124,8 +111,8 @@ export class SearchTweetSelector {
         return prompt;
     }
 
-    private formatTweets(slicedTweets: Tweet[], homeTimeline: Tweet[]) {
-        return [...slicedTweets, ...homeTimeline]
+    private formatTweets(slicedTweets: Tweet[]) {
+        return slicedTweets
             .filter((tweet) => {
                 // ignore tweets where any of the thread tweets contain a tweet by the bot
                 const thread = tweet.thread;
@@ -161,21 +148,8 @@ export class SearchTweetSelector {
             .slice(0, numberOfTweets);
     }
 
-    private formatTimeline(homeTimeline: Tweet[]) {
-        return (
-            `# ${this.runtime.character.name}'s Home Timeline\n\n` +
-            homeTimeline
-                .map((tweet) => {
-                    return `ID: ${tweet.id}\nFrom: ${tweet.name} (@${tweet.username})${tweet.inReplyToStatusId ? ` In reply to: ${tweet.inReplyToStatusId}` : ""}\nText: ${tweet.text}\n---\n`;
-                })
-                .join("\n")
-        );
-    }
-
     private async getRecentTweets(searchTerm: string) {
         elizaLogger.log("Fetching search tweets");
-        // TODO: we wait 5 seconds here to avoid getting rate limited on startup, but we should queue
-        // await new Promise((resolve) => setTimeout(resolve, 5000));
         const recentTweets = await this.client.fetchSearchTweets(
             searchTerm,
             20,
