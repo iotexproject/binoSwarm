@@ -1,5 +1,5 @@
 import { Tweet } from "agent-twitter-client";
-import { composeContext, elizaLogger, UUID } from "@elizaos/core";
+import { composeContext, elizaLogger } from "@elizaos/core";
 import { generateMessageResponse } from "@elizaos/core";
 import {
     Content,
@@ -55,40 +55,8 @@ export class TwitterSearchClient {
                 this.client
             );
             const selectedTweet = await tweetSelector.selectTweet();
-
-            const conversationId = selectedTweet.conversationId;
-            const roomId = stringToUuid(
-                conversationId + "-" + this.runtime.agentId
-            );
-            const userIdUUID = stringToUuid(selectedTweet.userId as string);
-
-            await this.runtime.ensureConnection(
-                userIdUUID,
-                roomId,
-                selectedTweet.username,
-                selectedTweet.name,
-                "twitter"
-            );
-
-            // crawl additional conversation tweets, if there are any
-            await buildConversationThread(selectedTweet, this.client);
-            const message = this.buildMessage(
-                selectedTweet,
-                userIdUUID,
-                roomId
-            );
-
-            if (!message.content.text) {
-                elizaLogger.warn("Returning: No response text found");
-                return;
-            }
-
-            // Fetch replies and retweets
-            const replies = selectedTweet.thread;
-            const replyContext = replies
-                .filter((reply) => reply.username !== this.twitterUsername)
-                .map((reply) => `@${reply.username}: ${reply.text}`)
-                .join("\n");
+            const message = await this.createMessageFromTweet(selectedTweet);
+            const replyContext = this.buildReplyContext(selectedTweet);
 
             let tweetBackground = "";
             if (selectedTweet.isRetweet) {
@@ -197,8 +165,35 @@ export class TwitterSearchClient {
         }
     }
 
-    private buildMessage(selectedTweet: Tweet, userIdUUID: UUID, roomId: UUID) {
-        return {
+    private buildReplyContext(selectedTweet: Tweet) {
+        // Fetch replies and retweets
+        const replies = selectedTweet.thread;
+        const replyContext = replies
+            .filter((reply) => reply.username !== this.twitterUsername)
+            .map((reply) => `@${reply.username}: ${reply.text}`)
+            .join("\n");
+        return replyContext;
+    }
+
+    private async createMessageFromTweet(selectedTweet: Tweet) {
+        const conversationId = selectedTweet.conversationId;
+        const roomId = stringToUuid(
+            conversationId + "-" + this.runtime.agentId
+        );
+        const userIdUUID = stringToUuid(selectedTweet.userId as string);
+
+        await this.runtime.ensureConnection(
+            userIdUUID,
+            roomId,
+            selectedTweet.username,
+            selectedTweet.name,
+            "twitter"
+        );
+
+        // crawl additional conversation tweets, if there are any
+        await buildConversationThread(selectedTweet, this.client);
+
+        const message = {
             id: stringToUuid(selectedTweet.id + "-" + this.runtime.agentId),
             agentId: this.runtime.agentId,
             content: {
@@ -217,6 +212,13 @@ export class TwitterSearchClient {
             // Timestamps are in seconds, but we need them in milliseconds
             createdAt: selectedTweet.timestamp * 1000,
         };
+
+        if (!message.content.text) {
+            elizaLogger.warn("Returning: No response text found");
+            throw new Error("No response text found");
+        }
+
+        return message;
     }
 
     private getRandomMinutes() {
