@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { elizaLogger, ServiceType } from "@elizaos/core";
+import { elizaLogger, generateObject, ServiceType } from "@elizaos/core";
 
 import { ClientBase } from "../src/base";
 import { TwitterConfig } from "../src/environment";
@@ -23,7 +23,7 @@ vi.mock("@elizaos/core", async () => {
             warn: vi.fn(),
             error: vi.fn(),
         },
-        generateText: vi.fn(),
+        generateObject: vi.fn(),
         generateMessageResponse: vi.fn(),
         composeContext: vi.fn(),
         stringToUuid: vi
@@ -51,7 +51,6 @@ vi.mock("../src/utils.ts", () => ({
 // Import the mocked utils directly
 import { buildConversationThread, sendTweet, wait } from "../src/utils.ts";
 import {
-    generateText,
     generateMessageResponse,
     composeContext,
     stringToUuid,
@@ -69,7 +68,6 @@ describe("TwitterSearchClient", () => {
         vi.clearAllMocks();
 
         // Setup mocks for imported functions
-        vi.mocked(generateText).mockResolvedValue("123456789");
         vi.mocked(generateMessageResponse).mockResolvedValue({
             text: "Generated response text",
             inReplyTo: undefined,
@@ -200,8 +198,11 @@ describe("TwitterSearchClient", () => {
     });
 
     it("should skip tweets from the bot itself", async () => {
-        // Setup tweet from the bot
-        vi.mocked(generateText).mockResolvedValueOnce("123456789");
+        vi.mocked(generateObject).mockResolvedValueOnce({
+            object: {
+                tweetId: "123456789",
+            },
+        });
         baseClient.fetchSearchTweets = vi.fn().mockResolvedValue({
             tweets: [
                 createMockTweet({
@@ -221,7 +222,11 @@ describe("TwitterSearchClient", () => {
 
     it("should handle when no matching tweet is found for the ID", async () => {
         // Setup non-matching tweet ID
-        vi.mocked(generateText).mockResolvedValueOnce("non-existent-id");
+        vi.mocked(generateObject).mockResolvedValueOnce({
+            object: {
+                tweetId: "non-existent-id",
+            },
+        });
 
         await (searchClient as any).engageWithSearchTerms();
 
