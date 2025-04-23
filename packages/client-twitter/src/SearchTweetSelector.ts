@@ -11,6 +11,8 @@ import { z } from "zod";
 import { ClientBase } from "./base";
 import { twitterChooseSearchTweetTemplate } from "./templates";
 
+const TWEETS_TO_FETCH = parseInt(process.env.SEARCH_TWEETS_TO_FETCH ?? "20");
+
 export class SearchTweetSelector {
     private twitterUsername: string;
 
@@ -152,7 +154,7 @@ export class SearchTweetSelector {
         elizaLogger.log("Fetching search tweets");
         const recentTweets = await this.client.fetchSearchTweets(
             searchTerm,
-            20,
+            TWEETS_TO_FETCH,
             SearchMode.Latest
         );
         elizaLogger.log("Search tweets fetched");
