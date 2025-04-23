@@ -50,6 +50,7 @@ vi.mock("../src/utils.ts", () => ({
 }));
 
 // Import the mocked utils directly
+import { buildConversationThread, sendTweet, wait } from "../src/utils.ts";
 import {
     generateMessageResponse,
     composeContext,
@@ -265,5 +266,111 @@ describe("TwitterSearchClient", () => {
             "Error engaging with search terms:",
             expect.any(Error)
         );
+    });
+
+    describe("createMessageFromTweet", () => {
+        it("should correctly create a message from a tweet", async () => {
+            // Setup tweet data
+            const mockTweet = createMockTweet({
+                id: "123456789",
+                text: "Test tweet content",
+                conversationId: "conversation-123",
+                userId: "user-456",
+                username: "testuser",
+                name: "Test User",
+                permanentUrl: "https://twitter.com/testuser/status/123456789",
+                timestamp: 1630000000, // Unix timestamp in seconds
+            });
+
+            // Access the private method
+            const createMessageFromTweet = (
+                searchClient as any
+            ).createMessageFromTweet.bind(searchClient);
+
+            // Call the method
+            const message = await createMessageFromTweet(mockTweet);
+
+            // Verify the connection is established
+            expect(mockRuntime.ensureConnection).toHaveBeenCalledWith(
+                "11111111-2222-3333-4444-555555555555", // mocked UUID
+                "11111111-2222-3333-4444-555555555555", // mocked UUID
+                "testuser",
+                "Test User",
+                "twitter"
+            );
+
+            // Verify conversation thread is built
+            expect(buildConversationThread).toHaveBeenCalledWith(
+                mockTweet,
+                baseClient
+            );
+
+            // Verify the message structure
+            expect(message).toEqual({
+                id: "11111111-2222-3333-4444-555555555555", // mocked UUID
+                agentId: "agent-123",
+                content: {
+                    text: "Test tweet content",
+                    url: "https://twitter.com/testuser/status/123456789",
+                    inReplyTo: undefined, // not a reply in this case
+                },
+                userId: "11111111-2222-3333-4444-555555555555", // mocked UUID
+                roomId: "11111111-2222-3333-4444-555555555555", // mocked UUID
+                createdAt: 1630000000 * 1000, // converted to milliseconds
+            });
+        });
+
+        it("should include inReplyTo when tweet is a reply", async () => {
+            // Setup tweet data for a reply
+            const mockTweet = createMockTweet({
+                id: "123456789",
+                text: "This is a reply",
+                conversationId: "conversation-123",
+                userId: "user-456",
+                username: "testuser",
+                name: "Test User",
+                permanentUrl: "https://twitter.com/testuser/status/123456789",
+                timestamp: 1630000000,
+                inReplyToStatusId: "original-tweet-987", // This makes it a reply
+            });
+
+            // Access the private method
+            const createMessageFromTweet = (
+                searchClient as any
+            ).createMessageFromTweet.bind(searchClient);
+
+            // Call the method
+            const message = await createMessageFromTweet(mockTweet);
+
+            // Verify inReplyTo is set correctly
+            expect(message.content.inReplyTo).toBe(
+                "11111111-2222-3333-4444-555555555555"
+            ); // mocked UUID
+        });
+
+        it("should throw an error when tweet has no text", async () => {
+            // Setup tweet with no text
+            const mockTweet = createMockTweet({
+                id: "123456789",
+                text: "", // Empty text
+                conversationId: "conversation-123",
+                userId: "user-456",
+            });
+
+            // Access the private method
+            const createMessageFromTweet = (
+                searchClient as any
+            ).createMessageFromTweet.bind(searchClient);
+
+            // Call the method and expect exception
+            await expect(createMessageFromTweet(mockTweet)).rejects.toThrow(
+                "No response text found"
+            );
+
+            // Verify warning was logged
+            expect(elizaLogger.warn).toHaveBeenCalledWith(
+                "Returning: No response text found"
+            );
+        });
     });
 });
