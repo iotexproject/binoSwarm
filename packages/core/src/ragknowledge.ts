@@ -142,7 +142,9 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             return;
         }
 
-        const existingKnowledge = await this.checkExistingKnowledge(item);
+        const existingKnowledge = await this.checkExistingKnowledge(
+            item.content.text
+        );
         if (existingKnowledge) {
             elizaLogger.debug("Knowledge already exists", existingKnowledge);
             return;
@@ -319,7 +321,9 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
                 },
             };
 
-            const existingKnowledge = await this.checkExistingKnowledge(item);
+            const existingKnowledge = await this.checkExistingKnowledge(
+                item.content.text
+            );
             if (existingKnowledge) {
                 elizaLogger.debug(
                     "Knowledge already exists",
@@ -486,10 +490,8 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         }
     }
 
-    private async checkExistingKnowledge(
-        item: RAGKnowledgeItem
-    ): Promise<boolean> {
-        const contentHash = this.vectorDB.hashInput(item.content.text);
+    async checkExistingKnowledge(text: string): Promise<boolean> {
+        const contentHash = this.vectorDB.hashInput(text);
         const res = await this.getKnowledgeByContentHash(contentHash);
         return res !== null;
     }
