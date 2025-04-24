@@ -170,7 +170,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             namespace: this.runtime.agentId.toString(),
             vector: getDimentionZeroEmbedding(),
             topK: 1,
-            type: KNOWLEDGE_METADATA_TYPE,
+            type: { $ne: "messages" },
             filter: {
                 inputHash,
             },
@@ -197,7 +197,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
             namespace: params.agentId.toString(),
             vector: embedding,
             topK: match_count,
-            type: KNOWLEDGE_METADATA_TYPE,
+            type: { $ne: "messages" },
             filter: {},
         });
 
@@ -208,7 +208,6 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         );
 
         // Filter out duplicates based on inputHash
-        // Keep the match with highest score when duplicates are found
         const uniqueMatches = this.filterDuplicatesByInputHash(filteredMatches);
 
         // If we have no matches that meet the threshold, return empty array
