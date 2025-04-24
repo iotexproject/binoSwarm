@@ -41,7 +41,9 @@ export class VectorDB<T extends RecordMetadata> {
         namespace: string;
         topK: number;
         vector: number[];
-        type: string;
+        type?:
+            | string
+            | { $eq?: string; $ne?: string; $in?: string[]; $nin?: string[] };
         filter: RecordMetadata;
     }): Promise<ScoredPineconeRecord<T>[]> {
         const results = await this.index.namespace(params.namespace).query({
