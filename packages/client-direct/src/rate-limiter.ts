@@ -15,6 +15,44 @@ interface RateLimitStore {
 }
 
 /**
+ * Sets common rate limit headers on response object
+ */
+function setRateLimitHeaders(
+    res: Response,
+    prefix: string,
+    limit: number,
+    remaining: number,
+    resetTime: number
+): void {
+    res.set(`X-RateLimit-${prefix}Limit`, String(limit));
+    res.set(`X-RateLimit-${prefix}Remaining`, String(remaining));
+    res.set(`X-RateLimit-${prefix}Reset`, String(Math.ceil(resetTime / 1000)));
+}
+
+/**
+ * Sets the retry-after header and returns 429 status with error message
+ */
+function sendRateLimitExceeded(
+    res: Response,
+    message: string,
+    retryAfter: number,
+    isGlobal = false
+): void {
+    res.set("Retry-After", String(retryAfter));
+
+    const response: Record<string, any> = {
+        error: message,
+        retryAfter,
+    };
+
+    if (isGlobal) {
+        response.global = true;
+    }
+
+    res.status(429).json(response);
+}
+
+/**
  * A memory-based rate limiter implementation for Express
  * Identifies clients by IP address
  */
@@ -52,6 +90,16 @@ export function createRateLimiter(options: RateLimitOptions) {
                 count: 1,
                 resetTime: now + windowMs,
             };
+
+            // Set rate limit headers for new requests too
+            setRateLimitHeaders(
+                res,
+                "",
+                maxRequests,
+                maxRequests - 1,
+                store[ip].resetTime
+            );
+
             next();
             return;
         }
@@ -65,27 +113,18 @@ export function createRateLimiter(options: RateLimitOptions) {
             const retryAfter = Math.ceil((store[ip].resetTime - now) / 1000);
 
             // Set headers
-            res.set("Retry-After", String(retryAfter));
-            res.set("X-RateLimit-Limit", String(maxRequests));
-            res.set("X-RateLimit-Remaining", "0");
-            res.set(
-                "X-RateLimit-Reset",
-                String(Math.ceil(store[ip].resetTime / 1000))
-            );
-
-            res.status(429).json({
-                error: message,
-                retryAfter: retryAfter,
-            });
+            setRateLimitHeaders(res, "", maxRequests, 0, store[ip].resetTime);
+            sendRateLimitExceeded(res, message, retryAfter);
             return;
         }
 
         // Set rate limit headers
-        res.set("X-RateLimit-Limit", String(maxRequests));
-        res.set("X-RateLimit-Remaining", String(maxRequests - store[ip].count));
-        res.set(
-            "X-RateLimit-Reset",
-            String(Math.ceil(store[ip].resetTime / 1000))
+        setRateLimitHeaders(
+            res,
+            "",
+            maxRequests,
+            maxRequests - store[ip].count,
+            store[ip].resetTime
         );
 
         next();
@@ -133,31 +172,19 @@ export function createGlobalRateLimiter(options: RateLimitOptions) {
         if (requestCount > maxRequests) {
             const retryAfter = Math.ceil((resetTime - now) / 1000);
 
-            res.set("Retry-After", String(retryAfter));
-            res.set("X-RateLimit-Global-Limit", String(maxRequests));
-            res.set("X-RateLimit-Global-Remaining", "0");
-            res.set(
-                "X-RateLimit-Global-Reset",
-                String(Math.ceil(resetTime / 1000))
-            );
-
-            res.status(429).json({
-                error: message,
-                retryAfter: retryAfter,
-                global: true,
-            });
+            // Set headers and return 429
+            setRateLimitHeaders(res, "Global-", maxRequests, 0, resetTime);
+            sendRateLimitExceeded(res, message, retryAfter, true);
             return;
         }
 
         // Set global rate limit headers
-        res.set("X-RateLimit-Global-Limit", String(maxRequests));
-        res.set(
-            "X-RateLimit-Global-Remaining",
-            String(maxRequests - requestCount)
-        );
-        res.set(
-            "X-RateLimit-Global-Reset",
-            String(Math.ceil(resetTime / 1000))
+        setRateLimitHeaders(
+            res,
+            "Global-",
+            maxRequests,
+            maxRequests - requestCount,
+            resetTime
         );
 
         next();
