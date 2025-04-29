@@ -11,10 +11,18 @@ import {
     whisper,
     messageStream,
 } from "./handlers";
+import {
+    messageRateLimiter,
+    streamRateLimiter,
+    globalRateLimiter,
+} from "./rate-limiter";
 
 export function createApiRouter(directClient: DirectClient) {
     const router = express.Router();
     const upload = directClient.upload;
+
+    // Apply global rate limiting to all routes
+    router.use(globalRateLimiter);
 
     router.use(
         express.json({
@@ -43,6 +51,7 @@ export function createApiRouter(directClient: DirectClient) {
 
     router.post(
         "/:agentId/message",
+        messageRateLimiter,
         upload.single("file"),
         async (req: express.Request, res: express.Response) => {
             await message.handleMessage(req, res, directClient);
@@ -73,6 +82,7 @@ export function createApiRouter(directClient: DirectClient) {
 
     router.post(
         "/:agentId/message-stream",
+        streamRateLimiter,
         upload.single("file"),
         async (req: express.Request, res: express.Response) => {
             await messageStream.handleMessageStream(req, res, directClient);
