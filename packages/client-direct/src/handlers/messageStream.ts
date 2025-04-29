@@ -88,7 +88,15 @@ async function handle(
     responseStream.pipeDataStreamToResponse(res);
     const response = await responseStream.response;
 
-    processAssistantMessages(response.messages, runtime, roomId, messageId);
+    processAssistantMessages(
+        response.messages,
+        runtime,
+        roomId,
+        messageId,
+        userId,
+        userMessage,
+        context
+    );
 }
 
 type Message = {
@@ -106,11 +114,23 @@ async function processAssistantMessages(
     messages: Message[],
     runtime: IAgentRuntime,
     roomId: UUID,
-    inReplyTo: UUID
+    inReplyTo: UUID,
+    userId: UUID,
+    message: Memory,
+    context: string
 ) {
     messages.forEach(({ content, role, id }: Message) => {
         if (role === "assistant") {
-            processMessageContents(id, runtime, roomId, content, inReplyTo);
+            processMessageContents(
+                id,
+                runtime,
+                roomId,
+                content,
+                inReplyTo,
+                userId,
+                message,
+                context
+            );
         }
     });
 }
@@ -120,7 +140,10 @@ async function processMessageContents(
     runtime: IAgentRuntime,
     roomId: UUID,
     content: ResContent[],
-    inReplyTo: UUID
+    inReplyTo: UUID,
+    userId: UUID,
+    message: Memory,
+    context: string
 ) {
     content.forEach(({ type, text }: ResContent) => {
         if (type === "text") {
@@ -128,7 +151,15 @@ async function processMessageContents(
                 text,
                 inReplyTo,
             };
-            buildAndSaveMemory(messageId, runtime, roomId, content);
+            buildAndSaveMemory(
+                messageId,
+                runtime,
+                roomId,
+                content,
+                userId,
+                message,
+                context
+            );
         }
     });
 }
@@ -137,7 +168,10 @@ async function buildAndSaveMemory(
     messageId: string,
     runtime: IAgentRuntime,
     roomId: UUID,
-    content: Content
+    content: Content,
+    userId: UUID,
+    message: Memory,
+    context: string
 ) {
     const agentId = runtime.agentId;
 
@@ -150,7 +184,12 @@ async function buildAndSaveMemory(
         createdAt: Date.now(),
     };
 
-    elizaLogger.info("streamedResponseMessage", responseMessage);
+    elizaLogger.log("DIRECT_STREAM_RESPONSE_RES", {
+        body: { message, context, responseMessage },
+        userId,
+        roomId,
+        type: "response",
+    });
 
     await runtime.messageManager.createMemory(
         responseMessage,

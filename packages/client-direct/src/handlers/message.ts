@@ -64,7 +64,7 @@ async function handle(
         agentName: runtime.character.name,
     });
 
-    const response = await genResponse(runtime, state);
+    const { response, context } = await genResponse(runtime, state);
 
     // Send initial response immediately
     const responseData = {
@@ -80,6 +80,13 @@ async function handle(
         content: response,
         createdAt: Date.now(),
     };
+
+    elizaLogger.log("DIRECT_MESSAGE_RESPONSE_RES", {
+        body: { userMessage, context, responseMessage },
+        userId,
+        roomId,
+        type: "response",
+    });
 
     await runtime.messageManager.createMemory(
         responseMessage,

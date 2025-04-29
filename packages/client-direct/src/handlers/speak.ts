@@ -99,7 +99,7 @@ async function processTextualRequest(
         agentName: runtime.character.name,
     });
 
-    const response = await genResponse(runtime, state);
+    const { response } = await genResponse(runtime, state);
 
     const responseMessage: Memory = {
         id: stringToUuid(messageId + "-" + agentId),

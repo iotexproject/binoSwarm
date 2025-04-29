@@ -36,11 +36,13 @@ export async function genResponse(runtime: AgentRuntime, state: State) {
             messageHandlerTemplate,
     });
 
-    return generateMessageResponse({
+    const response = await generateMessageResponse({
         runtime: runtime,
         context,
         modelClass: ModelClass.LARGE,
     });
+
+    return { response, context };
 }
 
 export async function composeContent(
