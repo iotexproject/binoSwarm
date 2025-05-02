@@ -142,52 +142,62 @@ export class Metering implements IMetering {
         const eventsToSend = [...this.eventQueue];
         this.eventQueue = [];
 
-        const eventsPayload: Record<number, MeteringEvent> = {};
-        eventsToSend.forEach((event, index) => {
-            eventsPayload[index] = event;
-        });
-
         elizaLogger.debug(
             `Flushing ${eventsToSend.length} events`,
-            eventsPayload
+            eventsToSend
         );
 
         if (this.isLocal) {
             elizaLogger.debug("Remote metering is disabled");
-            elizaLogger.debug("METERING_EVENTS", eventsPayload);
+            elizaLogger.debug("METERING_EVENTS", eventsToSend);
             return { success: true, eventIds: [] };
         }
 
         try {
-            const response = await fetch(`${this.apiUrl}/events`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${process.env.OPENMETER_API_KEY}`,
-                },
-                body: JSON.stringify(eventsPayload),
-            });
+            // Send each event individually per the CloudEvents format
+            const results = await Promise.all(
+                eventsToSend.map(async (event) => {
+                    const response = await fetch(`${this.apiUrl}/events`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/cloudevents+json",
+                            Authorization: `Bearer ${process.env.OPENMETER_API_KEY}`,
+                        },
+                        body: JSON.stringify(event),
+                    });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                elizaLogger.error("API error", {
-                    status: response.status,
-                    body: errorText,
-                });
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        elizaLogger.error("API error", {
+                            status: response.status,
+                            body: errorText,
+                        });
+                        return {
+                            success: false,
+                            error: errorText,
+                            eventId: event.id,
+                        };
+                    }
 
-                // Put events back in queue for retry
-                this.eventQueue = [...eventsToSend, ...this.eventQueue];
+                    return { success: true, eventId: event.id };
+                })
+            );
+
+            const failures = results.filter((r) => !r.success);
+
+            // Add failed events back to the queue
+            if (failures.length > 0) {
+                const failedIds = failures.map((f) => f.eventId);
+                const failedEvents = eventsToSend.filter((e) =>
+                    failedIds.includes(e.id)
+                );
+                this.eventQueue = [...failedEvents, ...this.eventQueue];
 
                 return {
                     success: false,
-                    errors: [
-                        `API responded with status ${response.status}: ${errorText}`,
-                    ],
+                    errors: failures.map((f) => f.error),
                 };
             }
-
-            const result = await response.json();
-            elizaLogger.debug("Flush successful", result);
 
             return {
                 success: true,
