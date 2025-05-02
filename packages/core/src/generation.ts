@@ -118,6 +118,17 @@ export async function generateText({
         experimental_telemetry: tel,
     });
 
+    runtime.metering.trackPrompt({
+        tokens: result.usage.promptTokens,
+        model: settings.name,
+        type: "input",
+    });
+    runtime.metering.trackPrompt({
+        tokens: result.usage.completionTokens,
+        model: settings.name,
+        type: "output",
+    });
+
     elizaLogger.debug("generateText result:", result.text);
     return result.text;
 }
@@ -146,7 +157,8 @@ export async function generateShouldRespond({
             schema: shouldRespondSchema,
             schemaName: "ShouldRespond",
             schemaDescription: "A boolean value",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
 
         return response.object.response;
@@ -191,7 +203,8 @@ export async function generateTrueOrFalse({
             schema: booleanSchema,
             schemaName: "Boolean",
             schemaDescription: "A boolean value",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
 
         return response.object.response;
@@ -417,7 +430,8 @@ export async function generateTweetActions({
             schema: actionsSchema,
             schemaName: "Actions",
             schemaDescription: "The actions to take on the tweet",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
 
         return response.object;
@@ -476,6 +490,17 @@ export async function generateObject<T>({
         ...modelOptions,
     });
 
+    runtime.metering.trackPrompt({
+        tokens: result.usage.promptTokens,
+        model: modelSettings.name,
+        type: "input",
+    });
+    runtime.metering.trackPrompt({
+        tokens: result.usage.completionTokens,
+        model: modelSettings.name,
+        type: "output",
+    });
+
     elizaLogger.debug("generateObject result:", result.object);
     schema.parse(result.object);
     return result;
@@ -532,11 +557,22 @@ export async function generateTextWithTools({
         maxSteps: TOOL_CALL_LIMIT,
         experimental_continueSteps: true,
         onStepFinish(step: any) {
+            runtime.metering.trackPrompt({
+                tokens: step.usage.promptTokens,
+                model: modelSettings.name,
+                type: "input",
+            });
+            runtime.metering.trackPrompt({
+                tokens: step.usage.completionTokens,
+                model: modelSettings.name,
+                type: "output",
+            });
             logStep(step);
         },
         ...modelOptions,
     });
 
+    elizaLogger.debug("generateTextWithTools result:", result.text);
     return result.text;
 }
 
@@ -594,6 +630,18 @@ export function streamWithTools({
         experimental_transform: smoothStream({ chunking: smoothStreamBy }),
         onStepFinish(step: any) {
             logStep(step);
+        },
+        onFinish(step: any) {
+            runtime.metering.trackPrompt({
+                tokens: step.usage.promptTokens,
+                model: modelSettings.name,
+                type: "input",
+            });
+            runtime.metering.trackPrompt({
+                tokens: step.usage.completionTokens,
+                model: modelSettings.name,
+                type: "output",
+            });
         },
         ...modelOptions,
     });
