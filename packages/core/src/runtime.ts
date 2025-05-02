@@ -22,6 +22,7 @@ import { stringArraySchema } from "./parsing.ts";
 import { formatPosts } from "./posts.ts";
 import { getProviders } from "./providers.ts";
 import { RAGKnowledgeManager } from "./ragknowledge.ts";
+import { Metering } from "./metering.ts";
 import settings from "./settings.ts";
 import {
     Character,
@@ -46,6 +47,7 @@ import {
     type Evaluator,
     type Memory,
     RAGKnowledgeItem,
+    IMetering,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
 
@@ -103,6 +105,7 @@ export class AgentRuntime implements IAgentRuntime {
     memoryManagers: Map<string, IMemoryManager> = new Map();
     cacheManager: ICacheManager;
     clients: Record<string, any>;
+    metering: IMetering;
 
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
 
@@ -115,6 +118,7 @@ export class AgentRuntime implements IAgentRuntime {
         this.registerMemoryManagers(opts);
         this.registerCustomServices(opts);
         this.initServerUrl(opts);
+        this.initMetering(opts);
 
         this.initModelProvider(opts);
         this.initImageModelProvider();
@@ -605,6 +609,10 @@ export class AgentRuntime implements IAgentRuntime {
             "Selected IMAGE model provider:",
             this.imageModelProvider
         );
+    }
+
+    private initMetering(opts: AgentRuntimeOptions) {
+        this.metering = new Metering({ source: opts.character.name });
     }
 
     private initModelProvider(opts: AgentRuntimeOptions) {
