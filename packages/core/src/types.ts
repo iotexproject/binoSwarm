@@ -1572,4 +1572,9 @@ export interface TrackPromptParams {
 export interface IMetering {
     track(event: MeteringEvent): void;
     trackPrompt(params: TrackPromptParams): void;
+    createEvent(params: {
+        type: string;
+        data: Record<string, unknown>;
+        id?: UUID;
+    }): MeteringEvent;
 }
