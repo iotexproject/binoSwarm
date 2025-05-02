@@ -98,8 +98,8 @@ export async function buildConversationThread(
                             : stringToUuid(currentTweet.userId),
                 },
                 "twitter",
-                false,
-                false
+                true,
+                true
             );
         }
 

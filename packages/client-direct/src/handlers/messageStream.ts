@@ -65,7 +65,7 @@ async function handle(
         createdAt: Date.now(),
     };
 
-    await runtime.messageManager.createMemory(memory, "direct", true, false);
+    await runtime.messageManager.createMemory(memory, "direct", true, true);
 
     const state = await runtime.composeState(userMessage, {
         agentName: runtime.character.name,
@@ -194,7 +194,7 @@ async function buildAndSaveMemory(
     await runtime.messageManager.createMemory(
         responseMessage,
         "direct",
-        false,
-        true
+        true,
+        false
     );
 }

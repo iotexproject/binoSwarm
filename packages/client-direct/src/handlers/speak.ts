@@ -93,7 +93,7 @@ async function processTextualRequest(
         createdAt: Date.now(),
     };
 
-    await runtime.messageManager.createMemory(memory, "direct", true, false);
+    await runtime.messageManager.createMemory(memory, "direct", true, true);
 
     let state = await runtime.composeState(userMessage, {
         agentName: runtime.character.name,
@@ -112,8 +112,8 @@ async function processTextualRequest(
     await runtime.messageManager.createMemory(
         responseMessage,
         "direct",
-        false,
-        true
+        true,
+        false
     );
 
     state = await runtime.updateRecentMessageState(state);

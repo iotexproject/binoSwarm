@@ -115,7 +115,7 @@ export class MessageManager {
                 memory,
                 "discord",
                 true,
-                false
+                true
             );
             let state = await this.runtime.composeState(memory, {
                 discordClient: this.client,
@@ -211,8 +211,8 @@ export class MessageManager {
                             await this.runtime.messageManager.createMemory(
                                 m,
                                 "discord",
-                                false,
-                                true
+                                true,
+                                false
                             );
                         }
                         return memories;

@@ -969,7 +969,7 @@ export class MessageManager {
                 memory,
                 "telegram",
                 true,
-                false
+                true
             );
 
             // Update state with the new memory
@@ -1018,8 +1018,8 @@ export class MessageManager {
                         await this.runtime.messageManager.createMemory(
                             memory,
                             "telegram",
-                            false,
-                            true
+                            true,
+                            false
                         );
                         memories.push(memory);
                     }
