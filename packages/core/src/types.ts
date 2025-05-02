@@ -1149,6 +1149,7 @@ export interface IAgentRuntime {
     actions: Action[];
     evaluators: Evaluator[];
     plugins: Plugin[];
+    metering: IMetering;
 
     fetch?: typeof fetch | null;
 
@@ -1533,4 +1534,47 @@ export enum TranscriptionProvider {
 export enum ActionTimelineType {
     ForYou = "foryou",
     Following = "following",
+}
+
+/**
+ * Represents a CloudEvent compatible event for metering
+ */
+export interface MeteringEvent {
+    /** CloudEvents spec version */
+    specversion: string;
+
+    /** Event type */
+    type: string;
+
+    /** Unique event identifier */
+    id: UUID;
+
+    /** Event timestamp */
+    time: string;
+
+    /** Event source */
+    source: string;
+
+    /** Subject of the event (usually customer ID) */
+    subject: string;
+
+    /** Event payload data */
+    data: Record<string, unknown>;
+}
+
+export interface TrackPromptParams {
+    tokens: number;
+    model: string;
+    type: "input" | "output" | "system";
+    id?: UUID;
+}
+
+export interface IMetering {
+    track(event: MeteringEvent): void;
+    trackPrompt(params: TrackPromptParams): void;
+    createEvent(params: {
+        type: string;
+        data: Record<string, unknown>;
+        id?: UUID;
+    }): MeteringEvent;
 }

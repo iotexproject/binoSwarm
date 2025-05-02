@@ -519,8 +519,8 @@ export class ClientBase extends EventEmitter {
                             createdAt: tweet.timestamp * 1000,
                         },
                         "twitter",
-                        false,
-                        false
+                        true,
+                        true
                     );
 
                     await this.cacheTweet(tweet);
@@ -637,8 +637,8 @@ export class ClientBase extends EventEmitter {
                     createdAt: tweet.timestamp * 1000,
                 },
                 "twitter",
-                false,
-                false
+                true,
+                true
             );
 
             await this.cacheTweet(tweet);
@@ -682,8 +682,8 @@ export class ClientBase extends EventEmitter {
                         ...message,
                     },
                     "twitter",
-                    false,
-                    false
+                    true,
+                    true
                 );
             }
 

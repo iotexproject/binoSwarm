@@ -390,7 +390,7 @@ describe("MessageManager", () => {
                 }),
                 "discord",
                 true,
-                false
+                true
             );
         });
 

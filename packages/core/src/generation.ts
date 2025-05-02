@@ -2,6 +2,7 @@ import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import {
     generateObject as aiGenerateObject,
     generateText as aiGenerateText,
+    experimental_generateImage as aiGenerateImage,
     GenerateObjectResult,
     StepResult as AIStepResult,
     Message,
@@ -11,7 +12,7 @@ import {
     streamText,
     smoothStream,
 } from "ai";
-import OpenAI from "openai";
+import { openai } from "@ai-sdk/openai";
 import { ZodSchema, z } from "zod";
 import { tavily } from "@tavily/core";
 
@@ -59,6 +60,9 @@ type ModelSettings = {
     stop?: string[];
     experimental_telemetry?: TelemetrySettings;
 };
+
+const UTILITY_SYSTEM_PROMPT =
+    "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.";
 
 export async function generateText({
     runtime,
@@ -118,6 +122,17 @@ export async function generateText({
         experimental_telemetry: tel,
     });
 
+    runtime.metering.trackPrompt({
+        tokens: result.usage.promptTokens,
+        model: settings.name,
+        type: "input",
+    });
+    runtime.metering.trackPrompt({
+        tokens: result.usage.completionTokens,
+        model: settings.name,
+        type: "output",
+    });
+
     elizaLogger.debug("generateText result:", result.text);
     return result.text;
 }
@@ -146,7 +161,7 @@ export async function generateShouldRespond({
             schema: shouldRespondSchema,
             schemaName: "ShouldRespond",
             schemaDescription: "A boolean value",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt: UTILITY_SYSTEM_PROMPT,
         });
 
         return response.object.response;
@@ -191,7 +206,7 @@ export async function generateTrueOrFalse({
             schema: booleanSchema,
             schemaName: "Boolean",
             schemaDescription: "A boolean value",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt: UTILITY_SYSTEM_PROMPT,
         });
 
         return response.object.response;
@@ -321,24 +336,22 @@ export const generateImage = async (
         ) {
             targetSize = "1024x1024";
         }
-        const openaiApiKey = runtime.getSetting("OPENAI_API_KEY") as string;
-        if (!openaiApiKey) {
-            throw new Error("OPENAI_API_KEY is not set");
-        }
-        const openai = new OpenAI({
-            apiKey: openaiApiKey as string,
-        });
-        const response = await openai.images.generate({
-            model,
+        const { image } = await aiGenerateImage({
+            model: openai.image(model),
             prompt: data.prompt,
             size: targetSize as "1024x1024" | "1792x1024" | "1024x1792",
-            n: data.count,
-            response_format: "b64_json",
         });
-        const base64s = response.data.map(
-            (image) => `data:image/png;base64,${image.b64_json}`
-        );
-        return { success: true, data: base64s };
+
+        const event = runtime.metering.createEvent({
+            type: "image",
+            data: {
+                model: model,
+                size: targetSize,
+            },
+        });
+        runtime.metering.track(event);
+
+        return { success: true, data: [image.base64] };
     } catch (error) {
         elizaLogger.error(error);
         return { success: false, error: error };
@@ -417,7 +430,7 @@ export async function generateTweetActions({
             schema: actionsSchema,
             schemaName: "Actions",
             schemaDescription: "The actions to take on the tweet",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt: UTILITY_SYSTEM_PROMPT,
         });
 
         return response.object;
@@ -476,6 +489,17 @@ export async function generateObject<T>({
         ...modelOptions,
     });
 
+    runtime.metering.trackPrompt({
+        tokens: result.usage.promptTokens,
+        model: modelSettings.name,
+        type: "input",
+    });
+    runtime.metering.trackPrompt({
+        tokens: result.usage.completionTokens,
+        model: modelSettings.name,
+        type: "output",
+    });
+
     elizaLogger.debug("generateObject result:", result.object);
     schema.parse(result.object);
     return result;
@@ -532,11 +556,22 @@ export async function generateTextWithTools({
         maxSteps: TOOL_CALL_LIMIT,
         experimental_continueSteps: true,
         onStepFinish(step: any) {
+            runtime.metering.trackPrompt({
+                tokens: step.usage.promptTokens,
+                model: modelSettings.name,
+                type: "input",
+            });
+            runtime.metering.trackPrompt({
+                tokens: step.usage.completionTokens,
+                model: modelSettings.name,
+                type: "output",
+            });
             logStep(step);
         },
         ...modelOptions,
     });
 
+    elizaLogger.debug("generateTextWithTools result:", result.text);
     return result.text;
 }
 
@@ -594,6 +629,18 @@ export function streamWithTools({
         experimental_transform: smoothStream({ chunking: smoothStreamBy }),
         onStepFinish(step: any) {
             logStep(step);
+        },
+        onFinish(step: any) {
+            runtime.metering.trackPrompt({
+                tokens: step.usage.promptTokens,
+                model: modelSettings.name,
+                type: "input",
+            });
+            runtime.metering.trackPrompt({
+                tokens: step.usage.completionTokens,
+                model: modelSettings.name,
+                type: "output",
+            });
         },
         ...modelOptions,
     });

@@ -160,8 +160,8 @@ export class TwitterHelpers {
                 createdAt: tweet.timestamp,
             },
             "twitter",
-            false,
-            true
+            true,
+            false
         );
     }
 

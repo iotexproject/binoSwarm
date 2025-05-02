@@ -30,9 +30,17 @@ vi.mock("ai", () => ({
     generateObject: vi.fn().mockResolvedValue({
         text: "mocked response",
         object: { foo: "bar" },
+        usage: {
+            promptTokens: 10,
+            completionTokens: 20,
+        },
     }),
     generateText: vi.fn().mockResolvedValue({
         text: "mocked text response",
+        usage: {
+            promptTokens: 10,
+            completionTokens: 20,
+        },
     }),
 }));
 
@@ -111,6 +119,9 @@ describe("Generation Module", () => {
                 }
                 return null;
             }),
+            metering: {
+                trackPrompt: vi.fn(),
+            },
         } as unknown as AgentRuntime;
 
         // Reset all mocks before each test
@@ -171,6 +182,10 @@ describe("Generation Module", () => {
             expect(result).toEqual({
                 text: "mocked response",
                 object: { foo: "bar" },
+                usage: {
+                    promptTokens: 10,
+                    completionTokens: 20,
+                },
             });
         });
 

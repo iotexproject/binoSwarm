@@ -422,8 +422,8 @@ export class TwitterInteractionClient {
                     await this.runtime.messageManager.createMemory(
                         responseMessage,
                         "twitter",
-                        false,
-                        true
+                        true,
+                        false
                     );
                 }
 
@@ -520,7 +520,7 @@ export class TwitterInteractionClient {
                                 : stringToUuid(currentTweet.userId),
                     },
                     "twitter",
-                    false,
+                    true,
                     false
                 );
             }

@@ -352,8 +352,8 @@ export class TwitterActionProcessor {
                 createdAt: tweet.timestamp * 1000,
             },
             "twitter",
-            false,
-            true
+            true,
+            false
         );
     }
 

@@ -10,6 +10,7 @@ export * from "./generation.ts";
 export * from "./goals.ts";
 export * from "./memory.ts";
 export * from "./messages.ts";
+export * from "./metering.ts";
 export * from "./models.ts";
 export * from "./posts.ts";
 export * from "./providers.ts";

@@ -961,7 +961,7 @@ export class VoiceManager extends EventEmitter {
         await runtime.messageManager.createMemory(
             responseMessage,
             "discord",
-            false,
+            true,
             false
         );
     }
