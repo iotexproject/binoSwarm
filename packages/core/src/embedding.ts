@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai";
-import { embed as embedAi, embedMany as embedManyAi } from "ai";
+import { embed as embedAi, embedMany as embedManyAi, EmbedResult } from "ai";
 
 import { IAgentRuntime, ModelProviderName } from "./types.ts";
 import settings from "./settings.ts";
@@ -44,7 +44,7 @@ export async function embed(
     if (isLocal) {
         return await getLocalEmbedding(input);
     }
-    return await getRemoteEmbedding(input);
+    return await getRemoteEmbedding(input, runtime);
 }
 
 export function getCurrentDimention() {
@@ -107,18 +107,36 @@ async function retrieveCachedEmbedding(runtime: IAgentRuntime, input: string) {
     return null;
 }
 
-async function getRemoteEmbedding(input: string): Promise<number[]> {
+async function getRemoteEmbedding(
+    input: string,
+    runtime: IAgentRuntime
+): Promise<number[]> {
     try {
-        const { embedding } = await embedAi({
+        const res = await embedAi({
             model: openai.embedding(EMBEDDING_MODEL),
             value: input,
             maxRetries: EMBEDDING_RETRIES,
         });
-        return embedding;
+
+        meterEmbedding(runtime, res);
+
+        return res.embedding;
     } catch (e) {
         elizaLogger.error("Full error details:", e);
         throw e;
     }
+}
+
+function meterEmbedding(runtime: IAgentRuntime, res: EmbedResult<string>) {
+    const event = runtime.metering.createEvent({
+        type: "embedding",
+        data: {
+            tokens: res.usage.tokens.toString(),
+            model: EMBEDDING_MODEL,
+            type: "input",
+        },
+    });
+    runtime.metering.track(event);
 }
 
 function getEmbeddingType(runtime: IAgentRuntime): "local" | "remote" {
