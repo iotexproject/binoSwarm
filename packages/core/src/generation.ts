@@ -2,6 +2,7 @@ import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import {
     generateObject as aiGenerateObject,
     generateText as aiGenerateText,
+    experimental_generateImage as aiGenerateImage,
     GenerateObjectResult,
     StepResult as AIStepResult,
     Message,
@@ -11,7 +12,7 @@ import {
     streamText,
     smoothStream,
 } from "ai";
-import OpenAI from "openai";
+import { openai } from "@ai-sdk/openai";
 import { ZodSchema, z } from "zod";
 import { tavily } from "@tavily/core";
 
@@ -335,24 +336,22 @@ export const generateImage = async (
         ) {
             targetSize = "1024x1024";
         }
-        const openaiApiKey = runtime.getSetting("OPENAI_API_KEY") as string;
-        if (!openaiApiKey) {
-            throw new Error("OPENAI_API_KEY is not set");
-        }
-        const openai = new OpenAI({
-            apiKey: openaiApiKey as string,
-        });
-        const response = await openai.images.generate({
-            model,
+        const { image } = await aiGenerateImage({
+            model: openai.image(model),
             prompt: data.prompt,
             size: targetSize as "1024x1024" | "1792x1024" | "1024x1792",
-            n: data.count,
-            response_format: "b64_json",
         });
-        const base64s = response.data.map(
-            (image) => `data:image/png;base64,${image.b64_json}`
-        );
-        return { success: true, data: base64s };
+
+        const event = runtime.metering.createEvent({
+            type: "image",
+            data: {
+                model: model,
+                size: targetSize,
+            },
+        });
+        runtime.metering.track(event);
+
+        return { success: true, data: [image.base64] };
     } catch (error) {
         elizaLogger.error(error);
         return { success: false, error: error };
