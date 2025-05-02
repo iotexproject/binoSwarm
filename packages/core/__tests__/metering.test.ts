@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { Metering } from "../metering";
-import { stringToUuid } from "../uuid";
-import { MeteringEvent } from "../types";
+import { Metering } from "../src/metering";
+import { stringToUuid } from "../src/uuid";
+import { MeteringEvent } from "../src/types";
 
 describe("Metering", () => {
     let metering: Metering;
