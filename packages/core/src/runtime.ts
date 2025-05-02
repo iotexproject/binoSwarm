@@ -118,7 +118,7 @@ export class AgentRuntime implements IAgentRuntime {
         this.registerMemoryManagers(opts);
         this.registerCustomServices(opts);
         this.initServerUrl(opts);
-        this.initMetering(opts);
+        this.initMetering();
 
         this.initModelProvider(opts);
         this.initImageModelProvider();
@@ -611,8 +611,8 @@ export class AgentRuntime implements IAgentRuntime {
         );
     }
 
-    private initMetering(opts: AgentRuntimeOptions) {
-        this.metering = new Metering({ source: opts.character.name });
+    private initMetering() {
+        this.metering = new Metering({ source: this.character.name });
     }
 
     private initModelProvider(opts: AgentRuntimeOptions) {
