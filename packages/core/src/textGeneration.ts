@@ -5,12 +5,18 @@ import {
     StepResult,
     Message,
     Tool,
+    GenerateTextResult,
 } from "ai";
 
 import { elizaLogger } from "./index.ts";
 import { getModelSettings, getModel } from "./models.ts";
-import { parseJSONObjectFromText, parseTagContent } from "./parsing.ts";
-import { IAgentRuntime, ModelClass, GenerationOptions } from "./types.ts";
+import {
+    IAgentRuntime,
+    ModelClass,
+    GenerationOptions,
+    ModelSettings,
+    ModelProviderName,
+} from "./types.ts";
 import { trimTokens } from "./tokenTrimming.ts";
 import { buildGenerationSettings } from "./generationHelpers.ts";
 
@@ -34,16 +40,11 @@ export async function generateText({
     customSystemPrompt?: string;
     messages?: Message[];
 }): Promise<string> {
-    if (!context) {
-        throw new Error("generateText context is empty");
-    }
+    validateContext(context);
 
     const provider = runtime.modelProvider;
     const settings = getModelSettings(provider, modelClass);
-
-    if (!settings) {
-        throw new Error(`Model settings not found for provider: ${provider}`);
-    }
+    validateSettings(settings, provider);
 
     const cfg = runtime.character?.settings?.modelConfig;
     const temp = cfg?.temperature || settings.temperature;
@@ -72,16 +73,7 @@ export async function generateText({
         experimental_telemetry: tel,
     });
 
-    runtime.metering.trackPrompt({
-        tokens: result.usage.promptTokens,
-        model: settings.name,
-        type: "input",
-    });
-    runtime.metering.trackPrompt({
-        tokens: result.usage.completionTokens,
-        model: settings.name,
-        type: "output",
-    });
+    trackUsage(runtime, result, settings);
 
     elizaLogger.debug("generateText result:", result.text);
     return result.text;
@@ -96,16 +88,11 @@ export async function generateObject<T>({
     schemaDescription,
     customSystemPrompt,
 }: GenerationOptions): Promise<GenerateObjectResult<T>> {
-    if (!context) {
-        throw new Error("generateObject context is empty");
-    }
+    validateContext(context);
 
     const provider = runtime.modelProvider;
     const modelSettings = getModelSettings(provider, modelClass);
-
-    if (!modelSettings) {
-        throw new Error(`Model settings not found for provider: ${provider}`);
-    }
+    validateSettings(modelSettings, provider);
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
     const modelOptions = buildGenerationSettings(context, modelSettings);
@@ -121,6 +108,18 @@ export async function generateObject<T>({
         ...modelOptions,
     });
 
+    trackUsage(runtime, result, modelSettings);
+
+    elizaLogger.debug("generateObject result:", result.object);
+    schema.parse(result.object);
+    return result;
+}
+
+function trackUsage(
+    runtime: IAgentRuntime,
+    result: GenerateObjectResult<any> | GenerateTextResult<any, any>,
+    modelSettings: ModelSettings
+) {
     runtime.metering.trackPrompt({
         tokens: result.usage.promptTokens,
         model: modelSettings.name,
@@ -131,53 +130,19 @@ export async function generateObject<T>({
         model: modelSettings.name,
         type: "output",
     });
-
-    elizaLogger.debug("generateObject result:", result.object);
-    schema.parse(result.object);
-    return result;
 }
 
-export async function generateObjectDeprecated({
-    runtime,
-    context,
-    modelClass,
-}: {
-    runtime: IAgentRuntime;
-    context: string;
-    modelClass: ModelClass;
-}): Promise<any> {
+function validateContext(context: string) {
     if (!context) {
-        elizaLogger.error("generateObjectDeprecated context is empty");
-        return null;
+        throw new Error("generation context is empty");
     }
+}
 
-    let retryDelay = 1000;
-    let retryCount = 0;
-    const MAX_RETRIES = 5;
-
-    while (retryCount < MAX_RETRIES) {
-        try {
-            const response = await generateText({
-                runtime,
-                context,
-                modelClass,
-            });
-            const extractedResponse = parseTagContent(response, "response");
-            const parsedResponse = parseJSONObjectFromText(extractedResponse);
-            if (parsedResponse) {
-                return parsedResponse;
-            }
-        } catch (error) {
-            elizaLogger.error("Error in generateObject:", error);
-        }
-
-        elizaLogger.log(
-            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
-        );
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        retryDelay *= 2;
-        retryCount++;
+function validateSettings(
+    settings: ModelSettings,
+    provider: ModelProviderName
+) {
+    if (!settings) {
+        throw new Error(`Model settings not found for provider: ${provider}`);
     }
-
-    throw new Error("Failed to generate object after maximum retries");
 }

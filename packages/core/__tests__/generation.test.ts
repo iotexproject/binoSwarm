@@ -200,7 +200,7 @@ describe("Generation Module", () => {
                     schemaName: "Person",
                     schemaDescription: "A person with name and age",
                 })
-            ).rejects.toThrow("generateObject context is empty");
+            ).rejects.toThrow("generation context is empty");
         });
 
         it("should throw an error for unsupported provider", async () => {
@@ -269,7 +269,7 @@ describe("Generation Module", () => {
                     context: "",
                     modelClass: ModelClass.LARGE,
                 })
-            ).rejects.toThrow("generateText context is empty");
+            ).rejects.toThrow("generation context is empty");
         });
 
         it("should throw an error for unsupported provider", async () => {
