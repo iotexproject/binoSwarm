@@ -15,17 +15,10 @@ import { buildGenerationSettings } from "./generationHelpers.ts";
 
 const TOOL_CALL_LIMIT = 5;
 
-export async function generateTextWithTools({
-    runtime,
-    context,
-    modelClass,
-    customSystemPrompt,
-    tools,
-}: {
+type GenerateTextWithToolsOptions = {
     runtime: IAgentRuntime;
     context: string;
     modelClass: ModelClass;
-    stop?: string[];
     customSystemPrompt?: string;
     tools: {
         name: string;
@@ -33,7 +26,15 @@ export async function generateTextWithTools({
         parameters: ZodSchema;
         execute: (args: any) => Promise<any>;
     }[];
-}): Promise<string> {
+};
+
+export async function generateTextWithTools({
+    runtime,
+    context,
+    modelClass,
+    customSystemPrompt,
+    tools,
+}: GenerateTextWithToolsOptions): Promise<string> {
     if (!context) {
         throw new Error("generateObject context is empty");
     }
@@ -86,17 +87,7 @@ export function streamWithTools({
     customSystemPrompt,
     tools,
     smoothStreamBy = "word",
-}: {
-    runtime: IAgentRuntime;
-    context: string;
-    modelClass: ModelClass;
-    customSystemPrompt?: string;
-    tools: {
-        name: string;
-        description: string;
-        parameters: ZodSchema;
-        execute: (args: any) => Promise<any>;
-    }[];
+}: GenerateTextWithToolsOptions & {
     smoothStreamBy?: "word" | "line" | RegExp;
 }): any {
     if (!context) {
