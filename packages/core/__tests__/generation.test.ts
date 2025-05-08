@@ -1,7 +1,11 @@
 import { describe, beforeEach, it, expect, vi, afterEach } from "vitest";
 import { z } from "zod";
 import * as ai from "ai";
-import { generateObject, generateText } from "../src/textGeneration";
+import {
+    generateObject,
+    generateText,
+    generateObjectFromMessages,
+} from "../src/textGeneration";
 import { ModelClass, ModelProviderName, ServiceType } from "../src/types";
 import { AgentRuntime } from "../src/runtime";
 import { Message } from "ai";
@@ -477,6 +481,186 @@ describe("Generation Module", () => {
                 })
             ).rejects.toThrow(
                 "Model settings not found for provider: UNSUPPORTED_PROVIDER"
+            );
+        });
+    });
+
+    describe("generateObjectFromMessages", () => {
+        const testSchema = z.object({
+            foo: z.string(),
+        });
+
+        const testMessages = [
+            { role: "user", content: "Hello" },
+            { role: "assistant", content: "Hi there! How can I help you?" },
+            { role: "user", content: "Generate a test object" },
+        ];
+
+        it("should generate an object from messages using OpenAI provider", async () => {
+            // Setup
+            runtime.modelProvider = ModelProviderName.OPENAI;
+
+            // Execute
+            const result = await generateObjectFromMessages({
+                runtime,
+                context: "", // Context is not used with messages
+                messages: testMessages,
+                modelClass: ModelClass.LARGE,
+                schema: testSchema,
+                schemaName: "TestObject",
+                schemaDescription: "A test object with a foo property",
+            });
+
+            // Verify
+            expect(ai.generateObject).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    messages: testMessages,
+                    schema: testSchema,
+                    schemaName: "TestObject",
+                    schemaDescription: "A test object with a foo property",
+                })
+            );
+            expect(result.object).toEqual({
+                foo: "bar",
+            });
+        });
+
+        it("should generate an object from messages using Anthropic provider", async () => {
+            // Setup
+            runtime.modelProvider = ModelProviderName.ANTHROPIC;
+
+            // Execute
+            const result = await generateObjectFromMessages({
+                runtime,
+                context: "", // Context is not used with messages
+                messages: testMessages,
+                modelClass: ModelClass.LARGE,
+                schema: testSchema,
+                schemaName: "TestObject",
+                schemaDescription: "A test object with a foo property",
+            });
+
+            // Verify
+            expect(ai.generateObject).toHaveBeenCalled();
+            expect(result).toEqual({
+                text: "mocked response",
+                object: { foo: "bar" },
+                usage: {
+                    promptTokens: 10,
+                    completionTokens: 20,
+                },
+            });
+        });
+
+        it("should use custom system prompt when provided", async () => {
+            // Setup
+            const customSystemPrompt =
+                "You are a specialized test object generator";
+
+            // Execute
+            await generateObjectFromMessages({
+                runtime,
+                context: "",
+                messages: testMessages,
+                modelClass: ModelClass.LARGE,
+                schema: testSchema,
+                schemaName: "TestObject",
+                schemaDescription: "A test object with a foo property",
+                customSystemPrompt,
+            });
+
+            // Verify
+            expect(ai.generateObject).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    system: customSystemPrompt,
+                })
+            );
+        });
+
+        it("should validate the result against the schema", async () => {
+            // Setup
+            const validateSpy = vi.spyOn(testSchema, "parse");
+
+            // Execute
+            await generateObjectFromMessages({
+                runtime,
+                context: "",
+                messages: testMessages,
+                modelClass: ModelClass.LARGE,
+                schema: testSchema,
+                schemaName: "TestObject",
+                schemaDescription: "A test object with a foo property",
+            });
+
+            // Verify
+            expect(validateSpy).toHaveBeenCalledWith({ foo: "bar" });
+        });
+
+        it("should throw an error when model settings are not found", async () => {
+            // Setup
+            // Set an unsupported provider that won't have model settings
+            runtime.modelProvider = "unsupported_provider" as ModelProviderName;
+
+            // Execute & Verify
+            await expect(
+                generateObjectFromMessages({
+                    runtime,
+                    context: "",
+                    messages: testMessages,
+                    modelClass: ModelClass.LARGE,
+                    schema: testSchema,
+                    schemaName: "TestObject",
+                    schemaDescription: "A test object with a foo property",
+                })
+            ).rejects.toThrow(
+                "Model settings not found for provider: unsupported_provider"
+            );
+        });
+
+        it("should track usage after generation", async () => {
+            // Execute
+            await generateObjectFromMessages({
+                runtime,
+                context: "",
+                messages: testMessages,
+                modelClass: ModelClass.LARGE,
+                schema: testSchema,
+                schemaName: "TestObject",
+                schemaDescription: "A test object with a foo property",
+            });
+
+            // Verify
+            expect(runtime.metering.trackPrompt).toHaveBeenCalledTimes(2);
+            expect(runtime.metering.trackPrompt).toHaveBeenCalledWith({
+                tokens: 10,
+                model: expect.any(String),
+                type: "input",
+            });
+            expect(runtime.metering.trackPrompt).toHaveBeenCalledWith({
+                tokens: 20,
+                model: expect.any(String),
+                type: "output",
+            });
+        });
+
+        it("should not include prompt in the model options", async () => {
+            // Execute
+            await generateObjectFromMessages({
+                runtime,
+                context: "",
+                messages: testMessages,
+                modelClass: ModelClass.LARGE,
+                schema: testSchema,
+                schemaName: "TestObject",
+                schemaDescription: "A test object with a foo property",
+            });
+
+            // Verify that there's no prompt property in the options
+            const aiGenerateObjectCalls = (ai.generateObject as any).mock.calls;
+            const optionsPassedToAiGenerateObject =
+                aiGenerateObjectCalls[aiGenerateObjectCalls.length - 1][0];
+            expect(optionsPassedToAiGenerateObject).not.toHaveProperty(
+                "prompt"
             );
         });
     });
