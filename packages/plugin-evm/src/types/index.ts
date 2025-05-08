@@ -1,4 +1,3 @@
-import type { Token } from "@lifi/types";
 import type {
     Account,
     Address,
@@ -23,22 +22,6 @@ export interface Transaction {
     value: bigint;
     data?: `0x${string}`;
     chainId?: number;
-}
-
-// Token types
-export interface TokenWithBalance {
-    token: Token;
-    balance: bigint;
-    formattedBalance: string;
-    priceUSD: string;
-    valueUSD: string;
-}
-
-export interface WalletBalance {
-    chain: SupportedChain;
-    address: Address;
-    totalValueUSD: string;
-    tokens: TokenWithBalance[];
 }
 
 // Chain configuration
@@ -67,23 +50,6 @@ export interface TransferParams {
     toAddress: Address;
     amount: string;
     data?: `0x${string}`;
-}
-
-export interface SwapParams {
-    chain: SupportedChain;
-    fromToken: Address;
-    toToken: Address;
-    amount: string;
-    slippage?: number;
-}
-
-export interface BridgeParams {
-    fromChain: SupportedChain;
-    toChain: SupportedChain;
-    fromToken: Address;
-    toToken: Address;
-    amount: string;
-    toAddress?: Address;
 }
 
 // Plugin configuration
@@ -125,39 +91,6 @@ export interface EvmPluginConfig {
         batchSize?: number;
         wait?: number;
     };
-}
-
-// LiFi types
-export type LiFiStatus = {
-    status: "PENDING" | "DONE" | "FAILED";
-    substatus?: string;
-    error?: Error;
-};
-
-export type LiFiRoute = {
-    transactionHash: Hash;
-    transactionData: `0x${string}`;
-    toAddress: Address;
-    status: LiFiStatus;
-};
-
-// Provider types
-export interface TokenData extends Token {
-    symbol: string;
-    decimals: number;
-    address: Address;
-    name: string;
-    logoURI?: string;
-    chainId: number;
-}
-
-export interface TokenPriceResponse {
-    priceUSD: string;
-    token: TokenData;
-}
-
-export interface TokenListResponse {
-    tokens: TokenData[];
 }
 
 export interface ProviderError extends Error {
