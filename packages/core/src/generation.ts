@@ -29,11 +29,13 @@ import {
     ActionResponse,
     GenerationOptions,
     GenerationSettings,
+    ModelSettings,
 } from "./types.ts";
 import { trimTokens } from "./tokenTrimming.ts";
 
 const UTILITY_SYSTEM_PROMPT =
     "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.";
+const TOOL_CALL_LIMIT = 5;
 
 export async function generateText({
     runtime,
@@ -423,7 +425,6 @@ export async function generateObject<T>({
     schema,
     schemaName,
     schemaDescription,
-    stop,
     customSystemPrompt,
 }: GenerationOptions): Promise<GenerateObjectResult<T>> {
     if (!context) {
@@ -438,16 +439,7 @@ export async function generateObject<T>({
     }
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
-
-    const modelOptions: GenerationSettings = {
-        prompt: context,
-        temperature: modelSettings.temperature,
-        maxTokens: modelSettings.maxOutputTokens,
-        frequencyPenalty: modelSettings.frequency_penalty,
-        presencePenalty: modelSettings.presence_penalty,
-        stop: stop || modelSettings.stop,
-        experimental_telemetry: modelSettings.experimental_telemetry,
-    };
+    const modelOptions = buildGenerationSettings(context, modelSettings);
 
     const model = getModel(provider, modelSettings.name);
 
@@ -507,19 +499,12 @@ export async function generateTextWithTools({
     }
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
-
-    const modelOptions: GenerationSettings = {
-        prompt: context,
-        temperature: modelSettings.temperature,
-        maxTokens: modelSettings.maxOutputTokens,
-        frequencyPenalty: modelSettings.frequency_penalty,
-        presencePenalty: modelSettings.presence_penalty,
-        experimental_telemetry: modelSettings.experimental_telemetry,
-        stop: modelSettings.stop,
-    };
+    const modelOptions: GenerationSettings = buildGenerationSettings(
+        context,
+        modelSettings
+    );
 
     const model = getModel(provider, modelSettings.name);
-    const TOOL_CALL_LIMIT = 5;
 
     const result = await aiGenerateText({
         model,
@@ -578,18 +563,9 @@ export function streamWithTools({
         throw new Error(`Model settings not found for provider: ${provider}`);
     }
 
-    const modelOptions: GenerationSettings = {
-        prompt: context,
-        stop: modelSettings.stop,
-        temperature: modelSettings.temperature,
-        maxTokens: modelSettings.maxOutputTokens,
-        frequencyPenalty: modelSettings.frequency_penalty,
-        presencePenalty: modelSettings.presence_penalty,
-        experimental_telemetry: modelSettings.experimental_telemetry,
-    };
+    const modelOptions = buildGenerationSettings(context, modelSettings);
 
     const model = getModel(provider, modelSettings.name);
-    const TOOL_CALL_LIMIT = 5;
 
     const result = streamText({
         model,
@@ -633,6 +609,21 @@ function buildToolSet(
         toolSet[rawTool.name] = tool(rawTool);
     });
     return toolSet;
+}
+
+function buildGenerationSettings(
+    context: string,
+    modelSettings: ModelSettings
+): GenerationSettings {
+    return {
+        prompt: context,
+        temperature: modelSettings.temperature,
+        maxTokens: modelSettings.maxOutputTokens,
+        frequencyPenalty: modelSettings.frequency_penalty,
+        presencePenalty: modelSettings.presence_penalty,
+        experimental_telemetry: modelSettings.experimental_telemetry,
+        stop: modelSettings.stop,
+    };
 }
 
 function logStep(step: any) {
