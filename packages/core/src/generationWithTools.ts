@@ -9,7 +9,13 @@ import { ZodSchema } from "zod";
 
 import { elizaLogger } from "./index.ts";
 import { getModelSettings, getModel } from "./models.ts";
-import { IAgentRuntime, ModelClass, GenerationSettings } from "./types.ts";
+import {
+    IAgentRuntime,
+    ModelClass,
+    GenerationSettings,
+    ModelProviderName,
+    ModelSettings,
+} from "./types.ts";
 import { trimTokens } from "./tokenTrimming.ts";
 import { buildGenerationSettings } from "./generationHelpers.ts";
 
@@ -35,23 +41,17 @@ export async function generateTextWithTools({
     customSystemPrompt,
     tools,
 }: GenerateTextWithToolsOptions): Promise<string> {
-    if (!context) {
-        throw new Error("generateObject context is empty");
-    }
+    validateContext(context);
 
     const provider = runtime.modelProvider;
     const modelSettings = getModelSettings(provider, modelClass);
-
-    if (!modelSettings) {
-        throw new Error(`Model settings not found for provider: ${provider}`);
-    }
+    validateModelSettings(modelSettings, provider);
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
     const modelOptions: GenerationSettings = buildGenerationSettings(
         context,
         modelSettings
     );
-
     const model = getModel(provider, modelSettings.name);
 
     const result = await aiGenerateText({
@@ -61,16 +61,7 @@ export async function generateTextWithTools({
         maxSteps: TOOL_CALL_LIMIT,
         experimental_continueSteps: true,
         onStepFinish(step: any) {
-            runtime.metering.trackPrompt({
-                tokens: step.usage.promptTokens,
-                model: modelSettings.name,
-                type: "input",
-            });
-            runtime.metering.trackPrompt({
-                tokens: step.usage.completionTokens,
-                model: modelSettings.name,
-                type: "output",
-            });
+            meterStep(runtime, step, modelSettings);
             logStep(step);
         },
         ...modelOptions,
@@ -90,19 +81,13 @@ export function streamWithTools({
 }: GenerateTextWithToolsOptions & {
     smoothStreamBy?: "word" | "line" | RegExp;
 }): any {
-    if (!context) {
-        throw new Error("generateObject context is empty");
-    }
+    validateContext(context);
 
     const provider = runtime.modelProvider;
     const modelSettings = getModelSettings(provider, modelClass);
-
-    if (!modelSettings) {
-        throw new Error(`Model settings not found for provider: ${provider}`);
-    }
+    validateModelSettings(modelSettings, provider);
 
     const modelOptions = buildGenerationSettings(context, modelSettings);
-
     const model = getModel(provider, modelSettings.name);
 
     const result = streamText({
@@ -115,23 +100,44 @@ export function streamWithTools({
         experimental_transform: smoothStream({ chunking: smoothStreamBy }),
         onStepFinish(step: any) {
             logStep(step);
-        },
-        onFinish(step: any) {
-            runtime.metering.trackPrompt({
-                tokens: step.usage.promptTokens,
-                model: modelSettings.name,
-                type: "input",
-            });
-            runtime.metering.trackPrompt({
-                tokens: step.usage.completionTokens,
-                model: modelSettings.name,
-                type: "output",
-            });
+            meterStep(runtime, step, modelSettings);
         },
         ...modelOptions,
     });
 
     return result;
+}
+
+function meterStep(
+    runtime: IAgentRuntime,
+    step: any,
+    modelSettings: ModelSettings
+) {
+    runtime.metering.trackPrompt({
+        tokens: step.usage.promptTokens,
+        model: modelSettings.name,
+        type: "input",
+    });
+    runtime.metering.trackPrompt({
+        tokens: step.usage.completionTokens,
+        model: modelSettings.name,
+        type: "output",
+    });
+}
+
+function validateModelSettings(
+    modelSettings: ModelSettings,
+    provider: ModelProviderName
+) {
+    if (!modelSettings) {
+        throw new Error(`Model settings not found for provider: ${provider}`);
+    }
+}
+
+function validateContext(context: string) {
+    if (!context) {
+        throw new Error("generateObject context is empty");
+    }
 }
 
 function buildToolSet(
