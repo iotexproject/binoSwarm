@@ -231,7 +231,8 @@ export class TwitterPostClient {
             schema: qsTool.parameters,
             schemaName: qsTool.name,
             schemaDescription: qsTool.description,
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
 
         const answer = await qsTool.execute({ question: object.question });

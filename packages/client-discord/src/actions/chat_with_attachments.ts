@@ -51,7 +51,8 @@ const getAttachmentIds = async (
             schema: attachmentIdsSchema,
             schemaName: "attachmentIds",
             schemaDescription: "The objective and attachment IDs",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
         elizaLogger.log("response", response);
         // try parsing to a json object
@@ -204,7 +205,8 @@ const summarizeAction = {
             runtime,
             context,
             modelClass: ModelClass.SMALL,
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
 
         currentSummary = currentSummary + "\n" + summary;

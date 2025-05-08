@@ -40,7 +40,8 @@ const getMediaAttachmentId = async (
             schema: mediaAttachmentIdSchema,
             schemaName: "mediaAttachmentId",
             schemaDescription: "The ID of the media file to transcribe",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
         elizaLogger.log("response", response);
         const parsedResponse = mediaAttachmentIdSchema.parse(response.object);

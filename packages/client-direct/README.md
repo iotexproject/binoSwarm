@@ -30,14 +30,14 @@ Global rate limiting protects the server from distributed high load across multi
 
 Rate limits can be adjusted through environment variables:
 
-| Environment Variable | Description | Default |
-|---------------------|-------------|---------|
-| `RATE_LIMIT_MESSAGE_MAX` | Maximum number of requests to `/message` endpoint | 5 |
-| `RATE_LIMIT_MESSAGE_WINDOW_MS` | Time window in milliseconds for message rate limiting | 60000 (1 minute) |
-| `RATE_LIMIT_STREAM_MAX` | Maximum number of requests to `/message-stream` endpoint | 3 |
-| `RATE_LIMIT_STREAM_WINDOW_MS` | Time window in milliseconds for stream rate limiting | 60000 (1 minute) |
-| `RATE_LIMIT_GLOBAL_MAX` | Maximum total requests across all endpoints | 200 |
-| `RATE_LIMIT_GLOBAL_WINDOW_MS` | Time window in milliseconds for global rate limiting | 60000 (1 minute) |
+| Environment Variable           | Description                                              | Default          |
+| ------------------------------ | -------------------------------------------------------- | ---------------- |
+| `RATE_LIMIT_MESSAGE_MAX`       | Maximum number of requests to `/message` endpoint        | 5                |
+| `RATE_LIMIT_MESSAGE_WINDOW_MS` | Time window in milliseconds for message rate limiting    | 60000 (1 minute) |
+| `RATE_LIMIT_STREAM_MAX`        | Maximum number of requests to `/message-stream` endpoint | 3                |
+| `RATE_LIMIT_STREAM_WINDOW_MS`  | Time window in milliseconds for stream rate limiting     | 60000 (1 minute) |
+| `RATE_LIMIT_GLOBAL_MAX`        | Maximum total requests across all endpoints              | 200              |
+| `RATE_LIMIT_GLOBAL_WINDOW_MS`  | Time window in milliseconds for global rate limiting     | 60000 (1 minute) |
 
 ### Rate Limit Response
 
@@ -59,8 +59,8 @@ And the response body:
 
 ```json
 {
-  "error": "Server is experiencing high load. Please try again later.",
-  "retryAfter": 45,
-  "global": true
+    "error": "Server is experiencing high load. Please try again later.",
+    "retryAfter": 45,
+    "global": true
 }
 ```

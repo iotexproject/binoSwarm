@@ -491,7 +491,9 @@ describe("SearchTweetSelector", () => {
                 createMockTweet({
                     id: "246813579",
                     text: "Tweet from bot (mixed case)",
-                    username: botUsername.charAt(0).toUpperCase() + botUsername.slice(1),
+                    username:
+                        botUsername.charAt(0).toUpperCase() +
+                        botUsername.slice(1),
                     thread: [],
                 }),
                 createMockTweet({
@@ -503,7 +505,9 @@ describe("SearchTweetSelector", () => {
             ];
 
             // Test the filterOutBotTweets method directly
-            const filteredTweets = (selector as any).filterOutBotTweets(mockTweets);
+            const filteredTweets = (selector as any).filterOutBotTweets(
+                mockTweets
+            );
 
             // Verify that all bot tweets are filtered out regardless of case
             expect(filteredTweets.length).toBe(1);

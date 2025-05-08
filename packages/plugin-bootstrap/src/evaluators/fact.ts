@@ -54,7 +54,8 @@ async function handler(runtime: IAgentRuntime, message: Memory) {
         schema: factsSchema,
         schemaName: "facts",
         schemaDescription: "The facts extracted from the conversation",
-        customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+        customSystemPrompt:
+            "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
     });
 
     const facts = factsRes.object?.facts || [];

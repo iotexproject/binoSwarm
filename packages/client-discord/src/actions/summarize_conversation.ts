@@ -64,7 +64,8 @@ const getDateRange = async (
             schema: dateRangeSchema,
             schemaName: "dateRange",
             schemaDescription: "The objective, start and end of the date range",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
         elizaLogger.log("response", response);
         // try parsing to a json object
@@ -280,7 +281,8 @@ const summarizeAction = {
                 runtime,
                 context,
                 modelClass: ModelClass.SMALL,
-                customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+                customSystemPrompt:
+                    "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
             });
 
             currentSummary = currentSummary + "\n" + summary;
