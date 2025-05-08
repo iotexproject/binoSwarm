@@ -27,37 +27,10 @@ import {
     ServiceType,
     SearchResponse,
     ActionResponse,
-    IVerifiableInferenceAdapter,
-    VerifiableInferenceOptions,
-    TelemetrySettings,
+    GenerationOptions,
+    GenerationSettings,
 } from "./types.ts";
 import { trimTokens } from "./tokenTrimming.ts";
-
-type GenerationOptions = {
-    runtime: IAgentRuntime;
-    context: string;
-    modelClass: ModelClass;
-    schema: ZodSchema;
-    schemaName: string;
-    schemaDescription: string;
-    stop?: string[];
-    mode?: "auto" | "json" | "tool";
-    experimental_providerMetadata?: Record<string, unknown>;
-    verifiableInference?: boolean;
-    verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
-    verifiableInferenceOptions?: VerifiableInferenceOptions;
-    customSystemPrompt?: string;
-};
-
-type ModelSettings = {
-    prompt: string;
-    temperature: number;
-    maxTokens: number;
-    frequencyPenalty: number;
-    presencePenalty: number;
-    stop?: string[];
-    experimental_telemetry?: TelemetrySettings;
-};
 
 const UTILITY_SYSTEM_PROMPT =
     "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.";
@@ -466,7 +439,7 @@ export async function generateObject<T>({
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
 
-    const modelOptions: ModelSettings = {
+    const modelOptions: GenerationSettings = {
         prompt: context,
         temperature: modelSettings.temperature,
         maxTokens: modelSettings.maxOutputTokens,
@@ -535,13 +508,14 @@ export async function generateTextWithTools({
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
 
-    const modelOptions: ModelSettings = {
+    const modelOptions: GenerationSettings = {
         prompt: context,
         temperature: modelSettings.temperature,
         maxTokens: modelSettings.maxOutputTokens,
         frequencyPenalty: modelSettings.frequency_penalty,
         presencePenalty: modelSettings.presence_penalty,
         experimental_telemetry: modelSettings.experimental_telemetry,
+        stop: modelSettings.stop,
     };
 
     const model = getModel(provider, modelSettings.name);
@@ -604,8 +578,9 @@ export function streamWithTools({
         throw new Error(`Model settings not found for provider: ${provider}`);
     }
 
-    const modelOptions: ModelSettings = {
+    const modelOptions: GenerationSettings = {
         prompt: context,
+        stop: modelSettings.stop,
         temperature: modelSettings.temperature,
         maxTokens: modelSettings.maxOutputTokens,
         frequencyPenalty: modelSettings.frequency_penalty,
@@ -618,7 +593,6 @@ export function streamWithTools({
 
     const result = streamText({
         model,
-        prompt: context,
         system: customSystemPrompt ?? runtime.character?.system ?? undefined,
         tools: buildToolSet(tools),
         maxSteps: TOOL_CALL_LIMIT,

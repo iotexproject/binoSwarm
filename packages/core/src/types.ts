@@ -1,4 +1,5 @@
-import { Readable } from "stream";
+import type { Readable } from "stream";
+import type { ZodSchema } from "zod";
 
 /**
  * Represents a UUID string in the format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -167,6 +168,35 @@ export type ModelSettings = {
 
     /** Optional presence penalty */
     presence_penalty?: number;
+
+    /** Optional repetition penalty */
+    repetition_penalty?: number;
+
+    /** Stop sequences */
+    stop: string[];
+
+    /** Temperature setting */
+    temperature: number;
+
+    /** Optional telemetry configuration (experimental) */
+    experimental_telemetry?: TelemetrySettings;
+};
+
+/**
+ * Model settings
+ */
+export type GenerationSettings = {
+    /** Prompt */
+    prompt: string;
+
+    /** Maximum output tokens */
+    maxTokens: number;
+
+    /** Optional frequency penalty */
+    frequencyPenalty?: number;
+
+    /** Optional presence penalty */
+    presencePenalty?: number;
 
     /** Optional repetition penalty */
     repetition_penalty?: number;
@@ -1578,3 +1608,19 @@ export interface IMetering {
         id?: UUID;
     }): MeteringEvent;
 }
+
+export type GenerationOptions = {
+    runtime: IAgentRuntime;
+    context: string;
+    modelClass: ModelClass;
+    schema: ZodSchema;
+    schemaName: string;
+    schemaDescription: string;
+    stop?: string[];
+    mode?: "auto" | "json" | "tool";
+    experimental_providerMetadata?: Record<string, unknown>;
+    verifiableInference?: boolean;
+    verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
+    verifiableInferenceOptions?: VerifiableInferenceOptions;
+    customSystemPrompt?: string;
+};
