@@ -251,6 +251,7 @@ export type Models = {
     [ModelProviderName.LLAMALOCAL]: Model;
     [ModelProviderName.OLLAMA]: Model;
     [ModelProviderName.DEEPSEEK]: Model;
+    [ModelProviderName.OPENROUTER]: Model;
 };
 
 /**
@@ -264,6 +265,7 @@ export enum ModelProviderName {
     OLLAMA = "ollama",
     DEEPSEEK = "deepseek",
     INFERA = "infera",
+    OPENROUTER = "openrouter",
 }
 
 /**
