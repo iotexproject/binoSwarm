@@ -6,11 +6,6 @@ First, review the recent messages from the conversation:
 {{recentMessages}}
 </recent_messages>
 
-Here's a list of supported chains:
-<supported_chains>
-{{supportedChains}}
-</supported_chains>
-
 Your goal is to extract the following information about the requested transfer:
 1. Chain to execute on (must be one of the supported chains)
 2. Amount to transfer (in ETH, without the coin symbol)
