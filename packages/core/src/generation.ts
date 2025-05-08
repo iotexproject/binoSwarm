@@ -4,7 +4,7 @@ import {
     generateText as aiGenerateText,
     experimental_generateImage as aiGenerateImage,
     GenerateObjectResult,
-    StepResult as AIStepResult,
+    StepResult,
     Message,
     Tool,
     ToolSet,
@@ -32,8 +32,6 @@ import {
     TelemetrySettings,
 } from "./types.ts";
 import { trimTokens } from "./tokenTrimming.ts";
-
-type StepResult = AIStepResult<any>;
 
 type GenerationOptions = {
     runtime: IAgentRuntime;
@@ -78,7 +76,7 @@ export async function generateText({
     context: string;
     modelClass: ModelClass;
     tools?: Record<string, Tool>;
-    onStepFinish?: (event: StepResult) => Promise<void> | void;
+    onStepFinish?: (event: StepResult<any>) => Promise<void> | void;
     maxSteps?: number;
     stop?: string[];
     customSystemPrompt?: string;
