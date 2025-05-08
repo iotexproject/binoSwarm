@@ -28,3 +28,4 @@ export * from "./utils.ts";
 export * from "./tokenTrimming.ts";
 export * from "./imgGeneration.ts";
 export * from "./generationWithTools.ts";
+export * from "./textGeneration.ts";

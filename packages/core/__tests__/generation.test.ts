@@ -1,7 +1,7 @@
 import { describe, beforeEach, it, expect, vi, afterEach } from "vitest";
 import { z } from "zod";
 import * as ai from "ai";
-import { generateObject, generateText } from "../src/generation";
+import { generateObject, generateText } from "../src/textGeneration";
 import { ModelClass, ModelProviderName, ServiceType } from "../src/types";
 import { AgentRuntime } from "../src/runtime";
 import { Message } from "ai";
