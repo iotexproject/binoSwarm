@@ -2,7 +2,6 @@ import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import {
     generateObject as aiGenerateObject,
     generateText as aiGenerateText,
-    experimental_generateImage as aiGenerateImage,
     GenerateObjectResult,
     StepResult,
     Message,
@@ -12,12 +11,11 @@ import {
     streamText,
     smoothStream,
 } from "ai";
-import { openai } from "@ai-sdk/openai";
 import { ZodSchema, z } from "zod";
 import { tavily } from "@tavily/core";
 
 import { elizaLogger } from "./index.ts";
-import { getModelSettings, getImageModelSettings, getModel } from "./models.ts";
+import { getModelSettings, getModel } from "./models.ts";
 import { parseJSONObjectFromText, parseTagContent } from "./parsing.ts";
 import {
     Content,
@@ -272,64 +270,6 @@ export async function generateMessageResponse({
         throw error;
     }
 }
-
-export const generateImage = async (
-    data: {
-        prompt: string;
-        width: number;
-        height: number;
-        count?: number;
-        negativePrompt?: string;
-        numIterations?: number;
-        guidanceScale?: number;
-        seed?: number;
-        modelId?: string;
-        jobId?: string;
-        stylePreset?: string;
-        hideWatermark?: boolean;
-    },
-    runtime: IAgentRuntime
-): Promise<{
-    success: boolean;
-    data?: string[];
-    error?: any;
-}> => {
-    const modelSettings = getImageModelSettings(runtime.imageModelProvider);
-    const model = modelSettings.name;
-    elizaLogger.info("Generating image with options:", {
-        imageModelProvider: model,
-    });
-
-    try {
-        let targetSize = `${data.width}x${data.height}`;
-        if (
-            targetSize !== "1024x1024" &&
-            targetSize !== "1792x1024" &&
-            targetSize !== "1024x1792"
-        ) {
-            targetSize = "1024x1024";
-        }
-        const { image } = await aiGenerateImage({
-            model: openai.image(model),
-            prompt: data.prompt,
-            size: targetSize as "1024x1024" | "1792x1024" | "1024x1792",
-        });
-
-        const event = runtime.metering.createEvent({
-            type: "image",
-            data: {
-                model: model,
-                size: targetSize,
-            },
-        });
-        runtime.metering.track(event);
-
-        return { success: true, data: [image.base64] };
-    } catch (error) {
-        elizaLogger.error(error);
-        return { success: false, error: error };
-    }
-};
 
 export const generateCaption = async (
     data: { imageUrl: string },
