@@ -1,10 +1,4 @@
-import {
-    generateText as aiGenerateText,
-    ToolSet,
-    tool,
-    streamText,
-    smoothStream,
-} from "ai";
+import { generateText, ToolSet, tool, streamText, smoothStream } from "ai";
 import { ZodSchema } from "zod";
 
 import { elizaLogger } from "./index.ts";
@@ -54,7 +48,7 @@ export async function generateTextWithTools({
     );
     const model = getModel(provider, modelSettings.name);
 
-    const result = await aiGenerateText({
+    const result = await generateText({
         model,
         system: customSystemPrompt ?? runtime.character?.system ?? undefined,
         tools: buildToolSet(tools),
