@@ -13,7 +13,9 @@ import {
 import { trimTokens } from "./tokenTrimming.ts";
 import { buildGenerationSettings } from "./generationHelpers.ts";
 
-const TOOL_CALL_LIMIT = 5;
+const TOOL_CALL_LIMIT = process.env.TOOL_CALL_LIMIT
+    ? parseInt(process.env.TOOL_CALL_LIMIT)
+    : 5;
 
 type GenerateTextWithToolsOptions = {
     runtime: IAgentRuntime;
