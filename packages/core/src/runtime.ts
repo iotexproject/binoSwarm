@@ -13,7 +13,7 @@ import {
     formatEvaluatorNames,
     formatEvaluators,
 } from "./evaluators.ts";
-import { generateObject } from "./generation.ts";
+import { generateObject } from "./textGeneration.ts";
 import { formatGoalsAsString, getGoals } from "./goals.ts";
 import { elizaLogger } from "./index.ts";
 import { MemoryManager } from "./memory.ts";
