@@ -3,9 +3,10 @@ import {
     generateText as aiGenerateText,
     GenerateObjectResult,
     StepResult,
-    Message,
+    CoreUserMessage,
     Tool,
     GenerateTextResult,
+    Message,
 } from "ai";
 
 import { elizaLogger } from "./index.ts";
@@ -111,6 +112,43 @@ export async function generateObject<T>({
     trackUsage(runtime, result, modelSettings);
 
     elizaLogger.debug("generateObject result:", result.object);
+    schema.parse(result.object);
+    return result;
+}
+
+export async function generateObjectFromMessages<T>({
+    runtime,
+    modelClass,
+    schema,
+    messages,
+    schemaName,
+    schemaDescription,
+    customSystemPrompt,
+}: GenerationOptions & {
+    messages: Array<CoreUserMessage>;
+}): Promise<GenerateObjectResult<T>> {
+    const provider = runtime.modelProvider;
+    const modelSettings = getModelSettings(provider, modelClass);
+    validateSettings(modelSettings, provider);
+
+    const modelOptions = buildGenerationSettings("", modelSettings);
+    delete modelOptions.prompt;
+
+    const model = getModel(provider, modelSettings.name);
+
+    const result = await aiGenerateObject({
+        model,
+        messages,
+        schema,
+        schemaName,
+        schemaDescription,
+        system: customSystemPrompt ?? runtime.character?.system ?? undefined,
+        ...modelOptions,
+    });
+
+    trackUsage(runtime, result, modelSettings);
+
+    elizaLogger.debug("generateObjectFromMessages result:", result.object);
     schema.parse(result.object);
     return result;
 }

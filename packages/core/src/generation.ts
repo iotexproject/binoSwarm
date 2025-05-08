@@ -6,13 +6,15 @@ import { elizaLogger } from "./index.ts";
 import {
     Content,
     IAgentRuntime,
-    IImageDescriptionService,
     ModelClass,
-    ServiceType,
     SearchResponse,
     ActionResponse,
 } from "./types.ts";
-import { generateObject } from "./textGeneration.ts";
+import {
+    generateObject,
+    generateObjectFromMessages,
+} from "./textGeneration.ts";
+import { CoreUserMessage } from "ai";
 
 const UTILITY_SYSTEM_PROMPT =
     "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.";
@@ -143,20 +145,37 @@ export const generateCaption = async (
     description: string;
 }> => {
     const { imageUrl } = data;
-    const imageDescriptionService =
-        runtime.getService<IImageDescriptionService>(
-            ServiceType.IMAGE_DESCRIPTION
-        );
+    const messages: CoreUserMessage[] = [
+        {
+            role: "user",
+            content: [
+                {
+                    type: "image",
+                    image: imageUrl,
+                },
+            ],
+        },
+    ];
 
-    if (!imageDescriptionService) {
-        throw new Error("Image description service not found");
-    }
+    const descriptionSchema = z.object({
+        title: z.string().describe("The title of the image"),
+        description: z.string().describe("The description of the image"),
+    });
 
-    const resp = await imageDescriptionService.describeImage(imageUrl);
-    return {
-        title: resp.title.trim(),
-        description: resp.description.trim(),
-    };
+    const result = await generateObjectFromMessages<{
+        title: string;
+        description: string;
+    }>({
+        runtime,
+        context: "",
+        modelClass: ModelClass.SMALL,
+        schema: descriptionSchema,
+        messages,
+        schemaName: "ImageDescription",
+        schemaDescription: "The description of the image",
+    });
+
+    return result.object;
 };
 
 export const generateWebSearch = async (
