@@ -2,7 +2,7 @@ import { ByteArray, formatEther, parseEther, type Hex } from "viem";
 import {
     Action,
     composeContext,
-    generateObjectDeprecated,
+    generateObject,
     HandlerCallback,
     ModelClass,
     type IAgentRuntime,
@@ -13,6 +13,7 @@ import {
 import { initWalletProvider, WalletProvider } from "../providers/wallet";
 import type { Transaction, TransferParams } from "../types";
 import { transferTemplate } from "../templates";
+import { z } from "zod";
 
 // Exported for tests
 export class TransferAction {
@@ -72,31 +73,48 @@ const buildTransferDetails = async (
     wp: WalletProvider
 ): Promise<TransferParams> => {
     const chains = Object.keys(wp.chains);
-    state.supportedChains = chains.map((item) => `"${item}"`).join("|");
 
     const context = composeContext({
         state,
         template: transferTemplate,
     });
 
-    const transferDetails = (await generateObjectDeprecated({
+    const transferSchema = z.object({
+        fromChain: z.enum(chains as [string, ...string[]]),
+        amount: z.string(),
+        toAddress: z.string(),
+        token: z.string().optional(),
+    });
+
+    const transferDetails = await generateObject<TransferParams>({
         runtime,
         context,
         modelClass: ModelClass.SMALL,
-    })) as TransferParams;
+        schema: transferSchema,
+        schemaName: "TransferDetails",
+        schemaDescription: "Transfer parameters for EVM transaction",
+    });
 
-    const existingChain = wp.chains[transferDetails.fromChain];
+    const parsedResponse = transferSchema.parse(
+        transferDetails.object
+    ) as TransferParams;
+
+    if (!parsedResponse) {
+        throw new Error("Invalid transfer details");
+    }
+
+    const existingChain = wp.chains[parsedResponse.fromChain];
 
     if (!existingChain) {
         throw new Error(
             "The chain " +
-                transferDetails.fromChain +
+                parsedResponse.fromChain +
                 " not configured yet. Add the chain or choose one from configured: " +
                 chains.toString()
         );
     }
 
-    return transferDetails;
+    return parsedResponse;
 };
 
 export const transferAction: Action = {

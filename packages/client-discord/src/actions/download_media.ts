@@ -43,7 +43,8 @@ const getMediaUrl = async (
             schema: mediaUrlSchema,
             schemaName: "mediaUrl",
             schemaDescription: "The URL of the media file to download",
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
 
         const parsedResponse = mediaUrlSchema.parse(response.object);

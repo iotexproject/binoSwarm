@@ -2,6 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { deepseek } from "@ai-sdk/deepseek";
 import { xai } from "@ai-sdk/xai";
+import { openrouter } from "@openrouter/ai-sdk-provider";
 import type { LanguageModelV1 } from "ai";
 
 import settings from "./settings.ts";
@@ -61,6 +62,62 @@ export const models: Models = {
             },
             [ModelClass.IMAGE]: {
                 name: settings.IMAGE_OPENAI_MODEL || "dall-e-3",
+            },
+        },
+    },
+    [ModelProviderName.OPENROUTER]: {
+        endpoint: "https://openrouter.ai/api/v1",
+        model: {
+            [ModelClass.SMALL]: {
+                name:
+                    settings.SMALL_OPENROUTER_MODEL ||
+                    settings.OPENROUTER_MODEL ||
+                    "nousresearch/hermes-3-llama-3.1-405b",
+                stop: [],
+                maxInputTokens: 128000,
+                maxOutputTokens: 8192,
+                frequency_penalty: 0.4,
+                presence_penalty: 0.4,
+                temperature: 0.7,
+            },
+            [ModelClass.MEDIUM]: {
+                name:
+                    settings.MEDIUM_OPENROUTER_MODEL ||
+                    settings.OPENROUTER_MODEL ||
+                    "nousresearch/hermes-3-llama-3.1-405b",
+                stop: [],
+                maxInputTokens: 128000,
+                maxOutputTokens: 8192,
+                frequency_penalty: 0.4,
+                presence_penalty: 0.4,
+                temperature: 0.7,
+            },
+            [ModelClass.LARGE]: {
+                name:
+                    settings.LARGE_OPENROUTER_MODEL ||
+                    settings.OPENROUTER_MODEL ||
+                    "nousresearch/hermes-3-llama-3.1-405b",
+                stop: [],
+                maxInputTokens: 128000,
+                maxOutputTokens: 8192,
+                frequency_penalty: 0.4,
+                presence_penalty: 0.4,
+                temperature: 0.7,
+            },
+            [ModelClass.FAST]: {
+                name:
+                    settings.FAST_OPENROUTER_MODEL ||
+                    settings.OPENROUTER_MODEL ||
+                    "nousresearch/hermes-3-llama-3.1-405b",
+                stop: [],
+                maxInputTokens: 128000,
+                maxOutputTokens: 8192,
+                frequency_penalty: 0.4,
+                presence_penalty: 0.4,
+                temperature: 0.7,
+            },
+            [ModelClass.EMBEDDING]: {
+                name: "text-embedding-3-small",
             },
         },
     },
@@ -328,6 +385,7 @@ export function getModel(
         [ModelProviderName.ANTHROPIC]: anthropic,
         [ModelProviderName.DEEPSEEK]: deepseek,
         [ModelProviderName.GROK]: xai,
+        [ModelProviderName.OPENROUTER]: openrouter,
     };
 
     const modelProvider = modelProviders[provider];

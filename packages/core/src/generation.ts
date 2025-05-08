@@ -1,141 +1,23 @@
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import {
-    generateObject as aiGenerateObject,
-    generateText as aiGenerateText,
-    experimental_generateImage as aiGenerateImage,
-    GenerateObjectResult,
-    StepResult as AIStepResult,
-    Message,
-    Tool,
-    ToolSet,
-    tool,
-    streamText,
-    smoothStream,
-} from "ai";
-import { openai } from "@ai-sdk/openai";
-import { ZodSchema, z } from "zod";
+import { z } from "zod";
 import { tavily } from "@tavily/core";
 
 import { elizaLogger } from "./index.ts";
-import { getModelSettings, getImageModelSettings, getModel } from "./models.ts";
-import { parseJSONObjectFromText, parseTagContent } from "./parsing.ts";
 import {
     Content,
     IAgentRuntime,
-    IImageDescriptionService,
     ModelClass,
-    ServiceType,
     SearchResponse,
     ActionResponse,
-    IVerifiableInferenceAdapter,
-    VerifiableInferenceOptions,
-    TelemetrySettings,
 } from "./types.ts";
-import { trimTokens } from "./tokenTrimming.ts";
-
-type StepResult = AIStepResult<any>;
-
-type GenerationOptions = {
-    runtime: IAgentRuntime;
-    context: string;
-    modelClass: ModelClass;
-    schema: ZodSchema;
-    schemaName: string;
-    schemaDescription: string;
-    stop?: string[];
-    mode?: "auto" | "json" | "tool";
-    experimental_providerMetadata?: Record<string, unknown>;
-    verifiableInference?: boolean;
-    verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
-    verifiableInferenceOptions?: VerifiableInferenceOptions;
-    customSystemPrompt?: string;
-};
-
-type ModelSettings = {
-    prompt: string;
-    temperature: number;
-    maxTokens: number;
-    frequencyPenalty: number;
-    presencePenalty: number;
-    stop?: string[];
-    experimental_telemetry?: TelemetrySettings;
-};
+import {
+    generateObject,
+    generateObjectFromMessages,
+} from "./textGeneration.ts";
+import { CoreUserMessage } from "ai";
 
 const UTILITY_SYSTEM_PROMPT =
     "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.";
-
-export async function generateText({
-    runtime,
-    context,
-    modelClass,
-    tools = {},
-    onStepFinish,
-    maxSteps = 1,
-    customSystemPrompt,
-    messages,
-}: {
-    runtime: IAgentRuntime;
-    context: string;
-    modelClass: ModelClass;
-    tools?: Record<string, Tool>;
-    onStepFinish?: (event: StepResult) => Promise<void> | void;
-    maxSteps?: number;
-    stop?: string[];
-    customSystemPrompt?: string;
-    messages?: Message[];
-}): Promise<string> {
-    if (!context) {
-        throw new Error("generateText context is empty");
-    }
-
-    const provider = runtime.modelProvider;
-    const settings = getModelSettings(provider, modelClass);
-
-    if (!settings) {
-        throw new Error(`Model settings not found for provider: ${provider}`);
-    }
-
-    const cfg = runtime.character?.settings?.modelConfig;
-    const temp = cfg?.temperature || settings.temperature;
-    const freq = cfg?.frequency_penalty || settings.frequency_penalty;
-    const pres = cfg?.presence_penalty || settings.presence_penalty;
-    const max_in = cfg?.maxInputTokens || settings.maxInputTokens;
-    const max_out = cfg?.max_response_length || settings.maxOutputTokens;
-    const tel = cfg?.experimental_telemetry || settings.experimental_telemetry;
-
-    context = await trimTokens(context, max_in, runtime);
-
-    const llmModel = getModel(provider, settings.name);
-
-    const result = await aiGenerateText({
-        model: llmModel,
-        prompt: context,
-        system: customSystemPrompt ?? runtime.character.system ?? undefined,
-        tools,
-        messages,
-        onStepFinish,
-        maxSteps,
-        temperature: temp,
-        maxTokens: max_out,
-        frequencyPenalty: freq,
-        presencePenalty: pres,
-        experimental_telemetry: tel,
-    });
-
-    runtime.metering.trackPrompt({
-        tokens: result.usage.promptTokens,
-        model: settings.name,
-        type: "input",
-    });
-    runtime.metering.trackPrompt({
-        tokens: result.usage.completionTokens,
-        model: settings.name,
-        type: "output",
-    });
-
-    elizaLogger.debug("generateText result:", result.text);
-    return result.text;
-}
 
 export async function generateShouldRespond({
     runtime,
@@ -215,51 +97,6 @@ export async function generateTrueOrFalse({
     }
 }
 
-export async function generateObjectDeprecated({
-    runtime,
-    context,
-    modelClass,
-}: {
-    runtime: IAgentRuntime;
-    context: string;
-    modelClass: ModelClass;
-}): Promise<any> {
-    if (!context) {
-        elizaLogger.error("generateObjectDeprecated context is empty");
-        return null;
-    }
-
-    let retryDelay = 1000;
-    let retryCount = 0;
-    const MAX_RETRIES = 5;
-
-    while (retryCount < MAX_RETRIES) {
-        try {
-            const response = await generateText({
-                runtime,
-                context,
-                modelClass,
-            });
-            const extractedResponse = parseTagContent(response, "response");
-            const parsedResponse = parseJSONObjectFromText(extractedResponse);
-            if (parsedResponse) {
-                return parsedResponse;
-            }
-        } catch (error) {
-            elizaLogger.error("Error in generateObject:", error);
-        }
-
-        elizaLogger.log(
-            `Retrying in ${retryDelay}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
-        );
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        retryDelay *= 2;
-        retryCount++;
-    }
-
-    throw new Error("Failed to generate object after maximum retries");
-}
-
 export async function generateMessageResponse({
     runtime,
     context,
@@ -300,64 +137,6 @@ export async function generateMessageResponse({
     }
 }
 
-export const generateImage = async (
-    data: {
-        prompt: string;
-        width: number;
-        height: number;
-        count?: number;
-        negativePrompt?: string;
-        numIterations?: number;
-        guidanceScale?: number;
-        seed?: number;
-        modelId?: string;
-        jobId?: string;
-        stylePreset?: string;
-        hideWatermark?: boolean;
-    },
-    runtime: IAgentRuntime
-): Promise<{
-    success: boolean;
-    data?: string[];
-    error?: any;
-}> => {
-    const modelSettings = getImageModelSettings(runtime.imageModelProvider);
-    const model = modelSettings.name;
-    elizaLogger.info("Generating image with options:", {
-        imageModelProvider: model,
-    });
-
-    try {
-        let targetSize = `${data.width}x${data.height}`;
-        if (
-            targetSize !== "1024x1024" &&
-            targetSize !== "1792x1024" &&
-            targetSize !== "1024x1792"
-        ) {
-            targetSize = "1024x1024";
-        }
-        const { image } = await aiGenerateImage({
-            model: openai.image(model),
-            prompt: data.prompt,
-            size: targetSize as "1024x1024" | "1792x1024" | "1024x1792",
-        });
-
-        const event = runtime.metering.createEvent({
-            type: "image",
-            data: {
-                model: model,
-                size: targetSize,
-            },
-        });
-        runtime.metering.track(event);
-
-        return { success: true, data: [image.base64] };
-    } catch (error) {
-        elizaLogger.error(error);
-        return { success: false, error: error };
-    }
-};
-
 export const generateCaption = async (
     data: { imageUrl: string },
     runtime: IAgentRuntime
@@ -366,20 +145,37 @@ export const generateCaption = async (
     description: string;
 }> => {
     const { imageUrl } = data;
-    const imageDescriptionService =
-        runtime.getService<IImageDescriptionService>(
-            ServiceType.IMAGE_DESCRIPTION
-        );
+    const messages: CoreUserMessage[] = [
+        {
+            role: "user",
+            content: [
+                {
+                    type: "image",
+                    image: imageUrl,
+                },
+            ],
+        },
+    ];
 
-    if (!imageDescriptionService) {
-        throw new Error("Image description service not found");
-    }
+    const descriptionSchema = z.object({
+        title: z.string().describe("The title of the image"),
+        description: z.string().describe("The description of the image"),
+    });
 
-    const resp = await imageDescriptionService.describeImage(imageUrl);
-    return {
-        title: resp.title.trim(),
-        description: resp.description.trim(),
-    };
+    const result = await generateObjectFromMessages<{
+        title: string;
+        description: string;
+    }>({
+        runtime,
+        context: "",
+        modelClass: ModelClass.SMALL,
+        schema: descriptionSchema,
+        messages,
+        schemaName: "ImageDescription",
+        schemaDescription: "The description of the image",
+    });
+
+    return result.object;
 };
 
 export const generateWebSearch = async (
@@ -443,230 +239,4 @@ export async function generateTweetActions({
             reply: false,
         };
     }
-}
-
-export async function generateObject<T>({
-    runtime,
-    context,
-    modelClass,
-    schema,
-    schemaName,
-    schemaDescription,
-    stop,
-    customSystemPrompt,
-}: GenerationOptions): Promise<GenerateObjectResult<T>> {
-    if (!context) {
-        throw new Error("generateObject context is empty");
-    }
-
-    const provider = runtime.modelProvider;
-    const modelSettings = getModelSettings(provider, modelClass);
-
-    if (!modelSettings) {
-        throw new Error(`Model settings not found for provider: ${provider}`);
-    }
-
-    context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
-
-    const modelOptions: ModelSettings = {
-        prompt: context,
-        temperature: modelSettings.temperature,
-        maxTokens: modelSettings.maxOutputTokens,
-        frequencyPenalty: modelSettings.frequency_penalty,
-        presencePenalty: modelSettings.presence_penalty,
-        stop: stop || modelSettings.stop,
-        experimental_telemetry: modelSettings.experimental_telemetry,
-    };
-
-    const model = getModel(provider, modelSettings.name);
-
-    const result = await aiGenerateObject({
-        model,
-        schema,
-        schemaName,
-        schemaDescription,
-        system: customSystemPrompt ?? runtime.character?.system ?? undefined,
-        ...modelOptions,
-    });
-
-    runtime.metering.trackPrompt({
-        tokens: result.usage.promptTokens,
-        model: modelSettings.name,
-        type: "input",
-    });
-    runtime.metering.trackPrompt({
-        tokens: result.usage.completionTokens,
-        model: modelSettings.name,
-        type: "output",
-    });
-
-    elizaLogger.debug("generateObject result:", result.object);
-    schema.parse(result.object);
-    return result;
-}
-
-export async function generateTextWithTools({
-    runtime,
-    context,
-    modelClass,
-    customSystemPrompt,
-    tools,
-}: {
-    runtime: IAgentRuntime;
-    context: string;
-    modelClass: ModelClass;
-    stop?: string[];
-    customSystemPrompt?: string;
-    tools: {
-        name: string;
-        description: string;
-        parameters: ZodSchema;
-        execute: (args: any) => Promise<any>;
-    }[];
-}): Promise<string> {
-    if (!context) {
-        throw new Error("generateObject context is empty");
-    }
-
-    const provider = runtime.modelProvider;
-    const modelSettings = getModelSettings(provider, modelClass);
-
-    if (!modelSettings) {
-        throw new Error(`Model settings not found for provider: ${provider}`);
-    }
-
-    context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
-
-    const modelOptions: ModelSettings = {
-        prompt: context,
-        temperature: modelSettings.temperature,
-        maxTokens: modelSettings.maxOutputTokens,
-        frequencyPenalty: modelSettings.frequency_penalty,
-        presencePenalty: modelSettings.presence_penalty,
-        experimental_telemetry: modelSettings.experimental_telemetry,
-    };
-
-    const model = getModel(provider, modelSettings.name);
-    const TOOL_CALL_LIMIT = 5;
-
-    const result = await aiGenerateText({
-        model,
-        system: customSystemPrompt ?? runtime.character?.system ?? undefined,
-        tools: buildToolSet(tools),
-        maxSteps: TOOL_CALL_LIMIT,
-        experimental_continueSteps: true,
-        onStepFinish(step: any) {
-            runtime.metering.trackPrompt({
-                tokens: step.usage.promptTokens,
-                model: modelSettings.name,
-                type: "input",
-            });
-            runtime.metering.trackPrompt({
-                tokens: step.usage.completionTokens,
-                model: modelSettings.name,
-                type: "output",
-            });
-            logStep(step);
-        },
-        ...modelOptions,
-    });
-
-    elizaLogger.debug("generateTextWithTools result:", result.text);
-    return result.text;
-}
-
-export function streamWithTools({
-    runtime,
-    context,
-    modelClass,
-    customSystemPrompt,
-    tools,
-    smoothStreamBy = "word",
-}: {
-    runtime: IAgentRuntime;
-    context: string;
-    modelClass: ModelClass;
-    customSystemPrompt?: string;
-    tools: {
-        name: string;
-        description: string;
-        parameters: ZodSchema;
-        execute: (args: any) => Promise<any>;
-    }[];
-    smoothStreamBy?: "word" | "line" | RegExp;
-}): any {
-    if (!context) {
-        throw new Error("generateObject context is empty");
-    }
-
-    const provider = runtime.modelProvider;
-    const modelSettings = getModelSettings(provider, modelClass);
-
-    if (!modelSettings) {
-        throw new Error(`Model settings not found for provider: ${provider}`);
-    }
-
-    const modelOptions: ModelSettings = {
-        prompt: context,
-        temperature: modelSettings.temperature,
-        maxTokens: modelSettings.maxOutputTokens,
-        frequencyPenalty: modelSettings.frequency_penalty,
-        presencePenalty: modelSettings.presence_penalty,
-        experimental_telemetry: modelSettings.experimental_telemetry,
-    };
-
-    const model = getModel(provider, modelSettings.name);
-    const TOOL_CALL_LIMIT = 5;
-
-    const result = streamText({
-        model,
-        prompt: context,
-        system: customSystemPrompt ?? runtime.character?.system ?? undefined,
-        tools: buildToolSet(tools),
-        maxSteps: TOOL_CALL_LIMIT,
-        experimental_continueSteps: true,
-        toolCallStreaming: true,
-        experimental_transform: smoothStream({ chunking: smoothStreamBy }),
-        onStepFinish(step: any) {
-            logStep(step);
-        },
-        onFinish(step: any) {
-            runtime.metering.trackPrompt({
-                tokens: step.usage.promptTokens,
-                model: modelSettings.name,
-                type: "input",
-            });
-            runtime.metering.trackPrompt({
-                tokens: step.usage.completionTokens,
-                model: modelSettings.name,
-                type: "output",
-            });
-        },
-        ...modelOptions,
-    });
-
-    return result;
-}
-
-function buildToolSet(
-    tools: {
-        name: string;
-        description: string;
-        parameters: ZodSchema;
-        execute: (args: any) => Promise<any>;
-    }[]
-): ToolSet {
-    const toolSet: ToolSet = {};
-    tools.forEach((rawTool) => {
-        toolSet[rawTool.name] = tool(rawTool);
-    });
-    return toolSet;
-}
-
-function logStep(step: any) {
-    elizaLogger.log("step: ", step.text);
-    elizaLogger.log("toolCalls: ", step.toolCalls);
-    elizaLogger.log("toolResults: ", step.toolResults);
-    elizaLogger.log("finishReason: ", step.finishReason);
-    elizaLogger.log("usage: ", step.usage);
 }

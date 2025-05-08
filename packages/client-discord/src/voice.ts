@@ -1002,7 +1002,8 @@ export class VoiceManager extends EventEmitter {
                 CalculatorToolSchema,
             ],
             smoothStreamBy: /[.!?]\s+/,
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
 
         return response;

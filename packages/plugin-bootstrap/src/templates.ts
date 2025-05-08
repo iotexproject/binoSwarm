@@ -90,8 +90,8 @@ Otherwise, respond with false.
 `;
 
 export const factsTemplate =
-// {{actors}}
-`TASK: Extract Claims from the conversation as an array of claims in JSON format.
+    // {{actors}}
+    `TASK: Extract Claims from the conversation as an array of claims in JSON format.
 
 # START OF EXAMPLES
 These are an examples of the expected output of this task:

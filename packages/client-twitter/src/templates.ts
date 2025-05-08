@@ -241,4 +241,4 @@ Analyze the following tweets and their media from {{twitterUserName}} and extrac
 {{formattedTweets}}
 
 For each tweet that contains valuable information (in either text or media), provide a concise summary and any key knowledge points.
-`
+`;

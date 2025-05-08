@@ -84,7 +84,7 @@ function saveResponses(tweets) {
                         text: tweet.text,
                     },
                 },
-            ]
+            ];
         });
     fs.writeFileSync(RESPONSES_FILE, JSON.stringify(responses, null, 2));
 }

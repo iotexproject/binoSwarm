@@ -6,11 +6,6 @@ First, review the recent messages from the conversation:
 {{recentMessages}}
 </recent_messages>
 
-Here's a list of supported chains:
-<supported_chains>
-{{supportedChains}}
-</supported_chains>
-
 Your goal is to extract the following information about the requested transfer:
 1. Chain to execute on (must be one of the supported chains)
 2. Amount to transfer (in ETH, without the coin symbol)
@@ -55,55 +50,4 @@ Remember:
 - If no specific token is mentioned (i.e., it's a native token transfer), set the "token" field to null.
 
 Now, process the user's request and provide your response.
-`;
-
-export const bridgeTemplate = `Given the recent messages and wallet information below:
-
-{{recentMessages}}
-
-{{walletInfo}}
-
-Extract the following information about the requested token bridge:
-- Token symbol or address to bridge
-- Source chain
-- Destination chain
-- Amount to bridge: Must be a string representing the amount in ether (only number without coin symbol, e.g., "0.1")
-- Destination address (if specified)
-
-Respond with a JSON markdown block containing only the extracted values:
-
-<response>
-{
-    "token": string | null,
-    "fromChain": "ethereum" | "abstract" | "base" | "sepolia" | "bsc" | "arbitrum" | "avalanche" | "polygon" | "optimism" | "cronos" | "gnosis" | "fantom" | "klaytn" | "celo" | "moonbeam" | "aurora" | "harmonyOne" | "moonriver" | "arbitrumNova" | "mantle" | "linea" | "scroll" | "filecoin" | "taiko" | "zksync" | "canto" | "alienx" | null,
-    "toChain": "ethereum" | "abstract" | "base" | "sepolia" | "bsc" | "arbitrum" | "avalanche" | "polygon" | "optimism" | "cronos" | "gnosis" | "fantom" | "klaytn" | "celo" | "moonbeam" | "aurora" | "harmonyOne" | "moonriver" | "arbitrumNova" | "mantle" | "linea" | "scroll" | "filecoin" | "taiko" | "zksync" | "canto" | "alienx" | null,
-    "amount": string | null,
-    "toAddress": string | null
-}
-</response>
-`;
-
-export const swapTemplate = `Given the recent messages and wallet information below:
-
-{{recentMessages}}
-
-{{walletInfo}}
-
-Extract the following information about the requested token swap:
-- Input token symbol or address (the token being sold)
-- Output token symbol or address (the token being bought)
-- Amount to swap: Must be a string representing the amount in ether (only number without coin symbol, e.g., "0.1")
-- Chain to execute on
-
-Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined:
-
-<response>
-{
-    "inputToken": string | null,
-    "outputToken": string | null,
-    "amount": string | null,
-    "chain": "ethereum" | "abstract" | "base" | "sepolia" | "bsc" | "arbitrum" | "avalanche" | "polygon" | "optimism" | "cronos" | "gnosis" | "fantom" | "klaytn" | "celo" | "moonbeam" | "aurora" | "harmonyOne" | "moonriver" | "arbitrumNova" | "mantle" | "linea" | "scroll" | "filecoin" | "taiko" | "zksync" | "canto" | "alienx" | null,
-    "slippage": number | null
-}
-</response>
 `;

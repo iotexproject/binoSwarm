@@ -73,4 +73,8 @@ const providerKeyMap = {
         characterKey: "DEEPSEEK_API_KEY",
         settingsKey: "DEEPSEEK_API_KEY",
     },
+    [ModelProviderName.OPENROUTER]: {
+        characterKey: "OPENROUTER_API_KEY",
+        settingsKey: "OPENROUTER_API_KEY",
+    },
 };

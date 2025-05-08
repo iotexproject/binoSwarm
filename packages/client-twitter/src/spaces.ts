@@ -63,7 +63,8 @@ async function generateFiller(
             runtime,
             context,
             modelClass: ModelClass.SMALL,
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
         return output.trim();
     } catch (err) {
@@ -108,7 +109,8 @@ async function generateTopicsIfEmpty(
             runtime,
             context,
             modelClass: ModelClass.SMALL,
-            customSystemPrompt: "You are a neutral processing agent. Wait for task-specific instructions in the user prompt."
+            customSystemPrompt:
+                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
         });
         const topics = response
             .split(",")
