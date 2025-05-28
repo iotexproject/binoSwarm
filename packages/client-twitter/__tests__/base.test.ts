@@ -1111,4 +1111,301 @@ describe("Twitter Client Base", () => {
             expect(mockRuntime.evaluate).not.toHaveBeenCalled();
         });
     });
+
+    describe("init", () => {
+        beforeEach(() => {
+            // Mock all the methods that init() calls
+            vi.spyOn(
+                ClientBase.prototype,
+                "getCachedCookies"
+            ).mockResolvedValue(undefined);
+            vi.spyOn(
+                ClientBase.prototype,
+                "setCookiesFromArray"
+            ).mockResolvedValue(undefined);
+            vi.spyOn(ClientBase.prototype, "cacheCookies").mockResolvedValue(
+                undefined
+            );
+            vi.spyOn(ClientBase.prototype, "fetchProfile").mockResolvedValue({
+                id: "123",
+                username: "testuser",
+                screenName: "Test User",
+                bio: "Test bio",
+                nicknames: [],
+            });
+            vi.spyOn(
+                ClientBase.prototype,
+                "loadLatestCheckedTweetId"
+            ).mockResolvedValue(undefined);
+            // Use any to access private method for testing
+            vi.spyOn(
+                ClientBase.prototype as any,
+                "populateTimeline"
+            ).mockResolvedValue(undefined);
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it("should throw error when username is not configured", async () => {
+            const client = new ClientBase(mockRuntime, {
+                ...mockConfig,
+                TWITTER_USERNAME: undefined as any,
+            });
+
+            await expect(client.init()).rejects.toThrow(
+                "Twitter username not configured"
+            );
+        });
+
+        it("should initialize successfully with cached cookies and already logged in", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockCookies = [{ key: "session", value: "abc123" }];
+            vi.spyOn(client, "getCachedCookies").mockResolvedValue(mockCookies);
+
+            // Mock twitter client methods
+            client.twitterClient.isLoggedIn = vi.fn().mockResolvedValue(true);
+            client.twitterClient.login = vi.fn().mockResolvedValue(undefined);
+            client.twitterClient.getCookies = vi
+                .fn()
+                .mockResolvedValue(mockCookies);
+
+            await client.init();
+
+            expect(client.getCachedCookies).toHaveBeenCalledWith("testuser");
+            expect(client.setCookiesFromArray).toHaveBeenCalledWith(
+                mockCookies
+            );
+            expect(client.twitterClient.isLoggedIn).toHaveBeenCalled();
+            expect(client.twitterClient.login).not.toHaveBeenCalled();
+            expect(client.fetchProfile).toHaveBeenCalledWith("testuser");
+            expect(client.loadLatestCheckedTweetId).toHaveBeenCalled();
+            expect((client as any).populateTimeline).toHaveBeenCalled();
+        });
+
+        it("should login and cache cookies when not logged in initially", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockCookies = [{ key: "session", value: "abc123" }];
+
+            // Mock login flow
+            client.twitterClient.isLoggedIn = vi
+                .fn()
+                .mockResolvedValueOnce(false) // First check - not logged in
+                .mockResolvedValueOnce(true); // After login - logged in
+
+            client.twitterClient.login = vi.fn().mockResolvedValue(undefined);
+            client.twitterClient.getCookies = vi
+                .fn()
+                .mockResolvedValue(mockCookies);
+
+            await client.init();
+
+            expect(client.twitterClient.login).toHaveBeenCalledWith(
+                "testuser",
+                "testpassword",
+                "test@example.com",
+                "test2fasecret"
+            );
+            expect(client.cacheCookies).toHaveBeenCalledWith(
+                "testuser",
+                mockCookies
+            );
+        });
+
+        it("should retry login on failure and eventually succeed", async () => {
+            vi.useFakeTimers();
+
+            const client = new ClientBase(mockRuntime, {
+                ...mockConfig,
+                TWITTER_RETRY_LIMIT: 3,
+            });
+
+            const mockCookies = [{ key: "session", value: "abc123" }];
+
+            // Mock login flow - fail twice, then succeed
+            client.twitterClient.isLoggedIn = vi
+                .fn()
+                .mockResolvedValueOnce(false) // Initial check
+                .mockResolvedValueOnce(false) // After first login attempt
+                .mockResolvedValueOnce(false) // After second login attempt
+                .mockResolvedValueOnce(true); // After third login attempt
+
+            client.twitterClient.login = vi
+                .fn()
+                .mockRejectedValueOnce(new Error("Login failed"))
+                .mockRejectedValueOnce(new Error("Login failed"))
+                .mockResolvedValueOnce(undefined);
+
+            client.twitterClient.getCookies = vi
+                .fn()
+                .mockResolvedValue(mockCookies);
+
+            // Start the async operation
+            const initPromise = client.init();
+
+            // Fast-forward through the retry delays
+            vi.advanceTimersByTime(10000); // First retry delay
+            await vi.runOnlyPendingTimersAsync();
+            vi.advanceTimersByTime(10000); // Second retry delay
+            await vi.runOnlyPendingTimersAsync();
+
+            await initPromise;
+
+            expect(client.twitterClient.login).toHaveBeenCalledTimes(3);
+
+            vi.useRealTimers();
+        });
+
+        it("should throw error after max retries exceeded", async () => {
+            const client = new ClientBase(mockRuntime, {
+                ...mockConfig,
+                TWITTER_RETRY_LIMIT: 1, // Reduce retries for faster test
+            });
+
+            // Mock login always failing
+            client.twitterClient.isLoggedIn = vi.fn().mockResolvedValue(false);
+            client.twitterClient.login = vi
+                .fn()
+                .mockRejectedValue(new Error("Login failed"));
+
+            // Mock setTimeout to execute immediately for faster testing
+            const originalSetTimeout = global.setTimeout;
+            global.setTimeout = ((callback: any) => {
+                callback();
+                return 1 as any;
+            }) as any;
+
+            try {
+                await expect(client.init()).rejects.toThrow(
+                    "Twitter login failed after maximum retries."
+                );
+            } finally {
+                // Restore original setTimeout
+                global.setTimeout = originalSetTimeout;
+            }
+        });
+
+        it("should initialize without cached cookies", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            vi.spyOn(client, "getCachedCookies").mockResolvedValue(undefined);
+
+            // Mock successful login flow
+            client.twitterClient.isLoggedIn = vi.fn().mockResolvedValue(true);
+
+            await client.init();
+
+            expect(client.getCachedCookies).toHaveBeenCalledWith("testuser");
+            expect(client.setCookiesFromArray).not.toHaveBeenCalled();
+            expect(client.twitterClient.isLoggedIn).toHaveBeenCalled();
+        });
+
+        it("should set up runtime character twitter profile correctly", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockProfile = {
+                id: "123456789",
+                username: "testuser",
+                screenName: "Test User",
+                bio: "Test bio for user",
+                nicknames: ["test", "user"],
+            };
+
+            vi.spyOn(client, "fetchProfile").mockResolvedValue(mockProfile);
+            client.twitterClient.isLoggedIn = vi.fn().mockResolvedValue(true);
+
+            await client.init();
+
+            expect(client.profile).toEqual(mockProfile);
+            expect(mockRuntime.character.twitterProfile).toEqual(mockProfile);
+        });
+
+        it("should throw error when profile fetch fails", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            vi.spyOn(client, "fetchProfile").mockResolvedValue(null as any);
+            client.twitterClient.isLoggedIn = vi.fn().mockResolvedValue(true);
+
+            await expect(client.init()).rejects.toThrow(
+                "Failed to load profile"
+            );
+        });
+
+        it("should handle login success on second isLoggedIn check after login", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockCookies = [{ key: "session", value: "new123" }];
+
+            // Mock flow: not logged in initially, login succeeds, then logged in
+            client.twitterClient.isLoggedIn = vi
+                .fn()
+                .mockResolvedValueOnce(false) // Initial check
+                .mockResolvedValueOnce(true); // After login call
+
+            client.twitterClient.login = vi.fn().mockResolvedValue(undefined);
+            client.twitterClient.getCookies = vi
+                .fn()
+                .mockResolvedValue(mockCookies);
+
+            await client.init();
+
+            expect(client.twitterClient.login).toHaveBeenCalledTimes(1);
+            expect(client.cacheCookies).toHaveBeenCalledWith(
+                "testuser",
+                mockCookies
+            );
+        });
+
+        it("should call all initialization steps in correct order", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            client.twitterClient.isLoggedIn = vi.fn().mockResolvedValue(true);
+
+            const callOrder: string[] = [];
+
+            vi.spyOn(client, "getCachedCookies").mockImplementation(
+                async () => {
+                    callOrder.push("getCachedCookies");
+                    return undefined;
+                }
+            );
+
+            vi.spyOn(client, "fetchProfile").mockImplementation(async () => {
+                callOrder.push("fetchProfile");
+                return {
+                    id: "123",
+                    username: "testuser",
+                    screenName: "Test",
+                    bio: "Bio",
+                    nicknames: [],
+                };
+            });
+
+            vi.spyOn(client, "loadLatestCheckedTweetId").mockImplementation(
+                async () => {
+                    callOrder.push("loadLatestCheckedTweetId");
+                    return undefined;
+                }
+            );
+
+            vi.spyOn(client as any, "populateTimeline").mockImplementation(
+                async () => {
+                    callOrder.push("populateTimeline");
+                    return undefined;
+                }
+            );
+
+            await client.init();
+
+            expect(callOrder).toEqual([
+                "getCachedCookies",
+                "fetchProfile",
+                "loadLatestCheckedTweetId",
+                "populateTimeline",
+            ]);
+        });
+    });
 });
