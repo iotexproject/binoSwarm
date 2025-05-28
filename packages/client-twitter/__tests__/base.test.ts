@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ClientBase } from "../src/base";
 import { ActionTimelineType, IAgentRuntime } from "@elizaos/core";
 import { TwitterConfig } from "../src/environment";
+import { createMockTweet } from "./mocks";
 
 describe("Twitter Client Base", () => {
     let mockRuntime: IAgentRuntime;
@@ -29,6 +30,11 @@ describe("Twitter Client Base", () => {
                     all: ["Test style 1", "Test style 2"],
                     post: ["Post style 1", "Post style 2"],
                 },
+            },
+            cacheManager: {
+                get: vi.fn(),
+                set: vi.fn(),
+                delete: vi.fn(),
             },
         } as unknown as IAgentRuntime;
 
@@ -76,5 +82,67 @@ describe("Twitter Client Base", () => {
         const client = new ClientBase(mockRuntime, mockConfig);
         expect(client.twitterConfig.ACTION_INTERVAL).toBe(5);
         expect(client.twitterConfig.ENABLE_ACTION_PROCESSING).toBe(true);
+    });
+
+    describe("getCachedTweet", () => {
+        it("should return cached tweet when it exists", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+            const mockTweet = createMockTweet({
+                id: "123456789",
+                text: "This is a cached tweet",
+                username: "testuser",
+            });
+
+            mockRuntime.cacheManager.get = vi.fn().mockResolvedValue(mockTweet);
+
+            const result = await client.getCachedTweet("123456789");
+
+            expect(mockRuntime.cacheManager.get).toHaveBeenCalledWith(
+                "twitter/tweets/123456789"
+            );
+            expect(result).toEqual(mockTweet);
+        });
+
+        it("should return undefined when tweet is not cached", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            mockRuntime.cacheManager.get = vi.fn().mockResolvedValue(undefined);
+
+            const result = await client.getCachedTweet("nonexistent");
+
+            expect(mockRuntime.cacheManager.get).toHaveBeenCalledWith(
+                "twitter/tweets/nonexistent"
+            );
+            expect(result).toBeUndefined();
+        });
+
+        it("should return undefined when cache manager returns null", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            mockRuntime.cacheManager.get = vi.fn().mockResolvedValue(null);
+
+            const result = await client.getCachedTweet("123456789");
+
+            expect(mockRuntime.cacheManager.get).toHaveBeenCalledWith(
+                "twitter/tweets/123456789"
+            );
+            expect(result).toBeNull();
+        });
+
+        it("should handle cache manager errors gracefully", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            mockRuntime.cacheManager.get = vi
+                .fn()
+                .mockRejectedValue(new Error("Cache error"));
+
+            await expect(client.getCachedTweet("123456789")).rejects.toThrow(
+                "Cache error"
+            );
+
+            expect(mockRuntime.cacheManager.get).toHaveBeenCalledWith(
+                "twitter/tweets/123456789"
+            );
+        });
     });
 });
