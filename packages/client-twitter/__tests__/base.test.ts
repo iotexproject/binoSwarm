@@ -3,6 +3,7 @@ import { ClientBase, extractAnswer } from "../src/base";
 import { ActionTimelineType, IAgentRuntime } from "@elizaos/core";
 import { TwitterConfig } from "../src/environment";
 import { createMockTweet } from "./mocks";
+import { SearchMode } from "agent-twitter-client";
 
 describe("extractAnswer", () => {
     it("should extract answer between Answer: and <|endoftext|>", () => {
@@ -582,6 +583,532 @@ describe("Twitter Client Base", () => {
             await expect(client.fetchProfile("testuser")).rejects.toThrow(
                 "Profile fetch failed"
             );
+        });
+    });
+
+    describe("fetchOwnPosts", () => {
+        it("should fetch own posts successfully", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+            client.profile = { id: "123", username: "testuser" } as any;
+
+            const mockTweets = [createMockTweet({ id: "1" })];
+            const mockUserTweets = vi
+                .fn()
+                .mockResolvedValue({ tweets: mockTweets });
+            client.twitterClient.getUserTweets = mockUserTweets;
+
+            const result = await client.fetchOwnPosts(10);
+
+            expect(mockUserTweets).toHaveBeenCalledWith("123", 10);
+            expect(result).toEqual(mockTweets);
+        });
+    });
+
+    describe("fetchHomeTimeline", () => {
+        it("should fetch home timeline when not following", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockRawTweets = [
+                {
+                    id: "123",
+                    __typename: "Tweet",
+                    name: "Test User",
+                    username: "testuser",
+                    text: "Test tweet",
+                    legacy: {
+                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
+                        user_id_str: "456",
+                        conversation_id_str: "789",
+                        full_text: "Test tweet",
+                        entities: {
+                            hashtags: [],
+                            user_mentions: [],
+                            urls: [],
+                            media: [],
+                        },
+                    },
+                    core: {
+                        user_results: {
+                            result: {
+                                legacy: {
+                                    screen_name: "testuser",
+                                },
+                            },
+                        },
+                    },
+                    rest_id: "123",
+                    thread: [],
+                },
+            ];
+
+            const mockFetchHomeTimeline = vi
+                .fn()
+                .mockResolvedValue(mockRawTweets);
+            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+
+            const result = await client.fetchHomeTimeline(10, false);
+
+            expect(mockFetchHomeTimeline).toHaveBeenCalledWith(10, []);
+            expect(result).toHaveLength(1);
+            expect(result[0]).toMatchObject({
+                id: "123",
+                username: "testuser",
+                text: "Test tweet",
+                permanentUrl: expect.stringContaining("status/123"),
+            });
+        });
+
+        it("should fetch following timeline when following is true", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockFetchFollowingTimeline = vi.fn().mockResolvedValue([]);
+            client.twitterClient.fetchFollowingTimeline =
+                mockFetchFollowingTimeline;
+
+            await client.fetchHomeTimeline(10, true);
+
+            expect(mockFetchFollowingTimeline).toHaveBeenCalledWith(10, []);
+        });
+
+        it("should filter out TweetWithVisibilityResults", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockRawTweets = [
+                {
+                    __typename: "TweetWithVisibilityResults",
+                    id: "filtered",
+                },
+                {
+                    id: "kept",
+                    __typename: "Tweet",
+                    legacy: {
+                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
+                        entities: {},
+                    },
+                    core: {},
+                    rest_id: "kept",
+                },
+            ];
+
+            const mockFetchHomeTimeline = vi
+                .fn()
+                .mockResolvedValue(mockRawTweets);
+            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+
+            const result = await client.fetchHomeTimeline(10, false);
+
+            expect(result).toHaveLength(1);
+            expect(result[0].id).toBe("kept");
+        });
+
+        it("should handle media processing correctly", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockRawTweets = [
+                {
+                    id: "123",
+                    __typename: "Tweet",
+                    legacy: {
+                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
+                        entities: {
+                            media: [
+                                {
+                                    type: "photo",
+                                    id_str: "photo1",
+                                    media_url_https:
+                                        "https://example.com/photo1.jpg",
+                                    alt_text: "Photo description",
+                                },
+                                {
+                                    type: "video",
+                                    id_str: "video1",
+                                },
+                            ],
+                        },
+                    },
+                    core: {},
+                    rest_id: "123",
+                },
+            ];
+
+            const mockFetchHomeTimeline = vi
+                .fn()
+                .mockResolvedValue(mockRawTweets);
+            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+
+            const result = await client.fetchHomeTimeline(10, false);
+
+            expect(result[0].photos).toEqual([
+                {
+                    id: "photo1",
+                    url: "https://example.com/photo1.jpg",
+                    alt_text: "Photo description",
+                },
+            ]);
+            expect(result[0].videos).toHaveLength(1);
+        });
+    });
+
+    describe("fetchTimelineForActions", () => {
+        it("should fetch home timeline for actions with ForYou type", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+            mockConfig.ACTION_TIMELINE_TYPE = ActionTimelineType.ForYou;
+
+            const mockRawTweets = [
+                {
+                    rest_id: "123",
+                    core: {
+                        user_results: {
+                            result: {
+                                legacy: {
+                                    name: "Test User",
+                                    screen_name: "differentuser",
+                                },
+                            },
+                        },
+                    },
+                    legacy: {
+                        full_text: "Test tweet",
+                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
+                        user_id_str: "456",
+                        conversation_id_str: "789",
+                        entities: {
+                            hashtags: [],
+                            user_mentions: [],
+                            urls: [],
+                        },
+                    },
+                },
+            ];
+
+            const mockFetchHomeTimeline = vi
+                .fn()
+                .mockResolvedValue(mockRawTweets);
+            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+
+            const result = await client.fetchTimelineForActions(10);
+
+            expect(mockFetchHomeTimeline).toHaveBeenCalledWith(10, []);
+            expect(result).toHaveLength(1);
+            expect(result[0]).toMatchObject({
+                id: "123",
+                username: "differentuser",
+                text: "Test tweet",
+            });
+        });
+
+        it("should fetch following timeline for actions with Following type", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+            mockConfig.ACTION_TIMELINE_TYPE = ActionTimelineType.Following;
+
+            const mockFetchFollowingTimeline = vi.fn().mockResolvedValue([]);
+            client.twitterClient.fetchFollowingTimeline =
+                mockFetchFollowingTimeline;
+
+            await client.fetchTimelineForActions(10);
+
+            expect(mockFetchFollowingTimeline).toHaveBeenCalledWith(10, []);
+        });
+
+        it("should filter out agent's own tweets", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+            mockConfig.TWITTER_USERNAME = "agentuser";
+
+            const mockRawTweets = [
+                {
+                    rest_id: "123",
+                    core: {
+                        user_results: {
+                            result: {
+                                legacy: {
+                                    screen_name: "agentuser", // This should be filtered
+                                },
+                            },
+                        },
+                    },
+                    legacy: {
+                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
+                        entities: {},
+                    },
+                },
+                {
+                    rest_id: "456",
+                    core: {
+                        user_results: {
+                            result: {
+                                legacy: {
+                                    screen_name: "otheruser", // This should be kept
+                                },
+                            },
+                        },
+                    },
+                    legacy: {
+                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
+                        entities: {},
+                    },
+                },
+            ];
+
+            const mockFetchHomeTimeline = vi
+                .fn()
+                .mockResolvedValue(mockRawTweets);
+            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+
+            const result = await client.fetchTimelineForActions(10);
+
+            expect(result).toHaveLength(1);
+            expect(result[0].username).toBe("otheruser");
+        });
+
+        it("should limit results to requested count", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockRawTweets = Array.from({ length: 20 }, (_, i) => ({
+                rest_id: `${i}`,
+                core: {
+                    user_results: {
+                        result: {
+                            legacy: {
+                                screen_name: `user${i}`,
+                            },
+                        },
+                    },
+                },
+                legacy: {
+                    created_at: "Mon Jan 01 00:00:00 +0000 2024",
+                    entities: {},
+                },
+            }));
+
+            const mockFetchHomeTimeline = vi
+                .fn()
+                .mockResolvedValue(mockRawTweets);
+            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+
+            const result = await client.fetchTimelineForActions(5);
+
+            expect(result).toHaveLength(5);
+        });
+    });
+
+    describe("fetchSearchTweets", () => {
+        it("should fetch search tweets successfully", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockSearchResult = {
+                tweets: [createMockTweet({ id: "1" })],
+            };
+
+            const mockFetchSearchTweets = vi
+                .fn()
+                .mockResolvedValue(mockSearchResult);
+            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+
+            const result = await client.fetchSearchTweets(
+                "test query",
+                10,
+                SearchMode.Latest
+            );
+
+            expect(mockFetchSearchTweets).toHaveBeenCalledWith(
+                "test query",
+                10,
+                SearchMode.Latest,
+                undefined
+            );
+            expect(result).toEqual(mockSearchResult);
+        });
+
+        it("should handle search tweets with cursor", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockFetchSearchTweets = vi
+                .fn()
+                .mockResolvedValue({ tweets: [] });
+            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+
+            await client.fetchSearchTweets(
+                "test query",
+                10,
+                SearchMode.Latest,
+                "cursor123"
+            );
+
+            expect(mockFetchSearchTweets).toHaveBeenCalledWith(
+                "test query",
+                10,
+                SearchMode.Latest,
+                "cursor123"
+            );
+        });
+
+        it("should handle search tweets timeout", async () => {
+            vi.useFakeTimers();
+
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            // Mock a request that doesn't resolve quickly
+            const mockFetchSearchTweets = vi.fn().mockImplementation(
+                () => new Promise(() => {}) // Never resolves
+            );
+            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+
+            // Start the async operation
+            const resultPromise = client.fetchSearchTweets(
+                "test query",
+                10,
+                SearchMode.Latest
+            );
+
+            // Fast-forward time past the 15 second timeout
+            vi.advanceTimersByTime(15001);
+
+            const result = await resultPromise;
+
+            expect(result).toEqual({ tweets: [] });
+
+            vi.useRealTimers();
+        });
+
+        it("should handle search tweets error", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockFetchSearchTweets = vi
+                .fn()
+                .mockRejectedValue(new Error("Search failed"));
+            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+
+            const result = await client.fetchSearchTweets(
+                "test query",
+                10,
+                SearchMode.Latest
+            );
+
+            expect(result).toEqual({ tweets: [] });
+        });
+
+        it("should handle null search result", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockFetchSearchTweets = vi.fn().mockResolvedValue(null);
+            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+
+            const result = await client.fetchSearchTweets(
+                "test query",
+                10,
+                SearchMode.Latest
+            );
+
+            expect(result).toEqual({ tweets: [] });
+        });
+    });
+
+    describe("saveRequestMessage", () => {
+        it("should save new message when no recent message exists", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockMessage = {
+                id: "msg123" as any,
+                roomId: "room123" as any,
+                content: { text: "Test message" },
+                userId: "user123" as any,
+                agentId: "agent123" as any,
+                createdAt: Date.now(),
+            };
+
+            const mockState = { test: "state" } as any;
+
+            mockRuntime.messageManager = {
+                getMemories: vi.fn().mockResolvedValue([]),
+                createMemory: vi.fn().mockResolvedValue(undefined),
+            } as any;
+
+            mockRuntime.evaluate = vi.fn().mockResolvedValue(undefined);
+
+            await client.saveRequestMessage(mockMessage, mockState);
+
+            expect(mockRuntime.messageManager.getMemories).toHaveBeenCalledWith(
+                {
+                    roomId: mockMessage.roomId,
+                    count: 1,
+                    unique: false,
+                }
+            );
+
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).toHaveBeenCalledWith(mockMessage, "twitter", true, true);
+
+            expect(mockRuntime.evaluate).toHaveBeenCalledWith(mockMessage, {
+                ...mockState,
+                twitterClient: client.twitterClient,
+            });
+        });
+
+        it("should skip saving when recent message with same content exists", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockMessage = {
+                id: "msg123" as any,
+                roomId: "room123" as any,
+                content: { text: "Test message" },
+                userId: "user123" as any,
+                agentId: "agent123" as any,
+                createdAt: Date.now(),
+            };
+
+            const mockState = { test: "state" } as any;
+
+            const recentMessage = {
+                id: "recent123",
+                content: mockMessage.content, // Same content
+            };
+
+            mockRuntime.messageManager = {
+                getMemories: vi.fn().mockResolvedValue([recentMessage]),
+                createMemory: vi.fn().mockResolvedValue(undefined),
+            } as any;
+
+            mockRuntime.evaluate = vi.fn().mockResolvedValue(undefined);
+
+            await client.saveRequestMessage(mockMessage, mockState);
+
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).not.toHaveBeenCalled();
+            expect(mockRuntime.evaluate).toHaveBeenCalled();
+        });
+
+        it("should not process message without text content", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockMessage = {
+                id: "msg123" as any,
+                roomId: "room123" as any,
+                content: {}, // No text
+                userId: "user123" as any,
+                agentId: "agent123" as any,
+                createdAt: Date.now(),
+            } as any; // Cast entire object to bypass type checking for test
+
+            const mockState = { test: "state" } as any;
+
+            mockRuntime.messageManager = {
+                getMemories: vi.fn(),
+                createMemory: vi.fn(),
+            } as any;
+
+            mockRuntime.evaluate = vi.fn();
+
+            await client.saveRequestMessage(mockMessage, mockState);
+
+            expect(
+                mockRuntime.messageManager.getMemories
+            ).not.toHaveBeenCalled();
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).not.toHaveBeenCalled();
+            expect(mockRuntime.evaluate).not.toHaveBeenCalled();
         });
     });
 });
