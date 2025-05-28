@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ClientBase, extractAnswer } from "../src/base";
-import { ActionTimelineType, IAgentRuntime } from "@elizaos/core";
+import { ActionTimelineType, IAgentRuntime, stringToUuid } from "@elizaos/core";
 import { TwitterConfig } from "../src/environment";
 import { createMockTweet } from "./mocks";
 import { SearchMode } from "agent-twitter-client";
@@ -1406,6 +1406,549 @@ describe("Twitter Client Base", () => {
                 "loadLatestCheckedTweetId",
                 "populateTimeline",
             ]);
+        });
+    });
+
+    describe("populateTimeline", () => {
+        let client: ClientBase;
+
+        beforeEach(() => {
+            client = new ClientBase(mockRuntime, mockConfig);
+            client.profile = {
+                id: "123",
+                username: "testuser",
+                screenName: "Test User",
+                bio: "Test bio",
+                nicknames: [],
+            };
+
+            // Mock runtime dependencies
+            mockRuntime.messageManager = {
+                getMemoriesByRoomIds: vi.fn().mockResolvedValue([]),
+                getMemoryById: vi.fn().mockResolvedValue(undefined),
+                createMemory: vi.fn().mockResolvedValue(undefined),
+            } as any;
+
+            mockRuntime.ensureUserExists = vi.fn().mockResolvedValue(undefined);
+            mockRuntime.ensureConnection = vi.fn().mockResolvedValue(undefined);
+        });
+
+        it("should handle empty cached timeline", async () => {
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "fetchHomeTimeline").mockResolvedValue([]);
+            vi.spyOn(client, "fetchSearchTweets").mockResolvedValue({
+                tweets: [],
+            });
+            vi.spyOn(client, "cacheTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheMentions").mockResolvedValue(undefined);
+
+            await (client as any).populateTimeline();
+
+            expect(client.fetchHomeTimeline).toHaveBeenCalledWith(50); // No cache, so 50
+            expect(client.fetchSearchTweets).toHaveBeenCalledWith(
+                "@testuser",
+                20,
+                SearchMode.Latest
+            );
+            expect(client.cacheTimeline).toHaveBeenCalledWith([]);
+            expect(client.cacheMentions).toHaveBeenCalledWith([]);
+        });
+
+        it("should process cached timeline with some tweets needing save", async () => {
+            const cachedTweets = [
+                createMockTweet({
+                    id: "tweet1",
+                    conversationId: "conv1",
+                    userId: "user1",
+                    username: "user1",
+                    name: "User One",
+                    text: "Cached tweet 1",
+                    permanentUrl: "https://x.com/user1/status/tweet1",
+                    timestamp: Date.now() / 1000,
+                }),
+                createMockTweet({
+                    id: "tweet2",
+                    conversationId: "conv2",
+                    userId: "user2",
+                    username: "user2",
+                    name: "User Two",
+                    text: "Cached tweet 2",
+                    permanentUrl: "https://x.com/user2/status/tweet2",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            // Only include one tweet in existing memories, so tweet2 needs to be saved
+            const existingMemories = [
+                { id: stringToUuid("tweet1" + "-" + mockRuntime.agentId) },
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(
+                cachedTweets
+            );
+            vi.spyOn(client, "cacheTweet").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue(existingMemories);
+
+            await (client as any).populateTimeline();
+
+            // Since some cached tweets exist in memory (tweet1), someCachedTweetsExist is true
+            // So it processes cached tweets and returns early without calling fetchHomeTimeline
+            expect(
+                mockRuntime.messageManager.getMemoriesByRoomIds
+            ).toHaveBeenCalled();
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).toHaveBeenCalledTimes(1); // Only tweet2
+            expect(mockRuntime.ensureConnection).toHaveBeenCalledTimes(1);
+            expect(client.cacheTweet).toHaveBeenCalledTimes(1); // Only tweet2
+        });
+
+        it("should handle agent's own tweets in cached timeline", async () => {
+            const cachedTweets = [
+                createMockTweet({
+                    id: "mytweet1",
+                    conversationId: "conv1",
+                    userId: "123", // Agent's own ID
+                    username: "testuser",
+                    name: "Test User",
+                    text: "My own tweet",
+                    permanentUrl: "https://x.com/testuser/status/mytweet1",
+                    timestamp: Date.now() / 1000,
+                }),
+                createMockTweet({
+                    id: "other1",
+                    conversationId: "conv2",
+                    userId: "other",
+                    username: "otheruser",
+                    name: "Other User",
+                    text: "Other tweet",
+                    permanentUrl: "https://x.com/otheruser/status/other1",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            // Include one tweet in memory so someCachedTweetsExist = true
+            const existingMemories = [
+                { id: stringToUuid("other1" + "-" + mockRuntime.agentId) },
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(
+                cachedTweets
+            );
+            vi.spyOn(client, "cacheTweet").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue(existingMemories);
+
+            await (client as any).populateTimeline();
+
+            expect(mockRuntime.ensureConnection).toHaveBeenCalledWith(
+                mockRuntime.agentId,
+                expect.any(String),
+                "testuser",
+                "Test User",
+                "twitter"
+            );
+        });
+
+        it("should handle tweets with reply chains in cached timeline", async () => {
+            const cachedTweets = [
+                createMockTweet({
+                    id: "reply1",
+                    conversationId: "conv1",
+                    inReplyToStatusId: "original1",
+                    text: "This is a reply",
+                    permanentUrl: "https://x.com/user1/status/reply1",
+                    timestamp: Date.now() / 1000,
+                }),
+                createMockTweet({
+                    id: "other1",
+                    conversationId: "conv2",
+                    text: "Other tweet",
+                    permanentUrl: "https://x.com/user1/status/other1",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            // Include one tweet in memory so someCachedTweetsExist = true
+            const existingMemories = [
+                { id: stringToUuid("other1" + "-" + mockRuntime.agentId) },
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(
+                cachedTweets
+            );
+            vi.spyOn(client, "cacheTweet").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue(existingMemories);
+
+            await (client as any).populateTimeline();
+
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    content: expect.objectContaining({
+                        inReplyTo: stringToUuid(
+                            "original1" + "-" + mockRuntime.agentId
+                        ),
+                    }),
+                }),
+                "twitter",
+                true,
+                true
+            );
+        });
+
+        it("should break early when finding existing memory during cached processing", async () => {
+            const cachedTweets = [
+                createMockTweet({ id: "tweet1", conversationId: "conv1" }),
+                createMockTweet({ id: "tweet2", conversationId: "conv2" }),
+            ];
+
+            // Include one tweet in existing memories so someCachedTweetsExist = true
+            const existingMemories = [
+                { id: stringToUuid("tweet1" + "-" + mockRuntime.agentId) },
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(
+                cachedTweets
+            );
+            vi.spyOn(client, "cacheTweet").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue(existingMemories);
+
+            // Mock getMemoryById to return existing memory for first tweet
+            mockRuntime.messageManager.getMemoryById = vi
+                .fn()
+                .mockResolvedValueOnce({ id: "existing-memory" }) // First call returns existing
+                .mockResolvedValue(undefined); // Subsequent calls return undefined
+
+            await (client as any).populateTimeline();
+
+            // Should try to process tweet2 but then break on first getMemoryById call
+            expect(
+                mockRuntime.messageManager.getMemoryById
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).not.toHaveBeenCalled();
+        });
+
+        it("should fetch fresh timeline when no cache exists", async () => {
+            const freshTimeline = [
+                createMockTweet({
+                    id: "fresh1",
+                    conversationId: "conv1",
+                    text: "Fresh tweet",
+                    permanentUrl: "https://x.com/user1/status/fresh1",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            const mentions = [
+                createMockTweet({
+                    id: "mention1",
+                    conversationId: "conv2",
+                    text: "@testuser hello",
+                    permanentUrl: "https://x.com/user2/status/mention1",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "fetchHomeTimeline").mockResolvedValue(
+                freshTimeline
+            );
+            vi.spyOn(client, "fetchSearchTweets").mockResolvedValue({
+                tweets: mentions,
+            });
+            vi.spyOn(client, "cacheTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheMentions").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheTweet").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue([]);
+
+            await (client as any).populateTimeline();
+
+            expect(client.fetchHomeTimeline).toHaveBeenCalledWith(50);
+            expect(client.fetchSearchTweets).toHaveBeenCalledWith(
+                "@testuser",
+                20,
+                SearchMode.Latest
+            );
+            expect(mockRuntime.ensureUserExists).toHaveBeenCalledWith(
+                mockRuntime.agentId,
+                "testuser",
+                mockRuntime.character.name,
+                "twitter"
+            );
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).toHaveBeenCalledTimes(2);
+            expect(client.cacheTimeline).toHaveBeenCalledWith(freshTimeline);
+            expect(client.cacheMentions).toHaveBeenCalledWith(mentions);
+        });
+
+        it("should fetch limited timeline when cache exists but no cached tweets exist in memory", async () => {
+            const cachedTweets = [
+                createMockTweet({ id: "cached1", conversationId: "conv1" }),
+            ];
+
+            // Empty existing memories - so cached tweets don't exist in memory
+            const existingMemories: any[] = [];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(
+                cachedTweets
+            );
+            vi.spyOn(client, "fetchHomeTimeline").mockResolvedValue([]);
+            vi.spyOn(client, "fetchSearchTweets").mockResolvedValue({
+                tweets: [],
+            });
+            vi.spyOn(client, "cacheTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheMentions").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue(existingMemories);
+
+            await (client as any).populateTimeline();
+
+            // Since no cached tweets exist in memory, someCachedTweetsExist is false
+            // so it falls through to fetching fresh timeline, and since cache exists it fetches 10 not 50
+            expect(client.fetchHomeTimeline).toHaveBeenCalledWith(10);
+        });
+
+        it("should filter duplicate tweets from timeline and mentions", async () => {
+            const timeline = [
+                createMockTweet({
+                    id: "duplicate1",
+                    conversationId: "conv1",
+                    text: "Duplicate tweet",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            const mentions = [
+                createMockTweet({
+                    id: "duplicate1", // Same ID as timeline tweet
+                    conversationId: "conv1",
+                    text: "Duplicate tweet",
+                    timestamp: Date.now() / 1000,
+                }),
+                createMockTweet({
+                    id: "unique1",
+                    conversationId: "conv2",
+                    text: "Unique mention",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            const existingMemories = [
+                { id: stringToUuid("duplicate1" + "-" + mockRuntime.agentId) },
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "fetchHomeTimeline").mockResolvedValue(timeline);
+            vi.spyOn(client, "fetchSearchTweets").mockResolvedValue({
+                tweets: mentions,
+            });
+            vi.spyOn(client, "cacheTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheMentions").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheTweet").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue(existingMemories);
+
+            await (client as any).populateTimeline();
+
+            // Should only save the unique mention, not the duplicate
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: stringToUuid("unique1" + "-" + mockRuntime.agentId),
+                }),
+                "twitter",
+                true,
+                true
+            );
+        });
+
+        it("should handle fresh timeline with agent's own tweets", async () => {
+            const timeline = [
+                createMockTweet({
+                    id: "mytweet1",
+                    conversationId: "conv1",
+                    userId: "123", // Agent's own ID
+                    username: "testuser",
+                    name: "Test User",
+                    text: "My fresh tweet",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "fetchHomeTimeline").mockResolvedValue(timeline);
+            vi.spyOn(client, "fetchSearchTweets").mockResolvedValue({
+                tweets: [],
+            });
+            vi.spyOn(client, "cacheTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheMentions").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheTweet").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue([]);
+
+            await (client as any).populateTimeline();
+
+            expect(mockRuntime.ensureConnection).toHaveBeenCalledWith(
+                mockRuntime.agentId,
+                expect.any(String),
+                "testuser",
+                "Test User",
+                "twitter"
+            );
+        });
+
+        it("should handle fresh timeline with reply tweets", async () => {
+            const timeline = [
+                createMockTweet({
+                    id: "reply1",
+                    conversationId: "conv1",
+                    inReplyToStatusId: "original1",
+                    text: "Fresh reply tweet",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "fetchHomeTimeline").mockResolvedValue(timeline);
+            vi.spyOn(client, "fetchSearchTweets").mockResolvedValue({
+                tweets: [],
+            });
+            vi.spyOn(client, "cacheTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheMentions").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheTweet").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue([]);
+
+            await (client as any).populateTimeline();
+
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    content: expect.objectContaining({
+                        inReplyTo: stringToUuid("original1"),
+                    }),
+                }),
+                "twitter",
+                true,
+                true
+            );
+        });
+
+        it("should handle empty fresh timeline and mentions", async () => {
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "fetchHomeTimeline").mockResolvedValue([]);
+            vi.spyOn(client, "fetchSearchTweets").mockResolvedValue({
+                tweets: [],
+            });
+            vi.spyOn(client, "cacheTimeline").mockResolvedValue(undefined);
+            vi.spyOn(client, "cacheMentions").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue([]);
+
+            await (client as any).populateTimeline();
+
+            expect(mockRuntime.ensureUserExists).toHaveBeenCalled();
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).not.toHaveBeenCalled();
+            expect(client.cacheTimeline).toHaveBeenCalledWith([]);
+            expect(client.cacheMentions).toHaveBeenCalledWith([]);
+        });
+
+        it("should skip processing when all cached tweets already exist in memory", async () => {
+            const cachedTweets = [
+                createMockTweet({ id: "tweet1", conversationId: "conv1" }),
+            ];
+
+            const existingMemories = [
+                { id: stringToUuid("tweet1" + "-" + mockRuntime.agentId) },
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(
+                cachedTweets
+            );
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue(existingMemories);
+
+            await (client as any).populateTimeline();
+
+            // Should not process any tweets since they all exist
+            expect(
+                mockRuntime.messageManager.createMemory
+            ).not.toHaveBeenCalled();
+        });
+
+        it("should handle agent's own tweets in cached timeline", async () => {
+            const cachedTweets = [
+                createMockTweet({
+                    id: "mytweet1",
+                    conversationId: "conv1",
+                    userId: "123", // Agent's own ID
+                    username: "testuser",
+                    name: "Test User",
+                    text: "My own tweet",
+                    permanentUrl: "https://x.com/testuser/status/mytweet1",
+                    timestamp: Date.now() / 1000,
+                }),
+                createMockTweet({
+                    id: "other1",
+                    conversationId: "conv2",
+                    userId: "other",
+                    username: "otheruser",
+                    name: "Other User",
+                    text: "Other tweet",
+                    permanentUrl: "https://x.com/otheruser/status/other1",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            // Include one tweet in memory so someCachedTweetsExist = true
+            const existingMemories = [
+                { id: stringToUuid("other1" + "-" + mockRuntime.agentId) },
+            ];
+
+            vi.spyOn(client, "getCachedTimeline").mockResolvedValue(
+                cachedTweets
+            );
+            vi.spyOn(client, "cacheTweet").mockResolvedValue(undefined);
+            mockRuntime.messageManager.getMemoriesByRoomIds = vi
+                .fn()
+                .mockResolvedValue(existingMemories);
+
+            await (client as any).populateTimeline();
+
+            expect(mockRuntime.ensureConnection).toHaveBeenCalledWith(
+                mockRuntime.agentId,
+                expect.any(String),
+                "testuser",
+                "Test User",
+                "twitter"
+            );
         });
     });
 });
