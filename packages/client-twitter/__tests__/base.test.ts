@@ -396,89 +396,6 @@ describe("Twitter Client Base", () => {
         });
     });
 
-    describe("getCachedCookies", () => {
-        it("should return cached cookies when available", async () => {
-            const client = new ClientBase(mockRuntime, mockConfig);
-            const mockCookies = [{ key: "session", value: "abc123" }];
-
-            mockRuntime.cacheManager.get = vi
-                .fn()
-                .mockResolvedValue(mockCookies);
-
-            const result = await client.getCachedCookies("testuser");
-
-            expect(mockRuntime.cacheManager.get).toHaveBeenCalledWith(
-                "twitter/testuser/cookies"
-            );
-            expect(result).toEqual(mockCookies);
-        });
-    });
-
-    describe("cacheCookies", () => {
-        it("should cache cookies for username", async () => {
-            const client = new ClientBase(mockRuntime, mockConfig);
-            const mockCookies = [{ key: "session", value: "abc123" }];
-
-            mockRuntime.cacheManager.set = vi.fn().mockResolvedValue(undefined);
-
-            await client.cacheCookies("testuser", mockCookies);
-
-            expect(mockRuntime.cacheManager.set).toHaveBeenCalledWith(
-                "twitter/testuser/cookies",
-                mockCookies
-            );
-        });
-    });
-
-    describe("setCookiesFromArray", () => {
-        it("should format and set cookies on twitter client", async () => {
-            const client = new ClientBase(mockRuntime, mockConfig);
-            const mockCookies = [
-                {
-                    key: "session",
-                    value: "abc123",
-                    domain: ".twitter.com",
-                    path: "/",
-                    secure: true,
-                    httpOnly: true,
-                    sameSite: "Lax",
-                },
-            ];
-
-            const mockSetCookies = vi.fn().mockResolvedValue(undefined);
-            client.twitterClient.setCookies = mockSetCookies;
-
-            await client.setCookiesFromArray(mockCookies);
-
-            expect(mockSetCookies).toHaveBeenCalledWith([
-                "session=abc123; Domain=.twitter.com; Path=/; Secure; HttpOnly; SameSite=Lax",
-            ]);
-        });
-
-        it("should handle cookies without optional properties", async () => {
-            const client = new ClientBase(mockRuntime, mockConfig);
-            const mockCookies = [
-                {
-                    key: "basic",
-                    value: "xyz789",
-                    domain: ".twitter.com",
-                    path: "/",
-                    secure: false,
-                    httpOnly: false,
-                },
-            ];
-
-            const mockSetCookies = vi.fn().mockResolvedValue(undefined);
-            client.twitterClient.setCookies = mockSetCookies;
-
-            await client.setCookiesFromArray(mockCookies);
-
-            expect(mockSetCookies).toHaveBeenCalledWith([
-                "basic=xyz789; Domain=.twitter.com; Path=/; ; ; SameSite=Lax",
-            ]);
-        });
-    });
-
     describe("fetchProfile", () => {
         it("should fetch and return twitter profile", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
@@ -1115,17 +1032,6 @@ describe("Twitter Client Base", () => {
     describe("init", () => {
         beforeEach(() => {
             // Mock all the methods that init() calls
-            vi.spyOn(
-                ClientBase.prototype,
-                "getCachedCookies"
-            ).mockResolvedValue(undefined);
-            vi.spyOn(
-                ClientBase.prototype,
-                "setCookiesFromArray"
-            ).mockResolvedValue(undefined);
-            vi.spyOn(ClientBase.prototype, "cacheCookies").mockResolvedValue(
-                undefined
-            );
             vi.spyOn(ClientBase.prototype, "fetchProfile").mockResolvedValue({
                 id: "123",
                 username: "testuser",
@@ -1163,7 +1069,6 @@ describe("Twitter Client Base", () => {
             const client = new ClientBase(mockRuntime, mockConfig);
 
             const mockCookies = [{ key: "session", value: "abc123" }];
-            vi.spyOn(client, "getCachedCookies").mockResolvedValue(mockCookies);
 
             // Mock twitter client methods
             client.twitterClient.isLoggedIn = vi.fn().mockResolvedValue(true);
@@ -1174,10 +1079,6 @@ describe("Twitter Client Base", () => {
 
             await client.init();
 
-            expect(client.getCachedCookies).toHaveBeenCalledWith("testuser");
-            expect(client.setCookiesFromArray).toHaveBeenCalledWith(
-                mockCookies
-            );
             expect(client.twitterClient.isLoggedIn).toHaveBeenCalled();
             expect(client.twitterClient.login).not.toHaveBeenCalled();
             expect(client.fetchProfile).toHaveBeenCalledWith("testuser");
@@ -1208,10 +1109,6 @@ describe("Twitter Client Base", () => {
                 "testpassword",
                 "test@example.com",
                 "test2fasecret"
-            );
-            expect(client.cacheCookies).toHaveBeenCalledWith(
-                "testuser",
-                mockCookies
             );
         });
 
@@ -1291,15 +1188,11 @@ describe("Twitter Client Base", () => {
         it("should initialize without cached cookies", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
 
-            vi.spyOn(client, "getCachedCookies").mockResolvedValue(undefined);
-
             // Mock successful login flow
             client.twitterClient.isLoggedIn = vi.fn().mockResolvedValue(true);
 
             await client.init();
 
-            expect(client.getCachedCookies).toHaveBeenCalledWith("testuser");
-            expect(client.setCookiesFromArray).not.toHaveBeenCalled();
             expect(client.twitterClient.isLoggedIn).toHaveBeenCalled();
         });
 
@@ -1353,10 +1246,6 @@ describe("Twitter Client Base", () => {
             await client.init();
 
             expect(client.twitterClient.login).toHaveBeenCalledTimes(1);
-            expect(client.cacheCookies).toHaveBeenCalledWith(
-                "testuser",
-                mockCookies
-            );
         });
 
         it("should call all initialization steps in correct order", async () => {
@@ -1365,13 +1254,6 @@ describe("Twitter Client Base", () => {
             client.twitterClient.isLoggedIn = vi.fn().mockResolvedValue(true);
 
             const callOrder: string[] = [];
-
-            vi.spyOn(client, "getCachedCookies").mockImplementation(
-                async () => {
-                    callOrder.push("getCachedCookies");
-                    return undefined;
-                }
-            );
 
             vi.spyOn(client, "fetchProfile").mockImplementation(async () => {
                 callOrder.push("fetchProfile");
@@ -1401,7 +1283,6 @@ describe("Twitter Client Base", () => {
             await client.init();
 
             expect(callOrder).toEqual([
-                "getCachedCookies",
                 "fetchProfile",
                 "loadLatestCheckedTweetId",
                 "populateTimeline",

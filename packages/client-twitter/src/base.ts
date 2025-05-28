@@ -17,6 +17,7 @@ import {
 } from "agent-twitter-client";
 import { EventEmitter } from "events";
 import { TwitterConfig } from "./environment.ts";
+import { TwitterAuthManager } from "./TwitterAuthManager.ts";
 
 export function extractAnswer(text: string): string {
     const startIndex = text.indexOf("Answer: ") + 8;
@@ -93,6 +94,7 @@ export class ClientBase extends EventEmitter {
     temperature: number = 0.5;
 
     requestQueue: RequestQueue = new RequestQueue();
+    private authManager: TwitterAuthManager;
 
     profile: TwitterProfile | null;
 
@@ -148,6 +150,12 @@ export class ClientBase extends EventEmitter {
             ClientBase._twitterClients[username] = this.twitterClient;
         }
 
+        this.authManager = new TwitterAuthManager(
+            runtime,
+            twitterConfig,
+            this.twitterClient
+        );
+
         this.directions =
             "- " +
             this.runtime.character.style.all.join("\n- ") +
@@ -157,65 +165,13 @@ export class ClientBase extends EventEmitter {
 
     async init() {
         const username = this.twitterConfig.TWITTER_USERNAME;
-        const password = this.twitterConfig.TWITTER_PASSWORD;
-        const email = this.twitterConfig.TWITTER_EMAIL;
-        let retries = this.twitterConfig.TWITTER_RETRY_LIMIT;
-        const twitter2faSecret = this.twitterConfig.TWITTER_2FA_SECRET;
 
         if (!username) {
             throw new Error("Twitter username not configured");
         }
 
-        const cachedCookies = await this.getCachedCookies(username);
+        await this.authManager.authenticate();
 
-        if (cachedCookies) {
-            elizaLogger.info("Using cached cookies");
-            await this.setCookiesFromArray(cachedCookies);
-        }
-
-        elizaLogger.log("Waiting for Twitter login");
-        while (retries > 0) {
-            try {
-                if (await this.twitterClient.isLoggedIn()) {
-                    // cookies are valid, no login required
-                    elizaLogger.info("Successfully logged in.");
-                    break;
-                } else {
-                    await this.twitterClient.login(
-                        username,
-                        password,
-                        email,
-                        twitter2faSecret
-                    );
-                    if (await this.twitterClient.isLoggedIn()) {
-                        // fresh login, store new cookies
-                        elizaLogger.info("Successfully logged in.");
-                        elizaLogger.info("Caching cookies");
-                        await this.cacheCookies(
-                            username,
-                            await this.twitterClient.getCookies()
-                        );
-                        break;
-                    }
-                }
-            } catch (error) {
-                elizaLogger.error(`Login attempt failed: ${error.message}`);
-            }
-
-            retries--;
-            elizaLogger.error(
-                `Failed to login to Twitter. Retrying... (${retries} attempts left)`
-            );
-
-            if (retries === 0) {
-                elizaLogger.error(
-                    "Max retries reached. Exiting login process."
-                );
-                throw new Error("Twitter login failed after maximum retries.");
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 10000));
-        }
         // Initialize Twitter profile
         this.profile = await this.fetchProfile(username);
 
@@ -645,18 +601,6 @@ export class ClientBase extends EventEmitter {
         await this.cacheMentions(mentionsAndInteractions.tweets);
     }
 
-    async setCookiesFromArray(cookiesArray: any[]) {
-        const cookieStrings = cookiesArray.map(
-            (cookie) =>
-                `${cookie.key}=${cookie.value}; Domain=${cookie.domain}; Path=${cookie.path}; ${
-                    cookie.secure ? "Secure" : ""
-                }; ${cookie.httpOnly ? "HttpOnly" : ""}; SameSite=${
-                    cookie.sameSite || "Lax"
-                }`
-        );
-        await this.twitterClient.setCookies(cookieStrings);
-    }
-
     async saveRequestMessage(message: Memory, state: State) {
         if (message.content.text) {
             const recentMessage = await this.runtime.messageManager.getMemories(
@@ -727,19 +671,6 @@ export class ClientBase extends EventEmitter {
             `twitter/${this.profile.username}/mentions`,
             mentions,
             { expires: Date.now() + 10 * 1000 }
-        );
-    }
-
-    async getCachedCookies(username: string) {
-        return await this.runtime.cacheManager.get<any[]>(
-            `twitter/${username}/cookies`
-        );
-    }
-
-    async cacheCookies(username: string, cookies: any[]) {
-        await this.runtime.cacheManager.set(
-            `twitter/${username}/cookies`,
-            cookies
         );
     }
 
