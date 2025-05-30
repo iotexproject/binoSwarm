@@ -1039,6 +1039,7 @@ export interface IDatabaseAdapter {
     getCharacterDbTraits(
         characterId: UUID
     ): Promise<CharacterDBTraits | undefined>;
+    deleteAccount(userId: UUID): Promise<void>;
 }
 
 export interface IDatabaseCacheAdapter {

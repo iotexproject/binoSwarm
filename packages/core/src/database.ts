@@ -376,4 +376,6 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
     abstract getCharacterDbTraits(
         characterId: UUID
     ): Promise<CharacterDBTraits | undefined>;
+
+    abstract deleteAccount(userId: UUID): Promise<void>;
 }
