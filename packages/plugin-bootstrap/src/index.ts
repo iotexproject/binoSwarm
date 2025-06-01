@@ -8,6 +8,7 @@ import { unfollowRoomAction } from "./actions/unfollowRoom.ts";
 import { unmuteRoomAction } from "./actions/unmuteRoom.ts";
 import { factEvaluator } from "./evaluators/fact.ts";
 import { goalEvaluator } from "./evaluators/goal.ts";
+import { cleanupEvaluator } from "./evaluators/cleanup.ts";
 import { boredomProvider } from "./providers/boredom.ts";
 import { factsProvider } from "./providers/facts.ts";
 import { timeProvider } from "./providers/time.ts";
@@ -32,7 +33,7 @@ export const bootstrapPlugin: Plugin = {
         forgetMeAction,
         disclaimerAction,
     ],
-    evaluators: [factEvaluator, goalEvaluator],
+    evaluators: [factEvaluator, goalEvaluator, cleanupEvaluator],
     providers: [boredomProvider, timeProvider, factsProvider],
 };
 export default bootstrapPlugin;
