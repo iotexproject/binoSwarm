@@ -1087,9 +1087,7 @@ export interface IMemoryManager {
 
     createMemory(
         memory: Memory,
-        source: string,
-        unique: boolean,
-        isVectorRequired: boolean
+        unique: boolean
     ): Promise<void>;
 
     removeMemory(memoryId: UUID): Promise<void>;
