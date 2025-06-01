@@ -1,7 +1,7 @@
 import { v4 } from "uuid";
 
 // Import the entire module as default
-import pg, { PoolConfig } from "pg";
+import pg, { PoolClient, PoolConfig } from "pg";
 type Pool = pg.Pool;
 
 import {
@@ -953,12 +953,64 @@ export class PostgresDatabaseAdapter
     }
 
     async removeAllMemories(roomId: UUID, tableName: string): Promise<void> {
-        return this.withDatabase(async () => {
-            await this.pool.query(
-                `DELETE FROM memories WHERE type = $1 AND "roomId" = $2`,
-                [tableName, roomId]
+        const query = `DELETE FROM ${tableName} WHERE room_id = $1`;
+        await this.query(query, [roomId]);
+    }
+
+    async deleteAccount(userId: UUID): Promise<void> {
+        elizaLogger.info(
+            `[PostgresAdapter] Initiating transactional deletion for account ${userId}.`
+        );
+        const client: PoolClient = await this.pool.connect();
+        try {
+            await client.query("BEGIN");
+
+            elizaLogger.debug(
+                `[PostgresAdapter] Deleting memories for user ${userId}`
             );
-        }, "removeAllMemories");
+            await client.query(`DELETE FROM memories WHERE "userId" = $1`, [
+                userId,
+            ]);
+
+            elizaLogger.debug(
+                `[PostgresAdapter] Deleting goals for user ${userId}`
+            );
+            await client.query(`DELETE FROM goals WHERE "userId" = $1`, [
+                userId,
+            ]);
+
+            elizaLogger.debug(
+                `[PostgresAdapter] Deleting participant records for user ${userId}`
+            );
+            await client.query(`DELETE FROM participants WHERE "userId" = $1`, [
+                userId,
+            ]);
+
+            elizaLogger.debug(
+                `[PostgresAdapter] Deleting relationships involving user ${userId}`
+            );
+            await client.query(
+                `DELETE FROM relationships WHERE "userA" = $1 OR "userB" = $1 OR "userId" = $1`,
+                [userId]
+            );
+
+            elizaLogger.debug(`[PostgresAdapter] Deleting account ${userId}`);
+            await client.query("DELETE FROM accounts WHERE id = $1", [userId]);
+
+            await client.query("COMMIT");
+            elizaLogger.info(
+                `[PostgresAdapter] Successfully deleted account and associated data for user ${userId}.`
+            );
+        } catch (error) {
+            await client.query("ROLLBACK");
+            elizaLogger.error(
+                `[PostgresAdapter] Error during transactional account deletion for user ${userId}:`,
+                error
+            );
+            throw error; // Re-throw the error after rolling back
+        } finally {
+            client.release();
+        }
     }
 
     async countMemories(
@@ -977,6 +1029,26 @@ export class PostgresDatabaseAdapter
             const { rows } = await this.pool.query(sql, [tableName, roomId]);
             return parseInt(rows[0].count);
         }, "countMemories");
+    }
+
+    async countMemoriesForUser(params: {
+        userId: UUID;
+        agentId: UUID;
+        tableName: string;
+    }): Promise<number> {
+        if (!params.tableName) throw new Error("tableName is required");
+        if (!params.userId) throw new Error("userId is required");
+        if (!params.agentId) throw new Error("agentId is required");
+
+        return this.withDatabase(async () => {
+            const sql = `SELECT COUNT(*) as count FROM memories WHERE "userId" = $1 AND "agentId" = $2 AND type = $3`;
+            const { rows } = await this.pool.query(sql, [
+                params.userId,
+                params.agentId,
+                params.tableName,
+            ]);
+            return parseInt(rows[0].count);
+        }, "countMemoriesForUser");
     }
 
     async removeAllGoals(roomId: UUID): Promise<void> {

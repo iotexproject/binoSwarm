@@ -965,6 +965,12 @@ export interface IDatabaseAdapter {
         tableName?: string
     ): Promise<number>;
 
+    countMemoriesForUser(params: {
+        userId: UUID;
+        agentId: UUID;
+        tableName: string;
+    }): Promise<number>;
+
     getGoals(params: {
         agentId: UUID;
         roomId: UUID;
@@ -1039,6 +1045,7 @@ export interface IDatabaseAdapter {
     getCharacterDbTraits(
         characterId: UUID
     ): Promise<CharacterDBTraits | undefined>;
+    deleteAccount(userId: UUID): Promise<void>;
 }
 
 export interface IDatabaseCacheAdapter {
@@ -1090,6 +1097,8 @@ export interface IMemoryManager {
     removeAllMemories(roomId: UUID): Promise<void>;
 
     countMemories(roomId: UUID, unique?: boolean): Promise<number>;
+
+    countMemoriesForUser(userId: UUID): Promise<number>;
 }
 
 export interface IRAGKnowledgeManager {
