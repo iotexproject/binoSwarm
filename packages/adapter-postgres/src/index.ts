@@ -1031,6 +1031,26 @@ export class PostgresDatabaseAdapter
         }, "countMemories");
     }
 
+    async countMemoriesForUser(params: {
+        userId: UUID;
+        agentId: UUID;
+        tableName: string;
+    }): Promise<number> {
+        if (!params.tableName) throw new Error("tableName is required");
+        if (!params.userId) throw new Error("userId is required");
+        if (!params.agentId) throw new Error("agentId is required");
+
+        return this.withDatabase(async () => {
+            const sql = `SELECT COUNT(*) as count FROM memories WHERE "userId" = $1 AND "agentId" = $2 AND type = $3`;
+            const { rows } = await this.pool.query(sql, [
+                params.userId,
+                params.agentId,
+                params.tableName,
+            ]);
+            return parseInt(rows[0].count);
+        }, "countMemoriesForUser");
+    }
+
     async removeAllGoals(roomId: UUID): Promise<void> {
         return this.withDatabase(async () => {
             await this.pool.query(`DELETE FROM goals WHERE "roomId" = $1`, [

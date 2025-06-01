@@ -161,6 +161,12 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
         tableName?: string
     ): Promise<number>;
 
+    abstract countMemoriesForUser(params: {
+        userId: UUID;
+        agentId: UUID;
+        tableName: string;
+    }): Promise<number>;
+
     /**
      * Retrieves goals based on specified parameters.
      * @param params An object containing parameters for goal retrieval.

@@ -147,6 +147,14 @@ export class MemoryManager implements IMemoryManager {
         );
     }
 
+    async countMemoriesForUser(userId: UUID): Promise<number> {
+        return await this.runtime.databaseAdapter.countMemoriesForUser({
+            userId,
+            agentId: this.runtime.agentId,
+            tableName: this.tableName,
+        });
+    }
+
     private async embedAndPersist(
         memory: Memory,
         source: string,
