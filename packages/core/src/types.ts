@@ -1085,10 +1085,7 @@ export interface IMemoryManager {
         userId?: UUID;
     }): Promise<Memory[]>;
 
-    createMemory(
-        memory: Memory,
-        unique: boolean
-    ): Promise<void>;
+    createMemory(params: { memory: Memory; isUnique: boolean }): Promise<void>;
 
     removeMemory(memoryId: UUID): Promise<void>;
 

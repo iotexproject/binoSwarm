@@ -74,7 +74,13 @@ export class MemoryManager implements IMemoryManager {
         return null;
     }
 
-    async createMemory(memory: Memory, unique: boolean): Promise<void> {
+    async createMemory({
+        memory,
+        isUnique,
+    }: {
+        memory: Memory;
+        isUnique: boolean;
+    }): Promise<void> {
         const existingMessage = await this.getMemoryById(memory.id);
 
         if (existingMessage) {
@@ -88,7 +94,7 @@ export class MemoryManager implements IMemoryManager {
         await this.runtime.databaseAdapter.createMemory(
             memory,
             this.tableName,
-            unique
+            isUnique
         );
     }
 
