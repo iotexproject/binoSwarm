@@ -381,17 +381,15 @@ describe("MessageManager", () => {
 
             expect(
                 mockRuntime.messageManager.createMemory
-            ).toHaveBeenCalledWith(
-                expect.objectContaining({
+            ).toHaveBeenCalledWith({
+                memory: expect.objectContaining({
                     content: expect.objectContaining({
                         text: "Message with attachment",
                         attachments: expect.any(Array),
                     }),
                 }),
-                "discord",
-                true,
-                true
-            );
+                isUnique: true,
+            });
         });
 
         it("should handle audio attachments correctly", async () => {
