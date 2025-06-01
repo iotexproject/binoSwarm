@@ -273,12 +273,10 @@ export class DiscordClient extends EventEmitter {
             };
 
             try {
-                await this.runtime.messageManager.createMemory(
+                await this.runtime.messageManager.createMemory({
                     memory,
-                    "discord",
-                    false,
-                    false
-                );
+                    isUnique: false,
+                });
                 elizaLogger.debug("Reaction memory created", {
                     reactionId: reactionUUID,
                     emoji,
@@ -352,8 +350,8 @@ export class DiscordClient extends EventEmitter {
 
         try {
             // Save the reaction removal as a message
-            await this.runtime.messageManager.createMemory(
-                {
+            await this.runtime.messageManager.createMemory({
+                memory: {
                     id: reactionUUID, // This is the ID of the reaction removal message
                     userId: userIdUUID,
                     agentId: this.runtime.agentId,
@@ -367,10 +365,8 @@ export class DiscordClient extends EventEmitter {
                     roomId,
                     createdAt: Date.now(),
                 },
-                "discord",
-                false,
-                false
-            );
+                isUnique: false,
+            });
         } catch (error) {
             elizaLogger.error(
                 "Error creating reaction removal message:",

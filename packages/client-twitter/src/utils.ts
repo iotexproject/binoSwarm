@@ -72,8 +72,8 @@ export async function buildConversationThread(
                 "twitter"
             );
 
-            await client.runtime.messageManager.createMemory(
-                {
+            await client.runtime.messageManager.createMemory({
+                memory: {
                     id: stringToUuid(
                         currentTweet.id + "-" + client.runtime.agentId
                     ),
@@ -97,10 +97,8 @@ export async function buildConversationThread(
                             ? client.runtime.agentId
                             : stringToUuid(currentTweet.userId),
                 },
-                "twitter",
-                true,
-                true
-            );
+                isUnique: true,
+            });
         }
 
         if (visited.has(currentTweet.id)) {

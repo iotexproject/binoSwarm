@@ -92,12 +92,10 @@ describe("MemoryManager", () => {
             mockDatabaseAdapter.getMemoryById.mockResolvedValue(existingMemory);
 
             // Execute
-            await memoryManager.createMemory(
-                existingMemory as Memory,
-                "test",
-                false,
-                true
-            );
+            await memoryManager.createMemory({
+                memory: existingMemory as Memory,
+                isUnique: false,
+            });
 
             // Assert
             expect(mockDatabaseAdapter.createMemory).not.toHaveBeenCalled();
@@ -116,12 +114,10 @@ describe("MemoryManager", () => {
             mockDatabaseAdapter.getMemoryById.mockResolvedValue(null);
 
             // Execute
-            await memoryManager.createMemory(
-                memory as Memory,
-                "test",
-                false,
-                false
-            );
+            await memoryManager.createMemory({
+                memory: memory as Memory,
+                isUnique: false,
+            });
 
             // Assert
             expect(mockDatabaseAdapter.createMemory).toHaveBeenCalledWith(
@@ -130,55 +126,6 @@ describe("MemoryManager", () => {
                 false
             );
             expect(memoryManager.vectorDB.upsert).not.toHaveBeenCalled();
-        });
-
-        it("should create memory with vector when isVectorRequired is true", async () => {
-            // Setup
-            const memory = {
-                id: "memory-123" as UUID,
-                agentId: "test-agent-id" as UUID,
-                content: { text: "Test memory" },
-                userId: "user-123" as UUID,
-                roomId: "room-123" as UUID,
-            };
-            mockDatabaseAdapter.getMemoryById.mockResolvedValue(null);
-
-            // Execute
-            await memoryManager.createMemory(
-                memory as Memory,
-                "test",
-                false,
-                true
-            );
-
-            // Wait for the async persistVectorData to complete
-            await new Promise(process.nextTick);
-
-            // Assert
-            expect(mockDatabaseAdapter.createMemory).toHaveBeenCalledWith(
-                memory,
-                "test_memories",
-                false
-            );
-
-            expect(memoryManager.vectorDB.upsert).toHaveBeenCalled();
-            expect(memoryManager.vectorDB.upsert).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    namespace: "test-agent-id",
-                    values: [
-                        expect.objectContaining({
-                            id: "memory-123",
-                            metadata: expect.objectContaining({
-                                type: "test_memories",
-                                userId: "user-123",
-                                roomId: "room-123",
-                                source: "test",
-                                inputHash: "test-hash",
-                            }),
-                        }),
-                    ],
-                })
-            );
         });
 
         it("should handle zero dimension embedding", async () => {
@@ -197,12 +144,10 @@ describe("MemoryManager", () => {
             (embed as any).mockResolvedValueOnce([]);
 
             // Execute
-            await memoryManager.createMemory(
-                memory as Memory,
-                "test",
-                false,
-                true
-            );
+            await memoryManager.createMemory({
+                memory: memory as Memory,
+                isUnique: false,
+            });
 
             // Wait for the async persistVectorData to complete
             await new Promise(process.nextTick);
@@ -223,12 +168,10 @@ describe("MemoryManager", () => {
             mockDatabaseAdapter.getMemoryById.mockResolvedValue(null);
 
             // Execute
-            await memoryManager.createMemory(
-                memory as Memory,
-                "test",
-                false,
-                true
-            );
+            await memoryManager.createMemory({
+                memory: memory as Memory,
+                isUnique: false,
+            });
 
             // Wait for the async persistVectorData to complete
             await new Promise(process.nextTick);
@@ -257,12 +200,10 @@ describe("MemoryManager", () => {
             });
 
             await expect(
-                memoryManager.createMemory(
-                    memory as Memory,
-                    "test",
-                    false,
-                    true
-                )
+                memoryManager.createMemory({
+                    memory: memory as Memory,
+                    isUnique: false,
+                })
             ).resolves.not.toThrow();
 
             // Wait for the async persistVectorData to complete
@@ -270,7 +211,6 @@ describe("MemoryManager", () => {
 
             // Assert
             expect(mockDatabaseAdapter.createMemory).toHaveBeenCalled();
-            expect(memoryManager.vectorDB.upsert).toHaveBeenCalled();
         });
 
         it("should handle missing content object", async () => {
@@ -286,7 +226,10 @@ describe("MemoryManager", () => {
             mockDatabaseAdapter.getMemoryById.mockResolvedValue(null);
 
             // Execute
-            await memoryManager.createMemory(memory, "test", false, true);
+            await memoryManager.createMemory({
+                memory: memory as Memory,
+                isUnique: false,
+            });
 
             // In current implementation, this will cause a runtime error when accessing content.text
             // Ideal behavior: validate content exists before trying to access its properties

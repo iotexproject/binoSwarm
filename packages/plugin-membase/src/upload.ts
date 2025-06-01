@@ -27,7 +27,9 @@ export const mUpload: Action = {
     ],
     description: "Store data using membase protocol",
     validate: async (runtime: IAgentRuntime, message: Memory) => {
-        elizaLogger.debug("Starting membase validation", { messageId: message.id });
+        elizaLogger.debug("Starting membase validation", {
+            messageId: message.id,
+        });
 
         try {
             const settings = {
@@ -40,7 +42,9 @@ export const mUpload: Action = {
                 hasHubAccount: Boolean(settings.hubAccount),
             });
 
-            const hasRequiredSettings = Object.entries(settings).every(([_key, value]) => Boolean(value));
+            const hasRequiredSettings = Object.entries(settings).every(
+                ([_key, value]) => Boolean(value)
+            );
 
             if (!hasRequiredSettings) {
                 const missingSettings = Object.entries(settings)
@@ -49,7 +53,7 @@ export const mUpload: Action = {
 
                 elizaLogger.error("Missing required MEMBASE settings", {
                     missingSettings,
-                    messageId: message.id
+                    messageId: message.id,
                 });
                 return false;
             }
@@ -59,23 +63,22 @@ export const mUpload: Action = {
             elizaLogger.error("Error validating MEMBASE_UPLOAD settings", {
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
-                messageId: message.id
+                messageId: message.id,
             });
             return false;
         }
     },
 
-    handler: async (
-        runtime: IAgentRuntime,
-        message: Memory,
-        state: State,
-    ) => {
+    handler: async (runtime: IAgentRuntime, message: Memory, state: State) => {
         elizaLogger.info("MEMBASE_UPLOAD action started", {
             messageId: message.id,
             hasState: Boolean(state),
         });
 
-        const client = new Client(runtime.getSetting("MEMBASE_HUB") || "https://testnet.hub.membase.io");
+        const client = new Client(
+            runtime.getSetting("MEMBASE_HUB") ||
+                "https://testnet.hub.membase.io"
+        );
 
         try {
             // Update state if needed
@@ -86,7 +89,8 @@ export const mUpload: Action = {
                 currentState = (await runtime.composeState(message)) as State;
             } else {
                 elizaLogger.debug("Updating existing state");
-                currentState = await runtime.updateRecentMessageState(currentState);
+                currentState =
+                    await runtime.updateRecentMessageState(currentState);
             }
 
             const owner = runtime.getSetting("MEMBASE_ACCOUNT") || "";
@@ -97,16 +101,16 @@ export const mUpload: Action = {
             if (result) {
                 elizaLogger.info("Upload successful", {
                     result,
-                    messageId: message.id
+                    messageId: message.id,
                 });
             }
-
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage =
+                error instanceof Error ? error.message : String(error);
             elizaLogger.error("Unexpected error during memory upload", {
                 error: errorMessage,
                 stack: error instanceof Error ? error.stack : undefined,
-                messageId: message.id
+                messageId: message.id,
             });
 
             return false;

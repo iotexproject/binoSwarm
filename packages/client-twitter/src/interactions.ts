@@ -419,12 +419,10 @@ export class TwitterInteractionClient {
                     } else {
                         responseMessage.content.action = "CONTINUE";
                     }
-                    await this.runtime.messageManager.createMemory(
-                        responseMessage,
-                        "twitter",
-                        true,
-                        false
-                    );
+                    await this.runtime.messageManager.createMemory({
+                        memory: responseMessage,
+                        isUnique: true,
+                    });
                 }
 
                 const responseTweetId =
@@ -494,8 +492,8 @@ export class TwitterInteractionClient {
                     "twitter"
                 );
 
-                this.runtime.messageManager.createMemory(
-                    {
+                this.runtime.messageManager.createMemory({
+                    memory: {
                         id: stringToUuid(
                             currentTweet.id + "-" + this.runtime.agentId
                         ),
@@ -519,10 +517,8 @@ export class TwitterInteractionClient {
                                 ? this.runtime.agentId
                                 : stringToUuid(currentTweet.userId),
                     },
-                    "twitter",
-                    true,
-                    false
-                );
+                    isUnique: true,
+                });
             }
 
             if (visited.has(currentTweet.id)) {

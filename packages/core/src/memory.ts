@@ -1,4 +1,4 @@
-import { embed, getDimentionZeroEmbedding } from "./embedding.ts";
+import { getDimentionZeroEmbedding } from "./embedding.ts";
 import elizaLogger from "./logger.ts";
 import {
     IAgentRuntime,
@@ -74,12 +74,13 @@ export class MemoryManager implements IMemoryManager {
         return null;
     }
 
-    async createMemory(
-        memory: Memory,
-        source: string,
-        unique: boolean,
-        isVectorRequired: boolean
-    ): Promise<void> {
+    async createMemory({
+        memory,
+        isUnique,
+    }: {
+        memory: Memory;
+        isUnique: boolean;
+    }): Promise<void> {
         const existingMessage = await this.getMemoryById(memory.id);
 
         if (existingMessage) {
@@ -90,7 +91,11 @@ export class MemoryManager implements IMemoryManager {
         }
 
         elizaLogger.log("Creating Memory", memory.id, memory.content?.text);
-        await this.embedAndPersist(memory, source, unique, isVectorRequired);
+        await this.runtime.databaseAdapter.createMemory(
+            memory,
+            this.tableName,
+            isUnique
+        );
     }
 
     async getMemoriesByRoomIds(params: {
@@ -153,84 +158,5 @@ export class MemoryManager implements IMemoryManager {
             agentId: this.runtime.agentId,
             tableName: this.tableName,
         });
-    }
-
-    private async embedAndPersist(
-        memory: Memory,
-        source: string,
-        unique: boolean,
-        isVectorRequired: boolean
-    ) {
-        await this.runtime.databaseAdapter.createMemory(
-            memory,
-            this.tableName,
-            unique
-        );
-
-        if (!memory.content || typeof memory.content.text !== "string") {
-            elizaLogger.warn(
-                `Invalid memory content for memory ${memory.id}, proceeding without vector storage`
-            );
-            return;
-        }
-
-        if (!isVectorRequired) {
-            return;
-        }
-
-        if (!memory.content.text.trim()) {
-            elizaLogger.debug(
-                `Empty content for memory ${memory.id}, skipping vector creation`
-            );
-            return;
-        }
-
-        this.persistVectorData(memory, source, unique);
-    }
-
-    private async persistVectorData(
-        item: Memory,
-        source: string,
-        unique: boolean
-    ) {
-        try {
-            const embedding = await embed(
-                this.runtime,
-                item.content.text,
-                unique
-            );
-
-            if (!embedding || embedding.length === 0) {
-                elizaLogger.warn(
-                    `Empty embedding returned for memory ${item.id}, skipping vector storage`
-                );
-                return;
-            }
-
-            await this.vectorDB.upsert({
-                namespace: this.runtime.agentId.toString(),
-                values: [
-                    {
-                        id: item.id,
-                        values: embedding,
-                        metadata: {
-                            type: this.tableName,
-                            createdAt: Date.now().toString(),
-                            userId: item.userId,
-                            roomId: item.roomId,
-                            source: source,
-                            inputHash: this.vectorDB.hashInput(
-                                item.content.text
-                            ),
-                        },
-                    },
-                ],
-            });
-        } catch (error) {
-            elizaLogger.error(
-                `Error creating vector for memory ${item.id}:`,
-                error
-            );
-        }
     }
 }

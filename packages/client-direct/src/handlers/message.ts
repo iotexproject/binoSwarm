@@ -58,7 +58,10 @@ async function handle(
         createdAt: Date.now(),
     };
 
-    await runtime.messageManager.createMemory(memory, "direct", true, true);
+    await runtime.messageManager.createMemory({
+        memory,
+        isUnique: true,
+    });
 
     let state = await runtime.composeState(userMessage, {
         agentName: runtime.character.name,
@@ -88,12 +91,10 @@ async function handle(
         type: "response",
     });
 
-    await runtime.messageManager.createMemory(
-        responseMessage,
-        "direct",
-        true,
-        false
-    );
+    await runtime.messageManager.createMemory({
+        memory: responseMessage,
+        isUnique: true,
+    });
     state = await runtime.updateRecentMessageState(state);
 
     // Process actions and stream any additional messages
