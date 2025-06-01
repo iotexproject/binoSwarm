@@ -99,12 +99,10 @@ export class TwitterSearchClient {
                 state = await this.runtime.updateRecentMessageState(state);
 
                 for (const responseMessage of responseMessages) {
-                    await this.runtime.messageManager.createMemory(
-                        responseMessage,
-                        "twitter",
-                        true,
-                        false
-                    );
+                    await this.runtime.messageManager.createMemory({
+                        memory: responseMessage,
+                        isUnique: true,
+                    });
                 }
 
                 state = await this.runtime.updateRecentMessageState(state);

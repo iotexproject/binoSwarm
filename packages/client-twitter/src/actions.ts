@@ -337,8 +337,8 @@ export class TwitterActionProcessor {
         );
         await this.runtime.ensureParticipantInRoom(agentId, roomId);
 
-        await this.runtime.messageManager.createMemory(
-            {
+        await this.runtime.messageManager.createMemory({
+            memory: {
                 id: stringToUuid(tweet.id + "-" + agentId),
                 userId,
                 content: {
@@ -351,10 +351,8 @@ export class TwitterActionProcessor {
                 roomId,
                 createdAt: tweet.timestamp * 1000,
             },
-            "twitter",
-            true,
-            false
-        );
+            isUnique: true,
+        });
     }
 
     private async processQuote(tweet: Tweet) {

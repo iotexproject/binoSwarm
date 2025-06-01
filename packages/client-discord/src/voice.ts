@@ -848,12 +848,10 @@ export class VoiceManager extends EventEmitter {
                 return { text: "", action: "IGNORE" };
             }
 
-            await this.runtime.messageManager.createMemory(
+            await this.runtime.messageManager.createMemory({
                 memory,
-                "discord",
-                true,
-                false
-            );
+                isUnique: true,
+            });
 
             state = await this.runtime.updateRecentMessageState(state);
 
@@ -958,12 +956,10 @@ export class VoiceManager extends EventEmitter {
 
         elizaLogger.info("streamedVoiceMessage", responseMessage);
 
-        await runtime.messageManager.createMemory(
-            responseMessage,
-            "discord",
-            true,
-            false
-        );
+        await runtime.messageManager.createMemory({
+            memory: responseMessage,
+            isUnique: true,
+        });
     }
 
     private async convertPcmToWav(pcmBuffer: Buffer): Promise<Buffer> {

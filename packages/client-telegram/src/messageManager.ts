@@ -965,12 +965,10 @@ export class MessageManager {
                 createdAt: message.date * 1000,
             };
 
-            await this.runtime.messageManager.createMemory(
+            await this.runtime.messageManager.createMemory({
                 memory,
-                "telegram",
-                true,
-                true
-            );
+                isUnique: true,
+            });
 
             // Update state with the new memory
             let state = await this.runtime.composeState(memory);
@@ -1015,12 +1013,10 @@ export class MessageManager {
                             ? "CONTINUE"
                             : content.action;
 
-                        await this.runtime.messageManager.createMemory(
+                        await this.runtime.messageManager.createMemory({
                             memory,
-                            "telegram",
-                            true,
-                            false
-                        );
+                            isUnique: true,
+                        });
                         memories.push(memory);
                     }
 

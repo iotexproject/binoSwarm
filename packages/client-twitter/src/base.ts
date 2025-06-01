@@ -507,8 +507,8 @@ export class ClientBase extends EventEmitter {
                         break;
                     }
 
-                    await this.runtime.messageManager.createMemory(
-                        {
+                    await this.runtime.messageManager.createMemory({
+                        memory: {
                             id: stringToUuid(
                                 tweet.id + "-" + this.runtime.agentId
                             ),
@@ -518,10 +518,8 @@ export class ClientBase extends EventEmitter {
                             roomId,
                             createdAt: tweet.timestamp * 1000,
                         },
-                        "twitter",
-                        true,
-                        true
-                    );
+                        isUnique: true,
+                    });
 
                     await this.cacheTweet(tweet);
                 }
@@ -627,8 +625,8 @@ export class ClientBase extends EventEmitter {
                     : undefined,
             } as Content;
 
-            await this.runtime.messageManager.createMemory(
-                {
+            await this.runtime.messageManager.createMemory({
+                memory: {
                     id: stringToUuid(tweet.id + "-" + this.runtime.agentId),
                     userId,
                     content: content,
@@ -636,10 +634,8 @@ export class ClientBase extends EventEmitter {
                     roomId,
                     createdAt: tweet.timestamp * 1000,
                 },
-                "twitter",
-                true,
-                true
-            );
+                isUnique: true,
+            });
 
             await this.cacheTweet(tweet);
         }
@@ -677,14 +673,12 @@ export class ClientBase extends EventEmitter {
             ) {
                 elizaLogger.debug("Message already saved", recentMessage[0].id);
             } else {
-                await this.runtime.messageManager.createMemory(
-                    {
+                await this.runtime.messageManager.createMemory({
+                    memory: {
                         ...message,
                     },
-                    "twitter",
-                    true,
-                    true
-                );
+                    isUnique: true,
+                });
             }
 
             await this.runtime.evaluate(message, {

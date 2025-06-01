@@ -83,18 +83,16 @@ async function handler(runtime: IAgentRuntime, message: Memory) {
         .map((fact) => fact.claim);
 
     for (const fact of filteredFacts) {
-        await factsManager.createMemory(
-            {
+        await factsManager.createMemory({
+            memory: {
                 userId: agentId!,
                 agentId,
                 content: { text: fact },
                 roomId,
                 createdAt: Date.now(),
             },
-            "facts",
-            true,
-            false
-        );
+            isUnique: true,
+        });
 
         await new Promise((resolve) => setTimeout(resolve, 250));
     }

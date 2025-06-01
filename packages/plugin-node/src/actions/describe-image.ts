@@ -64,8 +64,8 @@ export const describeImage: Action = {
             .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
             .describeImage(fileLocation);
 
-        runtime.messageManager.createMemory(
-            {
+        runtime.messageManager.createMemory({
+            memory: {
                 userId: message.agentId,
                 agentId: message.agentId,
                 roomId: message.roomId,
@@ -73,10 +73,8 @@ export const describeImage: Action = {
                     text: description,
                 },
             },
-            "node",
-            false,
-            false
-        );
+            isUnique: false,
+        });
 
         callback({
             text: description,
