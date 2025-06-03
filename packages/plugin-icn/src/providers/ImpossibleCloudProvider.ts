@@ -9,7 +9,6 @@ import type {
     ICacheManager,
 } from "@elizaos/core";
 import { elizaLogger } from "@elizaos/core";
-import NodeCache from "node-cache";
 import * as path from "path";
 
 const ICNCapacitySchema = z.record(z.string(), z.number());
@@ -35,51 +34,22 @@ const ICNNetworkStatsResponseSchema = z.object({
 });
 
 class ImpossibleCloudProvider {
-    private cache: NodeCache;
     private cacheKey: string = "icn/network-stats";
     private CACHE_EXPIRY_SEC = 5 * 60; // 5 minutes
 
-    constructor(private cacheManager: ICacheManager) {
-        this.cache = new NodeCache({ stdTTL: this.CACHE_EXPIRY_SEC });
-    }
+    constructor(private cacheManager: ICacheManager) {}
 
-    private async readFromCache<T>(key: string): Promise<T | null> {
+    private async getCachedData<T>(key: string): Promise<T | null> {
         const cached = await this.cacheManager.get<T>(
             path.join(this.cacheKey, key)
         );
         return cached;
     }
 
-    private async writeToCache<T>(key: string, data: T): Promise<void> {
+    private async setCachedData<T>(key: string, data: T): Promise<void> {
         await this.cacheManager.set(path.join(this.cacheKey, key), data, {
             expires: Date.now() + this.CACHE_EXPIRY_SEC * 1000,
         });
-    }
-
-    private async getCachedData<T>(key: string): Promise<T | null> {
-        // Check in-memory cache first
-        const cachedData = this.cache.get<T>(key);
-        if (cachedData) {
-            return cachedData;
-        }
-
-        // Check file-based cache
-        const fileCachedData = await this.readFromCache<T>(key);
-        if (fileCachedData) {
-            // Populate in-memory cache
-            this.cache.set(key, fileCachedData);
-            return fileCachedData;
-        }
-
-        return null;
-    }
-
-    private async setCachedData<T>(cacheKey: string, data: T): Promise<void> {
-        // Set in-memory cache
-        this.cache.set(cacheKey, data);
-
-        // Write to file-based cache
-        await this.writeToCache(cacheKey, data);
     }
 
     public async getNetworkStats(): Promise<ICNNetworkStatsResponse> {
@@ -104,7 +74,6 @@ class ImpossibleCloudProvider {
         try {
             const response = await axios.get<unknown>(apiUrlToUse);
 
-            // Validate the response data
             const validationResult = ICNNetworkStatsResponseSchema.safeParse(
                 response.data
             );
@@ -119,11 +88,9 @@ class ImpossibleCloudProvider {
                 );
             }
 
-            // After successful parsing, data conforms to ICNNetworkStatsResponse
             const validatedData =
                 validationResult.data as ICNNetworkStatsResponse;
 
-            // Cache the validated data
             await this.setCachedData(cacheKey, validatedData);
             elizaLogger.info(
                 "Fetched and cached Impossible Cloud network stats."
@@ -166,7 +133,6 @@ export const icnProvider: Provider = {
             const provider = new ImpossibleCloudProvider(runtime.cacheManager);
             const stats = await provider.getNetworkStats();
 
-            // Format the response as a string for the Provider interface
             return `Impossible Cloud Network Statistics:
 - Total Capacity: ${JSON.stringify(stats.data.totalCapacity)}
 - Booked Capacity: ${JSON.stringify(stats.data.bookedCapacity)}

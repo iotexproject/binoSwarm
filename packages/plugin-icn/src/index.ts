@@ -1,8 +1,8 @@
 import type { Plugin } from "@elizaos/core";
-import { icnProvider } from "./providers";
+import { icnProvider } from "./providers/ImpossibleCloudProvider";
 
 export * from "./types";
-export * from "./providers";
+export * from "./providers/ImpossibleCloudProvider";
 
 export const icnPlugin: Plugin = {
     name: "icn",
