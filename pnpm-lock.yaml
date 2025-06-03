@@ -133,6 +133,9 @@ importers:
       '@elizaos/plugin-evm':
         specifier: workspace:*
         version: link:../packages/plugin-evm
+      '@elizaos/plugin-icn':
+        specifier: workspace:*
+        version: link:../packages/plugin-icn
       '@elizaos/plugin-image-generation':
         specifier: workspace:*
         version: link:../packages/plugin-image-generation
@@ -605,6 +608,21 @@ importers:
       vitest:
         specifier: 2.1.5
         version: 2.1.5(@types/node@22.8.4)(jsdom@25.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(terser@5.40.0)
+
+  packages/plugin-icn:
+    dependencies:
+      '@elizaos/core':
+        specifier: workspace:*
+        version: link:../core
+      axios:
+        specifier: ^1.7.9
+        version: 1.9.0(debug@4.4.1)
+      tsup:
+        specifier: 8.3.5
+        version: 8.3.5(jiti@1.21.7)(postcss@8.5.4)(typescript@5.6.3)(yaml@2.8.0)
+      whatwg-url:
+        specifier: 7.1.0
+        version: 7.1.0
 
   packages/plugin-image-generation:
     dependencies:
@@ -14777,7 +14795,7 @@ snapshots:
 
   extract-zip@2.0.1:
     dependencies:
-      debug: 4.3.4
+      debug: 4.4.1(supports-color@5.5.0)
       get-stream: 5.2.0
       yauzl: 2.10.0
     optionalDependencies:
