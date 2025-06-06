@@ -7,7 +7,24 @@ import {
     splitSentencesAndWords,
     splitParagraph,
     splitTweetContent,
+    buildConversationThread,
 } from "../src/utils";
+import { Tweet } from "agent-twitter-client";
+import { ClientBase } from "../src/base";
+import { stringToUuid, elizaLogger } from "@elizaos/core";
+
+vi.mock("@elizaos/core", async (importOriginal) => {
+    const mod = await importOriginal();
+    return {
+        ...(mod as any),
+        elizaLogger: {
+            debug: vi.fn(),
+            error: vi.fn(),
+            info: vi.fn(),
+            warn: vi.fn(),
+        },
+    };
+});
 
 describe("wait", () => {
     beforeEach(() => {
@@ -302,5 +319,259 @@ describe("splitTweetContent", () => {
 
     it("should return an empty array if the content is empty", () => {
         expect(splitTweetContent("", maxLength)).toEqual([]);
+    });
+});
+
+describe("buildConversationThread", () => {
+    const mockClient: any = {
+        runtime: {
+            agentId: "agent-123",
+            messageManager: {
+                getMemoryById: vi.fn(),
+                createMemory: vi.fn(),
+            },
+            ensureConnection: vi.fn(),
+        },
+        twitterClient: {
+            getTweet: vi.fn(),
+        },
+        profile: {
+            id: "agent-user-id",
+        },
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    const tweet1: Tweet = {
+        id: "1",
+        text: "Tweet 1",
+        conversationId: "conv1",
+        timestamp: Date.now() / 1000,
+        userId: "user1",
+        inReplyToStatusId: undefined,
+        permanentUrl: "url1",
+        username: "username1",
+        name: "User One",
+        hashtags: [],
+        mentions: [],
+        photos: [],
+        thread: [],
+        urls: [],
+        videos: [],
+    };
+
+    const tweet2: Tweet = {
+        ...tweet1,
+        id: "2",
+        text: "Tweet 2, reply to 1",
+        inReplyToStatusId: "1",
+        userId: "user2",
+        username: "username2",
+        name: "User Two",
+    };
+
+    const tweet3: Tweet = {
+        ...tweet1,
+        id: "3",
+        text: "Tweet 3, reply to 2",
+        inReplyToStatusId: "2",
+        userId: "user1",
+        username: "username1",
+        name: "User One",
+    };
+
+    it("should build a thread with a single tweet", async () => {
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue(null);
+        const result = await buildConversationThread(
+            tweet1,
+            mockClient as ClientBase
+        );
+
+        expect(result).toEqual([tweet1]);
+        expect(mockClient.twitterClient.getTweet).not.toHaveBeenCalled();
+        expect(
+            mockClient.runtime.messageManager.createMemory
+        ).toHaveBeenCalledTimes(1);
+    });
+
+    it("should build a thread of two tweets", async () => {
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue(null);
+        mockClient.twitterClient.getTweet.mockResolvedValueOnce(tweet1);
+        const result = await buildConversationThread(
+            tweet2,
+            mockClient as ClientBase
+        );
+
+        expect(result).toEqual([tweet1, tweet2]);
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledWith("1");
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledTimes(1);
+        expect(
+            mockClient.runtime.messageManager.createMemory
+        ).toHaveBeenCalledTimes(2);
+    });
+
+    it("should build a longer thread", async () => {
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue(null);
+        mockClient.twitterClient.getTweet
+            .mockResolvedValueOnce(tweet2)
+            .mockResolvedValueOnce(tweet1);
+
+        const result = await buildConversationThread(
+            tweet3,
+            mockClient as ClientBase
+        );
+
+        expect(result).toEqual([tweet1, tweet2, tweet3]);
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledWith("2");
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledWith("1");
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledTimes(2);
+        expect(
+            mockClient.runtime.messageManager.createMemory
+        ).toHaveBeenCalledTimes(3);
+    });
+
+    it("should stop when maxReplies is reached", async () => {
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue(null);
+        mockClient.twitterClient.getTweet.mockResolvedValueOnce(tweet2);
+
+        const result = await buildConversationThread(
+            tweet3,
+            mockClient as ClientBase,
+            1
+        );
+
+        expect(result).toEqual([tweet2, tweet3]);
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledWith("2");
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledTimes(1);
+        expect(
+            mockClient.runtime.messageManager.createMemory
+        ).toHaveBeenCalledTimes(2);
+    });
+
+    it("should handle parent tweet not found", async () => {
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue(null);
+        mockClient.twitterClient.getTweet.mockResolvedValueOnce(null);
+
+        const result = await buildConversationThread(
+            tweet2,
+            mockClient as ClientBase
+        );
+
+        expect(result).toEqual([tweet2]);
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledWith("1");
+        expect(
+            mockClient.runtime.messageManager.createMemory
+        ).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not create memory if it already exists", async () => {
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue({
+            id: "some-memory",
+        });
+
+        const result = await buildConversationThread(
+            tweet1,
+            mockClient as ClientBase
+        );
+
+        expect(result).toEqual([tweet1]);
+        expect(
+            mockClient.runtime.messageManager.getMemoryById
+        ).toHaveBeenCalled();
+        expect(
+            mockClient.runtime.messageManager.createMemory
+        ).not.toHaveBeenCalled();
+    });
+
+    it("should gracefully handle a null initial tweet", async () => {
+        const result = await buildConversationThread(
+            null as any,
+            mockClient as ClientBase
+        );
+        expect(result).toEqual([]);
+        expect(
+            mockClient.runtime.messageManager.createMemory
+        ).not.toHaveBeenCalled();
+    });
+
+    it("should set memory userId to agentId when tweet is from the agent", async () => {
+        const agentTweet: Tweet = {
+            ...tweet1,
+            userId: "agent-user-id", // Same as client.profile.id
+        };
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue(null);
+
+        await buildConversationThread(agentTweet, mockClient as ClientBase);
+
+        const createMemoryCall =
+            mockClient.runtime.messageManager.createMemory.mock.calls[0][0];
+
+        expect(createMemoryCall.memory.userId).toBe(mockClient.runtime.agentId);
+    });
+
+    it("should set memory userId to tweet userId when tweet is from another user", async () => {
+        const externalTweet: Tweet = {
+            ...tweet1,
+            userId: "some-other-user",
+        };
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue(null);
+
+        await buildConversationThread(externalTweet, mockClient as ClientBase);
+
+        const createMemoryCall =
+            mockClient.runtime.messageManager.createMemory.mock.calls[0][0];
+
+        if (externalTweet.userId) {
+            expect(createMemoryCall.memory.userId).toBe(
+                stringToUuid(externalTweet.userId)
+            );
+        }
+    });
+
+    it("should handle circular reply chains to prevent infinite loops", async () => {
+        const tweetA: Tweet = { ...tweet1, id: "A", inReplyToStatusId: "B" };
+        const tweetB: Tweet = { ...tweet1, id: "B", inReplyToStatusId: "A" };
+
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue(null);
+        mockClient.twitterClient.getTweet.mockResolvedValueOnce(tweetB);
+
+        const result = await buildConversationThread(
+            tweetA,
+            mockClient as ClientBase
+        );
+
+        // Thread should be B -> A
+        expect(result.map((t) => t.id)).toEqual(["B", "A"]);
+
+        // getTweet is called for B (A's parent), but not for A (B's parent) because it's already visited.
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledTimes(1);
+
+        // createMemory is called for A, then for B. The second call to process A is stopped.
+        expect(
+            mockClient.runtime.messageManager.createMemory
+        ).toHaveBeenCalledTimes(2);
+    });
+
+    it("should handle errors when fetching a parent tweet", async () => {
+        const error = new Error("Fetch failed");
+        mockClient.twitterClient.getTweet.mockRejectedValue(error);
+        mockClient.runtime.messageManager.getMemoryById.mockResolvedValue(null);
+
+        const result = await buildConversationThread(
+            tweet2,
+            mockClient as ClientBase
+        );
+
+        expect(result).toEqual([tweet2]);
+        expect(mockClient.twitterClient.getTweet).toHaveBeenCalledWith("1");
+        expect(elizaLogger.error).toHaveBeenCalledWith(
+            "Error fetching parent tweet:",
+            {
+                tweetId: "1",
+                error,
+            }
+        );
     });
 });
