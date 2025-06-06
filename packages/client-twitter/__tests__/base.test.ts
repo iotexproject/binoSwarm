@@ -954,7 +954,10 @@ describe("Twitter Client Base", () => {
 
             expect(
                 mockRuntime.messageManager.createMemory
-            ).toHaveBeenCalledWith(mockMessage, "twitter", true, true);
+            ).toHaveBeenCalledWith({
+                memory: mockMessage,
+                isUnique: true,
+            });
 
             expect(mockRuntime.evaluate).toHaveBeenCalledWith(mockMessage, {
                 ...mockState,
@@ -1470,18 +1473,16 @@ describe("Twitter Client Base", () => {
 
             expect(
                 mockRuntime.messageManager.createMemory
-            ).toHaveBeenCalledWith(
-                expect.objectContaining({
+            ).toHaveBeenCalledWith({
+                memory: expect.objectContaining({
                     content: expect.objectContaining({
                         inReplyTo: stringToUuid(
                             "original1" + "-" + mockRuntime.agentId
                         ),
                     }),
                 }),
-                "twitter",
-                true,
-                true
-            );
+                isUnique: true,
+            });
         });
 
         it("should break early when finding existing memory during cached processing", async () => {
@@ -1653,14 +1654,12 @@ describe("Twitter Client Base", () => {
             ).toHaveBeenCalledTimes(1);
             expect(
                 mockRuntime.messageManager.createMemory
-            ).toHaveBeenCalledWith(
-                expect.objectContaining({
+            ).toHaveBeenCalledWith({
+                memory: expect.objectContaining({
                     id: stringToUuid("unique1" + "-" + mockRuntime.agentId),
                 }),
-                "twitter",
-                true,
-                true
-            );
+                isUnique: true,
+            });
         });
 
         it("should handle fresh timeline with agent's own tweets", async () => {
@@ -1726,16 +1725,14 @@ describe("Twitter Client Base", () => {
 
             expect(
                 mockRuntime.messageManager.createMemory
-            ).toHaveBeenCalledWith(
-                expect.objectContaining({
+            ).toHaveBeenCalledWith({
+                memory: expect.objectContaining({
                     content: expect.objectContaining({
                         inReplyTo: stringToUuid("original1"),
                     }),
                 }),
-                "twitter",
-                true,
-                true
-            );
+                isUnique: true,
+            });
         });
 
         it("should handle empty fresh timeline and mentions", async () => {
