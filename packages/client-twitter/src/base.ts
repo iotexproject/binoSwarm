@@ -1,7 +1,6 @@
 import {
     Content,
     IAgentRuntime,
-    IImageDescriptionService,
     Memory,
     State,
     UUID,
@@ -16,6 +15,7 @@ import {
     Tweet,
 } from "agent-twitter-client";
 import { EventEmitter } from "events";
+
 import { TwitterConfig } from "./environment.ts";
 import { TwitterAuthManager } from "./TwitterAuthManager.ts";
 import { RequestQueue } from "./RequestQueue.ts";
@@ -35,53 +35,10 @@ export class ClientBase extends EventEmitter {
     twitterConfig: TwitterConfig;
     directions: string;
     lastCheckedTweetId: bigint | null = null;
-    imageDescriptionService: IImageDescriptionService;
-    temperature: number = 0.5;
-
     requestQueue: RequestQueue = new RequestQueue();
-    private authManager: TwitterAuthManager;
-
     profile: TwitterProfile | null;
 
-    async cacheTweet(tweet: Tweet): Promise<void> {
-        if (!tweet) {
-            elizaLogger.warn("Tweet is undefined, skipping cache");
-            return;
-        }
-
-        this.runtime.cacheManager.set(`twitter/tweets/${tweet.id}`, tweet);
-    }
-
-    async getCachedTweet(tweetId: string): Promise<Tweet | undefined> {
-        const cached = await this.runtime.cacheManager.get<Tweet>(
-            `twitter/tweets/${tweetId}`
-        );
-
-        return cached;
-    }
-
-    async getTweet(tweetId: string): Promise<Tweet> {
-        const cachedTweet = await this.getCachedTweet(tweetId);
-
-        if (cachedTweet) {
-            return cachedTweet;
-        }
-
-        const tweet = await this.requestQueue.add(() =>
-            this.twitterClient.getTweet(tweetId)
-        );
-
-        await this.cacheTweet(tweet);
-        return tweet;
-    }
-
-    callback: (self: ClientBase) => any = null;
-
-    onReady() {
-        throw new Error(
-            "Not implemented in base class, please call from subclass"
-        );
-    }
+    private authManager: TwitterAuthManager;
 
     constructor(runtime: IAgentRuntime, twitterConfig: TwitterConfig) {
         super();
@@ -106,6 +63,38 @@ export class ClientBase extends EventEmitter {
             this.runtime.character.style.all.join("\n- ") +
             "- " +
             this.runtime.character.style.post.join();
+    }
+
+    async cacheTweet(tweet: Tweet): Promise<void> {
+        if (!tweet) {
+            elizaLogger.warn("Tweet is undefined, skipping cache");
+            return;
+        }
+
+        this.runtime.cacheManager.set(`twitter/tweets/${tweet.id}`, tweet);
+    }
+
+    async getTweet(tweetId: string): Promise<Tweet> {
+        const cachedTweet = await this.getCachedTweet(tweetId);
+
+        if (cachedTweet) {
+            return cachedTweet;
+        }
+
+        const tweet = await this.requestQueue.add(() =>
+            this.twitterClient.getTweet(tweetId)
+        );
+
+        await this.cacheTweet(tweet);
+        return tweet;
+    }
+
+    private async getCachedTweet(tweetId: string): Promise<Tweet | undefined> {
+        const cached = await this.runtime.cacheManager.get<Tweet>(
+            `twitter/tweets/${tweetId}`
+        );
+
+        return cached;
     }
 
     async init() {

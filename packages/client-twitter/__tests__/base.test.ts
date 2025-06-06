@@ -101,7 +101,7 @@ describe("Twitter Client Base", () => {
 
             mockRuntime.cacheManager.get = vi.fn().mockResolvedValue(mockTweet);
 
-            const result = await client.getCachedTweet("123456789");
+            const result = await client["getCachedTweet"]("123456789");
 
             expect(mockRuntime.cacheManager.get).toHaveBeenCalledWith(
                 "twitter/tweets/123456789"
@@ -114,7 +114,7 @@ describe("Twitter Client Base", () => {
 
             mockRuntime.cacheManager.get = vi.fn().mockResolvedValue(undefined);
 
-            const result = await client.getCachedTweet("nonexistent");
+            const result = await client["getCachedTweet"]("nonexistent");
 
             expect(mockRuntime.cacheManager.get).toHaveBeenCalledWith(
                 "twitter/tweets/nonexistent"
@@ -127,7 +127,7 @@ describe("Twitter Client Base", () => {
 
             mockRuntime.cacheManager.get = vi.fn().mockResolvedValue(null);
 
-            const result = await client.getCachedTweet("123456789");
+            const result = await client["getCachedTweet"]("123456789");
 
             expect(mockRuntime.cacheManager.get).toHaveBeenCalledWith(
                 "twitter/tweets/123456789"
@@ -142,7 +142,7 @@ describe("Twitter Client Base", () => {
                 .fn()
                 .mockRejectedValue(new Error("Cache error"));
 
-            await expect(client.getCachedTweet("123456789")).rejects.toThrow(
+            await expect(client["getCachedTweet"]("123456789")).rejects.toThrow(
                 "Cache error"
             );
 
@@ -238,16 +238,6 @@ describe("Twitter Client Base", () => {
                 mockTweet
             );
             expect(result).toEqual(mockTweet);
-        });
-    });
-
-    describe("onReady", () => {
-        it("should throw error indicating not implemented in base class", () => {
-            const client = new ClientBase(mockRuntime, mockConfig);
-
-            expect(() => client.onReady()).toThrow(
-                "Not implemented in base class, please call from subclass"
-            );
         });
     });
 
