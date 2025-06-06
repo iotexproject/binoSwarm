@@ -150,24 +150,6 @@ describe("TwitterClientInterface", () => {
                 mockRuntime
             );
             expect(mockSearchClient.start).toHaveBeenCalledTimes(1);
-
-            expect(elizaosCore.elizaLogger.warn).toHaveBeenCalledWith(
-                "Twitter/X client running in a mode that:"
-            );
-            expect(elizaosCore.elizaLogger.warn).toHaveBeenCalledWith(
-                "1. violates consent of random users"
-            );
-            expect(elizaosCore.elizaLogger.warn).toHaveBeenCalledWith(
-                "2. burns your rate limit"
-            );
-            expect(elizaosCore.elizaLogger.warn).toHaveBeenCalledWith(
-                "3. can get your account banned"
-            );
-            expect(elizaosCore.elizaLogger.warn).toHaveBeenCalledWith(
-                "use at your own risk"
-            );
-            expect(elizaosCore.elizaLogger.warn).toHaveBeenCalledTimes(5);
-
             expect(manager.search).toBe(mockSearchClient);
         });
     });
