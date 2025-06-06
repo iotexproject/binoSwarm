@@ -13,7 +13,6 @@ describe("Twitter Environment Configuration", () => {
         env: {
             TWITTER_USERNAME: "testuser123",
             TWITTER_SEARCH_ENABLE: "false",
-            TWITTER_SPACES_ENABLE: "false",
             TWITTER_TARGET_USERS: "user1,user2,user3",
             TWITTER_SEARCH_TERMS: "term1,term2,term3",
             TWITTER_MAX_TWEETS_PER_DAY: "10",
@@ -197,7 +196,6 @@ describe("Twitter Environment Configuration", () => {
         expect(config).toBeDefined();
         expect(config.TWITTER_USERNAME).toBe("testuser123");
         expect(config.TWITTER_SEARCH_ENABLE).toBe(false);
-        expect(config.TWITTER_SPACES_ENABLE).toBe(false);
         expect(config.TWITTER_TARGET_USERS).toEqual([
             "user1",
             "user2",

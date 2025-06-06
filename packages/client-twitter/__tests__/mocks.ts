@@ -21,7 +21,6 @@ export function buildConfigMock() {
         MAX_ACTIONS_PROCESSING: 1,
         ACTION_TIMELINE_TYPE: ActionTimelineType.ForYou,
         TWITTER_SEARCH_ENABLE: false,
-        TWITTER_SPACES_ENABLE: false,
         TWITTER_TARGET_USERS: [],
         POST_INTERVAL_MIN: 5,
         POST_INTERVAL_MAX: 10,

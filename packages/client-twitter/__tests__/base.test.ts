@@ -35,7 +35,6 @@ describe("Twitter Client Base", () => {
         mockConfig = {
             TWITTER_USERNAME: "testuser",
             TWITTER_SEARCH_ENABLE: false,
-            TWITTER_SPACES_ENABLE: false,
             TWITTER_TARGET_USERS: [],
             TWITTER_MAX_TWEETS_PER_DAY: 10,
             TWITTER_MAX_TWEET_LENGTH: 280,

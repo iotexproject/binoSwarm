@@ -4,7 +4,6 @@ import { validateTwitterConfig, TwitterConfig } from "./environment.ts";
 import { TwitterInteractionClient } from "./interactions.ts";
 import { TwitterPostClient } from "./post.ts";
 import { TwitterSearchClient } from "./search.ts";
-import { TwitterSpaceClient } from "./spaces.ts";
 import { TwitterActionProcessor } from "./actions.ts";
 /**
  * A manager that orchestrates all specialized Twitter logic:
@@ -12,14 +11,12 @@ import { TwitterActionProcessor } from "./actions.ts";
  * - post: autonomous posting logic
  * - search: searching tweets / replying logic
  * - interaction: handling mentions, replies
- * - space: launching and managing Twitter Spaces (optional)
  */
 class TwitterManager {
     client: ClientBase;
     post: TwitterPostClient;
     search: TwitterSearchClient;
     interaction: TwitterInteractionClient;
-    space?: TwitterSpaceClient;
     actions: TwitterActionProcessor;
 
     constructor(runtime: IAgentRuntime, twitterConfig: TwitterConfig) {
@@ -41,11 +38,6 @@ class TwitterManager {
 
         // Mentions and interactions
         this.interaction = new TwitterInteractionClient(this.client, runtime);
-
-        // Optional Spaces logic (enabled if TWITTER_SPACES_ENABLE is true)
-        if (twitterConfig.TWITTER_SPACES_ENABLE) {
-            this.space = new TwitterSpaceClient(this.client, runtime);
-        }
     }
 }
 
@@ -71,11 +63,6 @@ export const TwitterClientInterface: Client = {
 
         // Start interactions (mentions, replies)
         await manager.interaction.start();
-
-        // If Spaces are enabled, start the periodic check
-        if (manager.space) {
-            manager.space.startPeriodicSpaceCheck();
-        }
 
         return manager;
     },
