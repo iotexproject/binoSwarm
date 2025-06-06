@@ -19,12 +19,6 @@ import { EventEmitter } from "events";
 import { TwitterConfig } from "./environment.ts";
 import { TwitterAuthManager } from "./TwitterAuthManager.ts";
 
-export function extractAnswer(text: string): string {
-    const startIndex = text.indexOf("Answer: ") + 8;
-    const endIndex = text.indexOf("<|endoftext|>", 11);
-    return text.slice(startIndex, endIndex);
-}
-
 type TwitterProfile = {
     id: string;
     username: string;

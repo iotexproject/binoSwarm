@@ -1,24 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { ClientBase, extractAnswer } from "../src/base";
+import { ClientBase } from "../src/base";
 import { ActionTimelineType, IAgentRuntime, stringToUuid } from "@elizaos/core";
 import { TwitterConfig } from "../src/environment";
 import { createMockTweet } from "./mocks";
 import { SearchMode } from "agent-twitter-client";
-
-describe("extractAnswer", () => {
-    it("should extract answer between Answer: and <|endoftext|>", () => {
-        const text =
-            "Some text Answer: This is the answer<|endoftext|> more text";
-        const result = extractAnswer(text);
-        expect(result).toBe("This is the answer");
-    });
-
-    it("should handle text without proper markers", () => {
-        const text = "No answer markers here";
-        const result = extractAnswer(text);
-        expect(result).toBe("er markers her");
-    });
-});
 
 describe("Twitter Client Base", () => {
     let mockRuntime: IAgentRuntime;
