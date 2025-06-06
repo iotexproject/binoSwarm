@@ -1,4 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+    describe,
+    it,
+    expect,
+    vi,
+    beforeEach,
+    afterEach,
+    type Mock,
+} from "vitest";
 import {
     wait,
     deduplicateMentions,
@@ -8,10 +16,12 @@ import {
     splitParagraph,
     splitTweetContent,
     buildConversationThread,
+    sendTweet,
 } from "../src/utils";
 import { Tweet } from "agent-twitter-client";
 import { ClientBase } from "../src/base";
-import { stringToUuid, elizaLogger } from "@elizaos/core";
+import { stringToUuid, elizaLogger, Content, Media, UUID } from "@elizaos/core";
+import fs from "fs";
 
 vi.mock("@elizaos/core", async (importOriginal) => {
     const mod = await importOriginal();
@@ -25,6 +35,17 @@ vi.mock("@elizaos/core", async (importOriginal) => {
         },
     };
 });
+
+vi.mock("fs", () => ({
+    default: {
+        existsSync: vi.fn(),
+        promises: {
+            readFile: vi.fn(),
+        },
+    },
+}));
+
+global.fetch = vi.fn();
 
 describe("wait", () => {
     beforeEach(() => {
@@ -572,6 +593,126 @@ describe("buildConversationThread", () => {
                 tweetId: "1",
                 error,
             }
+        );
+    });
+});
+
+describe("sendTweet", () => {
+    const mockClient: any = {
+        runtime: {
+            agentId: "agent-123",
+        },
+        twitterConfig: {
+            MAX_TWEET_LENGTH: 280,
+        },
+        requestQueue: {
+            add: vi.fn((fn) => fn()),
+        },
+        twitterClient: {
+            sendTweet: vi.fn(),
+            sendLongTweet: vi.fn(),
+        },
+    };
+
+    const mockContent: Content = { text: "This is a test tweet." };
+    const mockRoomId: UUID = stringToUuid("room-1");
+    const mockTwitterUsername = "testuser";
+    const mockInReplyTo = "prev-tweet-id";
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.useFakeTimers();
+        mockClient.twitterConfig.MAX_TWEET_LENGTH = 280;
+        mockClient.requestQueue.add.mockImplementation((fn: any) => fn());
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it("should return an empty array if content or content.text is null", async () => {
+        let memories = await sendTweet(
+            mockClient,
+            { text: null } as any,
+            mockRoomId,
+            mockTwitterUsername,
+            mockInReplyTo
+        );
+        expect(memories).toEqual([]);
+        expect(elizaLogger.error).toHaveBeenCalledWith(
+            "Cannot send tweet: content or content.text is null"
+        );
+
+        (elizaLogger.error as Mock).mockClear();
+
+        memories = await sendTweet(
+            mockClient,
+            null as any,
+            mockRoomId,
+            mockTwitterUsername,
+            mockInReplyTo
+        );
+        expect(memories).toEqual([]);
+        expect(elizaLogger.error).toHaveBeenCalledWith(
+            "Cannot send tweet: content or content.text is null"
+        );
+    });
+
+    it("should throw an error for a failed http attachment fetch", async () => {
+        const attachment: Media = {
+            id: stringToUuid("http-attachment-fail"),
+            title: "http attachment",
+            url: "http://example.com/bad.png",
+            contentType: "image/png",
+            source: "",
+            description: "",
+            text: "",
+        };
+        const contentWithAttachment = {
+            ...mockContent,
+            attachments: [attachment],
+        };
+
+        (global.fetch as Mock).mockResolvedValue({ ok: false });
+
+        await expect(
+            sendTweet(
+                mockClient,
+                contentWithAttachment,
+                mockRoomId,
+                mockTwitterUsername,
+                mockInReplyTo
+            )
+        ).rejects.toThrow("Failed to fetch file: http://example.com/bad.png");
+    });
+
+    it("should throw an error for a non-existent local file", async () => {
+        const attachment: Media = {
+            id: stringToUuid("non-existent-attachment"),
+            title: "non-existent attachment",
+            url: "/path/to/nonexistent.png",
+            contentType: "image/png",
+            source: "",
+            description: "",
+            text: "",
+        };
+        const contentWithAttachment = {
+            ...mockContent,
+            attachments: [attachment],
+        };
+
+        (fs.existsSync as Mock).mockReturnValue(false);
+
+        await expect(
+            sendTweet(
+                mockClient,
+                contentWithAttachment,
+                mockRoomId,
+                mockTwitterUsername,
+                mockInReplyTo
+            )
+        ).rejects.toThrow(
+            "File not found: /path/to/nonexistent.png. Make sure the path is correct."
         );
     });
 });
