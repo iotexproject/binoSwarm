@@ -13,21 +13,6 @@ export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     return new Promise((resolve) => setTimeout(resolve, waitTime));
 };
 
-export const isValidTweet = (tweet: Tweet): boolean => {
-    // Filter out tweets with too many hashtags, @s, or $ signs, probably spam or garbage
-    const hashtagCount = (tweet.text?.match(/#/g) || []).length;
-    const atCount = (tweet.text?.match(/@/g) || []).length;
-    const dollarSignCount = (tweet.text?.match(/\$/g) || []).length;
-    const totalCount = hashtagCount + atCount + dollarSignCount;
-
-    return (
-        hashtagCount <= 1 &&
-        atCount <= 2 &&
-        dollarSignCount <= 1 &&
-        totalCount <= 3
-    );
-};
-
 export async function buildConversationThread(
     tweet: Tweet,
     client: ClientBase,
