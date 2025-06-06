@@ -13,6 +13,7 @@ import {
     elizaLogger,
     IImageDescriptionService,
     ServiceType,
+    UUID,
 } from "@elizaos/core";
 import { ClientBase } from "./base";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
@@ -191,13 +192,6 @@ export class TwitterInteractionClient {
                                 Date.now() - tweet.timestamp * 1000 <
                                 2 * 60 * 60 * 1000;
 
-                            elizaLogger.log(`Tweet ${tweet.id} checks:`, {
-                                isUnprocessed,
-                                isRecent,
-                                isReply: tweet.isReply,
-                                isRetweet: tweet.isRetweet,
-                            });
-
                             return (
                                 isUnprocessed &&
                                 !tweet.isReply &&
@@ -246,158 +240,54 @@ export class TwitterInteractionClient {
         }
     }
 
-    private async handleTweet({
-        tweet,
-        message,
-        thread,
-    }: {
+    private async handleTweet(props: {
         tweet: Tweet;
         message: Memory;
         thread: Tweet[];
-    }) {
-        if (tweet.userId === this.client.profile.id) {
-            // console.log("skipping tweet from bot itself", tweet.id);
-            // Skip processing if the tweet is from the bot itself
+    }): Promise<void> {
+        const { tweet, message, thread } = props;
+
+        if (this.isFromMyself(tweet)) {
+            return;
+        }
+        if (!message.content.text) {
+            elizaLogger.log("Skipping Tweet with no text", tweet.id);
             return;
         }
 
-        if (!message.content.text) {
-            elizaLogger.log("Skipping Tweet with no text", tweet.id);
-            return { text: "", action: "IGNORE" };
-        }
+        const currentPost = this.formatTweet(tweet);
+        const formattedConversation = this.formatThread(thread);
 
         elizaLogger.log("Processing Tweet: ", tweet.id);
-        const formatTweet = (tweet: Tweet) => {
-            return `  ID: ${tweet.id}
-  From: ${tweet.name} (@${tweet.username})
-  Text: ${tweet.text}`;
-        };
-        const currentPost = formatTweet(tweet);
-
         elizaLogger.debug("Thread: ", thread);
-        const formattedConversation = thread
-            .map(
-                (tweet) => `@${tweet.username} (${new Date(
-                    tweet.timestamp * 1000
-                ).toLocaleString("en-US", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    month: "short",
-                    day: "numeric",
-                })}):
-        ${tweet.text}`
-            )
-            .join("\n\n");
-
         elizaLogger.debug("formattedConversation: ", formattedConversation);
 
-        const imageDescriptionsArray = [];
-        try {
-            elizaLogger.debug("Getting images");
-            for (const photo of tweet.photos) {
-                elizaLogger.debug(photo.url);
-                const description = await this.runtime
-                    .getService<IImageDescriptionService>(
-                        ServiceType.IMAGE_DESCRIPTION
-                    )
-                    .describeImage(photo.url);
-                imageDescriptionsArray.push(description);
-            }
-        } catch (error) {
-            // Handle the error
-            elizaLogger.error("Error Occured during describing image: ", error);
-        }
+        const descriptions = await this.processImages(tweet);
+        const imageDescriptions = this.stringifyImgDescriptions(descriptions);
 
         let state = await this.runtime.composeState(message, {
             twitterClient: this.client.twitterClient,
             twitterUserName: this.client.twitterConfig.TWITTER_USERNAME,
             currentPost,
             formattedConversation,
-            imageDescriptions:
-                imageDescriptionsArray.length > 0
-                    ? `\nImages in Tweet:\n${imageDescriptionsArray
-                          .map(
-                              (desc, i) =>
-                                  `Image ${i + 1}: Title: ${desc.title}\nDescription: ${desc.description}`
-                          )
-                          .join("\n\n")}`
-                    : "",
+            imageDescriptions,
         });
 
         // check if the tweet exists, save if it doesn't
         const tweetId = stringToUuid(tweet.id + "-" + this.runtime.agentId);
-        const tweetExists =
-            await this.runtime.messageManager.getMemoryById(tweetId);
-
-        if (!tweetExists) {
-            elizaLogger.log("tweet does not exist, saving");
-            const userIdUUID = stringToUuid(tweet.userId as string);
-            const roomId = stringToUuid(tweet.conversationId);
-
-            const message = {
-                id: tweetId,
-                agentId: this.runtime.agentId,
-                content: {
-                    text: tweet.text,
-                    url: tweet.permanentUrl,
-                    inReplyTo: tweet.inReplyToStatusId
-                        ? stringToUuid(
-                              tweet.inReplyToStatusId +
-                                  "-" +
-                                  this.runtime.agentId
-                          )
-                        : undefined,
-                },
-                userId: userIdUUID,
-                roomId,
-                createdAt: tweet.timestamp * 1000,
-            };
-            this.client.saveRequestMessage(message, state);
+        const exists = await this.runtime.messageManager.getMemoryById(tweetId);
+        if (!exists) {
+            this.saveTweet(tweet, tweetId, state);
         }
 
-        // get usernames into str
-        const validTargetUsersStr =
-            this.client.twitterConfig.TWITTER_TARGET_USERS.join(",");
-
-        const shouldRespondContext = composeContext({
-            state,
-            template:
-                this.runtime.character.templates
-                    ?.twitterShouldRespondTemplate ||
-                this.runtime.character?.templates?.shouldRespondTemplate ||
-                twitterShouldRespondTemplate(validTargetUsersStr),
-        });
-
-        const shouldRespond = await generateShouldRespond({
-            runtime: this.runtime,
-            context: shouldRespondContext,
-            modelClass: ModelClass.SMALL,
-        });
-
-        if (shouldRespond !== "RESPOND") {
+        const shouldRespond = await this.shouldRespond(state);
+        if (!shouldRespond) {
             elizaLogger.log("Not responding to message");
-            return { text: "Response Decision:", action: shouldRespond };
+            return;
         }
 
-        const context = composeContext({
-            state,
-            template:
-                this.runtime.character.templates
-                    ?.twitterMessageHandlerTemplate ||
-                this.runtime.character?.templates?.messageHandlerTemplate ||
-                twitterMessageHandlerTemplate,
-        });
-        elizaLogger.debug("Interactions prompt:\n" + context);
-
-        const response = await generateMessageResponse({
-            runtime: this.runtime,
-            context,
-            modelClass: ModelClass.LARGE,
-        });
-
-        const stringId = stringToUuid(tweet.id + "-" + this.runtime.agentId);
-
-        response.inReplyTo = stringId;
+        const { response, context } = await this.generateTweetResponse(state);
+        response.inReplyTo = tweetId;
 
         if (response.text) {
             try {
@@ -449,7 +339,6 @@ export class TwitterInteractionClient {
                 );
 
                 const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${response.text}`;
-
                 await this.runtime.cacheManager.set(
                     `twitter/tweet_generation_${tweet.id}.txt`,
                     responseInfo
@@ -459,5 +348,133 @@ export class TwitterInteractionClient {
                 elizaLogger.error(`Error sending response tweet: ${error}`);
             }
         }
+    }
+
+    private async generateTweetResponse(state: State) {
+        const context = composeContext({
+            state,
+            template:
+                this.runtime.character.templates
+                    ?.twitterMessageHandlerTemplate ||
+                this.runtime.character?.templates?.messageHandlerTemplate ||
+                twitterMessageHandlerTemplate,
+        });
+        elizaLogger.debug("Interactions prompt:\n" + context);
+
+        const response = await generateMessageResponse({
+            runtime: this.runtime,
+            context,
+            modelClass: ModelClass.LARGE,
+        });
+        return { response, context };
+    }
+
+    private async shouldRespond(state: State): Promise<boolean> {
+        const context = this.buildShouldRespondContext(state);
+        const res = await generateShouldRespond({
+            runtime: this.runtime,
+            context,
+            modelClass: ModelClass.SMALL,
+        });
+        return res === "RESPOND";
+    }
+
+    private buildShouldRespondContext(state: State) {
+        const validTargetUsersStr =
+            this.client.twitterConfig.TWITTER_TARGET_USERS.join(",");
+
+        const shouldRespondContext = composeContext({
+            state,
+            template:
+                this.runtime.character.templates
+                    ?.twitterShouldRespondTemplate ||
+                this.runtime.character?.templates?.shouldRespondTemplate ||
+                twitterShouldRespondTemplate(validTargetUsersStr),
+        });
+        return shouldRespondContext;
+    }
+
+    private saveTweet(tweet: Tweet, tweetId: UUID, state: State) {
+        elizaLogger.log("tweet does not exist, saving");
+        const userIdUUID = stringToUuid(tweet.userId as string);
+        const roomId = stringToUuid(tweet.conversationId);
+
+        const message = {
+            id: tweetId,
+            agentId: this.runtime.agentId,
+            content: {
+                text: tweet.text,
+                url: tweet.permanentUrl,
+                inReplyTo: tweet.inReplyToStatusId
+                    ? stringToUuid(
+                          tweet.inReplyToStatusId + "-" + this.runtime.agentId
+                      )
+                    : undefined,
+            },
+            userId: userIdUUID,
+            roomId,
+            createdAt: tweet.timestamp * 1000,
+        };
+        // this runs the evaluators, how do we leverage this?
+        this.client.saveRequestMessage(message, state);
+    }
+
+    private stringifyImgDescriptions(descriptions: any[]) {
+        let imageDescriptions = "";
+        if (descriptions.length > 0) {
+            imageDescriptions = `\nImages in Tweet:\n${descriptions
+                .map(
+                    (desc, i) =>
+                        `Image ${i + 1}: Title: ${desc.title}\nDescription: ${desc.description}`
+                )
+                .join("\n\n")}`;
+        }
+        return imageDescriptions;
+    }
+
+    private async processImages(tweet: Tweet) {
+        const imageDescriptionsArray = [];
+        try {
+            elizaLogger.debug("Getting images");
+            for (const photo of tweet.photos) {
+                elizaLogger.debug(photo.url);
+                const description = await this.runtime
+                    .getService<IImageDescriptionService>(
+                        ServiceType.IMAGE_DESCRIPTION
+                    )
+                    .describeImage(photo.url);
+                imageDescriptionsArray.push(description);
+            }
+        } catch (error) {
+            // Handle the error
+            elizaLogger.error("Error Occured during describing image: ", error);
+        }
+        return imageDescriptionsArray;
+    }
+
+    private formatThread(thread: Tweet[]) {
+        return thread
+            .map(
+                (tweet) => `@${tweet.username} (${new Date(
+                    tweet.timestamp * 1000
+                ).toLocaleString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    month: "short",
+                    day: "numeric",
+                })}):
+        ${tweet.text}`
+            )
+            .join("\n\n");
+    }
+
+    private isFromMyself(tweet: Tweet) {
+        return tweet.userId === this.client.profile.id;
+    }
+
+    private formatTweet(tweet: Tweet) {
+        return `  ID: ${tweet.id}
+  From: ${tweet.name} (@${tweet.username})
+  Text: ${tweet.text}`;
     }
 }
