@@ -289,64 +289,74 @@ export class TwitterInteractionClient {
         const { response, context } = await this.generateTweetResponse(state);
         response.inReplyTo = tweetId;
 
-        if (response.text) {
-            try {
-                const callback: HandlerCallback = async (
-                    response: Content,
-                    tweetId?: string
-                ) => {
-                    const memories = await sendTweet(
-                        this.client,
-                        response,
-                        message.roomId,
-                        this.client.twitterConfig.TWITTER_USERNAME,
-                        tweetId || tweet.id
-                    );
-                    return memories;
-                };
+        if (!response.text) {
+            elizaLogger.log("No response text, skipping");
+            return;
+        }
 
-                const responseMessages = await callback(response);
+        try {
+            const callback: HandlerCallback = async (
+                response: Content,
+                tweetId?: string
+            ) => {
+                const memories = await sendTweet(
+                    this.client,
+                    response,
+                    message.roomId,
+                    this.client.twitterConfig.TWITTER_USERNAME,
+                    tweetId || tweet.id
+                );
+                return memories;
+            };
 
-                state = (await this.runtime.updateRecentMessageState(
-                    state
-                )) as State;
+            const responseMessages = await callback(response);
+            state = (await this.runtime.updateRecentMessageState(
+                state
+            )) as State;
+            await this.addResponseMemories(responseMessages, response);
 
-                for (const responseMessage of responseMessages) {
-                    if (
-                        responseMessage ===
-                        responseMessages[responseMessages.length - 1]
-                    ) {
-                        responseMessage.content.action = response.action;
-                    } else {
-                        responseMessage.content.action = "CONTINUE";
-                    }
-                    await this.runtime.messageManager.createMemory({
-                        memory: responseMessage,
-                        isUnique: true,
-                    });
+            const lastResponse = responseMessages[responseMessages.length - 1];
+            const responseTweetId = lastResponse?.content?.tweetId;
+
+            await this.runtime.processActions(
+                message,
+                responseMessages,
+                state,
+                (response: Content) => {
+                    return callback(response, responseTweetId);
                 }
+            );
 
-                const responseTweetId =
-                    responseMessages[responseMessages.length - 1]?.content
-                        ?.tweetId;
-                await this.runtime.processActions(
-                    message,
-                    responseMessages,
-                    state,
-                    (response: Content) => {
-                        return callback(response, responseTweetId);
-                    }
-                );
+            await this.saveResponseInfoToCache(context, tweet, response);
+            await wait();
+        } catch (error) {
+            elizaLogger.error(`Error sending response tweet: ${error}`);
+        }
+    }
 
-                const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${response.text}`;
-                await this.runtime.cacheManager.set(
-                    `twitter/tweet_generation_${tweet.id}.txt`,
-                    responseInfo
-                );
-                await wait();
-            } catch (error) {
-                elizaLogger.error(`Error sending response tweet: ${error}`);
+    private async saveResponseInfoToCache(
+        context: string,
+        tweet: Tweet,
+        response: Content
+    ) {
+        const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${response.text}`;
+        await this.runtime.cacheManager.set(
+            `twitter/tweet_generation_${tweet.id}.txt`,
+            responseInfo
+        );
+    }
+
+    private async addResponseMemories(messages: Memory[], response: Content) {
+        for (const message of messages) {
+            if (message === messages[messages.length - 1]) {
+                message.content.action = response.action;
+            } else {
+                message.content.action = "CONTINUE";
             }
+            await this.runtime.messageManager.createMemory({
+                memory: message,
+                isUnique: true,
+            });
         }
     }
 
