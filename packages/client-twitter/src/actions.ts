@@ -18,7 +18,7 @@ import {
 import { ClientBase } from "./base.ts";
 
 import { twitterActionTemplate, twitterPostTemplate } from "./templates.ts";
-import { buildConversationThread } from "./utils.ts";
+import { buildConversationThread, sendTweet } from "./utils.ts";
 import { twitterMessageHandlerTemplate } from "./templates.ts";
 import TwitterQuoteClient from "./quote.ts";
 import TwitterLikeClient from "./like.ts";
@@ -310,7 +310,7 @@ export class TwitterActionProcessor {
             }
 
             if (actionResponse.reply) {
-                await this.processReply(tweet);
+                await this.processReply(tweet, roomId);
                 executedActions.push("reply");
             }
 
@@ -516,17 +516,24 @@ export class TwitterActionProcessor {
             .join("\n\n");
     }
 
-    private async processReply(tweet: Tweet) {
+    private async processReply(tweet: Tweet, roomId: UUID) {
         try {
             const enrichedState = await this.composeStateForAction(tweet, "");
             const cleanedReplyText = await this.genActionContent(enrichedState);
 
-            await TwitterReplyClient.process(
-                this.client,
+            await TwitterReplyClient.cacheReplyTweet(
                 this.runtime,
-                enrichedState,
                 tweet.id,
+                enrichedState,
                 cleanedReplyText
+            );
+
+            await sendTweet(
+                this.client,
+                { text: cleanedReplyText },
+                roomId,
+                this.twitterUsername,
+                tweet.id
             );
         } catch (error) {
             elizaLogger.error(`Error replying to tweet ${tweet.id}:`, error);
