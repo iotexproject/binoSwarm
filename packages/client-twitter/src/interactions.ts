@@ -4,7 +4,6 @@ import {
     generateMessageResponse,
     generateShouldRespond,
     Content,
-    HandlerCallback,
     IAgentRuntime,
     Memory,
     ModelClass,
@@ -16,7 +15,11 @@ import {
     UUID,
 } from "@elizaos/core";
 import { ClientBase } from "./base";
-import { buildConversationThread, sendTweet, wait } from "./utils.ts";
+import {
+    buildConversationThread,
+    twitterHandlerCallback,
+    wait,
+} from "./utils.ts";
 import {
     twitterShouldRespondTemplate,
     twitterMessageHandlerTemplate,
@@ -295,47 +298,34 @@ export class TwitterInteractionClient {
         }
 
         try {
-            const callback: HandlerCallback = async (
-                response: Content,
-                tweetId?: string
-            ) => {
-                const memories = await sendTweet(
-                    this.client,
-                    response,
-                    message.roomId,
-                    this.client.twitterConfig.TWITTER_USERNAME,
-                    tweetId || tweet.id
-                );
-
-                for (const memory of memories) {
-                    if (memory === memories[memories.length - 1]) {
-                        memory.content.action = response.action;
-                    } else {
-                        memory.content.action = "CONTINUE";
-                    }
-                    await this.runtime.messageManager.createMemory({
-                        memory: memory,
-                        isUnique: true,
-                    });
-                }
-                return memories;
-            };
-
-            const responseMessages = await callback(response);
+            const responseMessages = await twitterHandlerCallback(
+                this.client,
+                response,
+                message.roomId,
+                this.runtime,
+                this.client.twitterConfig.TWITTER_USERNAME,
+                tweet.id
+            );
             state = (await this.runtime.updateRecentMessageState(
                 state
             )) as State;
 
             const lastResponse = responseMessages[responseMessages.length - 1];
-            const responseTweetId = lastResponse?.content?.tweetId;
+            const responseTweetId = lastResponse?.content?.tweetId as string;
 
             await this.runtime.processActions(
                 message,
                 responseMessages,
                 state,
-                (response: Content) => {
-                    return callback(response, responseTweetId);
-                }
+                (response: Content) =>
+                    twitterHandlerCallback(
+                        this.client,
+                        response,
+                        message.roomId,
+                        this.runtime,
+                        this.client.twitterConfig.TWITTER_USERNAME,
+                        responseTweetId
+                    )
             );
 
             await this.saveResponseInfoToCache(context, tweet, response);

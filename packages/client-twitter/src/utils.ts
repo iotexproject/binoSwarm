@@ -1,5 +1,5 @@
 import { Tweet } from "agent-twitter-client";
-import { Content, Memory, UUID } from "@elizaos/core";
+import { Content, IAgentRuntime, Memory, UUID } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 import { ClientBase } from "./base";
 import { elizaLogger } from "@elizaos/core";
@@ -475,4 +475,33 @@ export function splitParagraph(paragraph: string, maxLength: number): string[] {
     const restoredChunks = restoreUrls(splittedChunks, placeholderMap);
 
     return restoredChunks;
+}
+
+export async function twitterHandlerCallback(
+    client: ClientBase,
+    response: Content,
+    roomId: UUID,
+    runtime: IAgentRuntime,
+    username: string,
+    inReplyToTweetId: string
+) {
+    const memories = await sendTweet(
+        client,
+        response,
+        roomId,
+        username,
+        inReplyToTweetId
+    );
+    for (const memory of memories) {
+        if (memory === memories[memories.length - 1]) {
+            memory.content.action = response.action;
+        } else {
+            memory.content.action = "CONTINUE";
+        }
+        await runtime.messageManager.createMemory({
+            memory: memory,
+            isUnique: true,
+        });
+    }
+    return memories;
 }

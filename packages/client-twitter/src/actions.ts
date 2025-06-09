@@ -14,14 +14,13 @@ import {
     TemplateType,
     generateMessageResponse,
     Content,
-    HandlerCallback,
     Memory,
 } from "@elizaos/core";
 
 import { ClientBase } from "./base.ts";
 
 import { twitterActionTemplate, twitterPostTemplate } from "./templates.ts";
-import { buildConversationThread, sendTweet } from "./utils.ts";
+import { buildConversationThread, twitterHandlerCallback } from "./utils.ts";
 import { twitterMessageHandlerTemplate } from "./templates.ts";
 import TwitterQuoteClient from "./quote.ts";
 import TwitterLikeClient from "./like.ts";
@@ -565,32 +564,14 @@ export class TwitterActionProcessor {
                 responseContent.text
             );
 
-            const callback: HandlerCallback = async (
-                response: Content,
-                inReplyToTweetId?: string
-            ) => {
-                const memories = await sendTweet(
-                    this.client,
-                    response,
-                    roomId,
-                    this.twitterUsername,
-                    inReplyToTweetId || tweet.id
-                );
-                for (const memory of memories) {
-                    if (memory === memories[memories.length - 1]) {
-                        memory.content.action = response.action;
-                    } else {
-                        memory.content.action = "CONTINUE";
-                    }
-                    await this.runtime.messageManager.createMemory({
-                        memory: memory,
-                        isUnique: true,
-                    });
-                }
-                return memories;
-            };
-
-            const responseMessages = await callback(responseContent);
+            const responseMessages = await twitterHandlerCallback(
+                this.client,
+                responseContent,
+                roomId,
+                this.runtime,
+                this.twitterUsername,
+                tweet.id
+            );
 
             if (responseMessages.length === 0) {
                 elizaLogger.error("Failed to send tweet reply");
@@ -598,7 +579,7 @@ export class TwitterActionProcessor {
             }
 
             const lastResponse = responseMessages[responseMessages.length - 1];
-            const responseTweetId = lastResponse?.content?.tweetId;
+            const responseTweetId = lastResponse?.content?.tweetId as string;
             const updatedState = (await this.runtime.updateRecentMessageState(
                 enrichedState
             )) as State;
@@ -625,9 +606,15 @@ export class TwitterActionProcessor {
                 originalMessage,
                 responseMessages,
                 updatedState,
-                (response: Content) => {
-                    return callback(response, responseTweetId);
-                }
+                (response: Content) =>
+                    twitterHandlerCallback(
+                        this.client,
+                        response,
+                        roomId,
+                        this.runtime,
+                        this.twitterUsername,
+                        responseTweetId
+                    )
             );
         } catch (error) {
             elizaLogger.error(`Error replying to tweet ${tweet.id}:`, error);
