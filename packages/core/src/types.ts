@@ -408,7 +408,10 @@ export type Handler = (
  */
 export type HandlerCallback = (
     response: Content,
-    files?: any
+    files?: Array<{
+        attachment: string;
+        name: string;
+    }>
 ) => Promise<Memory[]>;
 
 /**
