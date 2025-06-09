@@ -306,6 +306,18 @@ export class TwitterInteractionClient {
                     this.client.twitterConfig.TWITTER_USERNAME,
                     tweetId || tweet.id
                 );
+
+                for (const memory of memories) {
+                    if (memory === memories[memories.length - 1]) {
+                        memory.content.action = response.action;
+                    } else {
+                        memory.content.action = "CONTINUE";
+                    }
+                    await this.runtime.messageManager.createMemory({
+                        memory: memory,
+                        isUnique: true,
+                    });
+                }
                 return memories;
             };
 
@@ -313,7 +325,6 @@ export class TwitterInteractionClient {
             state = (await this.runtime.updateRecentMessageState(
                 state
             )) as State;
-            await this.addResponseMemories(responseMessages, response);
 
             const lastResponse = responseMessages[responseMessages.length - 1];
             const responseTweetId = lastResponse?.content?.tweetId;
@@ -344,20 +355,6 @@ export class TwitterInteractionClient {
             `twitter/tweet_generation_${tweet.id}.txt`,
             responseInfo
         );
-    }
-
-    private async addResponseMemories(messages: Memory[], response: Content) {
-        for (const message of messages) {
-            if (message === messages[messages.length - 1]) {
-                message.content.action = response.action;
-            } else {
-                message.content.action = "CONTINUE";
-            }
-            await this.runtime.messageManager.createMemory({
-                memory: message,
-                isUnique: true,
-            });
-        }
     }
 
     private async generateTweetResponse(state: State) {

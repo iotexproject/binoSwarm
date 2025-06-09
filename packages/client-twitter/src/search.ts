@@ -91,19 +91,23 @@ export class TwitterSearchClient {
                         this.twitterUsername,
                         selectedTweet.id
                     );
+                    for (const memory of memories) {
+                        if (memory === memories[memories.length - 1]) {
+                            memory.content.action = response.action;
+                        } else {
+                            memory.content.action = "CONTINUE";
+                        }
+                        await this.runtime.messageManager.createMemory({
+                            memory: memory,
+                            isUnique: true,
+                        });
+                    }
                     return memories;
                 };
 
                 const responseMessages = await callback(responseContent);
 
                 state = await this.runtime.updateRecentMessageState(state);
-
-                for (const responseMessage of responseMessages) {
-                    await this.runtime.messageManager.createMemory({
-                        memory: responseMessage,
-                        isUnique: true,
-                    });
-                }
 
                 state = await this.runtime.updateRecentMessageState(state);
 

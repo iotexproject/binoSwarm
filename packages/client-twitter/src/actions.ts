@@ -576,6 +576,17 @@ export class TwitterActionProcessor {
                     this.twitterUsername,
                     inReplyToTweetId || tweet.id
                 );
+                for (const memory of memories) {
+                    if (memory === memories[memories.length - 1]) {
+                        memory.content.action = response.action;
+                    } else {
+                        memory.content.action = "CONTINUE";
+                    }
+                    await this.runtime.messageManager.createMemory({
+                        memory: memory,
+                        isUnique: true,
+                    });
+                }
                 return memories;
             };
 
