@@ -1,5 +1,5 @@
 import { Tweet } from "agent-twitter-client";
-import { Content, Memory, UUID } from "@elizaos/core";
+import { Content, IAgentRuntime, Memory, UUID } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 import { ClientBase } from "./base";
 import { elizaLogger } from "@elizaos/core";
@@ -13,21 +13,6 @@ export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     return new Promise((resolve) => setTimeout(resolve, waitTime));
 };
 
-export const isValidTweet = (tweet: Tweet): boolean => {
-    // Filter out tweets with too many hashtags, @s, or $ signs, probably spam or garbage
-    const hashtagCount = (tweet.text?.match(/#/g) || []).length;
-    const atCount = (tweet.text?.match(/@/g) || []).length;
-    const dollarSignCount = (tweet.text?.match(/\$/g) || []).length;
-    const totalCount = hashtagCount + atCount + dollarSignCount;
-
-    return (
-        hashtagCount <= 1 &&
-        atCount <= 2 &&
-        dollarSignCount <= 1 &&
-        totalCount <= 3
-    );
-};
-
 export async function buildConversationThread(
     tweet: Tweet,
     client: ClientBase,
@@ -37,22 +22,16 @@ export async function buildConversationThread(
     const visited: Set<string> = new Set();
 
     async function processThread(currentTweet: Tweet, depth: number = 0) {
-        elizaLogger.debug("Processing tweet:", {
-            id: currentTweet.id,
-            inReplyToStatusId: currentTweet.inReplyToStatusId,
-            depth: depth,
-        });
-
         if (!currentTweet) {
             elizaLogger.debug("No current tweet found for thread building");
             return;
         }
 
-        // Stop if we've reached our reply limit
-        if (depth >= maxReplies) {
-            elizaLogger.debug("Reached maximum reply depth", depth);
-            return;
-        }
+        elizaLogger.debug("Processing tweet:", {
+            id: currentTweet.id,
+            inReplyToStatusId: currentTweet.inReplyToStatusId,
+            depth: depth,
+        });
 
         // Handle memory storage
         const memory = await client.runtime.messageManager.getMemoryById(
@@ -101,11 +80,6 @@ export async function buildConversationThread(
             });
         }
 
-        if (visited.has(currentTweet.id)) {
-            elizaLogger.debug("Already visited tweet:", currentTweet.id);
-            return;
-        }
-
         visited.add(currentTweet.id);
         thread.unshift(currentTweet);
 
@@ -115,34 +89,47 @@ export async function buildConversationThread(
             tweetId: currentTweet.id,
         });
 
+        // Stop if we've reached our reply limit
+        if (depth >= maxReplies) {
+            elizaLogger.debug("Reached maximum reply depth", depth);
+            return;
+        }
+
         // If there's a parent tweet, fetch and process it
         if (currentTweet.inReplyToStatusId) {
-            elizaLogger.debug(
-                "Fetching parent tweet:",
-                currentTweet.inReplyToStatusId
-            );
-            try {
-                const parentTweet = await client.twitterClient.getTweet(
+            if (visited.has(currentTweet.inReplyToStatusId)) {
+                elizaLogger.debug(
+                    "Parent tweet already visited, skipping fetch:",
                     currentTweet.inReplyToStatusId
                 );
-
-                if (parentTweet) {
-                    elizaLogger.debug("Found parent tweet:", {
-                        id: parentTweet.id,
-                        text: parentTweet.text?.slice(0, 50),
-                    });
-                    await processThread(parentTweet, depth + 1);
-                } else {
-                    elizaLogger.debug(
-                        "No parent tweet found for:",
+            } else {
+                elizaLogger.debug(
+                    "Fetching parent tweet:",
+                    currentTweet.inReplyToStatusId
+                );
+                try {
+                    const parentTweet = await client.twitterClient.getTweet(
                         currentTweet.inReplyToStatusId
                     );
+
+                    if (parentTweet) {
+                        elizaLogger.debug("Found parent tweet:", {
+                            id: parentTweet.id,
+                            text: parentTweet.text?.slice(0, 50),
+                        });
+                        await processThread(parentTweet, depth + 1);
+                    } else {
+                        elizaLogger.debug(
+                            "No parent tweet found for:",
+                            currentTweet.inReplyToStatusId
+                        );
+                    }
+                } catch (error) {
+                    elizaLogger.error("Error fetching parent tweet:", {
+                        tweetId: currentTweet.inReplyToStatusId,
+                        error,
+                    });
                 }
-            } catch (error) {
-                elizaLogger.error("Error fetching parent tweet:", {
-                    tweetId: currentTweet.inReplyToStatusId,
-                    error,
-                });
             }
         } else {
             elizaLogger.debug(
@@ -294,7 +281,10 @@ export async function sendTweet(
     return memories;
 }
 
-function splitTweetContent(content: string, maxLength: number): string[] {
+export function splitTweetContent(
+    content: string,
+    maxLength: number
+): string[] {
     if (!content) {
         return [];
     }
@@ -334,7 +324,7 @@ function splitTweetContent(content: string, maxLength: number): string[] {
     return tweets;
 }
 
-function extractUrls(paragraph: string): {
+export function extractUrls(paragraph: string): {
     textWithPlaceholders: string;
     placeholderMap: Map<string, string>;
 } {
@@ -344,18 +334,30 @@ function extractUrls(paragraph: string): {
 
     let urlIndex = 0;
     const textWithPlaceholders = paragraph.replace(urlRegex, (match) => {
+        let url = match;
+        let punctuation = "";
+        const lastChar = url.slice(-1);
+
+        if (".!?,;".includes(lastChar)) {
+            url = match.slice(0, -1);
+            punctuation = lastChar;
+        }
+
         // twitter url would be considered as 23 characters
         // <<URL_CONSIDERER_23_1>> is also 23 characters
         const placeholder = `<<URL_CONSIDERER_23_${urlIndex}>>`; // Placeholder without . ? ! etc
-        placeholderMap.set(placeholder, match);
+        placeholderMap.set(placeholder, url);
         urlIndex++;
-        return placeholder;
+        return placeholder + punctuation;
     });
 
     return { textWithPlaceholders, placeholderMap };
 }
 
-function splitSentencesAndWords(text: string, maxLength: number): string[] {
+export function splitSentencesAndWords(
+    text: string,
+    maxLength: number
+): string[] {
     // Split by periods, question marks and exclamation marks
     // Note that URLs in text have been replaced with `<<URL_xxx>>` and won't be split by dots
     const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
@@ -363,11 +365,16 @@ function splitSentencesAndWords(text: string, maxLength: number): string[] {
     let currentChunk = "";
 
     for (const sentence of sentences) {
-        if ((currentChunk + " " + sentence).trim().length <= maxLength) {
+        const trimmedSentence = sentence.trim();
+        if (!trimmedSentence) {
+            continue;
+        }
+
+        if ((currentChunk + " " + trimmedSentence).trim().length <= maxLength) {
             if (currentChunk) {
-                currentChunk += " " + sentence;
+                currentChunk += " " + trimmedSentence;
             } else {
-                currentChunk = sentence;
+                currentChunk = trimmedSentence;
             }
         } else {
             // Can't fit more, push currentChunk to results
@@ -376,11 +383,11 @@ function splitSentencesAndWords(text: string, maxLength: number): string[] {
             }
 
             // If current sentence itself is less than or equal to maxLength
-            if (sentence.length <= maxLength) {
-                currentChunk = sentence;
+            if (trimmedSentence.length <= maxLength) {
+                currentChunk = trimmedSentence;
             } else {
                 // Need to split sentence by spaces
-                const words = sentence.split(" ");
+                const words = trimmedSentence.split(" ");
                 currentChunk = "";
                 for (const word of words) {
                     if (
@@ -410,7 +417,7 @@ function splitSentencesAndWords(text: string, maxLength: number): string[] {
     return chunks;
 }
 
-function deduplicateMentions(paragraph: string) {
+export function deduplicateMentions(paragraph: string) {
     // Regex to match mentions at the beginning of the string
     const mentionRegex = /^@(\w+)(?:\s+@(\w+))*(\s+|$)/;
 
@@ -434,10 +441,14 @@ function deduplicateMentions(paragraph: string) {
     const endOfMentions = paragraph.indexOf(matches[0]) + matches[0].length;
 
     // Construct the result by combining unique mentions with the rest of the string
-    return uniqueMentionsString + " " + paragraph.slice(endOfMentions);
+    const restOfString = paragraph.slice(endOfMentions);
+    if (restOfString) {
+        return uniqueMentionsString + " " + restOfString;
+    }
+    return uniqueMentionsString;
 }
 
-function restoreUrls(
+export function restoreUrls(
     chunks: string[],
     placeholderMap: Map<string, string>
 ): string[] {
@@ -450,7 +461,7 @@ function restoreUrls(
     });
 }
 
-function splitParagraph(paragraph: string, maxLength: number): string[] {
+export function splitParagraph(paragraph: string, maxLength: number): string[] {
     // 1) Extract URLs and replace with placeholders
     const { textWithPlaceholders, placeholderMap } = extractUrls(paragraph);
 
@@ -464,4 +475,33 @@ function splitParagraph(paragraph: string, maxLength: number): string[] {
     const restoredChunks = restoreUrls(splittedChunks, placeholderMap);
 
     return restoredChunks;
+}
+
+export async function twitterHandlerCallback(
+    client: ClientBase,
+    response: Content,
+    roomId: UUID,
+    runtime: IAgentRuntime,
+    username: string,
+    inReplyToTweetId: string
+) {
+    const memories = await sendTweet(
+        client,
+        response,
+        roomId,
+        username,
+        inReplyToTweetId
+    );
+    for (const memory of memories) {
+        if (memory === memories[memories.length - 1]) {
+            memory.content.action = response.action;
+        } else {
+            memory.content.action = "CONTINUE";
+        }
+        await runtime.messageManager.createMemory({
+            memory: memory,
+            isUnique: true,
+        });
+    }
+    return memories;
 }

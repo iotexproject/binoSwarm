@@ -216,25 +216,6 @@ Here are some tweets related to the search term "{{searchTerm}}":
     - ONLY respond with the ID of the tweet
 `;
 
-export const twitterSpaceFillerTemplate = `
-# INSTRUCTIONS:
-You are generating a short filler message for a Twitter Space. The filler type is "{{fillerType}}".
-Keep it brief, friendly, and relevant. No more than two sentences.
-Only return the text, no additional formatting.
-
----
-`;
-
-export const twitterSpaceTopicSuggestionTemplate = `
-# INSTRUCTIONS:
-Please generate 5 short topic ideas for a Twitter Space about technology or random interesting subjects.
-Return them as a comma-separated list, no additional formatting or numbering.
-
-Example:
-"AI Advances, Futuristic Gadgets, Space Exploration, Quantum Computing, Digital Ethics"
----
-`;
-
 export const twitterKnowledgeProcessorTemplate = `
 Analyze the following tweets and their media from {{twitterUserName}} and extract key information, insights, or knowledge. Pay special attention to both text content and media descriptions. Ignore promotional or non-informative content.
 

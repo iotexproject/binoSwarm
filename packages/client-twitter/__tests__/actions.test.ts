@@ -46,6 +46,58 @@ vi.mock("../src/utils", async () => {
     return {
         ...actual,
         buildConversationThread: vi.fn(),
+        wait: vi.fn().mockResolvedValue(undefined),
+        twitterHandlerCallback: vi
+            .fn()
+            .mockImplementation(
+                async (
+                    client,
+                    response,
+                    roomId,
+                    runtime,
+                    username,
+                    inReplyToTweetId
+                ) => {
+                    // Simple mock that creates the expected Memory array without calling real sendTweet
+                    const mockMemory = {
+                        id: "memory-123" as UUID,
+                        agentId: runtime.agentId,
+                        userId: runtime.agentId,
+                        content: {
+                            text: response.text,
+                            tweetId: "456",
+                            source: "twitter",
+                            url: `https://twitter.com/${username}/status/456`,
+                            inReplyTo: inReplyToTweetId
+                                ? `${inReplyToTweetId}-${runtime.agentId}`
+                                : undefined,
+                        },
+                        roomId,
+                        createdAt: Date.now(),
+                    };
+
+                    // Check if we should use long tweet based on config
+                    const isLongTweet =
+                        client.twitterConfig.MAX_TWEET_LENGTH > 280;
+
+                    // Still call the Twitter client methods to verify they're called with correct params
+                    if (isLongTweet && client.twitterClient.sendLongTweet) {
+                        await client.twitterClient.sendLongTweet(
+                            response.text,
+                            inReplyToTweetId,
+                            undefined
+                        );
+                    } else if (client.twitterClient.sendTweet) {
+                        await client.twitterClient.sendTweet(
+                            response.text,
+                            inReplyToTweetId,
+                            undefined
+                        );
+                    }
+
+                    return [mockMemory];
+                }
+            ),
     };
 });
 
@@ -223,6 +275,18 @@ describe("Tweet Actions Processing", () => {
         vi.spyOn(actionClient as any, "generateTweetContent").mockResolvedValue(
             "This is a generated quote tweet response"
         );
+
+        // Mock generateTweetActionResponse
+        vi.spyOn(
+            actionClient as any,
+            "generateTweetActionResponse"
+        ).mockResolvedValue({
+            response: {
+                text: "This is a generated quote tweet response",
+                action: "REPLY",
+            },
+            context: "mocked context",
+        });
 
         // Mock buildConversationThread to return a simple thread
         vi.mocked(utils.buildConversationThread).mockResolvedValue([
@@ -425,12 +489,13 @@ describe("Tweet Actions Processing", () => {
         );
 
         // Verify generateTweetContent was called
-        expect(actionClient["generateTweetContent"]).toHaveBeenCalled();
+        expect(actionClient["generateTweetActionResponse"]).toHaveBeenCalled();
 
         // Verify tweet was sent with the generated content and in reply to the original tweet
         expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
             "This is a generated quote tweet response",
-            mockTweet.id
+            mockTweet.id,
+            undefined
         );
 
         expect(mockRuntime.cacheManager.set).toHaveBeenCalledWith(
@@ -475,15 +540,26 @@ describe("Tweet Actions Processing", () => {
             actionResponse: { reply: true },
         });
 
-        // Mock generateTweetContent to return a long response
-        vi.spyOn(actionClient as any, "generateTweetContent").mockResolvedValue(
-            "A very long reply that exceeds the standard tweet length...".repeat(
-                10
-            )
-        );
+        // Temporarily override the client config to enable long tweets
+        const originalMaxLength = baseClient.twitterConfig.MAX_TWEET_LENGTH;
+        baseClient.twitterConfig.MAX_TWEET_LENGTH = 500; // > 280 to enable long tweets
+
+        // Mock generateTweetActionResponse to return a long response for this test
+        vi.spyOn(
+            actionClient as any,
+            "generateTweetActionResponse"
+        ).mockResolvedValueOnce({
+            response: {
+                text: "A very long reply that exceeds the standard tweet length...".repeat(
+                    10
+                ),
+                action: "REPLY",
+            },
+            context: "mocked context",
+        });
 
         // Mock successful note tweet response
-        mockTwitterClient.sendNoteTweet.mockResolvedValue({
+        mockTwitterClient.sendLongTweet.mockResolvedValue({
             data: {
                 notetweet_create: {
                     tweet_results: {
@@ -509,13 +585,19 @@ describe("Tweet Actions Processing", () => {
             quotedContent: "",
         });
 
-        await actionClient["processTimelineActions"]([timeline]);
+        try {
+            await actionClient["processTimelineActions"]([timeline]);
 
-        // Verify note tweet was used for the long reply
-        expect(mockTwitterClient.sendNoteTweet).toHaveBeenCalledWith(
-            expect.stringContaining("A very long reply"),
-            mockTweet.id
-        );
+            // Verify long tweet was used for the long reply
+            expect(mockTwitterClient.sendLongTweet).toHaveBeenCalledWith(
+                expect.stringContaining("A very long reply"),
+                mockTweet.id,
+                undefined
+            );
+        } finally {
+            // Restore original config
+            baseClient.twitterConfig.MAX_TWEET_LENGTH = originalMaxLength;
+        }
     });
 
     it("should handle undefined reply content gracefully", async () => {
@@ -528,10 +610,17 @@ describe("Tweet Actions Processing", () => {
             actionResponse: { reply: true },
         });
 
-        // Mock generateTweetContent to return undefined/null
-        vi.spyOn(actionClient as any, "generateTweetContent").mockResolvedValue(
-            undefined
-        );
+        // Mock generateTweetActionResponse to return undefined/null text for this test
+        vi.spyOn(
+            actionClient as any,
+            "generateTweetActionResponse"
+        ).mockResolvedValueOnce({
+            response: {
+                text: undefined,
+                action: "REPLY",
+            },
+            context: "mocked context",
+        });
 
         vi.mocked(mockRuntime.composeState).mockResolvedValue({
             ...timeline.tweetState,
@@ -546,7 +635,7 @@ describe("Tweet Actions Processing", () => {
 
         // Verify error was logged
         expect(elizaLogger.error).toHaveBeenCalledWith(
-            "Failed to generate valid tweet content"
+            "Failed to generate valid tweet content for reply"
         );
 
         // Verify no tweet was sent
@@ -599,7 +688,8 @@ describe("Tweet Actions Processing", () => {
         // Verify tweet was sent with the generated content
         expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
             "This is a generated quote tweet response",
-            mockTweet.id
+            mockTweet.id,
+            undefined
         );
     });
 
@@ -647,7 +737,8 @@ describe("Tweet Actions Processing", () => {
         // Verify tweet was still sent despite quoted tweet error
         expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
             "This is a generated quote tweet response",
-            mockTweet.id
+            mockTweet.id,
+            undefined
         );
     });
 

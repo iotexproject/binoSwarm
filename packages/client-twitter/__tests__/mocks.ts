@@ -18,10 +18,10 @@ export function buildConfigMock() {
         TWITTER_RETRY_LIMIT: 5,
         TWITTER_POLL_INTERVAL: 120,
         TWITTER_KNOWLEDGE_USERS: [],
+        TWITTER_SEARCH_TERMS: [],
         MAX_ACTIONS_PROCESSING: 1,
         ACTION_TIMELINE_TYPE: ActionTimelineType.ForYou,
         TWITTER_SEARCH_ENABLE: false,
-        TWITTER_SPACES_ENABLE: false,
         TWITTER_TARGET_USERS: [],
         POST_INTERVAL_MIN: 5,
         POST_INTERVAL_MAX: 10,
@@ -77,14 +77,18 @@ export function buildRuntimeMock() {
         ensureRoomExists: vi.fn(),
         ensureUserExists: vi.fn(),
         ensureParticipantInRoom: vi.fn(),
+        ensureConnection: vi.fn(),
         composeState: vi.fn(),
         getService: vi.fn(),
+        updateRecentMessageState: vi.fn().mockResolvedValue(createMockState()),
+        processActions: vi.fn(),
     } as unknown as IAgentRuntime;
 }
 
 export function buildTwitterClientMock() {
     return {
         sendTweet: vi.fn(),
+        sendLongTweet: vi.fn(),
         sendNoteTweet: vi.fn(),
         likeTweet: vi.fn(),
         retweet: vi.fn(),

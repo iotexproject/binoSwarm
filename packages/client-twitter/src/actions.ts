@@ -13,12 +13,14 @@ import {
     ActionResponse,
     TemplateType,
     generateMessageResponse,
+    Content,
+    Memory,
 } from "@elizaos/core";
 
 import { ClientBase } from "./base.ts";
 
 import { twitterActionTemplate, twitterPostTemplate } from "./templates.ts";
-import { buildConversationThread } from "./utils.ts";
+import { buildConversationThread, twitterHandlerCallback } from "./utils.ts";
 import { twitterMessageHandlerTemplate } from "./templates.ts";
 import TwitterQuoteClient from "./quote.ts";
 import TwitterLikeClient from "./like.ts";
@@ -310,7 +312,7 @@ export class TwitterActionProcessor {
             }
 
             if (actionResponse.reply) {
-                await this.processReply(tweet);
+                await this.processReply(tweet, roomId);
                 executedActions.push("reply");
             }
 
@@ -417,6 +419,29 @@ export class TwitterActionProcessor {
         return this.trimTweetLength(response.text);
     }
 
+    private async generateTweetActionResponse(
+        state: State
+    ): Promise<{ response: Content; context: string }> {
+        const context = composeContext({
+            state,
+            template:
+                this.runtime.character.templates
+                    ?.twitterMessageHandlerTemplate ||
+                twitterMessageHandlerTemplate,
+        });
+        elizaLogger.debug("generateTweetActionResponse prompt:\n" + context);
+
+        const response = await generateMessageResponse({
+            runtime: this.runtime,
+            context,
+            modelClass: ModelClass.LARGE,
+        });
+
+        response.text = this.trimTweetLength(response.text);
+
+        return { response, context };
+    }
+
     // Helper method to ensure tweet length compliance
     private trimTweetLength(text: string, maxLength: number = 280): string {
         if (text.length <= maxLength) return text;
@@ -516,17 +541,80 @@ export class TwitterActionProcessor {
             .join("\n\n");
     }
 
-    private async processReply(tweet: Tweet) {
+    private async processReply(tweet: Tweet, roomId: UUID) {
         try {
-            const enrichedState = await this.composeStateForAction(tweet, "");
-            const cleanedReplyText = await this.genActionContent(enrichedState);
+            const enrichedState = await this.composeStateForAction(
+                tweet,
+                "REPLY"
+            );
+            const { response: responseContent } =
+                await this.generateTweetActionResponse(enrichedState);
 
-            await TwitterReplyClient.process(
-                this.client,
+            if (!responseContent.text) {
+                elizaLogger.error(
+                    "Failed to generate valid tweet content for reply"
+                );
+                return;
+            }
+
+            await TwitterReplyClient.cacheReplyTweet(
                 this.runtime,
-                enrichedState,
                 tweet.id,
-                cleanedReplyText
+                enrichedState,
+                responseContent.text
+            );
+
+            const responseMessages = await twitterHandlerCallback(
+                this.client,
+                responseContent,
+                roomId,
+                this.runtime,
+                this.twitterUsername,
+                tweet.id
+            );
+
+            if (responseMessages.length === 0) {
+                elizaLogger.error("Failed to send tweet reply");
+                return;
+            }
+
+            const lastResponse = responseMessages[responseMessages.length - 1];
+            const responseTweetId = lastResponse?.content?.tweetId as string;
+            const updatedState = (await this.runtime.updateRecentMessageState(
+                enrichedState
+            )) as State;
+
+            const userId =
+                tweet.userId === this.client.profile.id
+                    ? this.runtime.agentId
+                    : stringToUuid(tweet.userId);
+
+            const originalMessage: Memory = {
+                id: stringToUuid(tweet.id + "-" + this.runtime.agentId),
+                agentId: this.runtime.agentId,
+                userId,
+                roomId,
+                content: {
+                    text: tweet.text,
+                    url: tweet.permanentUrl,
+                    source: "twitter",
+                },
+                createdAt: tweet.timestamp * 1000,
+            };
+
+            await this.runtime.processActions(
+                originalMessage,
+                responseMessages,
+                updatedState,
+                (response: Content) =>
+                    twitterHandlerCallback(
+                        this.client,
+                        response,
+                        roomId,
+                        this.runtime,
+                        this.twitterUsername,
+                        responseTweetId
+                    )
             );
         } catch (error) {
             elizaLogger.error(`Error replying to tweet ${tweet.id}:`, error);

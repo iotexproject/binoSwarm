@@ -4,7 +4,6 @@ import {
     elizaLogger,
     generateMessageResponse,
     Content,
-    HandlerCallback,
     IAgentRuntime,
     IImageDescriptionService,
     ModelClass,
@@ -15,7 +14,11 @@ import {
 } from "@elizaos/core";
 
 import { ClientBase } from "./base";
-import { buildConversationThread, sendTweet, wait } from "./utils.ts";
+import {
+    buildConversationThread,
+    twitterHandlerCallback,
+    wait,
+} from "./utils.ts";
 import { twitterSearchTemplate } from "./templates";
 import { SearchTweetSelector } from "./SearchTweetSelector";
 
@@ -83,27 +86,19 @@ export class TwitterSearchClient {
                 `Bot would respond to tweet ${selectedTweet.id} with: ${response.text}`
             );
             try {
-                const callback: HandlerCallback = async (response: Content) => {
-                    const memories = await sendTweet(
-                        this.client,
-                        response,
-                        message.roomId,
-                        this.twitterUsername,
-                        selectedTweet.id
-                    );
-                    return memories;
-                };
+                const responseMessages = await twitterHandlerCallback(
+                    this.client,
+                    responseContent,
+                    message.roomId,
+                    this.runtime,
+                    this.twitterUsername,
+                    selectedTweet.id
+                );
 
-                const responseMessages = await callback(responseContent);
-
-                state = await this.runtime.updateRecentMessageState(state);
-
-                for (const responseMessage of responseMessages) {
-                    await this.runtime.messageManager.createMemory({
-                        memory: responseMessage,
-                        isUnique: true,
-                    });
-                }
+                const lastResponse =
+                    responseMessages[responseMessages.length - 1];
+                const responseTweetId = lastResponse?.content
+                    ?.tweetId as string;
 
                 state = await this.runtime.updateRecentMessageState(state);
 
@@ -113,7 +108,15 @@ export class TwitterSearchClient {
                     message,
                     responseMessages,
                     state,
-                    callback
+                    (response: Content) =>
+                        twitterHandlerCallback(
+                            this.client,
+                            response,
+                            message.roomId,
+                            this.runtime,
+                            this.twitterUsername,
+                            responseTweetId
+                        )
                 );
 
                 this.respondedTweets.add(selectedTweet.id);
