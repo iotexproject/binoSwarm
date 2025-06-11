@@ -4,7 +4,6 @@ import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
 import { evmPlugin } from "@elizaos/plugin-evm";
 import { imageGenerationPlugin } from "@elizaos/plugin-image-generation";
 import { createNodePlugin } from "@elizaos/plugin-node";
-import { teePlugin } from "@elizaos/plugin-tee";
 import { webSearchPlugin } from "@elizaos/plugin-web-search";
 import { elizaLogger, ModelProviderName } from "@elizaos/core";
 
@@ -23,13 +22,6 @@ vi.mock("@elizaos/plugin-image-generation", () => ({
 
 vi.mock("@elizaos/plugin-node", () => ({
     createNodePlugin: vi.fn(() => ({ name: "nodePlugin" })),
-}));
-
-vi.mock("@elizaos/plugin-tee", () => ({
-    teePlugin: { name: "teePlugin" },
-    TEEMode: {
-        OFF: "off",
-    },
 }));
 
 vi.mock("@elizaos/plugin-web-search", () => ({
@@ -130,22 +122,12 @@ describe("Plugin Management", () => {
             });
         });
 
-        it("should include teePlugin when teeMode is not OFF and walletSecretSalt is provided", () => {
-            process.env.TEE_MODE = "enabled";
-            process.env.WALLET_SECRET_SALT = "salt";
-
-            const result = buildPlugins(mockCharacter);
-
-            expect(result).toContain(teePlugin);
-        });
-
         it("should not include optional plugins when conditions are not met", () => {
             const result = buildPlugins(mockCharacter);
 
             expect(result).not.toContain(webSearchPlugin);
             expect(result).not.toContain(evmPlugin);
             expect(result).not.toContain(imageGenerationPlugin);
-            expect(result).not.toContain(teePlugin);
         });
     });
 

@@ -16,8 +16,7 @@
             "dependsOn": ["@elizaos/plugin-image-generation#build"]
         },
         "@elizaos/plugin-evm#build": {
-            "outputs": ["dist/**"],
-            "dependsOn": ["@elizaos/plugin-tee#build"]
+            "outputs": ["dist/**"]
         },
         "dev": {
             "persistent": true,
