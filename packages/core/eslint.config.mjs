@@ -9,7 +9,6 @@ export default [
             "**/types/*",
             "**/scripts/concatenated-output.ts",
             "rollup.config.js",
-            "jest.config.js",
             "docs/",
         ],
     },
