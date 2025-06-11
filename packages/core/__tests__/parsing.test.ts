@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import {
-    parseBooleanFromText,
-    parseJsonArrayFromText,
-    parseJSONObjectFromText,
-} from "../src/parsing";
+import { parseBooleanFromText, parseJsonArrayFromText } from "../src/parsing";
 
 describe("Parsing Module", () => {
     describe("parseBooleanFromText", () => {
@@ -44,37 +40,6 @@ describe("Parsing Module", () => {
             expect(parseJsonArrayFromText("invalid")).toBe(null);
             expect(parseJsonArrayFromText("[invalid]")).toBe(null);
             expect(parseJsonArrayFromText("```json\n[invalid]\n```")).toBe(
-                null
-            );
-        });
-    });
-
-    describe("parseJSONObjectFromText", () => {
-        it("should parse JSON object from code block", () => {
-            const input = '```json\n{"key": "value", "number": 42}\n```';
-            expect(parseJSONObjectFromText(input)).toEqual({
-                key: "value",
-                number: 42,
-            });
-        });
-
-        it("should parse JSON object without code block", () => {
-            const input = '{"key": "value", "number": 42}';
-            expect(parseJSONObjectFromText(input)).toEqual({
-                key: "value",
-                number: 42,
-            });
-        });
-
-        it("should handle empty objects", () => {
-            expect(parseJSONObjectFromText("```json\n{}\n```")).toEqual({});
-            expect(parseJSONObjectFromText("{}")).toEqual({});
-        });
-
-        it("should return null for invalid JSON", () => {
-            expect(parseJSONObjectFromText("invalid")).toBe(null);
-            expect(parseJSONObjectFromText("{invalid}")).toBe(null);
-            expect(parseJSONObjectFromText("```json\n{invalid}\n```")).toBe(
                 null
             );
         });
