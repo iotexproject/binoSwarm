@@ -126,18 +126,6 @@ export interface Goal {
     objectives: Objective[];
 }
 
-export interface Prediction {
-    id: string;
-    creator: UUID;
-    statement: string;
-    deadline: Date;
-    contract_address: `0x${string}`;
-    status: "OPEN" | "RESOLVED" | "CLOSED";
-    created_at?: Date;
-    outcome?: string;
-    smartcontract_id?: string;
-}
-
 /**
  * Model size/type classification
  */
@@ -1037,12 +1025,6 @@ export interface IDatabaseAdapter {
     createKnowledge(knowledge: RAGKnowledgeItem): Promise<void>;
     removeKnowledge(id: UUID): Promise<void>;
     clearKnowledge(agentId: UUID, shared?: boolean): Promise<void>;
-    getPredictions?(params: {
-        status: "OPEN" | "RESOLVED" | "CLOSED";
-    }): Promise<Prediction[]>;
-    createPrediction?(prediction: Prediction): Promise<void>;
-    getReadyActivePredictions?(): Promise<Prediction[]>;
-    resolvePrediction?(predictionId: string, outcome: boolean): Promise<void>;
     getIsUserInTheRoom(roomId: UUID, userId: UUID): Promise<boolean>;
     getAccountsByIds(actorIds: UUID[]): Promise<Actor[]>;
     getCharacterDbTraits(
@@ -1451,7 +1433,6 @@ export enum ServiceType {
     IRYS = "irys",
     TEE_LOG = "tee_log",
     GOPLUS_SECURITY = "goplus_security",
-    PREDICTION_RESOLVER = "prediction_resolver",
 }
 
 export enum LoggingLevel {
