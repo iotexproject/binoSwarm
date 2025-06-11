@@ -592,9 +592,6 @@ importers:
       '@elizaos/core':
         specifier: workspace:*
         version: link:../core
-      '@elizaos/plugin-tee':
-        specifier: workspace:*
-        version: link:../plugin-tee
       whatwg-url:
         specifier: 7.1.0
         version: 7.1.0
