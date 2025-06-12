@@ -10,7 +10,6 @@ import {
     SpeechService,
     TranscriptionService,
     VideoService,
-    AwsS3Service,
 } from "./services/index.ts";
 // import { describeImage } from "./actions/describe-image.ts";
 
@@ -28,7 +27,6 @@ export function createNodePlugin() {
             new SpeechService(),
             new TranscriptionService(),
             new VideoService(),
-            new AwsS3Service(),
         ],
         actions: [],
     } as const satisfies Plugin;

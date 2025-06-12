@@ -1311,20 +1311,6 @@ export interface IPdfService extends Service {
     convertPdfToText(pdfBuffer: Buffer): Promise<string>;
 }
 
-export interface IAwsS3Service extends Service {
-    uploadFile(
-        imagePath: string,
-        subDirectory: string,
-        useSignedUrl: boolean,
-        expiresIn: number
-    ): Promise<{
-        success: boolean;
-        url?: string;
-        error?: string;
-    }>;
-    generateSignedUrl(fileName: string, expiresIn: number): Promise<string>;
-}
-
 export interface UploadIrysResult {
     success: boolean;
     url?: string;
