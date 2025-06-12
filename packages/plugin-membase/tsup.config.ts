@@ -11,7 +11,6 @@ export default defineConfig({
         "fs",
         "path",
         "@reflink/reflink",
-        "@node-llama-cpp",
         "https",
         "http",
         "agentkeepalive",
