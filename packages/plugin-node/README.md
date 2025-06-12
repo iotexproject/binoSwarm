@@ -109,10 +109,6 @@ Features by provider:
 
 The provider can be configured through the runtime settings, allowing easy switching between providers based on your needs.
 
-### LlamaService
-
-Provides local LLM capabilities using LLaMA models.
-
 ### PdfService
 
 Extracts and processes text content from PDF files.

@@ -5,7 +5,6 @@ import { Plugin } from "@elizaos/core";
 import {
     BrowserService,
     ImageDescriptionService,
-    LlamaService,
     PdfService,
     SpeechService,
     TranscriptionService,
@@ -22,7 +21,6 @@ export function createNodePlugin() {
         services: [
             new BrowserService(),
             new ImageDescriptionService(),
-            new LlamaService(),
             new PdfService(),
             new SpeechService(),
             new TranscriptionService(),

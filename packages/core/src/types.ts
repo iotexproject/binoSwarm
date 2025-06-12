@@ -631,11 +631,7 @@ export enum Clients {
     DIRECT = "direct",
     TWITTER = "twitter",
     TELEGRAM = "telegram",
-    FARCASTER = "farcaster",
-    LENS = "lens",
     AUTO = "auto",
-    SLACK = "slack",
-    GITHUB = "github",
 }
 
 export interface IAgentConfig {
@@ -1408,17 +1404,9 @@ export enum ServiceType {
     IMAGE_DESCRIPTION = "image_description",
     TRANSCRIPTION = "transcription",
     VIDEO = "video",
-    TEXT_GENERATION = "text_generation",
     BROWSER = "browser",
     SPEECH_GENERATION = "speech_generation",
     PDF = "pdf",
-    INTIFACE = "intiface",
-    AWS_S3 = "aws_s3",
-    BUTTPLUG = "buttplug",
-    SLACK = "slack",
-    IRYS = "irys",
-    TEE_LOG = "tee_log",
-    GOPLUS_SECURITY = "goplus_security",
 }
 
 export enum LoggingLevel {
