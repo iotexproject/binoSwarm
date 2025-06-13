@@ -69,6 +69,7 @@ describe("Generation With Tools", () => {
             metering: {
                 trackPrompt: vi.fn(),
             },
+            mcpTools: {},
         } as unknown as IAgentRuntime;
 
         // Setup mock model settings

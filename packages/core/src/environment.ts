@@ -133,6 +133,10 @@ export const CharacterSchema = z.object({
         })
         .optional(),
     extends: z.array(z.string()).optional(),
+    mcpServers: z.record(z.object({
+        command: z.string(),
+        args: z.array(z.string())
+    })).optional(),
 });
 
 // Type inference

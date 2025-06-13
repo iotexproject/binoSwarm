@@ -53,7 +53,7 @@ export async function generateTextWithTools({
     const result = await generateText({
         model,
         system: customSystemPrompt ?? runtime.character?.system ?? undefined,
-        tools: buildToolSet(tools),
+        tools: buildToolSet(runtime, tools),
         maxSteps: TOOL_CALL_LIMIT,
         experimental_continueSteps: true,
         onStepFinish(step: any) {
@@ -89,7 +89,7 @@ export function streamWithTools({
     const result = streamText({
         model,
         system: customSystemPrompt ?? runtime.character?.system ?? undefined,
-        tools: buildToolSet(tools),
+        tools: buildToolSet(runtime, tools),
         maxSteps: TOOL_CALL_LIMIT,
         experimental_continueSteps: true,
         toolCallStreaming: true,
@@ -137,6 +137,7 @@ function validateContext(context: string) {
 }
 
 function buildToolSet(
+    runtime: IAgentRuntime,
     tools: {
         name: string;
         description: string;
@@ -144,7 +145,7 @@ function buildToolSet(
         execute: (args: any) => Promise<any>;
     }[]
 ): ToolSet {
-    const toolSet: ToolSet = {};
+    const toolSet: ToolSet = runtime.mcpTools;
     tools.forEach((rawTool) => {
         toolSet[rawTool.name] = tool(rawTool);
     });

@@ -75,6 +75,7 @@ type AgentRuntimeOptions = {
     cacheManager: ICacheManager;
     logging?: boolean;
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
+    mcpManager?: any;
 };
 
 export class AgentRuntime implements IAgentRuntime {
@@ -107,6 +108,9 @@ export class AgentRuntime implements IAgentRuntime {
     clients: Record<string, any>;
     metering: IMetering;
 
+    mcpManager: any;
+    mcpTools: any = {};
+
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
 
     constructor(opts: AgentRuntimeOptions) {
@@ -130,12 +134,14 @@ export class AgentRuntime implements IAgentRuntime {
         this.registerActions(opts);
         this.registerContextProviders(opts);
         this.registerEvaluators(opts);
+        this.initMCPManager(opts);
     }
 
     async initialize() {
         await this.initializeServices();
         await this.initializePluginServices();
         await this.initCharacterKnowledge();
+        await this.initializeMCPTools();
     }
 
     registerMemoryManager(manager: IMemoryManager): void {
@@ -212,6 +218,9 @@ export class AgentRuntime implements IAgentRuntime {
     async stop() {
         elizaLogger.debug("runtime::stop - character", this.character);
         this.stopClients();
+        if (this.mcpManager) {
+            await this.mcpManager.close();
+        }
     }
 
     async registerService(service: Service): Promise<void> {
@@ -1222,6 +1231,16 @@ export class AgentRuntime implements IAgentRuntime {
         });
 
         return formattedInteractions;
+    }
+
+    private initMCPManager(opts: AgentRuntimeOptions) {
+        this.mcpManager = opts.mcpManager;
+    }
+
+    private async initializeMCPTools() {
+        if (this.mcpManager) {
+            this.mcpTools = await this.mcpManager.getTools();
+        }
     }
 }
 
