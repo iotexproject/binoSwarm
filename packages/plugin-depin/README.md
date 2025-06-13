@@ -41,11 +41,11 @@ The DePINScan provider fetches and caches data from the IoTeX DePINScan API, pro
 
 - **Daily Metrics**: Latest aggregated statistics about DePIN activity on IoTeX
 - **Project Data**: Detailed information about DePIN projects including:
-  - Project name and slug
-  - Token details and market metrics
-  - Device statistics (total devices, costs, earnings)
-  - Layer 1 chains and categories
-  - Market data (market cap, token price, FDV)
+    - Project name and slug
+    - Token details and market metrics
+    - Device statistics (total devices, costs, earnings)
+    - Layer 1 chains and categories
+    - Market data (market cap, token price, FDV)
 
 ## Actions
 
