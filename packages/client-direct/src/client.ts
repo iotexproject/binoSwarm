@@ -77,8 +77,22 @@ export class DirectClient {
         });
 
         // Handle graceful shutdown
-        const gracefulShutdown = () => {
+        const gracefulShutdown = async () => {
             elizaLogger.log("Received shutdown signal, closing server...");
+            // Stop all registered agents
+            for (const runtime of this.agents.values()) {
+                try {
+                    await runtime.stop();
+                    elizaLogger.success(
+                        `Agent ${runtime.character.name} stopped successfully.`
+                    );
+                } catch (error) {
+                    elizaLogger.error(
+                        `Error stopping agent ${runtime.character.name}:`,
+                        error
+                    );
+                }
+            }
             this.server.close(() => {
                 elizaLogger.success("Server closed successfully");
                 process.exit(0);

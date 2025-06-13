@@ -867,6 +867,14 @@ export type Character = {
     };
     /**Optinal Parent characters to inherit information from */
     extends?: string[];
+
+    /** Optional MCP server configurations */
+    mcpServers?: {
+        [key: string]: {
+            command: string;
+            args: string[];
+        };
+    };
 };
 
 export interface CharacterDBTraits {
@@ -1182,6 +1190,8 @@ export interface IAgentRuntime {
     // any could be EventEmitter
     // but I think the real solution is forthcoming as a base client interface
     clients: Record<string, any>;
+
+    mcpTools: any;
 
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter | null;
 
