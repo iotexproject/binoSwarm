@@ -216,7 +216,7 @@ export class AgentRuntime implements IAgentRuntime {
     }
 
     async stop() {
-        elizaLogger.debug("runtime::stop - character", this.character);
+        elizaLogger.debug("runtime::stop - character", this.character.name);
         this.stopClients();
         if (this.mcpManager) {
             await this.mcpManager.close();
