@@ -4,14 +4,12 @@ This plugin provides actions and providers for interacting with EVM-compatible c
 
 ## Description
 
-The EVM plugin provides comprehensive functionality for interacting with EVM-compatible chains, including token transfers, cross-chain bridging, and token swaps using LiFi integration.
+The EVM plugin provides comprehensive functionality for interacting with EVM-compatible chains, including token transfers, cross-chain bridging, and wallet balance tracking.
 
 ## Features
 
 - Multi-chain support with dynamic chain configuration
 - Native token transfers
-- Cross-chain token bridging via LiFi
-- Token swapping on supported DEXs
 - Wallet balance tracking
 - Custom RPC endpoint configuration
 - Automatic retry mechanisms
@@ -93,24 +91,6 @@ Transfer native tokens on the same chain:
 Transfer 1 ETH to 0x742d35Cc6634C0532925a3b844Bc454e4438f44e
 ```
 
-### 2. Bridge
-
-Bridge tokens between different chains using LiFi:
-
-```typescript
-// Example: Bridge ETH from Ethereum to Base
-Bridge 1 ETH from Ethereum to Base
-```
-
-### 3. Swap
-
-Swap tokens on the same chain using LiFi:
-
-```typescript
-// Example: Swap ETH for USDC
-Swap 1 ETH for USDC on Base
-```
-
 ## Development
 
 1. Clone the repository
@@ -145,8 +125,6 @@ pnpm test
 
 2. **Actions**
     - TransferAction: Native token transfers
-    - BridgeAction: Cross-chain transfers
-    - SwapAction: Same-chain token swaps
 
 ## Future Enhancements
 
@@ -238,7 +216,6 @@ Contributions are welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) fil
 This plugin integrates with and builds upon several key technologies:
 
 - [Ethereum](https://ethereum.org/): Decentralized blockchain
-- [LiFi](https://lifi.io/): Cross-chain bridge and swap service
 - [viem](https://viem.sh/): Ethereum client library
 - [wagmi](https://wagmi.sh/): Ethereum client library
 
@@ -250,7 +227,6 @@ Special thanks to:
 For more information about EVM capabilities:
 
 - [Ethereum Documentation](https://ethereum.org/developers/)
-- [LiFi Documentation](https://lifi.io)
 - [viem Documentation](https://viem.sh)
 - [wagmi Documentation](https://wagmi.sh)
 

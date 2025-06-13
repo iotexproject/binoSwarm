@@ -5,12 +5,10 @@ import { Plugin } from "@elizaos/core";
 import {
     BrowserService,
     ImageDescriptionService,
-    LlamaService,
     PdfService,
     SpeechService,
     TranscriptionService,
     VideoService,
-    AwsS3Service,
 } from "./services/index.ts";
 // import { describeImage } from "./actions/describe-image.ts";
 
@@ -23,12 +21,10 @@ export function createNodePlugin() {
         services: [
             new BrowserService(),
             new ImageDescriptionService(),
-            new LlamaService(),
             new PdfService(),
             new SpeechService(),
             new TranscriptionService(),
             new VideoService(),
-            new AwsS3Service(),
         ],
         actions: [],
     } as const satisfies Plugin;

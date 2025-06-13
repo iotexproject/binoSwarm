@@ -32,7 +32,6 @@
         "@elizaos/plugin-evm": "workspace:*",
         "@elizaos/plugin-image-generation": "workspace:*",
         "@elizaos/plugin-node": "workspace:*",
-        "@elizaos/plugin-tee": "workspace:*",
         "@elizaos/plugin-web-search": "workspace:*",
         "@elizaos/plugin-depin": "workspace:*",
         "@elizaos-plugins/plugin-membase": "workspace:*",

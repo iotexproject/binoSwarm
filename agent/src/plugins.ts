@@ -3,7 +3,6 @@ import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
 import { evmPlugin } from "@elizaos/plugin-evm";
 import { imageGenerationPlugin } from "@elizaos/plugin-image-generation";
 import { createNodePlugin } from "@elizaos/plugin-node";
-import { TEEMode, teePlugin } from "@elizaos/plugin-tee";
 import { webSearchPlugin } from "@elizaos/plugin-web-search";
 
 export function buildPlugins(character: Character) {
@@ -31,29 +30,6 @@ function loadOptionalPlugins(character: Character, plugins) {
     addWebSearchPlugin(character, plugins);
     addEvmPlugin(character, plugins);
     addImgGenerationPlugin(character, plugins);
-    addTeePlugin(character, plugins);
-}
-
-function addTeePlugin(character: Character, plugins) {
-    const teeMode = getSecret(character, "TEE_MODE") || "OFF";
-    const walletSecretSalt = getSecret(character, "WALLET_SECRET_SALT");
-    validateTEE(teeMode, walletSecretSalt);
-
-    if (teeMode !== TEEMode.OFF && walletSecretSalt) {
-        plugins.push(teePlugin);
-    }
-}
-
-function validateTEE(teeMode: string, walletSecretSalt: string) {
-    if (
-        teeMode.toLowerCase() !== TEEMode.OFF.toLowerCase() &&
-        !walletSecretSalt
-    ) {
-        elizaLogger.error(
-            "WALLET_SECRET_SALT required when TEE_MODE is enabled"
-        );
-        throw new Error("Invalid TEE configuration");
-    }
 }
 
 function addImgGenerationPlugin(character: Character, plugins) {

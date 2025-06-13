@@ -19,8 +19,7 @@
         "dist"
     ],
     "dependencies": {
-        "@elizaos/core": "workspace:*",
-        "@elizaos/plugin-tee": "workspace:*"
+        "@elizaos/core": "workspace:*"
     },
     "devDependencies": {
         "@vitest/coverage-v8": "2.1.5",

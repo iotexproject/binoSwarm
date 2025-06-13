@@ -126,18 +126,6 @@ export interface Goal {
     objectives: Objective[];
 }
 
-export interface Prediction {
-    id: string;
-    creator: UUID;
-    statement: string;
-    deadline: Date;
-    contract_address: `0x${string}`;
-    status: "OPEN" | "RESOLVED" | "CLOSED";
-    created_at?: Date;
-    outcome?: string;
-    smartcontract_id?: string;
-}
-
 /**
  * Model size/type classification
  */
@@ -643,11 +631,7 @@ export enum Clients {
     DIRECT = "direct",
     TWITTER = "twitter",
     TELEGRAM = "telegram",
-    FARCASTER = "farcaster",
-    LENS = "lens",
     AUTO = "auto",
-    SLACK = "slack",
-    GITHUB = "github",
 }
 
 export interface IAgentConfig {
@@ -1037,12 +1021,6 @@ export interface IDatabaseAdapter {
     createKnowledge(knowledge: RAGKnowledgeItem): Promise<void>;
     removeKnowledge(id: UUID): Promise<void>;
     clearKnowledge(agentId: UUID, shared?: boolean): Promise<void>;
-    getPredictions?(params: {
-        status: "OPEN" | "RESOLVED" | "CLOSED";
-    }): Promise<Prediction[]>;
-    createPrediction?(prediction: Prediction): Promise<void>;
-    getReadyActivePredictions?(): Promise<Prediction[]>;
-    resolvePrediction?(predictionId: string, outcome: boolean): Promise<void>;
     getIsUserInTheRoom(roomId: UUID, userId: UUID): Promise<boolean>;
     getAccountsByIds(actorIds: UUID[]): Promise<Actor[]>;
     getCharacterDbTraits(
@@ -1329,20 +1307,6 @@ export interface IPdfService extends Service {
     convertPdfToText(pdfBuffer: Buffer): Promise<string>;
 }
 
-export interface IAwsS3Service extends Service {
-    uploadFile(
-        imagePath: string,
-        subDirectory: string,
-        useSignedUrl: boolean,
-        expiresIn: number
-    ): Promise<{
-        success: boolean;
-        url?: string;
-        error?: string;
-    }>;
-    generateSignedUrl(fileName: string, expiresIn: number): Promise<string>;
-}
-
 export interface UploadIrysResult {
     success: boolean;
     url?: string;
@@ -1440,18 +1404,9 @@ export enum ServiceType {
     IMAGE_DESCRIPTION = "image_description",
     TRANSCRIPTION = "transcription",
     VIDEO = "video",
-    TEXT_GENERATION = "text_generation",
     BROWSER = "browser",
     SPEECH_GENERATION = "speech_generation",
     PDF = "pdf",
-    INTIFACE = "intiface",
-    AWS_S3 = "aws_s3",
-    BUTTPLUG = "buttplug",
-    SLACK = "slack",
-    IRYS = "irys",
-    TEE_LOG = "tee_log",
-    GOPLUS_SECURITY = "goplus_security",
-    PREDICTION_RESOLVER = "prediction_resolver",
 }
 
 export enum LoggingLevel {

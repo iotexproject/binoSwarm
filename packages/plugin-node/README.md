@@ -70,10 +70,6 @@ elizaos.registerPlugin(nodePlugin);
 
 ## Services
 
-### AwsS3Service
-
-Handles file uploads and management with AWS S3.
-
 ### BrowserService
 
 Provides web scraping and content extraction capabilities using Playwright.
@@ -112,10 +108,6 @@ Features by provider:
 - Object recognition
 
 The provider can be configured through the runtime settings, allowing easy switching between providers based on your needs.
-
-### LlamaService
-
-Provides local LLM capabilities using LLaMA models.
 
 ### PdfService
 

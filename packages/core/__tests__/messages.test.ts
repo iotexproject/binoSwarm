@@ -16,7 +16,6 @@ describe("Messages Library", () => {
         // Mock runtime with necessary methods
         runtime = {
             databaseAdapter: {
-                // Using vi.fn() instead of jest.fn()
                 getParticipantsForRoom: vi.fn(),
                 getAccountById: vi.fn(),
             },
@@ -41,7 +40,6 @@ describe("Messages Library", () => {
     test("getActorDetails should return actors based on roomId", async () => {
         const roomId: UUID = "123e4567-e89b-12d3-a456-426614174001" as UUID;
 
-        // Using vi.mocked() type assertion instead of jest.Mock casting
         vi.mocked(
             runtime.databaseAdapter.getParticipantsForRoom
         ).mockResolvedValue([userId]);

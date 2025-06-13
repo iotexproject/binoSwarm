@@ -76,57 +76,6 @@ export function parseJsonArrayFromText(text: string) {
     return null;
 }
 
-export function parseJSONObjectFromText(
-    text: string
-): Record<string, any> | null {
-    let jsonData = null;
-
-    const jsonBlockMatch = text?.match(jsonBlockPattern);
-
-    if (jsonBlockMatch) {
-        try {
-            jsonData = JSON.parse(jsonBlockMatch[1]);
-        } catch (e) {
-            elizaLogger.error("Error parsing JSON:", e);
-            return null;
-        }
-    } else {
-        const objectPattern = /{[\s\S]*?}/;
-        const objectMatch = text?.match(objectPattern);
-
-        if (objectMatch) {
-            try {
-                jsonData = JSON.parse(objectMatch[0]);
-            } catch (e) {
-                elizaLogger.error("Error parsing JSON:", e);
-                return null;
-            }
-        }
-    }
-
-    // try brute force
-    if (!jsonData) {
-        try {
-            jsonData = JSON.parse(text);
-        } catch (e) {
-            elizaLogger.error("Error parsing JSON:", e);
-            return null;
-        }
-    }
-
-    if (
-        typeof jsonData === "object" &&
-        jsonData !== null &&
-        !Array.isArray(jsonData)
-    ) {
-        return jsonData;
-    } else if (typeof jsonData === "object" && Array.isArray(jsonData)) {
-        return parseJsonArrayFromText(text);
-    } else {
-        return null;
-    }
-}
-
 export function truncateToCompleteSentence(
     text: string,
     maxLength: number
@@ -156,13 +105,4 @@ export function truncateToCompleteSentence(
     // Fallback: Hard truncate and add ellipsis
     const hardTruncated = text.slice(0, maxLength - 3).trim();
     return hardTruncated + "...";
-}
-
-export function parseTagContent(text: string, tag: string) {
-    const pattern = new RegExp(`<${tag}>\\s*([\\s\\S]*?)\\s*<\\/${tag}>`);
-    const match = text?.match(pattern);
-    if (match && match[1].trim()) {
-        return match[1].trim();
-    }
-    return null;
 }
