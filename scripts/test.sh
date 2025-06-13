@@ -26,7 +26,7 @@ FAILURES=0
 # If specific test file provided, run just that
 if [[ "$1" == *".ts" ]]; then
     echo -e "\033[1mRunning specific test: $1\033[0m"
-    node --experimental-vm-modules $(which jest) "$1"
+    npx vitest run "$1"
     exit $?
 fi
 
@@ -49,7 +49,7 @@ if [ ! -z "$1" ]; then
     fi
     echo "Found test files:"
     echo "$test_files"
-    node --experimental-vm-modules $(which jest) $test_files
+    npx vitest run $test_files
     exit $?
 fi
 
