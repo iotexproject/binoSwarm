@@ -124,6 +124,9 @@ importers:
       '@elizaos/plugin-image-generation':
         specifier: workspace:*
         version: link:../packages/plugin-image-generation
+      '@elizaos/plugin-mcp':
+        specifier: workspace:*
+        version: link:../packages/plugin-mcp
       '@elizaos/plugin-node':
         specifier: workspace:*
         version: link:../packages/plugin-node
@@ -422,7 +425,7 @@ importers:
         version: 1.0.15
       langchain:
         specifier: 0.3.6
-        version: 0.3.6(@langchain/core@0.3.58(openai@4.73.0(encoding@0.1.13)(zod@3.23.8)))(axios@1.9.0)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.73.0(encoding@0.1.13)(zod@3.23.8))(ws@8.18.0)
+        version: 0.3.6(@langchain/core@0.3.58(openai@4.73.0(encoding@0.1.13)(zod@3.23.8)))(axios@1.10.0)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.73.0(encoding@0.1.13)(zod@3.23.8))(ws@8.18.0)
       openai:
         specifier: 4.73.0
         version: 4.73.0(encoding@0.1.13)(zod@3.23.8)
@@ -546,7 +549,7 @@ importers:
         version: link:../plugin-evm
       axios:
         specifier: ^1.7.9
-        version: 1.9.0
+        version: 1.10.0
       ethers:
         specifier: ^6.13.5
         version: 6.14.4
@@ -583,7 +586,7 @@ importers:
         version: link:../core
       axios:
         specifier: ^1.7.9
-        version: 1.9.0
+        version: 1.10.0
       tsup:
         specifier: 8.3.5
         version: 8.3.5(postcss@8.5.5)(typescript@5.6.3)(yaml@2.8.0)
@@ -602,6 +605,22 @@ importers:
       whatwg-url:
         specifier: 7.1.0
         version: 7.1.0
+
+  packages/plugin-mcp:
+    dependencies:
+      '@elizaos/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^2.1.5
+        version: 2.1.5(vitest@2.1.5(@types/node@22.8.4)(jsdom@25.0.1)(terser@5.42.0))
+      tsup:
+        specifier: ^8.3.5
+        version: 8.3.5(postcss@8.5.5)(typescript@5.6.3)(yaml@2.8.0)
+      vitest:
+        specifier: ^2.1.5
+        version: 2.1.5(@types/node@22.8.4)(jsdom@25.0.1)(terser@5.42.0)
 
   packages/plugin-membase:
     dependencies:
@@ -3129,8 +3148,8 @@ packages:
   axios@0.27.2:
     resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
 
-  axios@1.9.0:
-    resolution: {integrity: sha512-re4CqKTJaURpzbLHtIi6XpDv20/CnpXOtjRY5/CU32L8gU8ek9UIivcfvSWvmKEngmVbrUtPpdDwWDWL7DNHvg==}
+  axios@1.10.0:
+    resolution: {integrity: sha512-/1xYAC4MP/HEG+3duIhFr4ZQXR4sQXOIe+o6sdqzeykGLx6Upp/1p8MHqhINOvGeP7xyNHe7tsiJByc4SSVUxw==}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -5550,8 +5569,8 @@ packages:
   next-tick@1.1.0:
     resolution: {integrity: sha512-CXdUiJembsNjuToQvxayPZF9Vqht7hewsvy2sOWafLvi2awflj9mOC6bHIg50orX8IJvWKY9wYQ/zB2kogPslQ==}
 
-  node-addon-api@8.3.1:
-    resolution: {integrity: sha512-lytcDEdxKjGJPTLEfW4mYMigRezMlyJY8W4wxJK8zE533Jlb8L8dRuObJFWg2P+AuOIxoCgKF+2Oq4d4Zd0OUA==}
+  node-addon-api@8.4.0:
+    resolution: {integrity: sha512-D9DI/gXHvVmjHS08SVch0Em8G5S1P+QWtU31appcKT/8wFSPRcdHadIFSAntdMMVM5zz+/DL+bL/gz3UDppqtg==}
     engines: {node: ^18 || ^20 || >= 21}
 
   node-cache@5.1.2:
@@ -6294,8 +6313,8 @@ packages:
   pstree.remy@1.1.8:
     resolution: {integrity: sha512-77DZwxQmxKnu3aR542U+X8FypNzbfJ+C5XQDk3uWjWxn6151aIMGthWYRXTqT1E5oJvg+ljaa2OJi+VfvCOQ8w==}
 
-  pump@3.0.2:
-    resolution: {integrity: sha512-tUPXtzlGM8FE3P0ZL6DVs/3P58k9nk8/jZeQCurTJylQA8qFYzHFfhBJkuqyE0FifOsQ0uKWekiZ5g8wtr28cw==}
+  pump@3.0.3:
+    resolution: {integrity: sha512-todwxLMY7/heScKmntwQG8CXVkWUOdYxIvY2s0VWAAMh/nd8SoYiRaKjlr7+iCs984f2P8zvrfWcDDYVb73NfA==}
 
   punycode.js@2.3.1:
     resolution: {integrity: sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA==}
@@ -6732,8 +6751,8 @@ packages:
     resolution: {integrity: sha512-a2B9Y0KlNXl9u/vsW6sTIu9vGEpfKu2wRV6l1H3XEas/0gUIzGzBoP/IouTcUQbm9JWZLH3COxyn03TYlFax6w==}
     engines: {node: '>=10'}
 
-  simple-wcswidth@1.0.1:
-    resolution: {integrity: sha512-xMO/8eNREtaROt7tJvWJqHBDTMFN4eiQ5I4JRMuilwfnFcV5W9u7RUkueNkdw0jPqGMX36iCywelS5yilTuOxg==}
+  simple-wcswidth@1.1.1:
+    resolution: {integrity: sha512-R3q3/eoeNBp24CNTASEUrffXi0j9TwPIEvSStlvSrsFimM17sV5EHcMOc86j3K+UWZyLYvH0hRmYGCpCoaJ4vw==}
 
   slash@3.0.0:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
@@ -8472,7 +8491,7 @@ snapshots:
   '@discordjs/opus@https://codeload.github.com/discordjs/opus/tar.gz/679ff3f58e6804b80becc166c7214deb2ca026e2(encoding@0.1.13)':
     dependencies:
       '@discordjs/node-pre-gyp': 0.4.5(encoding@0.1.13)
-      node-addon-api: 8.3.1
+      node-addon-api: 8.4.0
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -10029,7 +10048,7 @@ snapshots:
 
   '@tavily/core@0.0.2':
     dependencies:
-      axios: 1.9.0
+      axios: 1.10.0
       js-tiktoken: 1.0.15
     transitivePeerDependencies:
       - debug
@@ -10595,7 +10614,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.9.0:
+  axios@1.10.0:
     dependencies:
       follow-redirects: 1.15.9(debug@4.3.7)
       form-data: 4.0.3
@@ -11011,7 +11030,7 @@ snapshots:
 
   console-table-printer@2.14.3:
     dependencies:
-      simple-wcswidth: 1.0.1
+      simple-wcswidth: 1.1.1
 
   content-disposition@0.5.4:
     dependencies:
@@ -12042,7 +12061,7 @@ snapshots:
 
   get-stream@5.2.0:
     dependencies:
-      pump: 3.0.2
+      pump: 3.0.3
 
   get-stream@6.0.0: {}
 
@@ -12688,7 +12707,7 @@ snapshots:
       doublearray: 0.0.2
       zlibjs: 0.3.1
 
-  langchain@0.3.6(@langchain/core@0.3.58(openai@4.73.0(encoding@0.1.13)(zod@3.23.8)))(axios@1.9.0)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.73.0(encoding@0.1.13)(zod@3.23.8))(ws@8.18.0):
+  langchain@0.3.6(@langchain/core@0.3.58(openai@4.73.0(encoding@0.1.13)(zod@3.23.8)))(axios@1.10.0)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.73.0(encoding@0.1.13)(zod@3.23.8))(ws@8.18.0):
     dependencies:
       '@langchain/core': 0.3.58(openai@4.73.0(encoding@0.1.13)(zod@3.23.8))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.58(openai@4.73.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(ws@8.18.0)
@@ -12704,7 +12723,7 @@ snapshots:
       zod: 3.23.8
       zod-to-json-schema: 3.24.5(zod@3.23.8)
     optionalDependencies:
-      axios: 1.9.0
+      axios: 1.10.0
       handlebars: 4.7.8
     transitivePeerDependencies:
       - encoding
@@ -13328,7 +13347,7 @@ snapshots:
 
   next-tick@1.1.0: {}
 
-  node-addon-api@8.3.1: {}
+  node-addon-api@8.4.0: {}
 
   node-cache@5.1.2:
     dependencies:
@@ -13489,7 +13508,7 @@ snapshots:
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.0-rc.46
       '@zkochan/js-yaml': 0.0.7
-      axios: 1.9.0
+      axios: 1.10.0
       chalk: 4.1.0
       cli-cursor: 3.1.0
       cli-spinners: 2.6.1
@@ -14179,7 +14198,7 @@ snapshots:
 
   pstree.remy@1.1.8: {}
 
-  pump@3.0.2:
+  pump@3.0.3:
     dependencies:
       end-of-stream: 1.4.4
       once: 1.4.0
@@ -14211,7 +14230,7 @@ snapshots:
 
   puppeteer-extra-plugin-capsolver@2.0.1(encoding@0.1.13)(puppeteer-core@19.11.1(encoding@0.1.13)(typescript@5.6.3))(typescript@5.6.3):
     dependencies:
-      axios: 1.9.0
+      axios: 1.10.0
       capsolver-npm: 2.0.2
       puppeteer: 19.11.1(encoding@0.1.13)(typescript@5.6.3)
       puppeteer-extra: 3.3.6(puppeteer-core@19.11.1(encoding@0.1.13)(typescript@5.6.3))(puppeteer@19.11.1(encoding@0.1.13)(typescript@5.6.3))
@@ -14722,7 +14741,7 @@ snapshots:
     dependencies:
       semver: 7.7.2
 
-  simple-wcswidth@1.0.1: {}
+  simple-wcswidth@1.1.1: {}
 
   slash@3.0.0: {}
 
@@ -14961,7 +14980,7 @@ snapshots:
     dependencies:
       chownr: 1.1.4
       mkdirp-classic: 0.5.3
-      pump: 3.0.2
+      pump: 3.0.3
       tar-stream: 2.2.0
 
   tar-stream@2.2.0:

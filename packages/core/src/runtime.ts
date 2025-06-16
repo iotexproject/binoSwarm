@@ -522,6 +522,7 @@ export class AgentRuntime implements IAgentRuntime {
             characterPostExamples,
             characterMessageExamples,
             currentMessage: message.content.text,
+            availableMCPTools: this.formatMCPTools(),
             ...additionalKeys,
         } as State;
 
@@ -1241,6 +1242,22 @@ export class AgentRuntime implements IAgentRuntime {
         if (this.mcpManager) {
             this.mcpTools = await this.mcpManager.getTools();
         }
+    }
+
+    private formatMCPTools(): string {
+        const tools = Object.entries(this.mcpTools);
+        if (tools.length === 0) {
+            return "";
+        }
+        return addHeader(
+            "# Available MCP Tools",
+            tools
+                .map(
+                    ([name, tool]: [string, any]) =>
+                        `- ${name}: ${tool.description}`
+                )
+                .join("\n")
+        );
     }
 }
 
