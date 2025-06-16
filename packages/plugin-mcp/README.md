@@ -16,7 +16,7 @@ To integrate the MCP plugin, you must add it to your agent's `character.json` fi
     {
         "name": "your-agent-name",
         "clients": ["discord"],
-        "plugins": ["@elizaos/plugin-mcp"],
+        "plugins": ["@elizaos/plugin-mcp"]
         // ... existing code ...
     }
     ```
