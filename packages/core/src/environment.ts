@@ -135,10 +135,18 @@ export const CharacterSchema = z.object({
     extends: z.array(z.string()).optional(),
     mcpServers: z
         .record(
-            z.object({
-                command: z.string(),
-                args: z.array(z.string()),
-            })
+            z.union([
+                z.object({
+                    command: z.string(),
+                    args: z.array(z.string()),
+                    url: z.undefined().optional(), // Enforce XOR: url must be undefined if command/args are present
+                }),
+                z.object({
+                    url: z.string(),
+                    command: z.undefined().optional(),
+                    args: z.undefined().optional(),
+                }),
+            ])
         )
         .optional(),
 });

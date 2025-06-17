@@ -192,4 +192,55 @@ describe("Character Configuration", () => {
             validateCharacterConfig(configWithComplexMessage)
         ).not.toThrow();
     });
+
+    it("should validate mcpServers with command and args", () => {
+        const configWithMcpCommand = {
+            ...validCharacterConfig,
+            mcpServers: {
+                "server-one": {
+                    command: "test-command",
+                    args: ["arg1", "arg2"],
+                },
+            },
+        };
+        expect(() =>
+            validateCharacterConfig(configWithMcpCommand)
+        ).not.toThrow();
+    });
+
+    it("should validate mcpServers with url", () => {
+        const configWithMcpUrl = {
+            ...validCharacterConfig,
+            mcpServers: {
+                "server-two": {
+                    url: "http://localhost:8080",
+                },
+            },
+        };
+        expect(() => validateCharacterConfig(configWithMcpUrl)).not.toThrow();
+    });
+
+    it("should throw error for invalid mcpServers configuration (missing command/args/url)", () => {
+        const configWithInvalidMcp = {
+            ...validCharacterConfig,
+            mcpServers: {
+                "invalid-server": {},
+            },
+        };
+        expect(() => validateCharacterConfig(configWithInvalidMcp)).toThrow();
+    });
+
+    it("should throw error for mcpServers configuration with both command/args and url", () => {
+        const configWithBothMcp = {
+            ...validCharacterConfig,
+            mcpServers: {
+                "server-three": {
+                    command: "test-command",
+                    args: ["arg1", "arg2"],
+                    url: "http://localhost:8080",
+                },
+            },
+        };
+        expect(() => validateCharacterConfig(configWithBothMcp)).toThrow();
+    });
 });
