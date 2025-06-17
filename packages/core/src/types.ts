@@ -870,12 +870,15 @@ export type Character = {
 
     /** Optional MCP server configurations */
     mcpServers?: {
-        [key: string]: {
-            command: string;
-            args: string[];
-        };
+        [key: string]: MCPServerConfig;
     };
 };
+
+export interface MCPServerConfig {
+    command?: string;
+    args?: string[];
+    url?: string;
+}
 
 export interface CharacterDBTraits {
     id: string;

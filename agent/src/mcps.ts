@@ -1,12 +1,30 @@
 import { experimental_createMCPClient as createMCPClient, ToolSet } from "ai";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio";
-import { Character } from "@elizaos/core";
+import { Character, MCPServerConfig } from "@elizaos/core";
 
 export class MCPManager {
     private mcpClients: any[] = [];
 
     constructor() {
         // Constructor initializes an empty array for MCP clients.
+    }
+
+    private async initializeStdioClient(serverConfig: MCPServerConfig) {
+        return await createMCPClient({
+            transport: new StdioMCPTransport({
+                command: serverConfig.command!,
+                args: serverConfig.args!,
+            }),
+        });
+    }
+
+    private async initializeSseClient(serverConfig: MCPServerConfig) {
+        return await createMCPClient({
+            transport: {
+                type: "sse",
+                url: serverConfig.url!,
+            },
+        });
     }
 
     public async initialize(character: Character) {
@@ -18,12 +36,17 @@ export class MCPManager {
         for (const serverName in character.mcpServers) {
             const serverConfig = character.mcpServers[serverName];
             try {
-                const client = await createMCPClient({
-                    transport: new StdioMCPTransport({
-                        command: serverConfig.command,
-                        args: serverConfig.args,
-                    }),
-                });
+                let client;
+                if (serverConfig.url) {
+                    client = await this.initializeSseClient(serverConfig);
+                } else if (serverConfig.command && serverConfig.args) {
+                    client = await this.initializeStdioClient(serverConfig);
+                } else {
+                    console.warn(
+                        `Invalid MCP server configuration for ${serverName}. Skipping.`
+                    );
+                    continue;
+                }
                 console.log(`${serverName} initialized`);
                 this.mcpClients.push(client);
             } catch (error) {
