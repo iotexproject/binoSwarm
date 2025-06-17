@@ -20,6 +20,7 @@ describe("MCPManager", () => {
     let mockClient: any;
     let consoleLogSpy: any;
     let consoleErrorSpy: any;
+    let consoleWarnSpy: any;
 
     beforeEach(() => {
         mcpManager = new MCPManager();
@@ -33,6 +34,7 @@ describe("MCPManager", () => {
         consoleErrorSpy = vi
             .spyOn(console, "error")
             .mockImplementation(() => {});
+        consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -72,6 +74,47 @@ describe("MCPManager", () => {
         expect(consoleLogSpy).toHaveBeenCalledWith("server1 initialized");
         expect(consoleLogSpy).toHaveBeenCalledWith("server2 initialized");
 
+        const tools = await mcpManager.getTools();
+        expect(tools).toEqual({});
+    });
+
+    it("should initialize an SSE MCP client", async () => {
+        const character = {
+            mcpServers: {
+                sseServer: { url: "https://example.com/sse" },
+            },
+        } as unknown as Character;
+
+        await mcpManager.initialize(character);
+
+        expect(mockCreateMCPClient).toHaveBeenCalledTimes(1);
+        expect(mockCreateMCPClient).toHaveBeenCalledWith({
+            transport: {
+                type: "sse",
+                url: "https://example.com/sse",
+            },
+        });
+        expect(mockStdioMCPTransport).not.toHaveBeenCalled();
+        expect(consoleLogSpy).toHaveBeenCalledWith("sseServer initialized");
+    });
+
+    it("should warn and skip invalid MCP server configurations", async () => {
+        const character = {
+            mcpServers: {
+                invalidServer: { someOtherProp: "value" },
+            },
+        } as unknown as Character;
+
+        await mcpManager.initialize(character);
+
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+        expect(consoleLogSpy).not.toHaveBeenCalledWith(
+            "invalidServer initialized"
+        );
+        expect(mockCreateMCPClient).not.toHaveBeenCalled();
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+            "Invalid MCP server configuration for invalidServer. Skipping."
+        );
         const tools = await mcpManager.getTools();
         expect(tools).toEqual({});
     });
