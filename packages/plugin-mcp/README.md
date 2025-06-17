@@ -39,7 +39,10 @@ To integrate the MCP plugin, you must add it to your agent's `character.json` fi
         "mcpServers": {
             "airbnb": {
                 "command": "npx",
-                "args": ["-y", "@openbnb/mcp-server-airbnb"]
+                "args": ["-y", "@somedev/mcp-server-example"]
+            },
+            "sentai": {
+                "url": "https://somemcpexample.ai/sse"
             }
             // Add more MCP servers here as needed
         }
@@ -65,5 +68,3 @@ You can find a variety of pre-built MCP servers to extend your agent's capabilit
 - [https://github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)
 - [https://github.com/punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)
 - [https://mcp.composio.dev](https://mcp.composio.dev)
-
-**Note on MCP Tool Support**: Currently, the MCP plugin primarily supports standard input-output (stdio) MCP tools without environment variables. Support for environment variables, remote servers, and Server-Sent Events (SSE) servers is currently in testing and actively under development.
