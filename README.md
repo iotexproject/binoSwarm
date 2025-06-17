@@ -6,6 +6,14 @@
 
 **See it in action:** [@Bino_AI](https://x.com/Bino_AI) • [@Caila_AI](https://x.com/Caila_AI) • [@NodeyICN](https://x.com/NodeyICN)
 
+## 📋 Table of Contents
+
+- [✨ What You Get](#-what-you-get)
+- [🎯 What You'll Build](#-what-youll-build)
+- [🚀 3-Minute Setup (No, Really)](#-3-minute-setup-no-really)
+- [🛠️ For the Brave: Build From Source](#️-for-the-brave-build-from-source)
+- [📚 Feed Your Agent Knowledge](#-feed-your-agent-knowledge)
+
 ## ✨ What You Get
 
 - 🛠️ **Multi-platform domination:** Discord, Twitter, Telegram — your agents go where the action is
