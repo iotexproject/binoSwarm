@@ -34,35 +34,47 @@ export class MCPManager {
         });
     }
 
+    private async initializeClient(
+        serverName: string,
+        serverConfig: MCPServerConfig
+    ) {
+        try {
+            let client;
+            if (serverConfig.url) {
+                client = await this.initializeSseClient(serverConfig);
+            } else if (serverConfig.command && serverConfig.args) {
+                client = await this.initializeStdioClient(serverConfig);
+            } else {
+                elizaLogger.warn(
+                    `Invalid MCP server configuration for ${serverName}. Skipping.`
+                );
+                return null; // Skip adding to clients if invalid
+            }
+            elizaLogger.debug(`${serverName} initialized`);
+            return client;
+        } catch (error) {
+            elizaLogger.error(
+                `Failed to initialize MCP client for ${serverName}:`,
+                error
+            );
+            return null; // Return null on error so Promise.all can still resolve
+        }
+    }
+
     public async initialize(character: Character) {
         if (!character.mcpServers) {
             elizaLogger.warn("No MCP servers configured for this character.");
             return;
         }
 
+        const promises: Promise<any>[] = [];
         for (const serverName in character.mcpServers) {
             const serverConfig = character.mcpServers[serverName];
-            try {
-                let client;
-                if (serverConfig.url) {
-                    client = await this.initializeSseClient(serverConfig);
-                } else if (serverConfig.command && serverConfig.args) {
-                    client = await this.initializeStdioClient(serverConfig);
-                } else {
-                    elizaLogger.warn(
-                        `Invalid MCP server configuration for ${serverName}. Skipping.`
-                    );
-                    continue;
-                }
-                elizaLogger.debug(`${serverName} initialized`);
-                this.mcpClients.push(client);
-            } catch (error) {
-                elizaLogger.error(
-                    `Failed to initialize MCP client for ${serverName}:`,
-                    error
-                );
-            }
+            promises.push(this.initializeClient(serverName, serverConfig));
         }
+
+        const clients = await Promise.all(promises);
+        this.mcpClients = clients.filter((client) => client !== null);
     }
 
     public async close() {
