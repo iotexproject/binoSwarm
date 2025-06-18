@@ -916,44 +916,25 @@ describe("AgentRuntime", () => {
     });
 
     describe("formatMCPTools", () => {
-        let mockMcpManager: any;
-
-        beforeEach(() => {
-            vi.clearAllMocks();
-            mockMcpManager = {
-                getTools: vi.fn(),
-                close: vi.fn().mockResolvedValue(undefined),
-            };
-            runtime = new AgentRuntime({
-                token: "test-token",
-                character: defaultCharacter,
-                databaseAdapter: mockDatabaseAdapter,
-                cacheManager: mockCacheManager,
-                modelProvider: ModelProviderName.OPENAI,
-                mcpManager: mockMcpManager,
-            });
-        });
-
-        it("should return an empty string when no MCP tools are available", async () => {
-            mockMcpManager.getTools.mockResolvedValue({});
-            await runtime.initialize(); // Initialize to call initializeMCPTools
-
-            const formattedTools = (runtime as any).formatMCPTools();
-            expect(formattedTools).toBe("");
-        });
-
         it("should format available MCP tools correctly", async () => {
-            const mockTools = {
+            // Directly set mcpTools for the test
+            runtime.mcpTools = {
                 tool1: { description: "Description for tool1" },
                 tool2: { description: "Description for tool2" },
             };
-            mockMcpManager.getTools.mockResolvedValue(mockTools);
-            await runtime.initialize(); // Initialize to call initializeMCPTools
 
             const formattedTools = (runtime as any).formatMCPTools();
             expect(formattedTools).toContain("# Available MCP Tools");
             expect(formattedTools).toContain("- tool1: Description for tool1");
             expect(formattedTools).toContain("- tool2: Description for tool2");
+        });
+
+        it("should return an empty string if no MCP tools are available", async () => {
+            // Ensure mcpTools is empty
+            runtime.mcpTools = {};
+
+            const formattedTools = (runtime as any).formatMCPTools();
+            expect(formattedTools).toBe("");
         });
     });
 });

@@ -69,6 +69,9 @@ describe("Generation With Tools", () => {
             metering: {
                 trackPrompt: vi.fn(),
             },
+            mcpManager: {
+                close: vi.fn().mockResolvedValue(undefined),
+            },
             mcpTools: {},
         } as unknown as IAgentRuntime;
 

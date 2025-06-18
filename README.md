@@ -1,10 +1,10 @@
 # Bino Swarm 🐐
 
-*The autonomous agent framework that doesn't mess around. Build once, deploy everywhere.*
+_The autonomous agent framework that doesn't mess around. Build once, deploy everywhere._
 
 **Powered by [Quicksilver](https://github.com/iotexproject/quicksilver.git)** — our open-source framework that bridges Large Language Models (LLMs) with Decentralized Physical Infrastructure Networks (DePINs) to create advanced AI agents.
 
-*Originally forked from [ElizaOS](https://github.com/elizaOS/eliza) — credits to the pioneering work that laid the foundation.*
+_Originally forked from [ElizaOS](https://github.com/elizaOS/eliza) — credits to the pioneering work that laid the foundation._
 
 **See it in action:** [@Bino_AI](https://x.com/Bino_AI) • [@Caila_AI](https://x.com/Caila_AI) • [@NodeyICN](https://x.com/NodeyICN)
 
@@ -50,31 +50,32 @@
 
 2. **Handle your secrets:** Copy `.env.example` to `.env` and fill in your API keys.
 
-   ```bash
-   cp .env.example .env
-   ```
+    ```bash
+    cp .env.example .env
+    ```
 
-   *Pro tip: Skip the `.env` if you're feeling brave — pass secrets through character JSON instead.*
+    _Pro tip: Skip the `.env` if you're feeling brave — pass secrets through character JSON instead._
 
 3. **Grab the Docker blueprint:** Copy `docker-compose.yaml` to your project root.
 
 4. **Point it in the right direction:** Edit `docker-compose.yaml` to use your character:
 
-   ```yaml
-   services:
-       bino:
-           image: ghcr.io/iotexproject/bino:latest # Latest and greatest
-           command: ["pnpm", "start", "--character=characters/my-character.json"]
-   # ... rest of your config ...
-   ```
+    ```yaml
+    services:
+        bino:
+            image: ghcr.io/iotexproject/bino:latest # Latest and greatest
+            command:
+                ["pnpm", "start", "--character=characters/my-character.json"]
+    # ... rest of your config ...
+    ```
 
 5. **Fire it up:**
 
-   ```bash
-   docker compose up
-   ```
+    ```bash
+    docker compose up
+    ```
 
-   Watch your digital offspring come to life. If it breaks, that's what logs are for.
+    Watch your digital offspring come to life. If it breaks, that's what logs are for.
 
 ## 🛠️ For the Brave: Build From Source
 
@@ -95,15 +96,15 @@ cd binoSwarm
 
 3. **Build the beast:**
 
-   ```bash
-   pnpm i --no-frozen-lockfile && pnpm build
-   ```
+    ```bash
+    pnpm i --no-frozen-lockfile && pnpm build
+    ```
 
 4. **Let it rip:**
 
-   ```bash
-   pnpm start --character=characters/binotest.json
-   ```
+    ```bash
+    pnpm start --character=characters/binotest.json
+    ```
 
 Now you're running raw code. Break it, fix it, make it better. Pull requests welcome.
 

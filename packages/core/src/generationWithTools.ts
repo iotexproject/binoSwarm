@@ -50,21 +50,26 @@ export async function generateTextWithTools({
     );
     const model = getModel(provider, modelSettings.name);
 
-    const result = await generateText({
-        model,
-        system: customSystemPrompt ?? runtime.character?.system ?? undefined,
-        tools: buildToolSet(runtime, tools),
-        maxSteps: TOOL_CALL_LIMIT,
-        experimental_continueSteps: true,
-        onStepFinish(step: any) {
-            meterStep(runtime, step, modelSettings);
-            logStep(step);
-        },
-        ...modelOptions,
-    });
+    try {
+        const result = await generateText({
+            model,
+            system:
+                customSystemPrompt ?? runtime.character?.system ?? undefined,
+            tools: buildToolSet(runtime, tools),
+            maxSteps: TOOL_CALL_LIMIT,
+            experimental_continueSteps: true,
+            onStepFinish(step: any) {
+                meterStep(runtime, step, modelSettings);
+                logStep(step);
+            },
+            ...modelOptions,
+        });
 
-    elizaLogger.debug("generateTextWithTools result:", result.text);
-    return result.text;
+        elizaLogger.debug("generateTextWithTools result:", result.text);
+        return result.text;
+    } finally {
+        runtime.mcpManager.close();
+    }
 }
 
 export function streamWithTools({
@@ -97,6 +102,9 @@ export function streamWithTools({
         onStepFinish(step: any) {
             logStep(step);
             meterStep(runtime, step, modelSettings);
+        },
+        onFinish() {
+            runtime.mcpManager.close();
         },
         ...modelOptions,
     });

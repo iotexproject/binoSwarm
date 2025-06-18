@@ -1194,6 +1194,7 @@ export interface IAgentRuntime {
     // but I think the real solution is forthcoming as a base client interface
     clients: Record<string, any>;
 
+    mcpManager: any;
     mcpTools: any;
 
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter | null;
