@@ -11,7 +11,6 @@ export * from "./schemas/mapbox";
 
 import type { Plugin } from "@elizaos/core";
 
-import { askSentai } from "./actions/sentai";
 import { sentaiProvider } from "./providers/sentai";
 
 export const depinPlugin: Plugin = {
@@ -24,7 +23,7 @@ export const depinPlugin: Plugin = {
     services: [
         // Add services here
     ],
-    actions: [askSentai],
+    actions: [],
 };
 
 export default depinPlugin;
