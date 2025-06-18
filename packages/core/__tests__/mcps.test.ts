@@ -1,8 +1,9 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
-import { MCPManager } from "../src/mcps";
+import { MCPManager } from "../src/MCPManager";
 import { Character } from "@elizaos/core";
 import { experimental_createMCPClient as createMCPClient } from "ai";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio";
+import { elizaLogger } from "../src/logger";
 
 vi.mock("ai", () => ({
     experimental_createMCPClient: vi.fn(),
@@ -12,15 +13,22 @@ vi.mock("ai/mcp-stdio", () => ({
     Experimental_StdioMCPTransport: vi.fn(),
 }));
 
+vi.mock("../src/logger", () => ({
+    elizaLogger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+    },
+}));
+
 const mockCreateMCPClient = createMCPClient as any;
 const mockStdioMCPTransport = StdioMCPTransport as any;
+const mockElizaLogger = elizaLogger as any;
 
 describe("MCPManager", () => {
     let mcpManager: MCPManager;
     let mockClient: any;
-    let consoleLogSpy: any;
-    let consoleErrorSpy: any;
-    let consoleWarnSpy: any;
 
     beforeEach(() => {
         mcpManager = new MCPManager();
@@ -30,11 +38,11 @@ describe("MCPManager", () => {
         };
         mockCreateMCPClient.mockResolvedValue(mockClient);
         mockStdioMCPTransport.mockImplementation((config) => ({ config }));
-        consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-        consoleErrorSpy = vi
-            .spyOn(console, "error")
-            .mockImplementation(() => {});
-        consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+        // Clear all mock calls before each test
+        mockElizaLogger.debug.mockClear();
+        mockElizaLogger.info.mockClear();
+        mockElizaLogger.warn.mockClear();
+        mockElizaLogger.error.mockClear();
     });
 
     afterEach(() => {
@@ -44,7 +52,7 @@ describe("MCPManager", () => {
     it("should initialize without MCP servers if not configured", async () => {
         const character = {} as Character;
         await mcpManager.initialize(character);
-        expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect(mockElizaLogger.warn).toHaveBeenCalledWith(
             "No MCP servers configured for this character."
         );
         expect(mockCreateMCPClient).not.toHaveBeenCalled();
@@ -71,8 +79,12 @@ describe("MCPManager", () => {
         });
 
         expect(mockCreateMCPClient).toHaveBeenCalledTimes(2);
-        expect(consoleLogSpy).toHaveBeenCalledWith("server1 initialized");
-        expect(consoleLogSpy).toHaveBeenCalledWith("server2 initialized");
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith(
+            "server1 initialized"
+        );
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith(
+            "server2 initialized"
+        );
 
         const tools = await mcpManager.getTools();
         expect(tools).toEqual({});
@@ -92,10 +104,30 @@ describe("MCPManager", () => {
             transport: {
                 type: "sse",
                 url: "https://example.com/sse",
+                onerror: expect.any(Function), // check for function presence
             },
+            onUncaughtError: expect.any(Function), // check for function presence
         });
         expect(mockStdioMCPTransport).not.toHaveBeenCalled();
-        expect(consoleLogSpy).toHaveBeenCalledWith("sseServer initialized");
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith(
+            "sseServer initialized"
+        );
+
+        // Test error handling within SSE client (simulate onerror and onUncaughtError)
+        const sseClientConfig = mockCreateMCPClient.mock.calls[0][0];
+        const testError = new Error("SSE Test Error");
+        sseClientConfig.transport.onerror(testError);
+        expect(mockElizaLogger.error).toHaveBeenCalledWith(
+            "MCP SSE error:",
+            testError
+        );
+
+        const testUncaughtError = new Error("SSE Uncaught Test Error");
+        sseClientConfig.onUncaughtError(testUncaughtError);
+        expect(mockElizaLogger.error).toHaveBeenCalledWith(
+            "MCP SSE uncaught error:",
+            testUncaughtError
+        );
     });
 
     it("should warn and skip invalid MCP server configurations", async () => {
@@ -107,12 +139,12 @@ describe("MCPManager", () => {
 
         await mcpManager.initialize(character);
 
-        expect(consoleErrorSpy).not.toHaveBeenCalled();
-        expect(consoleLogSpy).not.toHaveBeenCalledWith(
+        expect(mockElizaLogger.error).not.toHaveBeenCalled();
+        expect(mockElizaLogger.debug).not.toHaveBeenCalledWith(
             "invalidServer initialized"
         );
         expect(mockCreateMCPClient).not.toHaveBeenCalled();
-        expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect(mockElizaLogger.warn).toHaveBeenCalledWith(
             "Invalid MCP server configuration for invalidServer. Skipping."
         );
         const tools = await mcpManager.getTools();
@@ -131,7 +163,7 @@ describe("MCPManager", () => {
 
         await mcpManager.initialize(character);
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect(mockElizaLogger.error).toHaveBeenCalledWith(
             "Failed to initialize MCP client for server1:",
             error
         );
@@ -148,7 +180,7 @@ describe("MCPManager", () => {
         await mcpManager.close();
 
         expect(mockClient.close).toHaveBeenCalledTimes(1);
-        expect(consoleLogSpy).toHaveBeenCalledWith("closing mcpClient");
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith("closing mcpClient");
         const tools = await mcpManager.getTools();
         expect(tools).toEqual({});
     });
@@ -178,6 +210,10 @@ describe("MCPManager", () => {
 
         expect(mockClient1.tools).toHaveBeenCalled();
         expect(mockClient2.tools).toHaveBeenCalled();
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith("allTools", {
+            toolA: { description: "A" },
+            toolB: { description: "B" },
+        });
         expect(tools).toEqual({
             toolA: { description: "A" },
             toolB: { description: "B" },
@@ -207,6 +243,9 @@ describe("MCPManager", () => {
         await mcpManager.initialize(character);
         const tools = await mcpManager.getTools();
 
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith("allTools", {
+            toolA: { description: "A2" },
+        });
         expect(tools).toEqual({
             toolA: { description: "A2" },
         });

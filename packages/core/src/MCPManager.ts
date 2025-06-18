@@ -1,6 +1,7 @@
 import { experimental_createMCPClient as createMCPClient, ToolSet } from "ai";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "ai/mcp-stdio";
-import { Character, MCPServerConfig } from "@elizaos/core";
+import { Character, MCPServerConfig } from "./types";
+import { elizaLogger } from "./logger";
 
 export class MCPManager {
     private mcpClients: any[] = [];
@@ -23,13 +24,19 @@ export class MCPManager {
             transport: {
                 type: "sse",
                 url: serverConfig.url!,
+                onerror(error) {
+                    elizaLogger.error("MCP SSE error:", error);
+                },
+            },
+            onUncaughtError(error) {
+                elizaLogger.error("MCP SSE uncaught error:", error);
             },
         });
     }
 
     public async initialize(character: Character) {
         if (!character.mcpServers) {
-            console.log("No MCP servers configured for this character.");
+            elizaLogger.warn("No MCP servers configured for this character.");
             return;
         }
 
@@ -42,15 +49,15 @@ export class MCPManager {
                 } else if (serverConfig.command && serverConfig.args) {
                     client = await this.initializeStdioClient(serverConfig);
                 } else {
-                    console.warn(
+                    elizaLogger.warn(
                         `Invalid MCP server configuration for ${serverName}. Skipping.`
                     );
                     continue;
                 }
-                console.log(`${serverName} initialized`);
+                elizaLogger.debug(`${serverName} initialized`);
                 this.mcpClients.push(client);
             } catch (error) {
-                console.error(
+                elizaLogger.error(
                     `Failed to initialize MCP client for ${serverName}:`,
                     error
                 );
@@ -60,7 +67,7 @@ export class MCPManager {
 
     public async close() {
         for (const mcpClient of this.mcpClients) {
-            console.log("closing mcpClient");
+            elizaLogger.debug("closing mcpClient");
             await mcpClient.close();
         }
         this.mcpClients = [];
@@ -74,7 +81,7 @@ export class MCPManager {
                 allTools[toolName] = tools[toolName];
             }
         }
-        console.log("allTools", allTools);
+        elizaLogger.debug("allTools", allTools);
         return allTools;
     }
 }
