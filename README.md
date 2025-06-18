@@ -4,6 +4,8 @@
 
 **Powered by [Quicksilver](https://github.com/iotexproject/quicksilver.git)** — our open-source framework that bridges Large Language Models (LLMs) with Decentralized Physical Infrastructure Networks (DePINs) to create advanced AI agents.
 
+*Originally forked from [ElizaOS](https://github.com/elizaOS/eliza) — credits to the pioneering work that laid the foundation.*
+
 **See it in action:** [@Bino_AI](https://x.com/Bino_AI) • [@Caila_AI](https://x.com/Caila_AI) • [@NodeyICN](https://x.com/NodeyICN)
 
 ## 📋 Table of Contents
