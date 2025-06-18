@@ -1,122 +1,148 @@
-# Eliza 🤖
+# Bino Swarm 🐐
 
-<div align="center">
+*The autonomous agent framework that doesn't mess around. Build once, deploy everywhere.*
 
-📖 [Documentation](https://elizaos.github.io/eliza/) | 🎯 [Examples](https://github.com/thejoven/awesome-eliza)
+**Powered by [Quicksilver](https://github.com/iotexproject/quicksilver.git)** — our open-source framework that bridges Large Language Models (LLMs) with Decentralized Physical Infrastructure Networks (DePINs) to create advanced AI agents.
 
-</div>
+*Originally forked from [ElizaOS](https://github.com/elizaOS/eliza) — credits to the pioneering work that laid the foundation.*
 
-## ✨ Features
+**See it in action:** [@Bino_AI](https://x.com/Bino_AI) • [@Caila_AI](https://x.com/Caila_AI) • [@NodeyICN](https://x.com/NodeyICN)
 
-- 🛠️ Full-featured Discord, Twitter and Telegram connectors
-- 🔗 Support for every model (Llama, Grok, OpenAI, Anthropic, etc.)
-- 👥 Multi-agent and room support
-- 📚 Easily ingest and interact with your documents
-- 💾 Retrievable memory and document store
-- 🚀 Highly extensible - create your own actions and clients
-- ☁️ Supports many models (local Llama, OpenAI, Anthropic, etc.)
-- 📦 Just works!
+## 📋 Table of Contents
 
-## Video Tutorials
+- [✨ What You Get](#-what-you-get)
+- [🎯 What You'll Build](#-what-youll-build)
+- [🚀 3-Minute Setup (No, Really)](#-3-minute-setup-no-really)
+- [🛠️ For the Brave: Build From Source](#️-for-the-brave-build-from-source)
+- [📚 Feed Your Agent Knowledge](#-feed-your-agent-knowledge)
 
-[AI Agent Dev School](https://www.youtube.com/watch?v=ArptLpQiKfI&list=PLx5pnFXdPTRzWla0RaOxALTSTnVq53fKL)
+## ✨ What You Get
 
-## 🎯 Use Cases
+- 🛠️ **Multi-platform domination:** Discord, Twitter, Telegram — your agents go where the action is
+- 🧠 **Model buffet:** Grok, OpenAI, Anthropic, Gemini — pick your poison, we'll make it work
+- 📚 **Document devouring:** Feed it anything. PDFs, docs, websites — it reads faster than you and remembers everything
+- 💾 **Privacy-first memory:** Smart retention that remembers what matters, forgets what doesn't. Auto-deletes old data and wipes everything on user request
+- 🔧 **Infinitely hackable:** Built to be broken apart and rebuilt. Create custom actions, clients, whatever your heart desires
+- 📦 **MCP ready:** Connect your own servers because vendor lock-in is for the weak
 
-- 🤖 Chatbots
-- 🕵️ Autonomous Agents
-- 📈 Business Process Handling
-- 🎮 Video Game NPCs
-- 🧠 Trading
+## 🎯 What You'll Build
 
-## 🚀 Quick Start
+- 🤖 **Chatbots with brains** — no more "I don't understand" responses
+- 🕵️ **Digital workforce** — agents that actually get stuff done while you sleep
+- 📈 **Business automation** — because manual processes are so 2020
+- 🛡️ **Brand guardians** — agents that know your brand inside-out, hunt down scammers, and turn FUDders into believers
+- 🎮 **NPCs that aren't braindead** — give your game characters actual personality
+- 🧠 **Trading bots** — automate your way to financial freedom (not financial advice, just good code)
 
-### Prerequisites
+## 🚀 3-Minute Setup (No, Really)
+
+### What You Need
 
 - [Python 2.7+](https://www.python.org/downloads/)
 - [Node.js 23+](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 - [pnpm](https://pnpm.io/installation)
 
-> **Note for Windows Users:** [WSL 2](https://learn.microsoft.com/en-us/windows/wsl/install-manual) is required.
+> **Windows folks:** You know the drill. [WSL 2](https://learn.microsoft.com/en-us/windows/wsl/install-manual) or bust.
 
-### Use the Starter (Recommended)
+### The Steps (Don't Skip Any)
 
-```bash
-git clone https://github.com/elizaos/eliza-starter.git
-cd eliza-starter
-cp .env.example .env
-pnpm i && pnpm build && pnpm start
-```
+1. **Give your agent a personality:** Copy `characters/trump.character.json` to `characters/my-character.json` and make it interesting. Boring agents are useless agents.
 
-Once the agent is running, you should see the message to run "pnpm start:client" at the end.
-Open another terminal and move to same directory and then run below command and follow the URL to chat to your agent.
+2. **Handle your secrets:** Copy `.env.example` to `.env` and fill in your API keys.
 
-```bash
-pnpm start:client
-```
+   ```bash
+   cp .env.example .env
+   ```
 
-Then read the [Documentation](https://elizaos.github.io/eliza/) to learn how to customize your Eliza.
+   *Pro tip: Skip the `.env` if you're feeling brave — pass secrets through character JSON instead.*
 
-### Manually Start Eliza (Only recommended if you know what you are doing)
+3. **Grab the Docker blueprint:** Copy `docker-compose.yaml` to your project root.
 
-```bash
-# Clone the repository
-git clone https://github.com/elizaos/eliza.git
+4. **Point it in the right direction:** Edit `docker-compose.yaml` to use your character:
 
-# Checkout the latest release
-# This project iterates fast, so we recommend checking out the latest release
-git checkout $(git describe --tags --abbrev=0)
-```
+   ```yaml
+   services:
+       bino:
+           image: ghcr.io/iotexproject/bino:latest # Latest and greatest
+           command: ["pnpm", "start", "--character=characters/my-character.json"]
+   # ... rest of your config ...
+   ```
 
-### Edit the .env file
+5. **Fire it up:**
 
-Copy .env.example to .env and fill in the appropriate values.
+   ```bash
+   docker compose up
+   ```
 
-```
-cp .env.example .env
-```
+   Watch your digital offspring come to life. If it breaks, that's what logs are for.
 
-Note: .env is optional. If you're planning to run multiple distinct agents, you can pass secrets through the character JSON
-Note: .env is optional. If you're planning to run multiple distinct agents, you can pass secrets through the character JSON
+## 🛠️ For the Brave: Build From Source
 
-### Automatically Start Eliza
+Want to get your hands dirty? Add your own features? Break things properly? Skip the Docker and build it yourself.
 
-This will run everything to set up the project and start the bot with the default character.
+### Clone and Conquer
 
 ```bash
-sh scripts/start.sh
+git clone https://github.com/iotexproject/binoSwarm.git binoSwarm
+cd binoSwarm
 ```
 
-### Edit the character file
+### Set Up Your Playground
 
-1. Open `packages/core/src/defaultCharacter.ts` to modify the default character. Uncomment and edit.
+1. **Handle secrets:** Same as above — copy `.env.example` to `.env` and fill it out.
 
-2. To load custom characters:
-    - Use `pnpm start --characters="path/to/your/character.json"`
-    - Multiple character files can be loaded simultaneously
-3. Connect with X (Twitter)
-    - change `"clients": []` to `"clients": ["twitter"]` in the character file to connect with X
+2. **Create your character:** Copy and customize a character file just like the Docker setup.
 
-### Manually Start Eliza
+3. **Build the beast:**
+
+   ```bash
+   pnpm i --no-frozen-lockfile && pnpm build
+   ```
+
+4. **Let it rip:**
+
+   ```bash
+   pnpm start --character=characters/binotest.json
+   ```
+
+Now you're running raw code. Break it, fix it, make it better. Pull requests welcome.
+
+## 📚 Feed Your Agent Knowledge
+
+Your agent is only as smart as what you teach it. Time to make it an expert.
+
+### The Knowledge Vault
+
+Drop your knowledge files into `characters/knowledge/`. Markdown files work great.
+
+### Link External Knowledge
+
+Got a knowledge base in another GitHub repo? Don't copy-paste like a peasant — link it:
 
 ```bash
-pnpm i
-pnpm build
-pnpm start
+# Clone your knowledge repo outside the project
+git clone https://github.com/your-org/your-docs.git
+cd binoSwarm
 
-# The project iterates fast, sometimes you need to clean the project if you are coming back to the project
-pnpm clean
+# Create a symbolic link
+ln -s ../your-docs characters/knowledge/your-docs
 ```
 
-#### Additional Requirements
+### Tell Your Agent What to Read
 
-You may need to install Sharp. If you see an error when starting up, try installing it with the following command:
+Update your `character.json` to point to the knowledge files:
 
+```json
+"knowledge": [
+    {
+        "path": "iotex2-docs/README.md",
+        "shared": false
+    },
+    {
+        "path": "iotex2-docs/depin-infra-modules-dim/ioconnect-hardware-sdk/README.md",
+        "shared": false
+    }
+]
 ```
-pnpm install --include=optional sharp
-```
 
-### Community & contact
-
-- [GitHub Issues](https://github.com/elizaos/eliza/issues). Best for: bugs you encounter using Eliza, and feature proposals.
-- [Discord](https://discord.gg/ai16z). Best for: sharing your applications and hanging out with the community.
+Now your agent knows everything you know. Scary? Maybe. Useful? Absolutely.
