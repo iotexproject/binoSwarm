@@ -14,7 +14,6 @@ import { initializeCache } from "./cache";
 import { initializeClients } from "./clients";
 import { buildPlugins } from "./plugins";
 import { mergeCharacterTraits } from "./merge";
-import { MCPManager } from "./mcps";
 
 export async function initializeStartupAgents(
     characters: Character[],
@@ -72,8 +71,6 @@ export async function createAgent(
         db
     );
     const plugins = buildPlugins(character);
-    const mcpManager = new MCPManager();
-    await mcpManager.initialize(character);
     const enrichedCharacter = await mergeCharacterWithDbTraits(character, db);
 
     elizaLogger.log(`Creating runtime for character ${enrichedCharacter.name}`);
@@ -90,7 +87,6 @@ export async function createAgent(
         managers: [],
         cacheManager,
         fetch: logFetch,
-        mcpManager,
     });
 }
 

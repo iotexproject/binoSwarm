@@ -50,6 +50,7 @@ import {
     IMetering,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
+import { MCPManager } from "./MCPManager.ts";
 
 const POST_EXAMPLES_COUNT = 20;
 const MESSAGE_EXAMPLES_COUNT = 5;
@@ -75,7 +76,6 @@ type AgentRuntimeOptions = {
     cacheManager: ICacheManager;
     logging?: boolean;
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
-    mcpManager?: any;
 };
 
 export class AgentRuntime implements IAgentRuntime {
@@ -134,14 +134,12 @@ export class AgentRuntime implements IAgentRuntime {
         this.registerActions(opts);
         this.registerContextProviders(opts);
         this.registerEvaluators(opts);
-        this.initMCPManager(opts);
     }
 
     async initialize() {
         await this.initializeServices();
         await this.initializePluginServices();
         await this.initCharacterKnowledge();
-        await this.initializeMCPTools();
     }
 
     registerMemoryManager(manager: IMemoryManager): void {
@@ -453,6 +451,7 @@ export class AgentRuntime implements IAgentRuntime {
             this.getAndFormatKnowledge(fastMode, message),
             this.getRecentInteractions(userId, this.agentId, roomId),
             this.getMssgsAndActors(roomId),
+            this.initializeMCPTools(),
         ]);
         const retrievingTime = Date.now() - retrievingStart;
         elizaLogger.info(`Retrieving took ${retrievingTime}ms`);
@@ -1234,11 +1233,14 @@ export class AgentRuntime implements IAgentRuntime {
         return formattedInteractions;
     }
 
-    private initMCPManager(opts: AgentRuntimeOptions) {
-        this.mcpManager = opts.mcpManager;
+    private async initMCPManager() {
+        const mcpManager = new MCPManager();
+        await mcpManager.initialize(this.character);
+        this.mcpManager = mcpManager;
     }
 
     private async initializeMCPTools() {
+        await this.initMCPManager();
         if (this.mcpManager) {
             this.mcpTools = await this.mcpManager.getTools();
         }
