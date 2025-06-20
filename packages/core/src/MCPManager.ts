@@ -82,6 +82,10 @@ export class MCPManager {
         return this.clients;
     }
 
+    public async getTools() {
+        return await this.getToolsForClients(this.clients);
+    }
+
     public async getToolsForClients(clients: any[]): Promise<ToolSet> {
         const allTools: ToolSet = {};
         for (const mcpClient of clients) {
