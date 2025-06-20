@@ -50,12 +50,15 @@ export async function generateTextWithTools({
     );
     const model = getModel(provider, modelSettings.name);
 
+    const mcpClients = await runtime.mcpManager.initialize(runtime.character);
+    const mcpTools = await runtime.mcpManager.getToolsForClients(mcpClients);
+
     try {
         const result = await generateText({
             model,
             system:
                 customSystemPrompt ?? runtime.character?.system ?? undefined,
-            tools: buildToolSet(runtime, tools),
+            tools: { ...mcpTools, ...buildToolSet(tools) },
             maxSteps: TOOL_CALL_LIMIT,
             experimental_continueSteps: true,
             onStepFinish(step: any) {
@@ -68,7 +71,7 @@ export async function generateTextWithTools({
         elizaLogger.debug("generateTextWithTools result:", result.text);
         return result.text;
     } finally {
-        runtime.mcpManager.close();
+        runtime.mcpManager.closeClients(mcpClients);
     }
 }
 
@@ -94,7 +97,7 @@ export function streamWithTools({
     const result = streamText({
         model,
         system: customSystemPrompt ?? runtime.character?.system ?? undefined,
-        tools: buildToolSet(runtime, tools),
+        tools: buildToolSet(tools),
         maxSteps: TOOL_CALL_LIMIT,
         experimental_continueSteps: true,
         toolCallStreaming: true,
@@ -102,9 +105,6 @@ export function streamWithTools({
         onStepFinish(step: any) {
             logStep(step);
             meterStep(runtime, step, modelSettings);
-        },
-        onFinish() {
-            runtime.mcpManager.close();
         },
         ...modelOptions,
     });
@@ -145,7 +145,6 @@ function validateContext(context: string) {
 }
 
 function buildToolSet(
-    runtime: IAgentRuntime,
     tools: {
         name: string;
         description: string;
@@ -153,7 +152,7 @@ function buildToolSet(
         execute: (args: any) => Promise<any>;
     }[]
 ): ToolSet {
-    const toolSet: ToolSet = runtime.mcpTools;
+    const toolSet: ToolSet = {};
     tools.forEach((rawTool) => {
         toolSet[rawTool.name] = tool(rawTool);
     });

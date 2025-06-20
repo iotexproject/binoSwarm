@@ -108,7 +108,7 @@ export class AgentRuntime implements IAgentRuntime {
     clients: Record<string, any>;
     metering: IMetering;
 
-    mcpManager: any;
+    mcpManager: MCPManager;
     mcpTools: any = {};
 
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
@@ -134,6 +134,7 @@ export class AgentRuntime implements IAgentRuntime {
         this.registerActions(opts);
         this.registerContextProviders(opts);
         this.registerEvaluators(opts);
+        this.createMCPManager();
     }
 
     async initialize() {
@@ -217,7 +218,7 @@ export class AgentRuntime implements IAgentRuntime {
         elizaLogger.debug("runtime::stop - character", this.character.name);
         this.stopClients();
         if (this.mcpManager) {
-            await this.mcpManager.close();
+            this.mcpManager.close();
         }
     }
 
@@ -451,7 +452,6 @@ export class AgentRuntime implements IAgentRuntime {
             this.getAndFormatKnowledge(fastMode, message),
             this.getRecentInteractions(userId, this.agentId, roomId),
             this.getMssgsAndActors(roomId),
-            this.initializeMCPTools(),
         ]);
         const retrievingTime = Date.now() - retrievingStart;
         elizaLogger.info(`Retrieving took ${retrievingTime}ms`);
@@ -1233,17 +1233,8 @@ export class AgentRuntime implements IAgentRuntime {
         return formattedInteractions;
     }
 
-    private async initMCPManager() {
-        const mcpManager = new MCPManager();
-        await mcpManager.initialize(this.character);
-        this.mcpManager = mcpManager;
-    }
-
-    private async initializeMCPTools() {
-        await this.initMCPManager();
-        if (this.mcpManager) {
-            this.mcpTools = await this.mcpManager.getTools();
-        }
+    private async createMCPManager() {
+        this.mcpManager = new MCPManager();
     }
 
     private formatMCPServers(): string {

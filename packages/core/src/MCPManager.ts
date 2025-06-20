@@ -4,7 +4,7 @@ import { Character, MCPServerConfig } from "./types";
 import { elizaLogger } from "./logger";
 
 export class MCPManager {
-    private mcpClients: any[] = [];
+    private clients: any[] = [];
 
     constructor() {
         // Constructor initializes an empty array for MCP clients.
@@ -16,6 +16,9 @@ export class MCPManager {
                 command: serverConfig.command!,
                 args: serverConfig.args!,
             }),
+            onUncaughtError(error) {
+                elizaLogger.error("MCP STDIO uncaught error:", error);
+            },
         });
     }
 
@@ -48,9 +51,9 @@ export class MCPManager {
                 elizaLogger.warn(
                     `Invalid MCP server configuration for ${serverName}. Skipping.`
                 );
-                return null; // Skip adding to clients if invalid
+                return null;
             }
-            elizaLogger.debug(`${serverName} initialized`);
+            elizaLogger.debug(`Initialized new MCP client for ${serverName}`);
             return client;
         } catch (error) {
             elizaLogger.error(
@@ -61,10 +64,10 @@ export class MCPManager {
         }
     }
 
-    public async initialize(character: Character) {
+    public async initialize(character: Character): Promise<any[]> {
         if (!character.mcpServers) {
             elizaLogger.warn("No MCP servers configured for this character.");
-            return;
+            return [];
         }
 
         const promises: Promise<any>[] = [];
@@ -73,27 +76,32 @@ export class MCPManager {
             promises.push(this.initializeClient(serverName, serverConfig));
         }
 
-        const clients = await Promise.all(promises);
-        this.mcpClients = clients.filter((client) => client !== null);
+        this.clients = (await Promise.all(promises)).filter(
+            (client) => client !== null
+        );
+        return this.clients;
     }
 
-    public async close() {
-        for (const mcpClient of this.mcpClients) {
-            elizaLogger.debug("closing mcpClient");
-            await mcpClient.close();
-        }
-        this.mcpClients = [];
-    }
-
-    public async getTools() {
+    public async getToolsForClients(clients: any[]): Promise<ToolSet> {
         const allTools: ToolSet = {};
-        for (const mcpClient of this.mcpClients) {
+        for (const mcpClient of clients) {
             const tools = await mcpClient.tools();
             for (const toolName in tools) {
                 allTools[toolName] = tools[toolName];
             }
         }
-        elizaLogger.debug("allTools", allTools);
         return allTools;
+    }
+
+    public close() {
+        elizaLogger.debug("Stopping all MCP clients.");
+        this.closeClients(this.clients);
+        this.clients = [];
+    }
+
+    public closeClients(clients: any[]) {
+        for (const mcpClient of clients) {
+            mcpClient.close();
+        }
     }
 }
