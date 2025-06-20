@@ -38,10 +38,12 @@ To integrate the MCP plugin, you must add it to your agent's `character.json` fi
         },
         "mcpServers": {
             "airbnb": {
+                "description": "Airbnb MCP server, capabilities include: ... ",
                 "command": "npx",
                 "args": ["-y", "@somedev/mcp-server-example"]
             },
             "sentai": {
+                "description": "Sentai MCP server, capabilities include: ... ",
                 "url": "https://somemcpexample.ai/sse"
             }
             // Add more MCP servers here as needed
