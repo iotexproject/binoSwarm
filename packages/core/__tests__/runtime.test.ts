@@ -925,8 +925,12 @@ describe("AgentRuntime", () => {
 
             const formattedTools = (runtime as any).formatMCPServers();
             expect(formattedTools).toContain("# Available MCP Tools");
-            expect(formattedTools).toContain("- server1: Description for tool1");
-            expect(formattedTools).toContain("- server2: Description for tool2");
+            expect(formattedTools).toContain(
+                "- server1: Description for tool1"
+            );
+            expect(formattedTools).toContain(
+                "- server2: Description for tool2"
+            );
         });
 
         it("should return an empty string if no MCP tools are available", async () => {

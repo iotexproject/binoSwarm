@@ -180,7 +180,9 @@ describe("MCPManager", () => {
         await mcpManager.close();
 
         expect(mockClient.close).toHaveBeenCalledTimes(1);
-        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Stopping all MCP clients.");
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith(
+            "Stopping all MCP clients."
+        );
         const tools = await mcpManager.getTools();
         expect(tools).toEqual({});
     });
@@ -210,8 +212,12 @@ describe("MCPManager", () => {
 
         expect(mockClient1.tools).toHaveBeenCalled();
         expect(mockClient2.tools).toHaveBeenCalled();
-        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Initialized new MCP client for server1");
-        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Initialized new MCP client for server2");
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith(
+            "Initialized new MCP client for server1"
+        );
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith(
+            "Initialized new MCP client for server2"
+        );
         expect(tools).toEqual({
             toolA: { description: "A" },
             toolB: { description: "B" },
@@ -241,8 +247,12 @@ describe("MCPManager", () => {
         await mcpManager.initialize(character);
         const tools = await mcpManager.getTools();
 
-        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Initialized new MCP client for server1");
-        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Initialized new MCP client for server2");
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith(
+            "Initialized new MCP client for server1"
+        );
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith(
+            "Initialized new MCP client for server2"
+        );
         expect(tools).toEqual({
             toolA: { description: "A2" },
         });
