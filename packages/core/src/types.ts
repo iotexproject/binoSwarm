@@ -875,6 +875,7 @@ export type Character = {
 };
 
 export interface MCPServerConfig {
+    description: string;
     command?: string;
     args?: string[];
     url?: string;

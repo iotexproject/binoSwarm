@@ -137,11 +137,13 @@ export const CharacterSchema = z.object({
         .record(
             z.union([
                 z.object({
+                    description: z.string(),
                     command: z.string(),
                     args: z.array(z.string()),
                     url: z.undefined().optional(), // Enforce XOR: url must be undefined if command/args are present
                 }),
                 z.object({
+                    description: z.string(),
                     url: z.string(),
                     command: z.undefined().optional(),
                     args: z.undefined().optional(),
