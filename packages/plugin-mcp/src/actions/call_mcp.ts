@@ -20,7 +20,7 @@ export const mcpAction: Action = {
     examples: [],
     similes: [],
     validate: async (runtime: IAgentRuntime) => {
-        return Object.keys(runtime.mcpTools).length > 0;
+        return Object.keys(runtime.character.mcpServers).length > 0;
     },
     handler: async (
         runtime: IAgentRuntime,

@@ -14,6 +14,12 @@ describe("mcpAction", () => {
                 tool1: {},
                 tool2: {},
             },
+            character: {
+                mcpServers: {
+                    tool1: {},
+                    tool2: {},
+                },
+            },
         } as any;
 
         const result = await mcpAction.validate(runtime, null as any);
@@ -22,7 +28,9 @@ describe("mcpAction", () => {
 
     it("should return false if mcpTools are not available in runtime", async () => {
         const runtime = {
-            mcpTools: {},
+            character: {
+                mcpServers: {},
+            },
         } as any;
 
         const result = await mcpAction.validate(runtime, null as any);
