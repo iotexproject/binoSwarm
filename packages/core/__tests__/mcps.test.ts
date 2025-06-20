@@ -80,10 +80,10 @@ describe("MCPManager", () => {
 
         expect(mockCreateMCPClient).toHaveBeenCalledTimes(2);
         expect(mockElizaLogger.debug).toHaveBeenCalledWith(
-            "server1 initialized"
+            "Initialized new MCP client for server1"
         );
         expect(mockElizaLogger.debug).toHaveBeenCalledWith(
-            "server2 initialized"
+            "Initialized new MCP client for server2"
         );
 
         const tools = await mcpManager.getTools();
@@ -110,7 +110,7 @@ describe("MCPManager", () => {
         });
         expect(mockStdioMCPTransport).not.toHaveBeenCalled();
         expect(mockElizaLogger.debug).toHaveBeenCalledWith(
-            "sseServer initialized"
+            "Initialized new MCP client for sseServer"
         );
 
         // Test error handling within SSE client (simulate onerror and onUncaughtError)
@@ -180,7 +180,7 @@ describe("MCPManager", () => {
         await mcpManager.close();
 
         expect(mockClient.close).toHaveBeenCalledTimes(1);
-        expect(mockElizaLogger.debug).toHaveBeenCalledWith("closing mcpClient");
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Stopping all MCP clients.");
         const tools = await mcpManager.getTools();
         expect(tools).toEqual({});
     });
@@ -210,10 +210,8 @@ describe("MCPManager", () => {
 
         expect(mockClient1.tools).toHaveBeenCalled();
         expect(mockClient2.tools).toHaveBeenCalled();
-        expect(mockElizaLogger.debug).toHaveBeenCalledWith("allTools", {
-            toolA: { description: "A" },
-            toolB: { description: "B" },
-        });
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Initialized new MCP client for server1");
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Initialized new MCP client for server2");
         expect(tools).toEqual({
             toolA: { description: "A" },
             toolB: { description: "B" },
@@ -243,9 +241,8 @@ describe("MCPManager", () => {
         await mcpManager.initialize(character);
         const tools = await mcpManager.getTools();
 
-        expect(mockElizaLogger.debug).toHaveBeenCalledWith("allTools", {
-            toolA: { description: "A2" },
-        });
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Initialized new MCP client for server1");
+        expect(mockElizaLogger.debug).toHaveBeenCalledWith("Initialized new MCP client for server2");
         expect(tools).toEqual({
             toolA: { description: "A2" },
         });
