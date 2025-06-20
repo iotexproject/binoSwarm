@@ -40,6 +40,19 @@ export class ElizaLogger {
         return this;
     }
 
+    #serializeError(error: Error): Record<string, any> {
+        const plainError: Record<string, any> = {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+        };
+        // Add any other custom properties from the error
+        Object.keys(error).forEach((key) => {
+            plainError[key] = error[key];
+        });
+        return plainError;
+    }
+
     #formatStructuredLog(
         level: string,
         message: any,
@@ -181,25 +194,35 @@ export class ElizaLogger {
 
         // Handle structured logging if enabled
         if (this.useStructuredLogs) {
-            if (strings.length === 1 && typeof strings[0] !== "object") {
+            const serializedStrings = strings.map((item) =>
+                item instanceof Error ? this.#serializeError(item) : item
+            );
+
+            if (
+                serializedStrings.length === 1 &&
+                typeof serializedStrings[0] !== "object"
+            ) {
                 // Simple message
                 const structuredLog = this.#formatStructuredLog(
                     level,
-                    strings[0]
+                    serializedStrings[0]
                 );
                 console.log(structuredLog);
-            } else if (strings.length === 1 && typeof strings[0] === "object") {
+            } else if (
+                serializedStrings.length === 1 &&
+                typeof serializedStrings[0] === "object"
+            ) {
                 // Object log
                 const structuredLog = this.#formatStructuredLog(
                     level,
                     "",
-                    strings[0]
+                    serializedStrings[0]
                 );
                 console.log(structuredLog);
             } else {
                 // Multiple entries
-                const message = strings[0] || "";
-                const additionalData = strings
+                const message = serializedStrings[0] || "";
+                const additionalData = serializedStrings
                     .slice(1)
                     .reduce((acc, item, index) => {
                         acc[`data_${index}`] = item;

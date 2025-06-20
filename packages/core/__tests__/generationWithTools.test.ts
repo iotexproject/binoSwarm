@@ -71,6 +71,9 @@ describe("Generation With Tools", () => {
             },
             mcpManager: {
                 close: vi.fn().mockResolvedValue(undefined),
+                initialize: vi.fn().mockResolvedValue(undefined),
+                getToolsForClients: vi.fn().mockResolvedValue(undefined),
+                closeClients: vi.fn().mockResolvedValue(undefined),
             },
             mcpTools: {},
         } as unknown as IAgentRuntime;

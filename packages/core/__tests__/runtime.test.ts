@@ -918,22 +918,26 @@ describe("AgentRuntime", () => {
     describe("formatMCPTools", () => {
         it("should format available MCP tools correctly", async () => {
             // Directly set mcpTools for the test
-            runtime.mcpTools = {
-                tool1: { description: "Description for tool1" },
-                tool2: { description: "Description for tool2" },
+            runtime.character.mcpServers = {
+                server1: { description: "Description for tool1" },
+                server2: { description: "Description for tool2" },
             };
 
-            const formattedTools = (runtime as any).formatMCPTools();
+            const formattedTools = (runtime as any).formatMCPServers();
             expect(formattedTools).toContain("# Available MCP Tools");
-            expect(formattedTools).toContain("- tool1: Description for tool1");
-            expect(formattedTools).toContain("- tool2: Description for tool2");
+            expect(formattedTools).toContain(
+                "- server1: Description for tool1"
+            );
+            expect(formattedTools).toContain(
+                "- server2: Description for tool2"
+            );
         });
 
         it("should return an empty string if no MCP tools are available", async () => {
             // Ensure mcpTools is empty
-            runtime.mcpTools = {};
+            runtime.character.mcpServers = {};
 
-            const formattedTools = (runtime as any).formatMCPTools();
+            const formattedTools = (runtime as any).formatMCPServers();
             expect(formattedTools).toBe("");
         });
     });

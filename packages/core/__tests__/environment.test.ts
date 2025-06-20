@@ -198,6 +198,7 @@ describe("Character Configuration", () => {
             ...validCharacterConfig,
             mcpServers: {
                 "server-one": {
+                    description: "Test description",
                     command: "test-command",
                     args: ["arg1", "arg2"],
                 },
@@ -213,6 +214,7 @@ describe("Character Configuration", () => {
             ...validCharacterConfig,
             mcpServers: {
                 "server-two": {
+                    description: "Test description",
                     url: "http://localhost:8080",
                 },
             },
