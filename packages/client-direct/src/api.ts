@@ -17,6 +17,7 @@ import {
     globalRateLimiter,
 } from "./rate-limiter";
 import paywallMiddleware from "./paywall";
+import { handlePaidMessage } from "./handlers/paidHandler";
 
 export function createApiRouter(directClient: DirectClient) {
     const router = express.Router();
@@ -62,10 +63,8 @@ export function createApiRouter(directClient: DirectClient) {
     router.post(
         "/:agentId/message-paid",
         paywallMiddleware,
-        async (_req: express.Request, res: express.Response) => {
-            res.status(200).json({
-                message: "Paid message",
-            });
+        async (req: express.Request, res: express.Response) => {
+            await handlePaidMessage(req, res, directClient);
         }
     );
 
