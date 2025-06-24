@@ -16,6 +16,7 @@ import {
     streamRateLimiter,
     globalRateLimiter,
 } from "./rate-limiter";
+import paywallMiddleware from "./paywall";
 
 export function createApiRouter(directClient: DirectClient) {
     const router = express.Router();
@@ -23,6 +24,7 @@ export function createApiRouter(directClient: DirectClient) {
 
     // Apply global rate limiting to all routes
     router.use(globalRateLimiter);
+    router.use(paywallMiddleware);
 
     router.use(
         express.json({
@@ -55,6 +57,13 @@ export function createApiRouter(directClient: DirectClient) {
         upload.single("file"),
         async (req: express.Request, res: express.Response) => {
             await message.handleMessage(req, res, directClient);
+        }
+    );
+
+    router.post(
+        "/:agentId/message-paid",
+        async (_req: express.Request, res: express.Response) => {
+            res.send("Paid message");
         }
     );
 
