@@ -1,81 +1,44 @@
 import express from "express";
 
-import { stringToUuid, Content, Memory, elizaLogger } from "@elizaos/core";
+import { stringToUuid, Content, Memory } from "@elizaos/core";
 
 import { DirectClient } from "../client";
-import { genRoomId, genUserId, composeContent } from "./helpers";
 import { HandlerCallback } from "@elizaos/core";
+import { MessageHandler } from "./messageHandler";
+import { stringifyContent } from "./helpers";
 
 export async function handlePaidMessage(
     req: express.Request,
     res: express.Response,
     directClient: DirectClient
 ) {
-    // Set headers for SSE
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
+    const messageHandler = new MessageHandler(req, res, directClient);
+    messageHandler.setSseHeaders();
 
     try {
-        await handle(req, res, directClient);
+        await handle(res, messageHandler);
     } catch (error) {
-        res.write(
-            `event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`
-        );
-        res.end();
+        messageHandler.handleStreamError(error);
     }
 }
 
-async function handle(
-    req: express.Request,
-    res: express.Response,
-    directClient: DirectClient
-) {
-    const roomId = genRoomId(req);
-    const userId = genUserId(req);
-    const runtime = directClient.getRuntime(req.params.agentId);
-    const agentId = runtime.agentId;
-
-    await runtime.ensureConnection(
+async function handle(res: express.Response, messageHandler: MessageHandler) {
+    const {
         userId,
         roomId,
-        req.body.userName,
-        req.body.name,
-        "direct"
-    );
-
-    const content = await composeContent(req, runtime);
-    const userMessage = {
-        content,
-        userId,
-        roomId,
+        runtime,
         agentId,
-    };
-
-    const messageId = stringToUuid(Date.now().toString());
-    const memory: Memory = {
-        id: stringToUuid(messageId + "-" + userId),
-        ...userMessage,
-        createdAt: Date.now(),
-    };
-
-    await runtime.messageManager.createMemory({
+        userMessage,
+        messageId,
         memory,
-        isUnique: true,
-    });
-
-    let state = await runtime.composeState(userMessage, {
-        agentName: runtime.character.name,
-    });
+        state: initialState,
+    } = await messageHandler.initiateMessageProcessing();
+    let state = initialState;
 
     const callback: HandlerCallback = async (content: Content) => {
         if (content) {
-            const messageData = {
-                id: stringToUuid(Date.now().toString() + "-" + userId),
-                ...content,
-            };
-            const stringifiedMessageData = JSON.stringify(messageData);
-            res.write(`data: ${stringifiedMessageData}\n\n`);
+            const stringified = stringifyContent(userId, content);
+            res.write(`data: ${stringified}\n\n`);
 
             const responseMessage: Memory = {
                 id: stringToUuid(messageId + "-" + agentId),
@@ -85,12 +48,13 @@ async function handle(
                 createdAt: Date.now(),
             };
 
-            elizaLogger.log("DIRECT_MESSAGE_RESPONSE_RES", {
-                body: { userMessage, responseMessage },
+            messageHandler.logResponse(
+                userMessage,
+                null,
+                responseMessage,
                 userId,
-                roomId,
-                type: "response",
-            });
+                roomId
+            );
 
             await runtime.messageManager.createMemory({
                 memory: responseMessage,
@@ -100,6 +64,7 @@ async function handle(
 
             return [responseMessage];
         }
+        return [];
     };
 
     const mcpAction = runtime.actions.filter(
@@ -107,10 +72,9 @@ async function handle(
     );
     await mcpAction[0].handler(runtime, userMessage, state, {}, callback);
 
-    // // Run evaluators last
+    // Run evaluators last
     await runtime.evaluate(memory, state);
 
-    // // End the stream
-    res.write("event: end\ndata: stream completed\n\n");
-    res.end();
+    // End the stream
+    messageHandler.endStream();
 }
