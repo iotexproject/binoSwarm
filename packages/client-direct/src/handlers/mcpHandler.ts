@@ -1,13 +1,12 @@
 import express from "express";
 
-import { stringToUuid, Content, Memory } from "@elizaos/core";
+import { stringToUuid, Content, Memory, HandlerCallback } from "@elizaos/core";
 
 import { DirectClient } from "../client";
-import { HandlerCallback } from "@elizaos/core";
 import { MessageHandler } from "./messageHandler";
 import { stringifyContent } from "./helpers";
 
-export async function handlePaidMessage(
+export async function handleMCPMessage(
     req: express.Request,
     res: express.Response,
     directClient: DirectClient
@@ -72,9 +71,6 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
     );
     await mcpAction[0].handler(runtime, userMessage, state, {}, callback);
 
-    // Run evaluators last
     await runtime.evaluate(memory, state);
-
-    // End the stream
     messageHandler.endStream();
 }

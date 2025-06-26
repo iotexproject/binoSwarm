@@ -17,7 +17,7 @@ import {
     globalRateLimiter,
 } from "./rate-limiter";
 import paywallMiddleware from "./paywall";
-import { handlePaidMessage } from "./handlers/paidHandler";
+import { handleMCPMessage } from "./handlers/mcpHandler";
 
 export function createApiRouter(directClient: DirectClient) {
     const router = express.Router();
@@ -64,7 +64,7 @@ export function createApiRouter(directClient: DirectClient) {
         "/:agentId/message-paid",
         paywallMiddleware,
         async (req: express.Request, res: express.Response) => {
-            await handlePaidMessage(req, res, directClient);
+            await handleMCPMessage(req, res, directClient);
         }
     );
 
