@@ -3,69 +3,36 @@ import express from "express";
 import { stringToUuid, Content, Memory, elizaLogger } from "@elizaos/core";
 
 import { DirectClient } from "../client";
-import { genRoomId, genUserId, genResponse, composeContent } from "./helpers";
+import { genResponse, stringifyContent } from "./helpers";
+import { MessageHandler } from "./messageHandler";
 
 export async function handleMessage(
     req: express.Request,
     res: express.Response,
     directClient: DirectClient
 ) {
-    // Set headers for SSE
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
+    const messageHandler = new MessageHandler(req, res, directClient);
+    messageHandler.setSseHeaders();
 
     try {
-        await handle(req, res, directClient);
+        await handle(res, messageHandler);
     } catch (error) {
-        res.write(
-            `event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`
-        );
-        res.end();
+        messageHandler.handleStreamError(error);
     }
 }
 
-async function handle(
-    req: express.Request,
-    res: express.Response,
-    directClient: DirectClient
-) {
-    const roomId = genRoomId(req);
-    const userId = genUserId(req);
-    const runtime = directClient.getRuntime(req.params.agentId);
-    const agentId = runtime.agentId;
-
-    await runtime.ensureConnection(
-        userId,
+async function handle(res: express.Response, messageHandler: MessageHandler) {
+    const {
         roomId,
-        req.body.userName,
-        req.body.name,
-        "direct"
-    );
-
-    const content = await composeContent(req, runtime);
-    const userMessage = {
-        content,
         userId,
-        roomId,
+        runtime,
         agentId,
-    };
-
-    const messageId = stringToUuid(Date.now().toString());
-    const memory: Memory = {
-        id: stringToUuid(messageId + "-" + userId),
-        ...userMessage,
-        createdAt: Date.now(),
-    };
-
-    await runtime.messageManager.createMemory({
+        userMessage,
+        messageId,
         memory,
-        isUnique: true,
-    });
-
-    let state = await runtime.composeState(userMessage, {
-        agentName: runtime.character.name,
-    });
+        state: initialState,
+    } = await messageHandler.initiateMessageProcessing();
+    let state = initialState;
 
     const { response, context } = await genResponse(runtime, state);
 
@@ -84,12 +51,13 @@ async function handle(
         createdAt: Date.now(),
     };
 
-    elizaLogger.log("DIRECT_MESSAGE_RESPONSE_RES", {
-        body: { userMessage, context, responseMessage },
+    messageHandler.logResponse(
+        userMessage,
+        context,
+        responseMessage,
         userId,
-        roomId,
-        type: "response",
-    });
+        roomId
+    );
 
     await runtime.messageManager.createMemory({
         memory: responseMessage,
@@ -97,29 +65,20 @@ async function handle(
     });
     state = await runtime.updateRecentMessageState(state);
 
-    // Process actions and stream any additional messages
     await runtime.processActions(
         memory,
         [responseMessage],
         state,
         async (content: Content) => {
             if (content) {
-                const messageData = {
-                    id: stringToUuid(Date.now().toString() + "-" + userId),
-                    ...content,
-                };
-                const stringifiedMessageData = JSON.stringify(messageData);
-                elizaLogger.info(stringifiedMessageData);
-                res.write(`data: ${stringifiedMessageData}\n\n`);
+                const stringified = stringifyContent(userId, content);
+                elizaLogger.info(stringified);
+                res.write(`data: ${stringified}\n\n`);
             }
             return [memory];
         }
     );
 
-    // Run evaluators last
     await runtime.evaluate(memory, state);
-
-    // End the stream
-    res.write("event: end\ndata: stream completed\n\n");
-    res.end();
+    messageHandler.endStream();
 }

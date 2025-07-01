@@ -2,7 +2,6 @@ import express from "express";
 import * as path from "path";
 
 import {
-    AgentRuntime,
     stringToUuid,
     Content,
     ModelClass,
@@ -12,6 +11,7 @@ import {
     Media,
     ServiceType,
     IImageDescriptionService,
+    IAgentRuntime,
 } from "@elizaos/core";
 
 import { NoTextError } from "../errors";
@@ -27,7 +27,7 @@ export function genUserId(req: express.Request) {
     return stringToUuid(req.body.userId ?? "user");
 }
 
-export async function genResponse(runtime: AgentRuntime, state: State) {
+export async function genResponse(runtime: IAgentRuntime, state: State) {
     const context = composeContext({
         state,
         template:
@@ -47,7 +47,7 @@ export async function genResponse(runtime: AgentRuntime, state: State) {
 
 export async function composeContent(
     req: express.Request,
-    runtime: AgentRuntime
+    runtime: IAgentRuntime
 ): Promise<Content> {
     const text = extractTextFromRequest(req);
     const attachments = await collectAndDescribeAttachments(req, runtime);
@@ -72,7 +72,7 @@ function extractTextFromRequest(req: express.Request) {
 
 async function collectAndDescribeAttachments(
     req: express.Request,
-    runtime: AgentRuntime
+    runtime: IAgentRuntime
 ) {
     const attachments: Media[] = [];
     if (req.file) {
@@ -98,8 +98,16 @@ async function collectAndDescribeAttachments(
     return attachments;
 }
 
-async function desribePhoto(photoUrl: string, runtime: AgentRuntime) {
+async function desribePhoto(photoUrl: string, runtime: IAgentRuntime) {
     return runtime
         .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
         .describeImage(photoUrl);
+}
+
+export function stringifyContent(userId: string, content: Content) {
+    const messageData = {
+        id: stringToUuid(Date.now().toString() + "-" + userId),
+        ...content,
+    };
+    return JSON.stringify(messageData);
 }
