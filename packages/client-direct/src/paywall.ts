@@ -1,7 +1,7 @@
 import { paymentMiddleware, Network } from "x402-express";
 import { Request, Response, NextFunction } from "express";
 
-const defaultReceiver = "" as `0x${string}`;
+const defaultReceiver = "0x0000000000000000000000000000000000000000" as `0x${string}`;
 const defaultPrice = "$0.001";
 const defaultNetwork = "iotex" as Network;
 const defaultFacilitator = "http://localhost:8001/facilitator";
