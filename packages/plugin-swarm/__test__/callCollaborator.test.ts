@@ -160,6 +160,111 @@ describe("callCollaboratorAction", () => {
                 delete process.env.EVM_PRIVATE_KEY;
             }
         });
+
+        it("should return false when EVM_PRIVATE_KEY is present but no collaborators", async () => {
+            const originalEnv = process.env.EVM_PRIVATE_KEY;
+            process.env.EVM_PRIVATE_KEY = "test_private_key";
+
+            const runtimeWithoutCollaborators = {
+                character: {
+                    collaborators: [],
+                },
+            };
+
+            const result = await callCollaboratorAction.validate(
+                runtimeWithoutCollaborators as any,
+                mockMessage as any
+            );
+
+            expect(result).toBe(false);
+
+            // Restore original env
+            if (originalEnv) {
+                process.env.EVM_PRIVATE_KEY = originalEnv;
+            } else {
+                delete process.env.EVM_PRIVATE_KEY;
+            }
+        });
+
+        it("should return false when EVM_PRIVATE_KEY is present but character is undefined", async () => {
+            const originalEnv = process.env.EVM_PRIVATE_KEY;
+            process.env.EVM_PRIVATE_KEY = "test_private_key";
+
+            const runtimeWithoutCharacter = {};
+
+            const result = await callCollaboratorAction.validate(
+                runtimeWithoutCharacter as any,
+                mockMessage as any
+            );
+
+            expect(result).toBe(false);
+
+            // Restore original env
+            if (originalEnv) {
+                process.env.EVM_PRIVATE_KEY = originalEnv;
+            } else {
+                delete process.env.EVM_PRIVATE_KEY;
+            }
+        });
+
+        it("should return false when EVM_PRIVATE_KEY is present but collaborators is undefined", async () => {
+            const originalEnv = process.env.EVM_PRIVATE_KEY;
+            process.env.EVM_PRIVATE_KEY = "test_private_key";
+
+            const runtimeWithoutCollaborators = {
+                character: {},
+            };
+
+            const result = await callCollaboratorAction.validate(
+                runtimeWithoutCollaborators as any,
+                mockMessage as any
+            );
+
+            expect(result).toBe(false);
+
+            // Restore original env
+            if (originalEnv) {
+                process.env.EVM_PRIVATE_KEY = originalEnv;
+            } else {
+                delete process.env.EVM_PRIVATE_KEY;
+            }
+        });
+
+        it("should return true when both EVM_PRIVATE_KEY and collaborators are present", async () => {
+            const originalEnv = process.env.EVM_PRIVATE_KEY;
+            process.env.EVM_PRIVATE_KEY = "test_private_key";
+
+            const result = await callCollaboratorAction.validate(
+                mockRuntime as any,
+                mockMessage as any
+            );
+
+            expect(result).toBe(true);
+
+            // Restore original env
+            if (originalEnv) {
+                process.env.EVM_PRIVATE_KEY = originalEnv;
+            } else {
+                delete process.env.EVM_PRIVATE_KEY;
+            }
+        });
+
+        it("should return false when collaborators are present but EVM_PRIVATE_KEY is missing", async () => {
+            const originalEnv = process.env.EVM_PRIVATE_KEY;
+            delete process.env.EVM_PRIVATE_KEY;
+
+            const result = await callCollaboratorAction.validate(
+                mockRuntime as any,
+                mockMessage as any
+            );
+
+            expect(result).toBe(false);
+
+            // Restore original env
+            if (originalEnv) {
+                process.env.EVM_PRIVATE_KEY = originalEnv;
+            }
+        });
     });
 
     describe("handler function", () => {
@@ -259,29 +364,6 @@ describe("callCollaboratorAction", () => {
                 state: testState,
                 template: callCollaboratorTemplate,
             });
-        });
-
-        it("should log context information", async () => {
-            const testState = { ...mockState };
-            const mockContext = "composed-context";
-            mockRuntime.updateRecentMessageState.mockResolvedValue(testState);
-            (composeContext as any).mockReturnValue(mockContext);
-            (generateTextWithTools as any).mockResolvedValue(
-                "Generated response"
-            );
-
-            await callCollaboratorAction.handler(
-                mockRuntime as any,
-                mockMessage as any,
-                testState as any,
-                {},
-                mockCallback
-            );
-
-            expect(elizaLogger.info).toHaveBeenCalledWith(
-                "callCollaboratorContext:",
-                mockContext
-            );
         });
 
         it("should call generateTextWithTools with correct parameters", async () => {

@@ -19,8 +19,11 @@ export const callCollaboratorAction: Action = {
         "Call a collaborator when the current agent's expertise is insufficient and a better available agent with more focused expertise in the user's question area exists.",
     examples: [],
     similes: [],
-    validate: async (_runtime: IAgentRuntime) => {
-        return !!process.env.EVM_PRIVATE_KEY;
+    validate: async (runtime: IAgentRuntime) => {
+        return (
+            !!process.env.EVM_PRIVATE_KEY &&
+            !!runtime.character?.collaborators?.length
+        );
     },
     handler: async (
         runtime: IAgentRuntime,
