@@ -38,6 +38,20 @@ describe("callCollaboratorAction", () => {
     const mockRuntime = {
         composeState: vi.fn(),
         updateRecentMessageState: vi.fn(),
+        character: {
+            collaborators: [
+                {
+                    name: "TestAgent1",
+                    url: "https://test.example.com/agent1",
+                    expertise: "Testing Domain",
+                },
+                {
+                    name: "TestAgent2",
+                    url: "https://test.example.com/agent2",
+                    expertise: "Mock Services",
+                },
+            ],
+        },
     };
 
     const mockMessage = {
@@ -46,7 +60,18 @@ describe("callCollaboratorAction", () => {
     };
 
     const mockState = {
-        collaborators: null,
+        collaborators: JSON.stringify([
+            {
+                name: "TestAgent1",
+                url: "https://test.example.com/agent1",
+                expertise: "Testing Domain",
+            },
+            {
+                name: "TestAgent2",
+                url: "https://test.example.com/agent2",
+                expertise: "Mock Services",
+            },
+        ]),
     };
 
     const mockCallback = vi.fn();
@@ -192,7 +217,7 @@ describe("callCollaboratorAction", () => {
             expect(mockRuntime.composeState).not.toHaveBeenCalled();
         });
 
-        it("should set collaborators in state", async () => {
+        it("should use collaborators from state", async () => {
             const testState = { ...mockState };
             mockRuntime.updateRecentMessageState.mockResolvedValue(testState);
             (generateTextWithTools as any).mockResolvedValue(
@@ -207,15 +232,12 @@ describe("callCollaboratorAction", () => {
                 mockCallback
             );
 
-            const expectedCollaborators = JSON.stringify([
-                {
-                    name: "BinoAI",
-                    url: "https://bino.api.iotex.ai/fe48d47c-d0e7-0b69-a225-24be81967d59",
-                    expertise: "IoTeX Ecosystem",
-                },
-            ]);
-
-            expect(testState.collaborators).toBe(expectedCollaborators);
+            // Verify that collaborators from state are available and not modified
+            expect(testState.collaborators).toBeDefined();
+            const collaborators = JSON.parse(testState.collaborators);
+            expect(collaborators).toHaveLength(2);
+            expect(collaborators[0].name).toBe("TestAgent1");
+            expect(collaborators[1].name).toBe("TestAgent2");
         });
 
         it("should compose context with state and template", async () => {
@@ -381,7 +403,7 @@ describe("callCollaboratorAction", () => {
             });
         });
 
-        it("should preserve collaborators data structure", async () => {
+        it("should access collaborators from character configuration via state", async () => {
             const testState = { ...mockState };
             mockRuntime.updateRecentMessageState.mockResolvedValue(testState);
             (generateTextWithTools as any).mockResolvedValue(
@@ -398,11 +420,42 @@ describe("callCollaboratorAction", () => {
 
             expect(testState.collaborators).toBeDefined();
             const collaborators = JSON.parse(testState.collaborators!);
-            expect(collaborators).toHaveLength(1);
+            expect(collaborators).toHaveLength(2);
             expect(collaborators[0]).toEqual({
-                name: "BinoAI",
-                url: "https://bino.api.iotex.ai/fe48d47c-d0e7-0b69-a225-24be81967d59",
-                expertise: "IoTeX Ecosystem",
+                name: "TestAgent1",
+                url: "https://test.example.com/agent1",
+                expertise: "Testing Domain",
+            });
+            expect(collaborators[1]).toEqual({
+                name: "TestAgent2",
+                url: "https://test.example.com/agent2",
+                expertise: "Mock Services",
+            });
+        });
+
+        it("should handle empty collaborators gracefully", async () => {
+            const emptyCollaboratorsState = {
+                collaborators: "",
+            };
+            mockRuntime.updateRecentMessageState.mockResolvedValue(
+                emptyCollaboratorsState
+            );
+            (generateTextWithTools as any).mockResolvedValue(
+                "Generated response"
+            );
+
+            const result = await callCollaboratorAction.handler(
+                mockRuntime as any,
+                mockMessage as any,
+                emptyCollaboratorsState as any,
+                {},
+                mockCallback
+            );
+
+            expect(result).toBe(true);
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Generated response",
+                inReplyTo: mockMessage.id,
             });
         });
     });

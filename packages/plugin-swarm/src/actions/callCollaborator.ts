@@ -40,20 +40,10 @@ export const callCollaboratorAction: Action = {
                 return false;
             }
 
-            state.collaborators = JSON.stringify([
-                {
-                    name: "BinoAI",
-                    url: "https://bino.api.iotex.ai/fe48d47c-d0e7-0b69-a225-24be81967d59",
-                    expertise: "IoTeX Ecosystem",
-                },
-            ]);
-
             const context = composeContext({
                 state,
                 template: callCollaboratorTemplate,
             });
-
-            elizaLogger.info("callCollaboratorContext:", context);
 
             const result = await generateTextWithTools({
                 runtime,
