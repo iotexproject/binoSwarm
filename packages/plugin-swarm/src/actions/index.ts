@@ -1,1 +1,1 @@
-export * from "./call_collaborator";
+export * from "./callCollaborator";
