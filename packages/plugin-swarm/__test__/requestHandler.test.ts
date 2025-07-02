@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { callAgent } from "../src/lib/callAgent";
+import { callAgent } from "../src/lib/requestHandler";
 
 // Mock dependencies
 vi.mock("viem", () => ({

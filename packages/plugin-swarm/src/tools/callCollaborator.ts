@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { callAgent } from "../lib/callAgent";
+import { callAgent } from "../lib/requestHandler";
 
 const description = `Calls another agent to collaborate on a task. Use this when you need help from an agent with a specific specialization. You will be provided with a list of available agents and their specializations.`;
 
