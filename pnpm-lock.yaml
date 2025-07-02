@@ -130,6 +130,9 @@ importers:
       '@elizaos/plugin-node':
         specifier: workspace:*
         version: link:../packages/plugin-node
+      '@elizaos/plugin-swarm':
+        specifier: workspace:*
+        version: link:../packages/plugin-swarm
       '@elizaos/plugin-web-search':
         specifier: workspace:*
         version: link:../packages/plugin-web-search
@@ -803,6 +806,28 @@ importers:
       tsup:
         specifier: 8.3.5
         version: 8.3.5(postcss@8.5.5)(typescript@5.6.3)(yaml@2.8.0)
+
+  packages/plugin-swarm:
+    dependencies:
+      '@elizaos/core':
+        specifier: workspace:*
+        version: link:../core
+      viem:
+        specifier: 2.21.58
+        version: 2.21.58(typescript@5.6.3)(zod@3.25.64)
+      x402-fetch:
+        specifier: ^0.4.1
+        version: 0.4.1(typescript@5.6.3)
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^2.1.5
+        version: 2.1.5(vitest@2.1.5(@types/node@22.8.4)(jsdom@25.0.1)(terser@5.42.0))
+      tsup:
+        specifier: ^8.3.5
+        version: 8.3.5(postcss@8.5.5)(typescript@5.6.3)(yaml@2.8.0)
+      vitest:
+        specifier: ^2.1.5
+        version: 2.1.5(@types/node@22.8.4)(jsdom@25.0.1)(terser@5.42.0)
 
   packages/plugin-web-search:
     dependencies:
@@ -7699,6 +7724,9 @@ packages:
   x402-express@0.4.1:
     resolution: {integrity: sha512-/DA+VYMkbpnawUIDsULyLeifp5i1vcWwJcR1+B8vv34Y7iEZrDcon50KjcbFXWCsRRAgTXOM83+VakJDPInwqw==}
 
+  x402-fetch@0.4.1:
+    resolution: {integrity: sha512-5csuF+xcR9HT07eWpUkkk4bYmk6FYif7oviU+SODy0b0W0FHjvvmebrC40V1VBPzUYrFXpA1uQmtTXetYyJ2SQ==}
+
   x402@0.4.1:
     resolution: {integrity: sha512-5EW6FzcZjyizk4qa+t7QzclUBq//mCWbNf75O+WgDIyGtWg2FfqWPocmncjof6cG33rrHQG/PvNw5AMvKU6lpw==}
 
@@ -13711,7 +13739,7 @@ snapshots:
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
       '@noble/curves': 1.7.0
-      '@noble/hashes': 1.6.1
+      '@noble/hashes': 1.8.0
       '@scure/bip32': 1.6.0
       '@scure/bip39': 1.5.0
       abitype: 1.0.7(typescript@5.6.3)(zod@3.25.64)
@@ -15547,7 +15575,7 @@ snapshots:
   webauthn-p256@0.0.10:
     dependencies:
       '@noble/curves': 1.7.0
-      '@noble/hashes': 1.6.1
+      '@noble/hashes': 1.8.0
 
   webidl-conversions@3.0.1: {}
 
@@ -15680,6 +15708,16 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - supports-color
+      - typescript
+      - utf-8-validate
+
+  x402-fetch@0.4.1(typescript@5.6.3):
+    dependencies:
+      viem: 2.21.58(typescript@5.6.3)(zod@3.25.64)
+      x402: 0.4.1(typescript@5.6.3)
+      zod: 3.25.64
+    transitivePeerDependencies:
+      - bufferutil
       - typescript
       - utf-8-validate
 
