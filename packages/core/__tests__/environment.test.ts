@@ -303,8 +303,6 @@ describe("Character Configuration", () => {
                 },
             ],
         };
-        expect(() =>
-            validateCharacterConfig(configWithInvalidTypes)
-        ).toThrow();
+        expect(() => validateCharacterConfig(configWithInvalidTypes)).toThrow();
     });
 });
