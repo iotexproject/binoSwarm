@@ -62,7 +62,7 @@ describe("callCollaboratorAction", () => {
 
         it("should have descriptive description", () => {
             expect(callCollaboratorAction.description).toBe(
-                "Call a collaborator to assist with a task."
+                "Call a collaborator when the current agent's expertise is insufficient and a better available agent with more focused expertise in the user's question area exists."
             );
         });
 

@@ -15,7 +15,8 @@ import { callCollaboratorTemplate } from "../templates/callCollaboratorTemplate"
 
 export const callCollaboratorAction: Action = {
     name: "CALL_COLLABORATOR",
-    description: "Call a collaborator to assist with a task.",
+    description:
+        "Call a collaborator when the current agent's expertise is insufficient and a better available agent with more focused expertise in the user's question area exists.",
     examples: [],
     similes: [],
     validate: async (_runtime: IAgentRuntime) => {
