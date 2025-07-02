@@ -522,6 +522,7 @@ export class AgentRuntime implements IAgentRuntime {
             characterMessageExamples,
             currentMessage: message.content.text,
             availableMCPTools: this.formatMCPServers(),
+            collaborators: this.formatCollaborators(),
             ...additionalKeys,
         } as State;
 
@@ -1254,6 +1255,16 @@ export class AgentRuntime implements IAgentRuntime {
                 )
                 .join("\n")
         );
+    }
+
+    private formatCollaborators(): string {
+        if (!this.character.collaborators) {
+            return "";
+        }
+        if (this.character.collaborators.length === 0) {
+            return "";
+        }
+        return JSON.stringify(this.character.collaborators);
     }
 }
 

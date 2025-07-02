@@ -872,6 +872,13 @@ export type Character = {
     mcpServers?: {
         [key: string]: MCPServerConfig;
     };
+
+    /** Optional collaborator configurations */
+    collaborators?: Array<{
+        name: string;
+        url: string;
+        expertise: string;
+    }>;
 };
 
 export interface MCPServerConfig {
