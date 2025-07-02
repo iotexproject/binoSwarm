@@ -10,7 +10,7 @@ import {
     ModelClass,
     generateTextWithTools,
 } from "@elizaos/core";
-import { callAgentTool } from "../tools/callCollaborator";
+import { callAgentTool } from "../tools/callAgentTool";
 import { callCollaboratorTemplate } from "../templates/callCollaboratorTemplate";
 
 export const callCollaboratorAction: Action = {
