@@ -19,7 +19,7 @@ export const callCollaboratorAction: Action = {
     examples: [],
     similes: [],
     validate: async (_runtime: IAgentRuntime) => {
-        return true;
+        return !!process.env.EVM_PRIVATE_KEY;
     },
     handler: async (
         runtime: IAgentRuntime,
