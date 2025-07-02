@@ -245,4 +245,66 @@ describe("Character Configuration", () => {
         };
         expect(() => validateCharacterConfig(configWithBothMcp)).toThrow();
     });
+
+    it("should validate collaborators configuration", () => {
+        const configWithCollaborators = {
+            ...validCharacterConfig,
+            collaborators: [
+                {
+                    name: "Agent1",
+                    url: "https://test.example.com/agent1",
+                    expertise: "Weather",
+                },
+                {
+                    name: "Agent2",
+                    url: "https://test.example.com/agent2",
+                    expertise: "Sports",
+                },
+            ],
+        };
+        expect(() =>
+            validateCharacterConfig(configWithCollaborators)
+        ).not.toThrow();
+    });
+
+    it("should validate empty collaborators array", () => {
+        const configWithEmptyCollaborators = {
+            ...validCharacterConfig,
+            collaborators: [],
+        };
+        expect(() =>
+            validateCharacterConfig(configWithEmptyCollaborators)
+        ).not.toThrow();
+    });
+
+    it("should throw error for collaborator missing required fields", () => {
+        const configWithInvalidCollaborator = {
+            ...validCharacterConfig,
+            collaborators: [
+                {
+                    name: "IncompleteAgent",
+                    // Missing url and expertise
+                },
+            ],
+        };
+        expect(() =>
+            validateCharacterConfig(configWithInvalidCollaborator)
+        ).toThrow();
+    });
+
+    it("should throw error for collaborator with invalid field types", () => {
+        const configWithInvalidTypes = {
+            ...validCharacterConfig,
+            collaborators: [
+                {
+                    name: 123, // Should be string
+                    url: "https://example.com",
+                    expertise: "Test",
+                },
+            ],
+        };
+        expect(() =>
+            validateCharacterConfig(configWithInvalidTypes)
+        ).toThrow();
+    });
 });
