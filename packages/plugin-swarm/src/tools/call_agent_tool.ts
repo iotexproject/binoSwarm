@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { callAgent } from "../lib/x402";
+import { callAgent } from "../lib/callAgent";
 
 const description = `Calls another agent to collaborate on a task. Use this when you need help from an agent with a specific specialization. You will be provided with a list of available agents and their specializations.`;
 
