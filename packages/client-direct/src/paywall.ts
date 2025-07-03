@@ -15,7 +15,7 @@ export const paymentReceiver =
 export const facilitator =
     process.env.X402_FACILITATOR_URL || defaultFacilitator;
 
-const MAX_TIMEOUT_SECONDS = 180;
+const MAX_TIMEOUT_SECONDS = Number(process.env.X402_MAX_TIMEOUT_SECONDS) || 120;
 
 export const routePaymentConfig: RouteConfig = {
     price,
