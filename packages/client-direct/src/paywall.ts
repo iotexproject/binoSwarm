@@ -1,4 +1,4 @@
-import { paymentMiddleware, Network } from "x402-express";
+import { paymentMiddleware, Network, RouteConfig } from "x402-express";
 import { Request, Response, NextFunction } from "express";
 
 const defaultReceiver =
@@ -15,11 +15,14 @@ export const paymentReceiver =
 export const facilitator =
     process.env.X402_FACILITATOR_URL || defaultFacilitator;
 
-export const routePaymentConfig = {
+const MAX_TIMEOUT_SECONDS = 180;
+
+export const routePaymentConfig: RouteConfig = {
     price,
     network,
     config: {
         description: "Access to paid BinoSwarm API",
+        maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
     },
 };
 
