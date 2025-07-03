@@ -58,6 +58,12 @@ const PluginSchema = z.object({
     clients: z.array(z.any()).optional(),
 });
 
+const CollaboratorSchema = z.object({
+    name: z.string(),
+    url: z.string(),
+    expertise: z.string(),
+});
+
 // Main Character schema
 export const CharacterSchema = z.object({
     id: z.string().uuid().optional(),
@@ -151,6 +157,7 @@ export const CharacterSchema = z.object({
             ])
         )
         .optional(),
+    collaborators: z.array(CollaboratorSchema).optional(),
 });
 
 // Type inference

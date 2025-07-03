@@ -397,6 +397,24 @@ describe("Generation With Tools", () => {
                 type: "output",
             });
         });
+
+        it("should not initialize mcpManager or get mcpTools when enableGlobalMcp is false", async () => {
+            // Act
+            await generateTextWithTools({
+                runtime: mockRuntime,
+                context: mockContext,
+                modelClass: mockModelClass,
+                tools: mockTools,
+                enableGlobalMcp: false,
+            });
+
+            // Assert
+            expect(mockRuntime.mcpManager.initialize).not.toHaveBeenCalled();
+            expect(
+                mockRuntime.mcpManager.getToolsForClients
+            ).not.toHaveBeenCalled();
+            expect(mockRuntime.mcpManager.closeClients).not.toHaveBeenCalled(); // No clients initialized, so no clients to close
+        });
     });
 
     describe("streamWithTools", () => {

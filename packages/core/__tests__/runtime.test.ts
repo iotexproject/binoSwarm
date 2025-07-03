@@ -941,4 +941,102 @@ describe("AgentRuntime", () => {
             expect(formattedTools).toBe("");
         });
     });
+
+    describe("formatCollaborators", () => {
+        it("should format available collaborators correctly", async () => {
+            runtime.character.collaborators = [
+                {
+                    name: "Agent1",
+                    url: "https://test.example.com/agent1",
+                    expertise: "Weather",
+                },
+                {
+                    name: "Agent2",
+                    url: "https://test.example.com/agent2",
+                    expertise: "Sports",
+                },
+            ];
+
+            const formattedCollaborators = (
+                runtime as any
+            ).formatCollaborators();
+            const parsedCollaborators = JSON.parse(formattedCollaborators);
+            expect(parsedCollaborators).toHaveLength(2);
+            expect(parsedCollaborators[0]).toEqual({
+                name: "Agent1",
+                url: "https://test.example.com/agent1",
+                expertise: "Weather",
+            });
+            expect(parsedCollaborators[1]).toEqual({
+                name: "Agent2",
+                url: "https://test.example.com/agent2",
+                expertise: "Sports",
+            });
+        });
+
+        it("should return an empty string if no collaborators are configured", async () => {
+            runtime.character.collaborators = undefined;
+
+            const formattedCollaborators = (
+                runtime as any
+            ).formatCollaborators();
+            expect(formattedCollaborators).toBe("");
+        });
+
+        it("should return an empty string if collaborators array is empty", async () => {
+            runtime.character.collaborators = [];
+
+            const formattedCollaborators = (
+                runtime as any
+            ).formatCollaborators();
+            expect(formattedCollaborators).toBe("");
+        });
+    });
+
+    describe("state composition", () => {
+        it("should include collaborators in composed state", async () => {
+            runtime.character.collaborators = [
+                {
+                    name: "TestAgent",
+                    url: "https://test.example.com/agent",
+                    expertise: "Testing",
+                },
+            ];
+
+            const mockMessage = {
+                userId: "user-123",
+                content: { text: "test message" },
+                roomId: "room-123",
+                agentId: runtime.agentId,
+            } as any;
+
+            const state = await runtime.composeState(mockMessage);
+
+            expect(state.collaborators).toBeDefined();
+            const parsedCollaborators = JSON.parse(
+                state.collaborators as string
+            );
+            expect(parsedCollaborators).toHaveLength(1);
+            expect(parsedCollaborators[0]).toEqual({
+                name: "TestAgent",
+                url: "https://test.example.com/agent",
+                expertise: "Testing",
+            });
+        });
+
+        it("should include empty string for collaborators when none are configured", async () => {
+            runtime.character.collaborators = undefined;
+
+            const mockMessage = {
+                userId: "user-123",
+                content: { text: "test message" },
+                roomId: "room-123",
+                agentId: runtime.agentId,
+            } as any;
+
+            const state = await runtime.composeState(mockMessage);
+
+            expect(state.collaborators).toBe("");
+        });
+    });
 });

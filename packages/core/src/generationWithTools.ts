@@ -28,6 +28,7 @@ type GenerateTextWithToolsOptions = {
         parameters: ZodSchema;
         execute: (args: any) => Promise<any>;
     }[];
+    enableGlobalMcp?: boolean;
 };
 
 export async function generateTextWithTools({
@@ -35,6 +36,7 @@ export async function generateTextWithTools({
     context,
     modelClass,
     customSystemPrompt,
+    enableGlobalMcp = true,
     tools,
 }: GenerateTextWithToolsOptions): Promise<string> {
     validateContext(context);
@@ -50,8 +52,12 @@ export async function generateTextWithTools({
     );
     const model = getModel(provider, modelSettings.name);
 
-    const mcpClients = await runtime.mcpManager.initialize(runtime.character);
-    const mcpTools = await runtime.mcpManager.getToolsForClients(mcpClients);
+    const mcpClients = enableGlobalMcp
+        ? await runtime.mcpManager.initialize(runtime.character)
+        : [];
+    const mcpTools = enableGlobalMcp
+        ? await runtime.mcpManager.getToolsForClients(mcpClients)
+        : {};
 
     try {
         const result = await generateText({
@@ -71,7 +77,9 @@ export async function generateTextWithTools({
         elizaLogger.debug("generateTextWithTools result:", result.text);
         return result.text;
     } finally {
-        runtime.mcpManager.closeClients(mcpClients);
+        if (enableGlobalMcp) {
+            runtime.mcpManager.closeClients(mcpClients);
+        }
     }
 }
 
