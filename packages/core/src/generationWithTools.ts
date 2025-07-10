@@ -31,6 +31,7 @@ type GenerateTextWithToolsOptions = {
     }[];
     enableGlobalMcp?: boolean;
     message?: Memory;
+    functionId?: string;
 };
 
 export async function generateTextWithTools({
@@ -41,6 +42,7 @@ export async function generateTextWithTools({
     enableGlobalMcp = true,
     tools,
     message,
+    functionId,
 }: GenerateTextWithToolsOptions): Promise<string> {
     validateContext(context);
 
@@ -52,7 +54,8 @@ export async function generateTextWithTools({
     const modelOptions: GenerationSettings = buildGenerationSettings(
         context,
         modelSettings,
-        message
+        message,
+        functionId
     );
     const model = getModel(provider, modelSettings.name);
 
@@ -95,6 +98,7 @@ export function streamWithTools({
     tools,
     smoothStreamBy = "word",
     message,
+    functionId,
 }: GenerateTextWithToolsOptions & {
     smoothStreamBy?: "word" | "line" | RegExp;
 }): any {
@@ -107,7 +111,8 @@ export function streamWithTools({
     const modelOptions = buildGenerationSettings(
         context,
         modelSettings,
-        message
+        message,
+        functionId
     );
     const model = getModel(provider, modelSettings.name);
 

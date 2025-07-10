@@ -55,6 +55,7 @@ export const callCollaboratorAction: Action = {
                 modelClass: ModelClass.LARGE,
                 tools: [callAgentTool],
                 message,
+                functionId: "CALL_COLLABORATOR",
             });
 
             const response: Content = {

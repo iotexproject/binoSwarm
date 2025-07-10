@@ -3,7 +3,8 @@ import { GenerationSettings, Memory, ModelSettings } from "./types.ts";
 export function buildGenerationSettings(
     context: string,
     modelSettings: ModelSettings,
-    message?: Memory
+    message?: Memory,
+    functionId?: string
 ): GenerationSettings {
     return {
         prompt: context,
@@ -13,12 +14,13 @@ export function buildGenerationSettings(
         presencePenalty: modelSettings.presence_penalty,
         experimental_telemetry: {
             isEnabled: true,
-            functionId: message?.id,
+            functionId,
             metadata: message
                 ? {
                       userId: message?.userId,
                       agentId: message?.agentId,
                       roomId: message?.roomId,
+                      sessionId: message?.id,
                   }
                 : undefined,
         },

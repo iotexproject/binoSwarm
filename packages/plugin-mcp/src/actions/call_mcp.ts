@@ -47,6 +47,7 @@ export const mcpAction: Action = {
                 modelClass: ModelClass.LARGE,
                 tools: [],
                 message,
+                functionId: "CALL_MCP_TOOLS",
             });
 
             const response: Content = {

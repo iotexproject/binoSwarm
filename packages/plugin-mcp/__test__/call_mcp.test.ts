@@ -69,6 +69,7 @@ describe("mcpAction", () => {
                 modelClass: ModelClass.LARGE,
                 tools: [],
                 message: mockMessage,
+                functionId: "CALL_MCP_TOOLS",
             });
             expect(mockCallback).toHaveBeenCalledWith({
                 text: mockResult,
