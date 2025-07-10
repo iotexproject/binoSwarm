@@ -54,6 +54,7 @@ export const callCollaboratorAction: Action = {
                 enableGlobalMcp: false,
                 modelClass: ModelClass.LARGE,
                 tools: [callAgentTool],
+                message,
             });
 
             const response: Content = {

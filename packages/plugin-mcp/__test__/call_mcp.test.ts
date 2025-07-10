@@ -68,6 +68,7 @@ describe("mcpAction", () => {
                 context: expect.any(String),
                 modelClass: ModelClass.LARGE,
                 tools: [],
+                message: mockMessage,
             });
             expect(mockCallback).toHaveBeenCalledWith({
                 text: mockResult,

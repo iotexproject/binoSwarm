@@ -389,6 +389,7 @@ describe("callCollaboratorAction", () => {
                 enableGlobalMcp: false,
                 modelClass: ModelClass.LARGE,
                 tools: [callAgentTool],
+                message: mockMessage,
             });
         });
 

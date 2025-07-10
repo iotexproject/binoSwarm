@@ -46,6 +46,7 @@ export const mcpAction: Action = {
                 context,
                 modelClass: ModelClass.LARGE,
                 tools: [],
+                message,
             });
 
             const response: Content = {

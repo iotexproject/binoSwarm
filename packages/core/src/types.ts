@@ -639,6 +639,8 @@ export interface IAgentConfig {
     [key: string]: string;
 }
 
+export type AttributeValue = string | number | boolean | null;
+
 export type TelemetrySettings = {
     /**
      * Enable or disable telemetry. Disabled by default while experimental.
@@ -662,6 +664,11 @@ export type TelemetrySettings = {
      * Identifier for this function. Used to group telemetry data by function.
      */
     functionId?: string;
+
+    /**
+     * Metadata for the telemetry data.
+     */
+    metadata?: Record<string, AttributeValue>;
 };
 
 export interface ModelConfiguration {

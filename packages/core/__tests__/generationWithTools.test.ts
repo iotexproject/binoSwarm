@@ -5,11 +5,11 @@ import {
 } from "../src/generationWithTools";
 import * as ai from "ai";
 import { getModelSettings, getModel } from "../src/models";
-import { elizaLogger } from "../src/index";
+import { elizaLogger, stringToUuid } from "../src/index";
 import { trimTokens } from "../src/tokenTrimming";
 import { buildGenerationSettings } from "../src/generationHelpers";
 import { z } from "zod";
-import type { IAgentRuntime, ModelClass, ModelSettings } from "../src/types";
+import type { IAgentRuntime, Memory, ModelClass, ModelSettings } from "../src/types";
 
 // Mock dependencies
 vi.mock("ai", () => ({
@@ -52,6 +52,7 @@ describe("Generation With Tools", () => {
     let mockModelClass: ModelClass;
     let mockGenerationOptions: any;
     let originalEnv: NodeJS.ProcessEnv;
+    let mockMessage: Memory;
 
     beforeEach(() => {
         // Store original environment variables
@@ -77,6 +78,17 @@ describe("Generation With Tools", () => {
             },
             mcpTools: {},
         } as unknown as IAgentRuntime;
+
+        // Setup mock message
+        mockMessage = {
+            id: "123-123-123-123-123",
+            userId: "123-123-123-123-123",
+            agentId: "123-123-123-123-123",
+            roomId: "123-123-123-123-123",
+            content: {
+                text: "What is the weather in Tokyo?",
+            },
+        };
 
         // Setup mock model settings
         mockModelSettings = {
@@ -261,6 +273,7 @@ describe("Generation With Tools", () => {
                 context: mockContext,
                 modelClass: mockModelClass,
                 tools: mockTools,
+                message: mockMessage,
             });
 
             // Assert
@@ -276,7 +289,8 @@ describe("Generation With Tools", () => {
             );
             expect(buildGenerationSettings).toHaveBeenCalledWith(
                 mockContext,
-                mockModelSettings
+                mockModelSettings,
+                mockMessage,
             );
             expect(getModel).toHaveBeenCalledWith(
                 mockRuntime.modelProvider,

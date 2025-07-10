@@ -1,8 +1,9 @@
-import { GenerationSettings, ModelSettings } from "./types.ts";
+import { GenerationSettings, Memory, ModelSettings } from "./types.ts";
 
 export function buildGenerationSettings(
     context: string,
-    modelSettings: ModelSettings
+    modelSettings: ModelSettings,
+    message?: Memory
 ): GenerationSettings {
     return {
         prompt: context,
@@ -10,7 +11,17 @@ export function buildGenerationSettings(
         maxTokens: modelSettings.maxOutputTokens,
         frequencyPenalty: modelSettings.frequency_penalty,
         presencePenalty: modelSettings.presence_penalty,
-        experimental_telemetry: { isEnabled: true },
+        experimental_telemetry: {
+            isEnabled: true,
+            functionId: message?.id,
+            metadata: message
+                ? {
+                      userId: message?.userId,
+                      agentId: message?.agentId,
+                      roomId: message?.roomId,
+                  }
+                : undefined,
+        },
         stop: modelSettings.stop,
     };
 }
