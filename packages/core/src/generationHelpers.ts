@@ -14,16 +14,30 @@ export function buildGenerationSettings(
         presencePenalty: modelSettings.presence_penalty,
         experimental_telemetry: {
             isEnabled: true,
-            functionId,
-            metadata: message
-                ? {
-                      userId: message?.userId,
-                      agentId: message?.agentId,
-                      roomId: message?.roomId,
-                      sessionId: message?.id,
-                  }
-                : undefined,
+            functionId: getFunctionId(functionId, message),
+            metadata: getMetadata(message),
         },
         stop: modelSettings.stop,
+    };
+}
+
+function getFunctionId(functionId: string, message: Memory) {
+    if (message) {
+        return `${functionId}_${message.id}`;
+    }
+
+    return functionId;
+}
+
+function getMetadata(message: Memory) {
+    if (!message) {
+        return undefined;
+    }
+
+    return {
+        langfuseTraceId: message.id,
+        userId: message.userId,
+        agentId: message.agentId,
+        roomId: message.roomId,
     };
 }
