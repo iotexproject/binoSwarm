@@ -94,6 +94,7 @@ export function streamWithTools({
     customSystemPrompt,
     tools,
     smoothStreamBy = "word",
+    message,
 }: GenerateTextWithToolsOptions & {
     smoothStreamBy?: "word" | "line" | RegExp;
 }): any {
@@ -103,7 +104,11 @@ export function streamWithTools({
     const modelSettings = getModelSettings(provider, modelClass);
     validateModelSettings(modelSettings, provider);
 
-    const modelOptions = buildGenerationSettings(context, modelSettings);
+    const modelOptions = buildGenerationSettings(
+        context,
+        modelSettings,
+        message
+    );
     const model = getModel(provider, modelSettings.name);
 
     const result = streamText({

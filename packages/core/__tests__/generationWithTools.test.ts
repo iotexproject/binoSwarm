@@ -439,6 +439,7 @@ describe("Generation With Tools", () => {
                 context: mockContext,
                 modelClass: mockModelClass,
                 tools: mockTools,
+                message: mockMessage,
             });
 
             // Assert
@@ -449,7 +450,8 @@ describe("Generation With Tools", () => {
             );
             expect(buildGenerationSettings).toHaveBeenCalledWith(
                 mockContext,
-                mockModelSettings
+                mockModelSettings,
+                mockMessage,
             );
             expect(getModel).toHaveBeenCalledWith(
                 mockRuntime.modelProvider,

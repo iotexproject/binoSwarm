@@ -86,6 +86,7 @@ async function handle(
         context,
         modelClass: ModelClass.LARGE,
         tools: [qsSchema],
+        message: userMessage,
     });
 
     responseStream.pipeDataStreamToResponse(res);

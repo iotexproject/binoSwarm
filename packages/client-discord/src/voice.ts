@@ -872,7 +872,7 @@ export class VoiceManager extends EventEmitter {
                     discordVoiceHandlerTemplate,
             });
 
-            const result = this._generateResponse(context);
+            const result = this._generateResponse(context, memory);
 
             for await (const textPart of result.textStream) {
                 const responseStream = await this.runtime
@@ -978,7 +978,7 @@ export class VoiceManager extends EventEmitter {
         }
     }
 
-    private _generateResponse(context: string): any {
+    private _generateResponse(context: string, message: Memory): any {
         elizaLogger.debug("context: ", context);
         const response = streamWithTools({
             runtime: this.runtime,
@@ -1000,6 +1000,7 @@ export class VoiceManager extends EventEmitter {
             smoothStreamBy: /[.!?]\s+/,
             customSystemPrompt:
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+            message,
         });
 
         return response;
