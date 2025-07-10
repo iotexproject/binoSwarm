@@ -87,6 +87,8 @@ export async function generateObject<T>({
     schemaName,
     schemaDescription,
     customSystemPrompt,
+    message,
+    functionId,
 }: GenerationOptions): Promise<GenerateObjectResult<T>> {
     validateContext(context);
 
@@ -95,7 +97,12 @@ export async function generateObject<T>({
     validateSettings(modelSettings, provider);
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
-    const modelOptions = buildGenerationSettings(context, modelSettings);
+    const modelOptions = buildGenerationSettings(
+        context,
+        modelSettings,
+        message,
+        functionId
+    );
 
     const model = getModel(provider, modelSettings.name);
 

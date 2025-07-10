@@ -72,6 +72,7 @@ export async function generateSummary(
         schema: summarySchema,
         schemaName: "summary",
         schemaDescription: "A summary of the text",
+        functionId: "discord_generateSummary",
     });
 
     const parsedResponse = summarySchema.parse(response.object);

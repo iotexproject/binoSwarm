@@ -1618,4 +1618,6 @@ export type GenerationOptions = {
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
     verifiableInferenceOptions?: VerifiableInferenceOptions;
     customSystemPrompt?: string;
+    message?: Memory;
+    functionId?: string;
 };

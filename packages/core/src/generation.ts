@@ -44,6 +44,7 @@ export async function generateShouldRespond({
             schemaName: "ShouldRespond",
             schemaDescription: "A boolean value",
             customSystemPrompt: UTILITY_SYSTEM_PROMPT,
+            functionId: "generateShouldRespond",
         });
 
         return response.object.response;
@@ -89,6 +90,7 @@ export async function generateTrueOrFalse({
             schemaName: "Boolean",
             schemaDescription: "A boolean value",
             customSystemPrompt: UTILITY_SYSTEM_PROMPT,
+            functionId: "generateTrueOrFalse",
         });
 
         return response.object.response;
@@ -129,6 +131,7 @@ export async function generateMessageResponse({
             schema: contentSchema,
             schemaName: "Content",
             schemaDescription: "Message content structure",
+            functionId: "generateMessageResponse",
         });
         return result.object;
     } catch (error) {
@@ -173,6 +176,7 @@ export const generateCaption = async (
         messages,
         schemaName: "ImageDescription",
         schemaDescription: "The description of the image",
+        functionId: "generateCaption",
     });
 
     return result.object;
@@ -227,6 +231,7 @@ export async function generateTweetActions({
             schemaName: "Actions",
             schemaDescription: "The actions to take on the tweet",
             customSystemPrompt: UTILITY_SYSTEM_PROMPT,
+            functionId: "generateTweetActions",
         });
 
         return response.object;

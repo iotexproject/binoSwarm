@@ -66,6 +66,8 @@ const getDateRange = async (
             schemaDescription: "The objective, start and end of the date range",
             customSystemPrompt:
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+            message,
+            functionId: "discord_getDateRange",
         });
         elizaLogger.log("response", response);
         // try parsing to a json object
