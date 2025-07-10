@@ -53,7 +53,6 @@ export async function generateText({
     const pres = cfg?.presence_penalty || settings.presence_penalty;
     const max_in = cfg?.maxInputTokens || settings.maxInputTokens;
     const max_out = cfg?.max_response_length || settings.maxOutputTokens;
-    const tel = cfg?.experimental_telemetry || settings.experimental_telemetry;
 
     context = await trimTokens(context, max_in, runtime);
 
@@ -71,7 +70,7 @@ export async function generateText({
         maxTokens: max_out,
         frequencyPenalty: freq,
         presencePenalty: pres,
-        experimental_telemetry: tel,
+        experimental_telemetry: { isEnabled: true },
     });
 
     trackUsage(runtime, result, settings);

@@ -1,5 +1,6 @@
 import type { Readable } from "stream";
 import type { ZodSchema } from "zod";
+import type { NodeSDK } from "@opentelemetry/sdk-node";
 
 /**
  * Represents a UUID string in the format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -1186,6 +1187,7 @@ export interface IAgentRuntime {
     evaluators: Evaluator[];
     plugins: Plugin[];
     metering: IMetering;
+    telemetry: NodeSDK;
 
     fetch?: typeof fetch | null;
 

@@ -1,5 +1,6 @@
 import { names, uniqueNamesGenerator } from "unique-names-generator";
 import { v4 as uuidv4 } from "uuid";
+import { NodeSDK } from "@opentelemetry/sdk-node";
 import {
     composeActionExamples,
     formatActionNames,
@@ -16,6 +17,7 @@ import {
 import { generateObject } from "./textGeneration.ts";
 import { formatGoalsAsString, getGoals } from "./goals.ts";
 import { elizaLogger } from "./index.ts";
+import { langfuseTelemetry } from "./telemetry.ts";
 import { MemoryManager } from "./memory.ts";
 import { formatMessages, retrieveActorIdsFromMessages } from "./messages.ts";
 import { stringArraySchema } from "./parsing.ts";
@@ -107,7 +109,7 @@ export class AgentRuntime implements IAgentRuntime {
     cacheManager: ICacheManager;
     clients: Record<string, any>;
     metering: IMetering;
-
+    telemetry: NodeSDK;
     mcpManager: MCPManager;
     mcpTools: any = {};
 
@@ -141,6 +143,12 @@ export class AgentRuntime implements IAgentRuntime {
         await this.initializeServices();
         await this.initializePluginServices();
         await this.initCharacterKnowledge();
+        this.initTelemetry();
+    }
+
+    initTelemetry() {
+        this.telemetry = langfuseTelemetry;
+        this.telemetry.start();
     }
 
     registerMemoryManager(manager: IMemoryManager): void {
@@ -220,6 +228,7 @@ export class AgentRuntime implements IAgentRuntime {
         if (this.mcpManager) {
             this.mcpManager.close();
         }
+        this.telemetry.shutdown();
     }
 
     async registerService(service: Service): Promise<void> {

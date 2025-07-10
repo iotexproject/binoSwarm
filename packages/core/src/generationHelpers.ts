@@ -10,7 +10,7 @@ export function buildGenerationSettings(
         maxTokens: modelSettings.maxOutputTokens,
         frequencyPenalty: modelSettings.frequency_penalty,
         presencePenalty: modelSettings.presence_penalty,
-        experimental_telemetry: modelSettings.experimental_telemetry,
+        experimental_telemetry: { isEnabled: true },
         stop: modelSettings.stop,
     };
 }
