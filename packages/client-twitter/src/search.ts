@@ -116,7 +116,10 @@ export class TwitterSearchClient {
                             this.runtime,
                             this.twitterUsername,
                             responseTweetId
-                        )
+                        ),
+                    {
+                        tags: ["twitter", "twitter-reply", "twitter-search"],
+                    }
                 );
 
                 this.respondedTweets.add(selectedTweet.id);

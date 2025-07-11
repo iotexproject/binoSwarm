@@ -1002,6 +1002,7 @@ export class VoiceManager extends EventEmitter {
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
             message,
             functionId: "HANDLE_VOICE_MESSAGE",
+            tags: ["discord", "discord-voice"],
         });
 
         return response;

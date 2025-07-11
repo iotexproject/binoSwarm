@@ -128,6 +128,9 @@ async function processTextualRequest(
         async (newMessages) => {
             message = newMessages;
             return [memory];
+        },
+        {
+            tags: ["direct-client", "direct-client-speak"],
         }
     );
     await runtime.evaluate(memory, state);

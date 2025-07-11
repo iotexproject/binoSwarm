@@ -88,6 +88,7 @@ async function handle(
         tools: [qsSchema],
         message: userMessage,
         functionId: "HANDLE_MESSAGE_STREAM",
+        tags: ["direct-client", "direct-client-message-stream"],
     });
 
     responseStream.pipeDataStreamToResponse(res);

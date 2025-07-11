@@ -76,6 +76,9 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
                 res.write(`data: ${stringified}\n\n`);
             }
             return [memory];
+        },
+        {
+            tags: ["direct-client", "direct-client-message"],
         }
     );
 

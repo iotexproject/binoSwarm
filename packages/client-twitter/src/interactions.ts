@@ -325,7 +325,10 @@ export class TwitterInteractionClient {
                         this.runtime,
                         this.client.twitterConfig.TWITTER_USERNAME,
                         responseTweetId
-                    )
+                    ),
+                {
+                    tags: ["twitter", "twitter-reply", "twitter-interaction"],
+                }
             );
 
             await this.saveResponseInfoToCache(context, tweet, response);

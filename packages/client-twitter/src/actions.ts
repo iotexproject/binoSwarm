@@ -614,7 +614,10 @@ export class TwitterActionProcessor {
                         this.runtime,
                         this.twitterUsername,
                         responseTweetId
-                    )
+                    ),
+                {
+                    tags: ["twitter", "twitter-reply", "twitter-action"],
+                }
             );
         } catch (error) {
             elizaLogger.error(`Error replying to tweet ${tweet.id}:`, error);

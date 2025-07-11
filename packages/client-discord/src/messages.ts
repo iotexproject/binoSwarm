@@ -224,7 +224,10 @@ export class MessageManager {
                     memory,
                     responseMessages,
                     state,
-                    callback
+                    callback,
+                    {
+                        tags: ["discord", "discord-message"],
+                    }
                 );
             }
             await this.runtime.evaluate(memory, state, shouldRespond);
