@@ -249,6 +249,8 @@ export const memeGeneration: Action = {
             customSystemPrompt:
                 runtime.character?.templates?.memeSystemPrompt ||
                 memeSystemPrompt,
+            message,
+            functionId: "GENERATE_MEME",
         });
 
         if (!memeGenRes.object) {

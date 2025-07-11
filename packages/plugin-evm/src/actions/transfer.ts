@@ -93,6 +93,7 @@ const buildTransferDetails = async (
         schema: transferSchema,
         schemaName: "TransferDetails",
         schemaDescription: "Transfer parameters for EVM transaction",
+        functionId: "TRANSFER_DETAILS",
     });
 
     const parsedResponse = transferSchema.parse(

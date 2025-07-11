@@ -1,5 +1,7 @@
 import { experimental_generateImage as aiGenerateImage } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { randomUUID } from "crypto";
+import { Langfuse } from "langfuse";
 
 import { elizaLogger } from "./index.ts";
 import { getImageModelSettings } from "./models.ts";
@@ -42,11 +44,28 @@ export const generateImage = async (
     try {
         const size = getTargetSize(data);
 
+        const parentTraceId = randomUUID();
+        const langfuse = new Langfuse();
+        const trace =langfuse.trace({
+            id: parentTraceId,
+            name: "generateImage",
+        });
+
+        trace.generation({
+            id: randomUUID(),
+            name: "generateImage",
+            model: model,
+            input: data.prompt,
+        });
+
         const { image } = await aiGenerateImage({
             model: openai.image(model),
             prompt: data.prompt,
             size,
         });
+
+        await langfuse.flushAsync();
+
         createMeteringEvent(runtime, model, size);
 
         return { success: true, data: [image.base64] };

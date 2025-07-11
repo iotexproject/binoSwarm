@@ -1057,7 +1057,10 @@ export class MessageManager {
                     memory,
                     responseMessages,
                     state,
-                    callback
+                    callback,
+                    {
+                        tags: ["telegram", "telegram-message"],
+                    }
                 );
             }
 

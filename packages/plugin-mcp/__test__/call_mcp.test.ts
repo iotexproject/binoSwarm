@@ -43,6 +43,9 @@ describe("mcpAction", () => {
             const mockState = { some: "state" } as any;
             const mockResult = "Generated text";
             const mockCallback = vi.fn();
+            const mockOptions = {
+                tags: [],
+            };
 
             const runtime = {
                 composeState: vi.fn().mockResolvedValue(mockState),
@@ -58,7 +61,7 @@ describe("mcpAction", () => {
                 runtime,
                 mockMessage,
                 null as any,
-                null as any,
+                mockOptions,
                 mockCallback
             );
 
@@ -68,6 +71,9 @@ describe("mcpAction", () => {
                 context: expect.any(String),
                 modelClass: ModelClass.LARGE,
                 tools: [],
+                message: mockMessage,
+                functionId: "CALL_MCP_TOOLS",
+                tags: mockOptions.tags,
             });
             expect(mockCallback).toHaveBeenCalledWith({
                 text: mockResult,
@@ -79,7 +85,9 @@ describe("mcpAction", () => {
         it("should call callback with error message on failure", async () => {
             const mockMessage = { id: "123" } as any;
             const mockCallback = vi.fn();
-
+            const mockOptions = {
+                tags: [],
+            };
             const runtime = {
                 composeState: vi.fn().mockResolvedValue({}),
                 updateRecentMessageState: vi.fn().mockResolvedValue({}),
@@ -94,7 +102,7 @@ describe("mcpAction", () => {
                 runtime,
                 mockMessage,
                 null as any,
-                null as any,
+                mockOptions,
                 mockCallback
             );
 

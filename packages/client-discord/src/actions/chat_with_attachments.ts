@@ -53,6 +53,8 @@ const getAttachmentIds = async (
             schemaDescription: "The objective and attachment IDs",
             customSystemPrompt:
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+            message,
+            functionId: "discord_getAttachmentIds",
         });
         elizaLogger.log("response", response);
         // try parsing to a json object
@@ -207,6 +209,8 @@ const summarizeAction = {
             modelClass: ModelClass.SMALL,
             customSystemPrompt:
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+            functionId: "discord_chatWithAttachments",
+            message,
         });
 
         currentSummary = currentSummary + "\n" + summary;
