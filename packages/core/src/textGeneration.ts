@@ -17,6 +17,7 @@ import {
     GenerationOptions,
     ModelSettings,
     ModelProviderName,
+    Memory,
 } from "./types.ts";
 import { trimTokens } from "./tokenTrimming.ts";
 import { buildGenerationSettings } from "./generationHelpers.ts";
@@ -30,6 +31,8 @@ export async function generateText({
     maxSteps = 1,
     customSystemPrompt,
     messages,
+    functionId,
+    message,
 }: {
     runtime: IAgentRuntime;
     context: string;
@@ -40,6 +43,8 @@ export async function generateText({
     stop?: string[];
     customSystemPrompt?: string;
     messages?: Message[];
+    functionId?: string;
+    message?: Memory;
 }): Promise<string> {
     validateContext(context);
 
@@ -48,29 +53,28 @@ export async function generateText({
     validateSettings(settings, provider);
 
     const cfg = runtime.character?.settings?.modelConfig;
-    const temp = cfg?.temperature || settings.temperature;
-    const freq = cfg?.frequency_penalty || settings.frequency_penalty;
-    const pres = cfg?.presence_penalty || settings.presence_penalty;
     const max_in = cfg?.maxInputTokens || settings.maxInputTokens;
-    const max_out = cfg?.max_response_length || settings.maxOutputTokens;
 
     context = await trimTokens(context, max_in, runtime);
+
+    const modelOptions = buildGenerationSettings(
+        context,
+        settings,
+        message,
+        functionId
+    );
+
 
     const llmModel = getModel(provider, settings.name);
 
     const result = await aiGenerateText({
         model: llmModel,
-        prompt: context,
         system: customSystemPrompt ?? runtime.character.system ?? undefined,
         tools,
         messages,
         onStepFinish,
         maxSteps,
-        temperature: temp,
-        maxTokens: max_out,
-        frequencyPenalty: freq,
-        presencePenalty: pres,
-        experimental_telemetry: { isEnabled: true },
+        ...modelOptions,
     });
 
     trackUsage(runtime, result, settings);
@@ -97,6 +101,7 @@ export async function generateObject<T>({
     validateSettings(modelSettings, provider);
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
+
     const modelOptions = buildGenerationSettings(
         context,
         modelSettings,
