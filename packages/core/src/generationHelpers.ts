@@ -5,7 +5,8 @@ export function buildGenerationSettings(
     context: string,
     modelSettings: ModelSettings,
     message?: Memory,
-    functionId?: string
+    functionId?: string,
+    tags?: string[]
 ): GenerationSettings {
     return {
         prompt: context,
@@ -17,6 +18,7 @@ export function buildGenerationSettings(
             isEnabled: true,
             functionId,
             metadata: getMetadata(message),
+            tags: tags || [],
         },
         stop: modelSettings.stop,
     };

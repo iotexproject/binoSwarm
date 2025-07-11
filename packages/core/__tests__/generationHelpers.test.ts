@@ -44,6 +44,7 @@ describe("buildGenerationSettings", () => {
                     isEnabled: true,
                     functionId: undefined,
                     metadata: undefined,
+                    tags: [],
                 },
                 stop: mockModelSettings.stop,
             });
