@@ -56,7 +56,10 @@ export function getDimentionZeroEmbedding() {
     return Array(getCurrentDimention()).fill(0);
 }
 
-export async function embedMany(values: string[]): Promise<number[][]> {
+export async function embedMany(
+    values: string[],
+    agentId: string
+): Promise<number[][]> {
     // Filter out invalid values
     const validValues = values.filter(
         (value) => value && typeof value === "string" && value.trim().length > 0
@@ -73,6 +76,12 @@ export async function embedMany(values: string[]): Promise<number[][]> {
             model: openai.embedding(EMBEDDING_MODEL),
             values: validValues,
             maxRetries: EMBEDDING_RETRIES,
+            experimental_telemetry: {
+                isEnabled: true,
+                metadata: {
+                    agentId,
+                },
+            },
         });
 
         return embeddings;
@@ -116,6 +125,12 @@ async function getRemoteEmbedding(
             model: openai.embedding(EMBEDDING_MODEL),
             value: input,
             maxRetries: EMBEDDING_RETRIES,
+            experimental_telemetry: {
+                isEnabled: true,
+                metadata: {
+                    agentId: runtime.character.id,
+                },
+            },
         });
 
         meterEmbedding(runtime, res);
