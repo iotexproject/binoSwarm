@@ -275,6 +275,7 @@ describe("Generation With Tools", () => {
                 tools: mockTools,
                 message: mockMessage,
                 functionId: "generateTextWithTools",
+                tags: ["test"],
             });
 
             // Assert
@@ -292,7 +293,8 @@ describe("Generation With Tools", () => {
                 mockContext,
                 mockModelSettings,
                 mockMessage,
-                "generateTextWithTools"
+                "generateTextWithTools",
+                ["test"]
             );
             expect(getModel).toHaveBeenCalledWith(
                 mockRuntime.modelProvider,
@@ -443,6 +445,7 @@ describe("Generation With Tools", () => {
                 tools: mockTools,
                 message: mockMessage,
                 functionId: "streamWithTools",
+                tags: ["test"],
             });
 
             // Assert
@@ -455,7 +458,8 @@ describe("Generation With Tools", () => {
                 mockContext,
                 mockModelSettings,
                 mockMessage,
-                "streamWithTools"
+                "streamWithTools",
+                ["test"]
             );
             expect(getModel).toHaveBeenCalledWith(
                 mockRuntime.modelProvider,
