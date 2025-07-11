@@ -33,6 +33,7 @@ export async function generateText({
     messages,
     functionId,
     message,
+    tags,
 }: {
     runtime: IAgentRuntime;
     context: string;
@@ -45,6 +46,7 @@ export async function generateText({
     messages?: Message[];
     functionId?: string;
     message?: Memory;
+    tags?: string[];
 }): Promise<string> {
     validateContext(context);
 
@@ -61,7 +63,8 @@ export async function generateText({
         context,
         settings,
         message,
-        functionId
+        functionId,
+        tags
     );
 
 
@@ -93,6 +96,7 @@ export async function generateObject<T>({
     customSystemPrompt,
     message,
     functionId,
+    tags,
 }: GenerationOptions): Promise<GenerateObjectResult<T>> {
     validateContext(context);
 
@@ -106,7 +110,8 @@ export async function generateObject<T>({
         context,
         modelSettings,
         message,
-        functionId
+        functionId,
+        tags
     );
 
     const model = getModel(provider, modelSettings.name);
