@@ -1,4 +1,5 @@
 import { GenerationSettings, Memory, ModelSettings } from "./types.ts";
+import { createHash } from "crypto";
 
 export function buildGenerationSettings(
     context: string,
@@ -14,19 +15,11 @@ export function buildGenerationSettings(
         presencePenalty: modelSettings.presence_penalty,
         experimental_telemetry: {
             isEnabled: true,
-            functionId: getFunctionId(functionId, message),
+            functionId,
             metadata: getMetadata(message),
         },
         stop: modelSettings.stop,
     };
-}
-
-function getFunctionId(functionId: string, message: Memory) {
-    if (message) {
-        return `${functionId}_${message.id}`;
-    }
-
-    return functionId;
 }
 
 function getMetadata(message: Memory) {
@@ -35,9 +28,13 @@ function getMetadata(message: Memory) {
     }
 
     return {
-        langfuseTraceId: message.id,
         userId: message.userId,
         agentId: message.agentId,
         roomId: message.roomId,
+        sessionId: message.id,
+        langfuseTraceId: toTraceId(message.id),
     };
 }
+
+export const toTraceId = (seed: string) =>
+    createHash("sha256").update(String(seed)).digest("hex").slice(0, 32);

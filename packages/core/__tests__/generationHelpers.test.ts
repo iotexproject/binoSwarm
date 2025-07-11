@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildGenerationSettings } from "../src/generationHelpers.ts";
-import type { ModelSettings, Memory } from "../src/types.ts";
+import {
+    buildGenerationSettings,
+    toTraceId,
+} from "../src/generationHelpers.ts";
+import type { ModelSettings, Memory, UUID } from "../src/types.ts";
 
 describe("buildGenerationSettings", () => {
     const mockModelSettings: ModelSettings = {
@@ -87,13 +90,12 @@ describe("buildGenerationSettings", () => {
                 mockMemory
             );
 
-            expect(result.experimental_telemetry!.functionId).toBe(
-                `undefined_${mockMemory.id}`
-            );
+            expect(result.experimental_telemetry!.functionId).toBe(undefined);
             expect(result.experimental_telemetry!.metadata).toEqual({
-                langfuseTraceId: mockMemory.id,
+                langfuseTraceId: toTraceId(mockMemory.id as UUID),
                 userId: mockMemory.userId,
                 agentId: mockMemory.agentId,
+                sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
             });
         });
@@ -101,7 +103,7 @@ describe("buildGenerationSettings", () => {
 
     describe("when called with both message and functionId", () => {
         it("should combine functionId with message id and include metadata", () => {
-            const functionId = "test-function-456";
+            const functionId = "test-function";
 
             const result = buildGenerationSettings(
                 "test",
@@ -110,13 +112,12 @@ describe("buildGenerationSettings", () => {
                 functionId
             );
 
-            expect(result.experimental_telemetry!.functionId).toBe(
-                `${functionId}_${mockMemory.id}`
-            );
+            expect(result.experimental_telemetry!.functionId).toBe(functionId);
             expect(result.experimental_telemetry!.metadata).toEqual({
-                langfuseTraceId: mockMemory.id,
+                langfuseTraceId: toTraceId(mockMemory.id as UUID),
                 userId: mockMemory.userId,
                 agentId: mockMemory.agentId,
+                sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
             });
         });
@@ -137,13 +138,12 @@ describe("buildGenerationSettings", () => {
                 functionId
             );
 
-            expect(result.experimental_telemetry!.functionId).toBe(
-                `${functionId}_${undefined}`
-            );
+            expect(result.experimental_telemetry!.functionId).toBe(functionId);
             expect(result.experimental_telemetry!.metadata).toEqual({
-                langfuseTraceId: undefined,
+                langfuseTraceId: toTraceId(memoryWithoutId.id as UUID),
                 userId: memoryWithoutId.userId,
                 agentId: memoryWithoutId.agentId,
+                sessionId: memoryWithoutId.id,
                 roomId: memoryWithoutId.roomId,
             });
         });
