@@ -26,7 +26,7 @@ export const mcpAction: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         state: State,
-        _options: any,
+        options: any,
         callback?: HandlerCallback
     ) => {
         if (!state) {
@@ -48,6 +48,7 @@ export const mcpAction: Action = {
                 tools: [],
                 message,
                 functionId: "CALL_MCP_TOOLS",
+                tags: options.tags,
             });
 
             const response: Content = {

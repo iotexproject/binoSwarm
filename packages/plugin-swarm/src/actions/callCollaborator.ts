@@ -29,7 +29,7 @@ export const callCollaboratorAction: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         state: State,
-        _options: any,
+        options: any,
         callback?: HandlerCallback
     ) => {
         if (!state) {
@@ -56,6 +56,7 @@ export const callCollaboratorAction: Action = {
                 tools: [callAgentTool],
                 message,
                 functionId: "CALL_COLLABORATOR",
+                tags: options.tags,
             });
 
             const response: Content = {
