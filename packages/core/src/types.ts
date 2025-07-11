@@ -669,6 +669,11 @@ export type TelemetrySettings = {
      * Metadata for the telemetry data.
      */
     metadata?: Record<string, AttributeValue>;
+
+    /**
+     * Tags for the telemetry data.
+     */
+    tags?: string[];
 };
 
 export interface ModelConfiguration {
@@ -1235,7 +1240,11 @@ export interface IAgentRuntime {
         message: Memory,
         responses: Memory[],
         state?: State,
-        callback?: HandlerCallback
+        callback?: HandlerCallback,
+        options?: {
+            // can be used to add tags to the telemetry data
+            tags?: string[];
+        }
     ): Promise<void>;
 
     evaluate(
@@ -1620,4 +1629,5 @@ export type GenerationOptions = {
     customSystemPrompt?: string;
     message?: Memory;
     functionId?: string;
+    tags?: string[];
 };
