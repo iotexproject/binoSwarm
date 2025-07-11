@@ -3,7 +3,8 @@ import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentation
 import { LangfuseExporter } from "langfuse-vercel";
 
 export const langfuseTelemetry = new NodeSDK({
-    traceExporter: new LangfuseExporter(),
+    traceExporter: new LangfuseExporter({
+        environment: process.env.LANGFUSE_ENV || "development",
+    }),
     instrumentations: [getNodeAutoInstrumentations()],
 });
-
