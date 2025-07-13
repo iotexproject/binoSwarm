@@ -639,7 +639,7 @@ export interface IAgentConfig {
     [key: string]: string;
 }
 
-export type AttributeValue = string | number | boolean | null;
+export type AttributeValue = string | string[] | number | boolean | null;
 
 export type TelemetrySettings = {
     /**
@@ -669,11 +669,6 @@ export type TelemetrySettings = {
      * Metadata for the telemetry data.
      */
     metadata?: Record<string, AttributeValue>;
-
-    /**
-     * Tags for the telemetry data.
-     */
-    tags?: string[];
 };
 
 export interface ModelConfiguration {
@@ -1627,7 +1622,7 @@ export type GenerationOptions = {
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
     verifiableInferenceOptions?: VerifiableInferenceOptions;
     customSystemPrompt?: string;
+    tags: string[];
+    functionId: string;
     message?: Memory;
-    functionId?: string;
-    tags?: string[];
 };

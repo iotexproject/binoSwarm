@@ -17,16 +17,17 @@ export function buildGenerationSettings(
         experimental_telemetry: {
             isEnabled: true,
             functionId,
-            metadata: getMetadata(message),
-            tags: tags || [],
+            metadata: getMetadata(message, tags),
         },
         stop: modelSettings.stop,
     };
 }
 
-function getMetadata(message: Memory) {
+function getMetadata(message: Memory, tags?: string[]) {
     if (!message) {
-        return undefined;
+        return {
+            tags: tags || [],
+        };
     }
 
     return {
@@ -35,6 +36,7 @@ function getMetadata(message: Memory) {
         roomId: message.roomId,
         sessionId: message.id,
         langfuseTraceId: toTraceId(message.id),
+        tags: tags || [],
     };
 }
 
