@@ -287,6 +287,7 @@ const summarizeAction = {
                     "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
                 functionId: "discord_summarizeConversation",
                 message,
+                tags: ["discord", "discord-summarize-conversation"],
             });
 
             currentSummary = currentSummary + "\n" + summary;

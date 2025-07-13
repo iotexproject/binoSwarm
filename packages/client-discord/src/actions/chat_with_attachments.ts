@@ -211,6 +211,7 @@ const summarizeAction = {
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
             functionId: "discord_chatWithAttachments",
             message,
+            tags: ["discord", "discord-chat-with-attachments"],
         });
 
         currentSummary = currentSummary + "\n" + summary;
