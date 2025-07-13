@@ -88,6 +88,7 @@ export class SearchTweetSelector {
             schemaDescription:
                 "The response from the user about which tweet is the most interesting and relevant for the agent to reply to",
             functionId: "twitter_chooseMostInterestingTweet",
+            tags: ["twitter", "twitter-choose-most-interesting-tweet"],
         });
 
         elizaLogger.log("TWITTER_CHOOSE_SEARCH_TWEET_RES", {

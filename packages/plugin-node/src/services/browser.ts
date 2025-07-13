@@ -46,6 +46,7 @@ async function generateSummary(
         schemaName: "summary",
         schemaDescription: "A summary of the text",
         functionId: "BrowserService_generateSummary",
+        tags: ["browser", "generate-summary"],
     });
 
     const parsedResponse = response.object;

@@ -116,6 +116,7 @@ export const imageGeneration: Action = {
                 imageSystemPrompt,
             message,
             functionId: "GENERATE_IMAGE_PROMPT",
+            tags: ["image-generation", "generate-image-prompt"],
         });
 
         const imagePrompt = imagePromptRes.object?.prompt;

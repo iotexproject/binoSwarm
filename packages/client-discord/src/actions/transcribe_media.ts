@@ -44,6 +44,7 @@ const getMediaAttachmentId = async (
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
             message,
             functionId: "discord_getMediaAttachmentId",
+            tags: ["discord", "discord-get-media-attachment-id"],
         });
         elizaLogger.log("response", response);
         const parsedResponse = mediaAttachmentIdSchema.parse(response.object);

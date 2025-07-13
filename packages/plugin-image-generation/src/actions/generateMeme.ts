@@ -251,6 +251,7 @@ export const memeGeneration: Action = {
                 memeSystemPrompt,
             message,
             functionId: "GENERATE_MEME",
+            tags: ["image-generation", "generate-meme"],
         });
 
         if (!memeGenRes.object) {

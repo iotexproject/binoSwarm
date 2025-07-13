@@ -44,7 +44,8 @@ async function handle(
         for (let i = 0; i < images.data.length; i++) {
             const caption = await generateCaption(
                 { imageUrl: images.data[i] },
-                agent
+                agent,
+                ["client-direct", "generate-caption"]
             );
             imagesRes.push({
                 image: images.data[i],

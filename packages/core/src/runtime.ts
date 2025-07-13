@@ -858,6 +858,7 @@ export class AgentRuntime implements IAgentRuntime {
             schemaName: "evaluatorNames",
             schemaDescription: "The names of the evaluators",
             functionId: "generateRequiredEvaluators",
+            tags: ["runtime", "generate-required-evaluators"],
         });
 
         const evaluators = result.object?.values || [];
