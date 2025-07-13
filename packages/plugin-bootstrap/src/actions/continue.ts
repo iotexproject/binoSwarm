@@ -134,6 +134,7 @@ export const continueAction: Action = {
                 modelClass: ModelClass.SMALL,
                 runtime,
                 message,
+                tags: ["continue-action", "should-continue"],
             });
 
             return response;

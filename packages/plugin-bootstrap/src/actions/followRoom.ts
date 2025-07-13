@@ -55,6 +55,7 @@ export const followRoomAction: Action = {
                 context: shouldFollowContext,
                 modelClass: ModelClass.SMALL,
                 message,
+                tags: ["follow-room-action", "should-follow"],
             });
 
             return response;

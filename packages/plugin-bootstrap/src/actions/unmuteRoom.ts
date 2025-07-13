@@ -40,6 +40,7 @@ export const unmuteRoomAction: Action = {
                 runtime,
                 modelClass: ModelClass.SMALL,
                 message,
+                tags: ["unmute-room-action", "should-unmute"],
             });
 
             return response;

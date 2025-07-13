@@ -40,6 +40,7 @@ export const unfollowRoomAction: Action = {
                 context: shouldUnfollowContext,
                 modelClass: ModelClass.SMALL,
                 message,
+                tags: ["unfollow-room-action", "should-unfollow"],
             });
 
             return response;

@@ -41,6 +41,7 @@ export const muteRoomAction: Action = {
                 context: shouldMuteContext,
                 modelClass: ModelClass.SMALL,
                 message,
+                tags: ["mute-room-action", "should-mute"],
             });
 
             return response;
