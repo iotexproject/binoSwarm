@@ -879,6 +879,7 @@ export class MessageManager {
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
+            message,
         });
 
         elizaLogger.log("DISCORD_GEN_RESPONSE_RES", {

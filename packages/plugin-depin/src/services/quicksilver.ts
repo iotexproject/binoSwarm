@@ -6,6 +6,7 @@ import {
     elizaLogger,
     Content,
     generateMessageResponse,
+    Memory,
 } from "@elizaos/core";
 import axios from "axios";
 
@@ -82,7 +83,8 @@ export async function getRawDataFromQuicksilver<T extends QuicksilverTool>(
 export async function adaptQSResponse(
     state: State,
     runtime: IAgentRuntime,
-    qsResponse: string
+    qsResponse: string,
+    message: Memory
 ): Promise<Content> {
     state.qsResponse = qsResponse;
     const context = composeContext({
@@ -103,6 +105,7 @@ export async function adaptQSResponse(
         runtime,
         context,
         modelClass: ModelClass.LARGE,
+        message,
     });
 
     elizaLogger.info(response);

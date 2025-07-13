@@ -76,6 +76,7 @@ export class TwitterSearchClient {
                 runtime: this.runtime,
                 context,
                 modelClass: ModelClass.LARGE,
+                message,
             });
 
             responseContent.inReplyTo = message.id;

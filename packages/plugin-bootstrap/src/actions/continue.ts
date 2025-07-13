@@ -160,6 +160,7 @@ export const continueAction: Action = {
             runtime,
             context,
             modelClass: ModelClass.LARGE,
+            message,
         });
 
         response.inReplyTo = message.id;

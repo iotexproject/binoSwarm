@@ -289,7 +289,7 @@ export class TwitterInteractionClient {
             return;
         }
 
-        const { response, context } = await this.generateTweetResponse(state);
+        const { response, context } = await this.generateTweetResponse(state, message);
         response.inReplyTo = tweetId;
 
         if (!response.text) {
@@ -350,7 +350,7 @@ export class TwitterInteractionClient {
         );
     }
 
-    private async generateTweetResponse(state: State) {
+    private async generateTweetResponse(state: State, message: Memory) {
         const context = composeContext({
             state,
             template:
@@ -365,6 +365,7 @@ export class TwitterInteractionClient {
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
+            message,
         });
         return { response, context };
     }
