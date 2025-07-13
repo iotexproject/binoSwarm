@@ -881,6 +881,7 @@ export class MessageManager {
             context,
             modelClass: ModelClass.LARGE,
             message,
+            tags: ["discord", "discord-response"],
         });
 
         elizaLogger.log("DISCORD_GEN_RESPONSE_RES", {

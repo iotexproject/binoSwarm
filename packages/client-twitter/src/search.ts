@@ -77,6 +77,7 @@ export class TwitterSearchClient {
                 context,
                 modelClass: ModelClass.LARGE,
                 message,
+                tags: ["twitter", "twitter-search"],
             });
 
             responseContent.inReplyTo = message.id;

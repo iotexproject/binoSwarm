@@ -415,6 +415,7 @@ export class TwitterActionProcessor {
             runtime: this.runtime,
             context: options?.context || context,
             modelClass: ModelClass.LARGE,
+            tags: ["twitter", "twitter-action-post"],
         });
 
         return this.trimTweetLength(response.text);
@@ -436,6 +437,7 @@ export class TwitterActionProcessor {
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
+            tags: ["twitter", "twitter-action-response"],
         });
 
         response.text = this.trimTweetLength(response.text);

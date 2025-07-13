@@ -106,6 +106,7 @@ export async function adaptQSResponse(
         context,
         modelClass: ModelClass.LARGE,
         message,
+        tags: ["quicksilver", "quicksilver-response"],
     });
 
     elizaLogger.info(response);

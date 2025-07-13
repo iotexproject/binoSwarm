@@ -41,7 +41,8 @@ export async function genResponse(runtime: IAgentRuntime, state: State, message:
         runtime: runtime,
         context,
         modelClass: ModelClass.LARGE,
-        message
+        message,
+        tags: ["direct", "direct-response"],
     });
 
     return { response, context };

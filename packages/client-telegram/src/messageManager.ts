@@ -728,6 +728,7 @@ export class MessageManager {
             context,
             modelClass: ModelClass.LARGE,
             message,
+            tags: ["telegram", "telegram-response"],
         });
 
         elizaLogger.log({

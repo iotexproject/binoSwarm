@@ -366,6 +366,7 @@ export class TwitterInteractionClient {
             context,
             modelClass: ModelClass.LARGE,
             message,
+            tags: ["twitter", "twitter-response"],
         });
         return { response, context };
     }

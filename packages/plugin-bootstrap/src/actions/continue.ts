@@ -162,6 +162,7 @@ export const continueAction: Action = {
             context,
             modelClass: ModelClass.LARGE,
             message,
+            tags: ["continue-action", "continue-response"],
         });
 
         response.inReplyTo = message.id;

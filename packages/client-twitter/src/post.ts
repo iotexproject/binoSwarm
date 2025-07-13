@@ -218,6 +218,7 @@ export class TwitterPostClient {
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
+            tags: ["twitter", "twitter-post"],
         });
 
         return text;
