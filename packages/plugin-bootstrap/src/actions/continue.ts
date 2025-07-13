@@ -122,7 +122,7 @@ export const continueAction: Action = {
             return;
         }
 
-        async function _shouldContinue(state: State): Promise<boolean> {
+        async function _shouldContinue(state: State, message: Memory): Promise<boolean> {
             // If none of the above conditions are met, use the generateText to decide
             const shouldRespondContext = composeContext({
                 state,
@@ -133,13 +133,14 @@ export const continueAction: Action = {
                 context: shouldRespondContext,
                 modelClass: ModelClass.SMALL,
                 runtime,
+                message,
             });
 
             return response;
         }
 
         // Use AI to determine if we should continue
-        const shouldContinue = await _shouldContinue(state);
+        const shouldContinue = await _shouldContinue(state, message);
         if (!shouldContinue) {
             elizaLogger.log("[CONTINUE] Not elaborating, returning");
             return;

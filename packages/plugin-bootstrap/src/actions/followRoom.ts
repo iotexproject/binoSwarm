@@ -44,7 +44,7 @@ export const followRoomAction: Action = {
         return userState !== "FOLLOWED" && userState !== "MUTED";
     },
     handler: async (runtime: IAgentRuntime, message: Memory) => {
-        async function _shouldFollow(state: State): Promise<boolean> {
+        async function _shouldFollow(state: State, message: Memory): Promise<boolean> {
             const shouldFollowContext = composeContext({
                 state,
                 template: shouldFollowTemplate, // Define this template separately
@@ -54,6 +54,7 @@ export const followRoomAction: Action = {
                 runtime,
                 context: shouldFollowContext,
                 modelClass: ModelClass.SMALL,
+                message,
             });
 
             return response;
@@ -61,7 +62,7 @@ export const followRoomAction: Action = {
 
         const state = await runtime.composeState(message);
 
-        if (await _shouldFollow(state)) {
+        if (await _shouldFollow(state, message)) {
             await runtime.databaseAdapter.setParticipantUserState(
                 message.roomId,
                 runtime.agentId,

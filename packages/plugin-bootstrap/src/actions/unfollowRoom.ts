@@ -29,7 +29,7 @@ export const unfollowRoomAction: Action = {
         return userState === "FOLLOWED";
     },
     handler: async (runtime: IAgentRuntime, message: Memory) => {
-        async function _shouldUnfollow(state: State): Promise<boolean> {
+        async function _shouldUnfollow(state: State, message: Memory): Promise<boolean> {
             const shouldUnfollowContext = composeContext({
                 state,
                 template: shouldUnfollowTemplate, // Define this template separately
@@ -39,6 +39,7 @@ export const unfollowRoomAction: Action = {
                 runtime,
                 context: shouldUnfollowContext,
                 modelClass: ModelClass.SMALL,
+                message,
             });
 
             return response;
@@ -46,7 +47,7 @@ export const unfollowRoomAction: Action = {
 
         const state = await runtime.composeState(message);
 
-        if (await _shouldUnfollow(state)) {
+        if (await _shouldUnfollow(state, message)) {
             await runtime.databaseAdapter.setParticipantUserState(
                 message.roomId,
                 runtime.agentId,
