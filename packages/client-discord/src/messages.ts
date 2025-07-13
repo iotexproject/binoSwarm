@@ -836,6 +836,7 @@ export class MessageManager {
             context: shouldRespondContext,
             modelClass: ModelClass.SMALL,
             message: memory,
+            tags: ["discord", "discord-should-respond"],
         });
 
         if (parsedResponse === "RESPOND") {

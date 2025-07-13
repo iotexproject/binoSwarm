@@ -377,6 +377,7 @@ export class TwitterInteractionClient {
             context,
             modelClass: ModelClass.SMALL,
             message,
+            tags: ["twitter", "twitter-should-respond"],
         });
         return res === "RESPOND";
     }

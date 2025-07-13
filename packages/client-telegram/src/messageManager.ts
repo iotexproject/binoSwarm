@@ -567,6 +567,7 @@ export class MessageManager {
                 context: shouldRespondContext,
                 modelClass: ModelClass.SMALL,
                 message: memory,
+                tags: ["telegram", "telegram-should-respond"],
             });
 
             return response === "RESPOND";
