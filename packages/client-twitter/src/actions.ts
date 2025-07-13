@@ -194,6 +194,7 @@ export class TwitterActionProcessor {
             runtime: this.runtime,
             context: actionContext,
             modelClass: ModelClass.SMALL,
+            tags: ["twitter", "twitter-action"],
         });
 
         return actionResponse;
