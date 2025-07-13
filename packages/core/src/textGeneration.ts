@@ -140,6 +140,7 @@ export async function generateObjectFromMessages<T>({
     schemaName,
     schemaDescription,
     customSystemPrompt,
+    tags,
 }: GenerationOptions & {
     messages: Array<CoreUserMessage>;
 }): Promise<GenerateObjectResult<T>> {
@@ -147,7 +148,7 @@ export async function generateObjectFromMessages<T>({
     const modelSettings = getModelSettings(provider, modelClass);
     validateSettings(modelSettings, provider);
 
-    const modelOptions = buildGenerationSettings("", modelSettings);
+    const modelOptions = buildGenerationSettings("", modelSettings, undefined, "generateObjectFromMessages", tags);
     delete modelOptions.prompt;
 
     const model = getModel(provider, modelSettings.name);

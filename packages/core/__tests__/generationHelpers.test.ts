@@ -43,8 +43,9 @@ describe("buildGenerationSettings", () => {
                 experimental_telemetry: {
                     isEnabled: true,
                     functionId: undefined,
-                    metadata: undefined,
-                    tags: [],
+                    metadata: {
+                        tags: [],
+                    },
                 },
                 stop: mockModelSettings.stop,
             });
@@ -79,7 +80,9 @@ describe("buildGenerationSettings", () => {
             );
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
-            expect(result.experimental_telemetry!.metadata).toBeUndefined();
+            expect(result.experimental_telemetry!.metadata).toEqual({
+                tags: [],
+            });
         });
     });
 
@@ -98,6 +101,7 @@ describe("buildGenerationSettings", () => {
                 agentId: mockMemory.agentId,
                 sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
+                tags: [],
             });
         });
     });
@@ -120,6 +124,7 @@ describe("buildGenerationSettings", () => {
                 agentId: mockMemory.agentId,
                 sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
+                tags: [],
             });
         });
     });
@@ -146,6 +151,7 @@ describe("buildGenerationSettings", () => {
                 agentId: memoryWithoutId.agentId,
                 sessionId: memoryWithoutId.id,
                 roomId: memoryWithoutId.roomId,
+                tags: [],
             });
         });
     });
