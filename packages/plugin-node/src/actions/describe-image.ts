@@ -26,7 +26,7 @@ export const describeImage: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         state: State,
-        _options: { [key: string]: unknown },
+        options: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {
         // Create context with attachments and URL
@@ -47,6 +47,7 @@ export const describeImage: Action = {
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
             message,
             functionId: "DESCRIBE_IMAGE",
+            tags: options.tags as string[],
         });
 
         if (
