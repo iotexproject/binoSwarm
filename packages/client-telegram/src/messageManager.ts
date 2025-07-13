@@ -367,7 +367,8 @@ export class MessageManager {
     // Decide if the bot should respond to the message
     private async _shouldRespond(
         message: Message,
-        state: State
+        state: State,
+        memory: Memory
     ): Promise<boolean> {
         if (
             this.runtime.character.clientConfig?.telegram
@@ -565,6 +566,7 @@ export class MessageManager {
                 runtime: this.runtime,
                 context: shouldRespondContext,
                 modelClass: ModelClass.SMALL,
+                message: memory,
             });
 
             return response === "RESPOND";
@@ -975,7 +977,7 @@ export class MessageManager {
             state = await this.runtime.updateRecentMessageState(state);
 
             // Decide whether to respond
-            const shouldRespond = await this._shouldRespond(message, state);
+            const shouldRespond = await this._shouldRespond(message, state, memory);
 
             // Send response in chunks
             const callback: HandlerCallback = async (content: Content) => {

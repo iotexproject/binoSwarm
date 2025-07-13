@@ -149,7 +149,8 @@ export class MessageManager {
             const shouldRespond = await this.shouldRespond(
                 message,
                 state,
-                agentUserState
+                agentUserState,
+                memory
             );
 
             elizaLogger.debug("shouldRespond", {
@@ -783,7 +784,8 @@ export class MessageManager {
     private async shouldRespond(
         message: DiscordMessage,
         state: State,
-        agentUserState: string
+        agentUserState: string,
+        memory: Memory
     ): Promise<boolean> {
         if (agentUserState === "FOLLOWED") {
             return true; // Always respond in followed rooms
@@ -833,6 +835,7 @@ export class MessageManager {
             runtime: this.runtime,
             context: shouldRespondContext,
             modelClass: ModelClass.SMALL,
+            message: memory,
         });
 
         if (parsedResponse === "RESPOND") {

@@ -283,7 +283,7 @@ export class TwitterInteractionClient {
             this.saveTweet(tweet, tweetId, state);
         }
 
-        const shouldRespond = await this.shouldRespond(state);
+        const shouldRespond = await this.shouldRespond(state, message);
         if (!shouldRespond) {
             elizaLogger.log("Not responding to message");
             return;
@@ -369,12 +369,13 @@ export class TwitterInteractionClient {
         return { response, context };
     }
 
-    private async shouldRespond(state: State): Promise<boolean> {
+    private async shouldRespond(state: State, message: Memory): Promise<boolean> {
         const context = this.buildShouldRespondContext(state);
         const res = await generateShouldRespond({
             runtime: this.runtime,
             context,
             modelClass: ModelClass.SMALL,
+            message,
         });
         return res === "RESPOND";
     }
