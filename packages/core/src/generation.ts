@@ -9,6 +9,7 @@ import {
     ModelClass,
     SearchResponse,
     ActionResponse,
+    Memory,
 } from "./types.ts";
 import {
     generateObject,
@@ -23,10 +24,14 @@ export async function generateShouldRespond({
     runtime,
     context,
     modelClass,
+    tags,
+    message,
 }: {
     runtime: IAgentRuntime;
     context: string;
     modelClass: ModelClass;
+    tags: string[];
+    message?: Memory;
 }): Promise<"RESPOND" | "IGNORE" | "STOP"> {
     const shouldRespondSchema = z.object({
         analysis: z.string().describe("A detailed analysis of your response"),
@@ -45,6 +50,8 @@ export async function generateShouldRespond({
             schemaDescription: "A boolean value",
             customSystemPrompt: UTILITY_SYSTEM_PROMPT,
             functionId: "generateShouldRespond",
+            tags,
+            message,
         });
 
         return response.object.response;
@@ -71,10 +78,14 @@ export async function generateTrueOrFalse({
     runtime,
     context = "",
     modelClass,
+    tags,
+    message,
 }: {
     runtime: IAgentRuntime;
     context: string;
     modelClass: ModelClass;
+    tags: string[];
+    message?: Memory;
 }): Promise<boolean> {
     const booleanSchema = z.object({
         analysis: z.string().describe("A detailed analysis of your response"),
@@ -91,6 +102,8 @@ export async function generateTrueOrFalse({
             schemaDescription: "A boolean value",
             customSystemPrompt: UTILITY_SYSTEM_PROMPT,
             functionId: "generateTrueOrFalse",
+            tags,
+            message,
         });
 
         return response.object.response;
@@ -103,10 +116,14 @@ export async function generateMessageResponse({
     runtime,
     context,
     modelClass,
+    tags,
+    message,
 }: {
     runtime: IAgentRuntime;
     context: string;
     modelClass: ModelClass;
+    tags: string[];
+    message?: Memory;
 }): Promise<Content> {
     const contentSchema = z.object({
         responseAnalysis: z
@@ -132,6 +149,8 @@ export async function generateMessageResponse({
             schemaName: "Content",
             schemaDescription: "Message content structure",
             functionId: "generateMessageResponse",
+            tags,
+            message,
         });
         return result.object;
     } catch (error) {
@@ -142,7 +161,8 @@ export async function generateMessageResponse({
 
 export const generateCaption = async (
     data: { imageUrl: string },
-    runtime: IAgentRuntime
+    runtime: IAgentRuntime,
+    tags?: string[]
 ): Promise<{
     title: string;
     description: string;
@@ -177,6 +197,7 @@ export const generateCaption = async (
         schemaName: "ImageDescription",
         schemaDescription: "The description of the image",
         functionId: "generateCaption",
+        tags,
     });
 
     return result.object;
@@ -209,10 +230,12 @@ export async function generateTweetActions({
     runtime,
     context,
     modelClass,
+    tags,
 }: {
     runtime: IAgentRuntime;
     context: string;
     modelClass: ModelClass;
+    tags?: string[];
 }): Promise<ActionResponse> {
     const actionsSchema = z.object({
         analysis: z.string().describe("A detailed analysis of the tweet"),
@@ -232,6 +255,7 @@ export async function generateTweetActions({
             schemaDescription: "The actions to take on the tweet",
             customSystemPrompt: UTILITY_SYSTEM_PROMPT,
             functionId: "generateTweetActions",
+            tags,
         });
 
         return response.object;
