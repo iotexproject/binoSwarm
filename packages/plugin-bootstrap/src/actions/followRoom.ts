@@ -49,7 +49,7 @@ export const followRoomAction: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         _state: State,
-        options: any,
+        options: any
     ) => {
         async function _shouldFollow(
             state: State,

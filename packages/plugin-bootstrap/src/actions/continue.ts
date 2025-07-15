@@ -62,8 +62,7 @@ export const continueAction: Action = {
         state = await runtime.updateRecentMessageState(state);
 
         InteractionLogger.logAgentActionCalled({
-            client: (options.tags?.
-                [0] as AgentClient) || "unknown",
+            client: (options.tags?.[0] as AgentClient) || "unknown",
             agentId: runtime.agentId,
             userId: message.userId,
             roomId: message.roomId,

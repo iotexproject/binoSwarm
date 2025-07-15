@@ -34,9 +34,12 @@ export const unmuteRoomAction: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         _state: State,
-        options: any,
+        options: any
     ) => {
-        async function _shouldUnmute(state: State, message: Memory): Promise<boolean> {
+        async function _shouldUnmute(
+            state: State,
+            message: Memory
+        ): Promise<boolean> {
             const shouldUnmuteContext = composeContext({
                 state,
                 template: shouldUnmuteTemplate, // Define this template separately

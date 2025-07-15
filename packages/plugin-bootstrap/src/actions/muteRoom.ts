@@ -35,9 +35,12 @@ export const muteRoomAction: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         _state: State,
-        options: any,
+        options: any
     ) => {
-        async function _shouldMute(state: State, message: Memory): Promise<boolean> {
+        async function _shouldMute(
+            state: State,
+            message: Memory
+        ): Promise<boolean> {
             const shouldMuteContext = composeContext({
                 state,
                 template: shouldMuteTemplate, // Define this template separately

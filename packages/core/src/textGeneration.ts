@@ -67,7 +67,6 @@ export async function generateText({
         tags
     );
 
-
     const llmModel = getModel(provider, settings.name);
 
     const result = await aiGenerateText({
@@ -148,7 +147,13 @@ export async function generateObjectFromMessages<T>({
     const modelSettings = getModelSettings(provider, modelClass);
     validateSettings(modelSettings, provider);
 
-    const modelOptions = buildGenerationSettings("", modelSettings, undefined, "generateObjectFromMessages", tags);
+    const modelOptions = buildGenerationSettings(
+        "",
+        modelSettings,
+        undefined,
+        "generateObjectFromMessages",
+        tags
+    );
     delete modelOptions.prompt;
 
     const model = getModel(provider, modelSettings.name);

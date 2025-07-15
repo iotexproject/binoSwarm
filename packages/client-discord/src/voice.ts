@@ -798,7 +798,6 @@ export class VoiceManager extends EventEmitter {
         name: string,
         userName: string
     ) {
-
         const roomId = stringToUuid(channelId + "-" + this.runtime.agentId);
         const userIdUUID = stringToUuid(userId);
         const memoryId = stringToUuid(Date.now().toString());

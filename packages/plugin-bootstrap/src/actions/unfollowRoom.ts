@@ -34,9 +34,12 @@ export const unfollowRoomAction: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         _state: State,
-        options: any,
+        options: any
     ) => {
-        async function _shouldUnfollow(state: State, message: Memory): Promise<boolean> {
+        async function _shouldUnfollow(
+            state: State,
+            message: Memory
+        ): Promise<boolean> {
             const shouldUnfollowContext = composeContext({
                 state,
                 template: shouldUnfollowTemplate, // Define this template separately

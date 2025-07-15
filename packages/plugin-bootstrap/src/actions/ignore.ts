@@ -20,7 +20,7 @@ export const ignoreAction: Action = {
         _runtime: IAgentRuntime,
         message: Memory,
         _state: State | undefined,
-        options: any,
+        options: any
     ): Promise<boolean> => {
         InteractionLogger.logAgentActionCalled({
             client: (options.tags?.[0] as AgentClient) || "unknown",
