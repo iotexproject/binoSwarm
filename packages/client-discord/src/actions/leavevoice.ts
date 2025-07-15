@@ -12,6 +12,7 @@ import {
     IAgentRuntime,
     Memory,
     State,
+    InteractionLogger,
 } from "@elizaos/core";
 
 export default {
@@ -77,6 +78,16 @@ export default {
         if (!state.discordClient) {
             return;
         }
+
+        InteractionLogger.logAgentActionCalled({
+            client: "discord",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "LEAVE_VOICE",
+            tags: [],
+        });
 
         const discordMessage = (state.discordMessage ||
             state.discordChannel) as DiscordMessage;

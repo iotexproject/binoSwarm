@@ -9,6 +9,8 @@ import {
     type IAgentRuntime,
     type Memory,
     type State,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 
 import { initWalletProvider, WalletProvider } from "../providers/wallet";
@@ -121,13 +123,13 @@ const buildTransferDetails = async (
 };
 
 export const transferAction: Action = {
-    name: "transfer",
+    name: "TRANSFER",
     description: "Transfer tokens between addresses on the same chain",
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
         state: State,
-        _options: any,
+        options: any,
         callback?: HandlerCallback
     ) => {
         if (!state) {
@@ -135,6 +137,16 @@ export const transferAction: Action = {
         } else {
             state = await runtime.updateRecentMessageState(state);
         }
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options?.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: transferAction.name,
+            tags: options.tags as string[],
+        });
 
         elizaLogger.log("Transfer action handler called");
         const walletProvider = await initWalletProvider(runtime);

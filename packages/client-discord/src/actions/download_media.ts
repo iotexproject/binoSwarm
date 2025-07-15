@@ -11,6 +11,7 @@ import {
     ModelClass,
     ServiceType,
     State,
+    InteractionLogger,
 } from "@elizaos/core";
 import { z } from "zod";
 import { mediaUrlTemplate } from "./templates";
@@ -92,6 +93,16 @@ export default {
         if (!state) {
             state = (await runtime.composeState(message)) as State;
         }
+
+        InteractionLogger.logAgentActionCalled({
+            client: "discord",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "DOWNLOAD_MEDIA",
+            tags: options.tags || ["discord", "download-media"],
+        });
 
         const mediaUrl = await getMediaUrl(runtime, message, state);
         if (!mediaUrl) {

@@ -7,6 +7,8 @@ import {
     Memory,
     ModelClass,
     State,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 import { shouldUnfollowTemplate } from "../templates";
 
@@ -28,7 +30,12 @@ export const unfollowRoomAction: Action = {
         );
         return userState === "FOLLOWED";
     },
-    handler: async (runtime: IAgentRuntime, message: Memory) => {
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        _state: State,
+        options: any,
+    ) => {
         async function _shouldUnfollow(state: State, message: Memory): Promise<boolean> {
             const shouldUnfollowContext = composeContext({
                 state,
@@ -47,6 +54,16 @@ export const unfollowRoomAction: Action = {
         }
 
         const state = await runtime.composeState(message);
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: unfollowRoomAction.name,
+            tags: options.tags || ["bootstrap", "unfollow-room"],
+        });
 
         if (await _shouldUnfollow(state, message)) {
             await runtime.databaseAdapter.setParticipantUserState(

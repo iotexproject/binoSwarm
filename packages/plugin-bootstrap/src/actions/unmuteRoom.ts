@@ -7,6 +7,8 @@ import {
     Memory,
     ModelClass,
     State,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 import { shouldUnmuteTemplate } from "../templates";
 
@@ -28,7 +30,12 @@ export const unmuteRoomAction: Action = {
         );
         return userState === "MUTED";
     },
-    handler: async (runtime: IAgentRuntime, message: Memory) => {
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        _state: State,
+        options: any,
+    ) => {
         async function _shouldUnmute(state: State, message: Memory): Promise<boolean> {
             const shouldUnmuteContext = composeContext({
                 state,
@@ -47,6 +54,16 @@ export const unmuteRoomAction: Action = {
         }
 
         const state = await runtime.composeState(message);
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: unmuteRoomAction.name,
+            tags: options.tags || ["bootstrap", "unmute-room"],
+        });
 
         if (await _shouldUnmute(state, message)) {
             await runtime.databaseAdapter.setParticipantUserState(

@@ -2,6 +2,7 @@ import {
     composeContext,
     generateObject,
     getModelSettings,
+    InteractionLogger,
 } from "@elizaos/core";
 import {
     generateText,
@@ -202,6 +203,16 @@ const summarizeAction = {
         callback: HandlerCallback
     ) => {
         state = (await runtime.composeState(message)) as State;
+
+        InteractionLogger.logAgentActionCalled({
+            client: "discord",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "SUMMARIZE_CONVERSATION",
+            tags: options.tags || ["discord", "summarize-conversation"],
+        });
 
         const callbackData: Content = {
             text: "", // fill in later

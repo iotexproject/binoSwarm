@@ -6,6 +6,8 @@ import {
     Memory,
     Plugin,
     State,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 import { generateWebSearch } from "@elizaos/core";
 import { SearchResult } from "@elizaos/core";
@@ -55,14 +57,23 @@ const webSearch: Action = {
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: State,
+        _state: State,
         options: any,
         callback: HandlerCallback
     ) => {
         elizaLogger.log("Composing state for message:", message);
-        state = (await runtime.composeState(message)) as State;
         const userId = runtime.agentId;
         elizaLogger.log("User ID:", userId);
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: webSearch.name,
+            tags: options.tags || ["web-search"],
+        });
 
         const webSearchPrompt = message.content.text;
         elizaLogger.log("web search prompt received:", webSearchPrompt);

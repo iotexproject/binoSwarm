@@ -5,6 +5,8 @@ import {
     IAgentRuntime,
     Memory,
     State,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 
 export const disclaimerAction: Action = {
@@ -26,13 +28,23 @@ export const disclaimerAction: Action = {
         return totalUserMessages === 1; // This is the first message from the user with this agent.
     },
     handler: async (
-        _runtime: IAgentRuntime,
+        runtime: IAgentRuntime,
         message: Memory,
         _state: State | undefined,
-        _options: any,
+        options: any,
         callback: HandlerCallback
     ) => {
         const disclaimerText = process.env.AGENT_DISCLAIMER;
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "DISCLAIMER",
+            tags: [],
+        });
 
         if (!disclaimerText || disclaimerText.trim() === "") {
             // This should ideally be caught by validate, but serves as a safeguard.

@@ -9,6 +9,8 @@ import {
     ModelClass,
     composeContext,
     generateObject,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 import { z } from "zod";
 
@@ -73,6 +75,7 @@ export const imageGeneration: Action = {
             jobId?: string;
             stylePreset?: string;
             hideWatermark?: boolean;
+            tags?: string[];
         },
         callback: HandlerCallback
     ) => {
@@ -81,6 +84,16 @@ export const imageGeneration: Action = {
         } else {
             state = await runtime.updateRecentMessageState(state);
         }
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: imageGeneration.name,
+            tags: options.tags || ["image-generation", "generate-image"],
+        });
 
         const context = composeContext({
             template:

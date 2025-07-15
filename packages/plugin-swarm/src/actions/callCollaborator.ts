@@ -9,6 +9,8 @@ import {
     composeContext,
     ModelClass,
     generateTextWithTools,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 import { callAgentTool } from "../tools/callAgentTool";
 import { callCollaboratorTemplate } from "../templates/callCollaboratorTemplate";
@@ -37,6 +39,16 @@ export const callCollaboratorAction: Action = {
         } else {
             state = await runtime.updateRecentMessageState(state);
         }
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: callCollaboratorAction.name,
+            tags: options.tags as string[],
+        });
 
         try {
             if (!callback) {

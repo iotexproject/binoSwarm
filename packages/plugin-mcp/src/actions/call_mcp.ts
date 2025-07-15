@@ -9,6 +9,8 @@ import {
     generateTextWithTools,
     Content,
     elizaLogger,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 
 import { mcpTemplate } from "../templates/mcpTemplate";
@@ -41,6 +43,16 @@ export const mcpAction: Action = {
         });
 
         try {
+            InteractionLogger.logAgentActionCalled({
+                client: options.tags[0] as AgentClient,
+                agentId: runtime.agentId,
+                userId: message.userId,
+                roomId: message.roomId,
+                messageId: message.id,
+                actionName: mcpAction.name,
+                tags: options.tags,
+            });
+
             const result = await generateTextWithTools({
                 runtime,
                 context,

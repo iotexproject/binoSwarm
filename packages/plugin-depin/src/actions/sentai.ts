@@ -5,6 +5,8 @@ import {
     State,
     HandlerCallback,
     elizaLogger,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 import { adaptQSResponse, askQuickSilver } from "../services/quicksilver";
 
@@ -270,7 +272,7 @@ export const askSentai: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         state: State,
-        _options: { [key: string]: unknown },
+        options: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {
         if (!state) {
@@ -278,6 +280,16 @@ export const askSentai: Action = {
         } else {
             state = await runtime.updateRecentMessageState(state);
         }
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options?.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "ASK_SENTAI",
+            tags: options.tags as string[],
+        });
 
         try {
             // Use the askQuickSilver function which will route the query to the appropriate data provider(s)
