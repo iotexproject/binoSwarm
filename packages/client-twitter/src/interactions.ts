@@ -283,13 +283,13 @@ export class TwitterInteractionClient {
             this.saveTweet(tweet, tweetId, state);
         }
 
-        const shouldRespond = await this.shouldRespond(state);
+        const shouldRespond = await this.shouldRespond(state, message);
         if (!shouldRespond) {
             elizaLogger.log("Not responding to message");
             return;
         }
 
-        const { response, context } = await this.generateTweetResponse(state);
+        const { response, context } = await this.generateTweetResponse(state, message);
         response.inReplyTo = tweetId;
 
         if (!response.text) {
@@ -325,7 +325,10 @@ export class TwitterInteractionClient {
                         this.runtime,
                         this.client.twitterConfig.TWITTER_USERNAME,
                         responseTweetId
-                    )
+                    ),
+                {
+                    tags: ["twitter", "twitter-reply", "twitter-interaction"],
+                }
             );
 
             await this.saveResponseInfoToCache(context, tweet, response);
@@ -347,7 +350,7 @@ export class TwitterInteractionClient {
         );
     }
 
-    private async generateTweetResponse(state: State) {
+    private async generateTweetResponse(state: State, message: Memory) {
         const context = composeContext({
             state,
             template:
@@ -362,16 +365,20 @@ export class TwitterInteractionClient {
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
+            message,
+            tags: ["twitter", "twitter-response"],
         });
         return { response, context };
     }
 
-    private async shouldRespond(state: State): Promise<boolean> {
+    private async shouldRespond(state: State, message: Memory): Promise<boolean> {
         const context = this.buildShouldRespondContext(state);
         const res = await generateShouldRespond({
             runtime: this.runtime,
             context,
             modelClass: ModelClass.SMALL,
+            message,
+            tags: ["twitter", "twitter-should-respond"],
         });
         return res === "RESPOND";
     }

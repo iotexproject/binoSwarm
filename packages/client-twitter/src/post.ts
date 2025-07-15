@@ -218,6 +218,7 @@ export class TwitterPostClient {
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
+            tags: ["twitter", "twitter-post"],
         });
 
         return text;
@@ -233,6 +234,8 @@ export class TwitterPostClient {
             schemaDescription: qsTool.description,
             customSystemPrompt:
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+            functionId: "twitter_askOracle",
+            tags: ["twitter", "twitter-ask-oracle"],
         });
 
         const answer = await qsTool.execute({ question: object.question });

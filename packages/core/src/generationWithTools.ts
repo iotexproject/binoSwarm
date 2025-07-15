@@ -9,6 +9,7 @@ import {
     GenerationSettings,
     ModelProviderName,
     ModelSettings,
+    Memory,
 } from "./types.ts";
 import { trimTokens } from "./tokenTrimming.ts";
 import { buildGenerationSettings } from "./generationHelpers.ts";
@@ -29,6 +30,9 @@ type GenerateTextWithToolsOptions = {
         execute: (args: any) => Promise<any>;
     }[];
     enableGlobalMcp?: boolean;
+    message?: Memory;
+    functionId?: string;
+    tags?: string[];
 };
 
 export async function generateTextWithTools({
@@ -38,6 +42,9 @@ export async function generateTextWithTools({
     customSystemPrompt,
     enableGlobalMcp = true,
     tools,
+    message,
+    functionId,
+    tags,
 }: GenerateTextWithToolsOptions): Promise<string> {
     validateContext(context);
 
@@ -48,7 +55,10 @@ export async function generateTextWithTools({
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
     const modelOptions: GenerationSettings = buildGenerationSettings(
         context,
-        modelSettings
+        modelSettings,
+        message,
+        functionId,
+        tags
     );
     const model = getModel(provider, modelSettings.name);
 
@@ -90,6 +100,9 @@ export function streamWithTools({
     customSystemPrompt,
     tools,
     smoothStreamBy = "word",
+    message,
+    functionId,
+    tags,
 }: GenerateTextWithToolsOptions & {
     smoothStreamBy?: "word" | "line" | RegExp;
 }): any {
@@ -99,7 +112,13 @@ export function streamWithTools({
     const modelSettings = getModelSettings(provider, modelClass);
     validateModelSettings(modelSettings, provider);
 
-    const modelOptions = buildGenerationSettings(context, modelSettings);
+    const modelOptions = buildGenerationSettings(
+        context,
+        modelSettings,
+        message,
+        functionId,
+        tags
+    );
     const model = getModel(provider, modelSettings.name);
 
     const result = streamText({

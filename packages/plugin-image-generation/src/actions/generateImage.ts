@@ -114,6 +114,9 @@ export const imageGeneration: Action = {
             customSystemPrompt:
                 runtime.character?.templates?.imageSystemPrompt ||
                 imageSystemPrompt,
+            message,
+            functionId: "GENERATE_IMAGE_PROMPT",
+            tags: ["image-generation", "generate-image-prompt"],
         });
 
         const imagePrompt = imagePromptRes.object?.prompt;

@@ -68,6 +68,9 @@ async function handler(
         schemaDescription: "The updates to the goals",
         customSystemPrompt:
             "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+        message,
+        functionId: "UPDATE_GOAL",
+        tags: ["evaluator", "update-goal"],
     });
 
     const updates = updatesRes.object?.updates || [];

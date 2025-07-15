@@ -16,7 +16,8 @@ import { z } from "zod";
 
 async function generateSummary(
     runtime: IAgentRuntime,
-    text: string
+    text: string,
+    functionId: string
 ): Promise<{ title: string; description: string }> {
     // make sure text is under 128k characters
     text = await trimTokens(text, 100000, runtime);
@@ -44,6 +45,8 @@ async function generateSummary(
         schema: summarySchema,
         schemaName: "summary",
         schemaDescription: "A summary of the text",
+        functionId: functionId + "_generateSummary",
+        tags: ["discord", "discord-attachments"],
     });
 
     const parsedResponse = summarySchema.parse(response.object);
@@ -152,7 +155,8 @@ export class AttachmentManager {
                 await transcriptionService.transcribeAttachment(audioBuffer);
             const { title, description } = await generateSummary(
                 this.runtime,
-                transcription
+                transcription,
+                "processAudioVideoAttachment"
             );
 
             return {
@@ -233,7 +237,8 @@ export class AttachmentManager {
                 .convertPdfToText(Buffer.from(pdfBuffer));
             const { title, description } = await generateSummary(
                 this.runtime,
-                text
+                text,
+                "processPdfAttachment"
             );
 
             return {
@@ -268,7 +273,8 @@ export class AttachmentManager {
             const text = await response.text();
             const { title, description } = await generateSummary(
                 this.runtime,
-                text
+                text,
+                "processPlaintextAttachment"
             );
 
             return {

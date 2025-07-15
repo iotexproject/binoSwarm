@@ -162,6 +162,9 @@ export default {
                 modelClass: ModelClass.SMALL,
                 customSystemPrompt:
                     "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+                functionId: "discord_joinvoice",
+                message,
+                tags: ["discord", "discord-joinvoice"],
             });
 
             elizaLogger.log({

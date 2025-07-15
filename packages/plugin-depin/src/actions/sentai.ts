@@ -293,7 +293,8 @@ export const askSentai: Action = {
             const adaptedResponse = await adaptQSResponse(
                 state,
                 runtime,
-                sentaiResponse
+                sentaiResponse,
+                message
             );
             adaptedResponse.inReplyTo = message.id;
 

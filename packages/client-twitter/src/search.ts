@@ -76,6 +76,8 @@ export class TwitterSearchClient {
                 runtime: this.runtime,
                 context,
                 modelClass: ModelClass.LARGE,
+                message,
+                tags: ["twitter", "twitter-search"],
             });
 
             responseContent.inReplyTo = message.id;
@@ -116,7 +118,10 @@ export class TwitterSearchClient {
                             this.runtime,
                             this.twitterUsername,
                             responseTweetId
-                        )
+                        ),
+                    {
+                        tags: ["twitter", "twitter-reply", "twitter-search"],
+                    }
                 );
 
                 this.respondedTweets.add(selectedTweet.id);

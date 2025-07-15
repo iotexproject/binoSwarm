@@ -17,6 +17,7 @@ import {
     GenerationOptions,
     ModelSettings,
     ModelProviderName,
+    Memory,
 } from "./types.ts";
 import { trimTokens } from "./tokenTrimming.ts";
 import { buildGenerationSettings } from "./generationHelpers.ts";
@@ -30,6 +31,9 @@ export async function generateText({
     maxSteps = 1,
     customSystemPrompt,
     messages,
+    functionId,
+    message,
+    tags,
 }: {
     runtime: IAgentRuntime;
     context: string;
@@ -40,6 +44,9 @@ export async function generateText({
     stop?: string[];
     customSystemPrompt?: string;
     messages?: Message[];
+    functionId?: string;
+    message?: Memory;
+    tags?: string[];
 }): Promise<string> {
     validateContext(context);
 
@@ -48,30 +55,29 @@ export async function generateText({
     validateSettings(settings, provider);
 
     const cfg = runtime.character?.settings?.modelConfig;
-    const temp = cfg?.temperature || settings.temperature;
-    const freq = cfg?.frequency_penalty || settings.frequency_penalty;
-    const pres = cfg?.presence_penalty || settings.presence_penalty;
     const max_in = cfg?.maxInputTokens || settings.maxInputTokens;
-    const max_out = cfg?.max_response_length || settings.maxOutputTokens;
-    const tel = cfg?.experimental_telemetry || settings.experimental_telemetry;
 
     context = await trimTokens(context, max_in, runtime);
+
+    const modelOptions = buildGenerationSettings(
+        context,
+        settings,
+        message,
+        functionId,
+        tags
+    );
+
 
     const llmModel = getModel(provider, settings.name);
 
     const result = await aiGenerateText({
         model: llmModel,
-        prompt: context,
         system: customSystemPrompt ?? runtime.character.system ?? undefined,
         tools,
         messages,
         onStepFinish,
         maxSteps,
-        temperature: temp,
-        maxTokens: max_out,
-        frequencyPenalty: freq,
-        presencePenalty: pres,
-        experimental_telemetry: tel,
+        ...modelOptions,
     });
 
     trackUsage(runtime, result, settings);
@@ -88,6 +94,9 @@ export async function generateObject<T>({
     schemaName,
     schemaDescription,
     customSystemPrompt,
+    message,
+    functionId,
+    tags,
 }: GenerationOptions): Promise<GenerateObjectResult<T>> {
     validateContext(context);
 
@@ -96,7 +105,14 @@ export async function generateObject<T>({
     validateSettings(modelSettings, provider);
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
-    const modelOptions = buildGenerationSettings(context, modelSettings);
+
+    const modelOptions = buildGenerationSettings(
+        context,
+        modelSettings,
+        message,
+        functionId,
+        tags
+    );
 
     const model = getModel(provider, modelSettings.name);
 
@@ -124,6 +140,7 @@ export async function generateObjectFromMessages<T>({
     schemaName,
     schemaDescription,
     customSystemPrompt,
+    tags,
 }: GenerationOptions & {
     messages: Array<CoreUserMessage>;
 }): Promise<GenerateObjectResult<T>> {
@@ -131,7 +148,7 @@ export async function generateObjectFromMessages<T>({
     const modelSettings = getModelSettings(provider, modelClass);
     validateSettings(modelSettings, provider);
 
-    const modelOptions = buildGenerationSettings("", modelSettings);
+    const modelOptions = buildGenerationSettings("", modelSettings, undefined, "generateObjectFromMessages", tags);
     delete modelOptions.prompt;
 
     const model = getModel(provider, modelSettings.name);

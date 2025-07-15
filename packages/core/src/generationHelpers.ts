@@ -1,8 +1,12 @@
-import { GenerationSettings, ModelSettings } from "./types.ts";
+import { GenerationSettings, Memory, ModelSettings } from "./types.ts";
+import { createHash } from "crypto";
 
 export function buildGenerationSettings(
     context: string,
-    modelSettings: ModelSettings
+    modelSettings: ModelSettings,
+    message?: Memory,
+    functionId?: string,
+    tags?: string[]
 ): GenerationSettings {
     return {
         prompt: context,
@@ -10,7 +14,31 @@ export function buildGenerationSettings(
         maxTokens: modelSettings.maxOutputTokens,
         frequencyPenalty: modelSettings.frequency_penalty,
         presencePenalty: modelSettings.presence_penalty,
-        experimental_telemetry: modelSettings.experimental_telemetry,
+        experimental_telemetry: {
+            isEnabled: true,
+            functionId,
+            metadata: getMetadata(message, tags),
+        },
         stop: modelSettings.stop,
     };
 }
+
+function getMetadata(message: Memory, tags?: string[]) {
+    if (!message) {
+        return {
+            tags: tags || [],
+        };
+    }
+
+    return {
+        userId: message.userId,
+        agentId: message.agentId,
+        roomId: message.roomId,
+        sessionId: message.id,
+        langfuseTraceId: toTraceId(message.id),
+        tags: tags || [],
+    };
+}
+
+export const toTraceId = (seed: string) =>
+    createHash("sha256").update(String(seed)).digest("hex").slice(0, 32);

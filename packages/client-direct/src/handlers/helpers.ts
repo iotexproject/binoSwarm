@@ -12,6 +12,7 @@ import {
     ServiceType,
     IImageDescriptionService,
     IAgentRuntime,
+    Memory,
 } from "@elizaos/core";
 
 import { NoTextError } from "../errors";
@@ -27,7 +28,7 @@ export function genUserId(req: express.Request) {
     return stringToUuid(req.body.userId ?? "user");
 }
 
-export async function genResponse(runtime: IAgentRuntime, state: State) {
+export async function genResponse(runtime: IAgentRuntime, state: State, message: Memory) {
     const context = composeContext({
         state,
         template:
@@ -40,6 +41,8 @@ export async function genResponse(runtime: IAgentRuntime, state: State) {
         runtime: runtime,
         context,
         modelClass: ModelClass.LARGE,
+        message,
+        tags: ["direct", "direct-response"],
     });
 
     return { response, context };

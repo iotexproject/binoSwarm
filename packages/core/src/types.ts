@@ -1,5 +1,6 @@
 import type { Readable } from "stream";
 import type { ZodSchema } from "zod";
+import type { NodeSDK } from "@opentelemetry/sdk-node";
 
 /**
  * Represents a UUID string in the format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -638,6 +639,8 @@ export interface IAgentConfig {
     [key: string]: string;
 }
 
+export type AttributeValue = string | string[] | number | boolean | null;
+
 export type TelemetrySettings = {
     /**
      * Enable or disable telemetry. Disabled by default while experimental.
@@ -661,6 +664,11 @@ export type TelemetrySettings = {
      * Identifier for this function. Used to group telemetry data by function.
      */
     functionId?: string;
+
+    /**
+     * Metadata for the telemetry data.
+     */
+    metadata?: Record<string, AttributeValue>;
 };
 
 export interface ModelConfiguration {
@@ -1186,6 +1194,7 @@ export interface IAgentRuntime {
     evaluators: Evaluator[];
     plugins: Plugin[];
     metering: IMetering;
+    telemetry: NodeSDK;
 
     fetch?: typeof fetch | null;
 
@@ -1226,7 +1235,11 @@ export interface IAgentRuntime {
         message: Memory,
         responses: Memory[],
         state?: State,
-        callback?: HandlerCallback
+        callback?: HandlerCallback,
+        options?: {
+            // can be used to add tags to the telemetry data
+            tags?: string[];
+        }
     ): Promise<void>;
 
     evaluate(
@@ -1609,4 +1622,7 @@ export type GenerationOptions = {
     verifiableInferenceAdapter?: IVerifiableInferenceAdapter;
     verifiableInferenceOptions?: VerifiableInferenceOptions;
     customSystemPrompt?: string;
+    tags: string[];
+    functionId: string;
+    message?: Memory;
 };

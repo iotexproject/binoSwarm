@@ -45,6 +45,9 @@ const getMediaUrl = async (
             schemaDescription: "The URL of the media file to download",
             customSystemPrompt:
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+            message,
+            functionId: "discord_getMediaUrl",
+            tags: ["discord", "discord-get-media-url"],
         });
 
         const parsedResponse = mediaUrlSchema.parse(response.object);

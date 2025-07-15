@@ -30,7 +30,7 @@ export const muteRoomAction: Action = {
         return userState !== "MUTED";
     },
     handler: async (runtime: IAgentRuntime, message: Memory) => {
-        async function _shouldMute(state: State): Promise<boolean> {
+        async function _shouldMute(state: State, message: Memory): Promise<boolean> {
             const shouldMuteContext = composeContext({
                 state,
                 template: shouldMuteTemplate, // Define this template separately
@@ -40,6 +40,8 @@ export const muteRoomAction: Action = {
                 runtime,
                 context: shouldMuteContext,
                 modelClass: ModelClass.SMALL,
+                message,
+                tags: ["mute-room-action", "should-mute"],
             });
 
             return response;
@@ -47,7 +49,7 @@ export const muteRoomAction: Action = {
 
         const state = await runtime.composeState(message);
 
-        if (await _shouldMute(state)) {
+        if (await _shouldMute(state, message)) {
             await runtime.databaseAdapter.setParticipantUserState(
                 message.roomId,
                 runtime.agentId,

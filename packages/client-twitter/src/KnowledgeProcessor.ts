@@ -124,6 +124,8 @@ export class KnowledgeProcessor {
             schema: analysisArraySchema,
             schemaName: "analysis",
             schemaDescription: "The analysis of the tweets",
+            functionId: "twitter_processKnowledgeUser",
+            tags: ["twitter", "twitter-process-knowledge-user"],
         });
 
         const analysisResultsObj = analysisArraySchema.parse(

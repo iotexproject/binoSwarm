@@ -34,7 +34,7 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
     } = await messageHandler.initiateMessageProcessing();
     let state = initialState;
 
-    const { response, context } = await genResponse(runtime, state);
+    const { response, context } = await genResponse(runtime, state, memory);
 
     // Send initial response immediately
     const responseData = {
@@ -76,6 +76,9 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
                 res.write(`data: ${stringified}\n\n`);
             }
             return [memory];
+        },
+        {
+            tags: ["direct-client", "direct-client-message"],
         }
     );
 

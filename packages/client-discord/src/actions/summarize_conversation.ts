@@ -66,6 +66,9 @@ const getDateRange = async (
             schemaDescription: "The objective, start and end of the date range",
             customSystemPrompt:
                 "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+            message,
+            functionId: "discord_getDateRange",
+            tags: ["discord", "discord-get-date-range"],
         });
         elizaLogger.log("response", response);
         // try parsing to a json object
@@ -283,6 +286,9 @@ const summarizeAction = {
                 modelClass: ModelClass.SMALL,
                 customSystemPrompt:
                     "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
+                functionId: "discord_summarizeConversation",
+                message,
+                tags: ["discord", "discord-summarize-conversation"],
             });
 
             currentSummary = currentSummary + "\n" + summary;

@@ -194,6 +194,7 @@ export class TwitterActionProcessor {
             runtime: this.runtime,
             context: actionContext,
             modelClass: ModelClass.SMALL,
+            tags: ["twitter", "twitter-action"],
         });
 
         return actionResponse;
@@ -414,6 +415,7 @@ export class TwitterActionProcessor {
             runtime: this.runtime,
             context: options?.context || context,
             modelClass: ModelClass.LARGE,
+            tags: ["twitter", "twitter-action-post"],
         });
 
         return this.trimTweetLength(response.text);
@@ -435,6 +437,7 @@ export class TwitterActionProcessor {
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
+            tags: ["twitter", "twitter-action-response"],
         });
 
         response.text = this.trimTweetLength(response.text);
@@ -614,7 +617,10 @@ export class TwitterActionProcessor {
                         this.runtime,
                         this.twitterUsername,
                         responseTweetId
-                    )
+                    ),
+                {
+                    tags: ["twitter", "twitter-reply", "twitter-action"],
+                }
             );
         } catch (error) {
             elizaLogger.error(`Error replying to tweet ${tweet.id}:`, error);

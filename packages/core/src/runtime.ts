@@ -1,5 +1,6 @@
 import { names, uniqueNamesGenerator } from "unique-names-generator";
 import { v4 as uuidv4 } from "uuid";
+import { NodeSDK } from "@opentelemetry/sdk-node";
 import {
     composeActionExamples,
     formatActionNames,
@@ -16,6 +17,7 @@ import {
 import { generateObject } from "./textGeneration.ts";
 import { formatGoalsAsString, getGoals } from "./goals.ts";
 import { elizaLogger } from "./index.ts";
+import { langfuseTelemetry } from "./telemetry.ts";
 import { MemoryManager } from "./memory.ts";
 import { formatMessages, retrieveActorIdsFromMessages } from "./messages.ts";
 import { stringArraySchema } from "./parsing.ts";
@@ -107,7 +109,7 @@ export class AgentRuntime implements IAgentRuntime {
     cacheManager: ICacheManager;
     clients: Record<string, any>;
     metering: IMetering;
-
+    telemetry: NodeSDK;
     mcpManager: MCPManager;
     mcpTools: any = {};
 
@@ -141,6 +143,12 @@ export class AgentRuntime implements IAgentRuntime {
         await this.initializeServices();
         await this.initializePluginServices();
         await this.initCharacterKnowledge();
+        this.initTelemetry();
+    }
+
+    initTelemetry() {
+        this.telemetry = langfuseTelemetry;
+        this.telemetry.start();
     }
 
     registerMemoryManager(manager: IMemoryManager): void {
@@ -220,6 +228,7 @@ export class AgentRuntime implements IAgentRuntime {
         if (this.mcpManager) {
             this.mcpManager.close();
         }
+        this.telemetry.shutdown();
     }
 
     async registerService(service: Service): Promise<void> {
@@ -278,7 +287,10 @@ export class AgentRuntime implements IAgentRuntime {
         message: Memory,
         responses: Memory[],
         state?: State,
-        callback?: HandlerCallback
+        callback?: HandlerCallback,
+        options?: {
+            tags?: string[];
+        }
     ): Promise<void> {
         for (const response of responses) {
             if (!response.content?.action) {
@@ -305,7 +317,7 @@ export class AgentRuntime implements IAgentRuntime {
                 elizaLogger.info(
                     `Executing handler for action: ${action.name}`
                 );
-                await action.handler(this, message, state, {}, callback);
+                await action.handler(this, message, state, options, callback);
             } catch (error) {
                 elizaLogger.error(error);
             }
@@ -845,6 +857,8 @@ export class AgentRuntime implements IAgentRuntime {
             schema: stringArraySchema,
             schemaName: "evaluatorNames",
             schemaDescription: "The names of the evaluators",
+            functionId: "generateRequiredEvaluators",
+            tags: ["runtime", "generate-required-evaluators"],
         });
 
         const evaluators = result.object?.values || [];
