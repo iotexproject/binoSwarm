@@ -21,7 +21,7 @@ fi
 cd "$(dirname "$0")"/..
 
 # Keep track of test failures
-FAILURES=0
+FAILURES=()
 
 # If specific test file provided, run just that
 if [[ "$1" == *".ts" ]]; then
@@ -74,7 +74,7 @@ if [ -d "agent" ]; then
                 echo -e "\033[1;32mSuccessfully tested agent with coverage\033[0m\n"
             else
                 echo -e "\033[1;31mCoverage tests failed for agent\033[0m"
-                FAILURES=$((FAILURES + 1))
+                FAILURES+=("agent")
             fi
         elif npm run | grep -q " test"; then
             echo -e "\033[1mRunning tests for agent\033[0m"
@@ -82,7 +82,7 @@ if [ -d "agent" ]; then
                 echo -e "\033[1;32mSuccessfully tested agent\033[0m\n"
             else
                 echo -e "\033[1;31mTests failed for agent\033[0m"
-                FAILURES=$((FAILURES + 1))
+                FAILURES+=("agent")
             fi
         else
             echo "No test script found in agent, skipping tests..."
@@ -114,7 +114,7 @@ for package in "${PACKAGES[@]}"; do
                 echo -e "\033[1;32mSuccessfully tested $package with coverage\033[0m\n"
             else
                 echo -e "\033[1;31mCoverage tests failed for $package\033[0m"
-                FAILURES=$((FAILURES + 1))
+                FAILURES+=("$package")
             fi
         # Otherwise, run regular tests if available
         elif npm run | grep -q " test"; then
@@ -123,7 +123,7 @@ for package in "${PACKAGES[@]}"; do
                 echo -e "\033[1;32mSuccessfully tested $package\033[0m\n"
             else
                 echo -e "\033[1;31mTests failed for $package\033[0m"
-                FAILURES=$((FAILURES + 1))
+                FAILURES+=("$package")
             fi
         else
             echo "No test script found in $package, skipping tests..."
@@ -138,7 +138,10 @@ done
 echo -e "\033[1mTest process completed.😎\033[0m"
 
 # Exit with failure if any tests failed
-if [ $FAILURES -gt 0 ]; then
-    echo -e "\033[1;31m$FAILURES package(s) had test failures\033[0m"
+if [ ${#FAILURES[@]} -gt 0 ]; then
+    echo -e "\033[1;31mTest failures in the following packages: \033[0m"
+    for failed_package in "${FAILURES[@]}"; do
+        echo -e "\033[1;31m- $failed_package \033[0m"
+    done
     exit 1
 fi
