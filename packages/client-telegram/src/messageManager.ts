@@ -11,6 +11,7 @@ import {
     HandlerCallback,
     IAgentRuntime,
     IImageDescriptionService,
+    InteractionLogger,
     Memory,
     ModelClass,
     State,
@@ -721,21 +722,12 @@ export class MessageManager {
         _state: State,
         context: string
     ): Promise<Content> {
-        const { userId, roomId } = message;
-
         const response = await generateMessageResponse({
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
             message,
             tags: ["telegram", "telegram-response"],
-        });
-
-        elizaLogger.log({
-            body: { message, context, response },
-            userId,
-            roomId,
-            type: "response",
         });
 
         return response;
@@ -746,6 +738,27 @@ export class MessageManager {
         if (!ctx.message || !ctx.from) {
             return;
         }
+        // Convert IDs to UUIDs
+        const userId = stringToUuid(ctx.from.id.toString()) as UUID;
+        const userName =
+            ctx.from.username || ctx.from.first_name || "Unknown User";
+        const agentId = this.runtime.agentId;
+        const chatIdUUID = stringToUuid(
+            ctx.chat?.id.toString() + "-" + this.runtime.agentId
+        ) as UUID;
+        const roomId = chatIdUUID;
+        const message = ctx.message;
+        const messageId = stringToUuid(
+            message.message_id.toString() + "-" + roomId.toString()
+        ) as UUID;
+
+        InteractionLogger.logMessageReceived({
+            client: "telegram",
+            agentId,
+            userId,
+            roomId,
+            messageId,
+        });
 
         if (
             this.runtime.character.clientConfig?.telegram
@@ -762,7 +775,6 @@ export class MessageManager {
             return;
         }
 
-        const message = ctx.message;
         const chatId = ctx.chat?.id.toString();
         const messageText =
             "text" in message
@@ -904,19 +916,6 @@ export class MessageManager {
         }
 
         try {
-            // Convert IDs to UUIDs
-            const userId = stringToUuid(ctx.from.id.toString()) as UUID;
-            const userName =
-                ctx.from.username || ctx.from.first_name || "Unknown User";
-            const chatId = stringToUuid(
-                ctx.chat?.id.toString() + "-" + this.runtime.agentId
-            ) as UUID;
-            const agentId = this.runtime.agentId;
-            const roomId = chatId;
-            const messageId = stringToUuid(
-                message.message_id.toString() + "-" + roomId.toString()
-            ) as UUID;
-
             // Ensure connection
             await this.runtime.ensureConnection(
                 userId,
@@ -980,7 +979,22 @@ export class MessageManager {
             state = await this.runtime.updateRecentMessageState(state);
 
             // Decide whether to respond
-            const shouldRespond = await this._shouldRespond(message, state, memory);
+            const shouldRespond = await this._shouldRespond(
+                message,
+                state,
+                memory
+            );
+
+            if (!shouldRespond) {
+                InteractionLogger.logAgentResponse({
+                    client: "telegram",
+                    agentId,
+                    userId,
+                    roomId,
+                    messageId,
+                    status: "ignored",
+                });
+            }
 
             // Send response in chunks
             const callback: HandlerCallback = async (content: Content) => {
@@ -1054,6 +1068,15 @@ export class MessageManager {
                 // Execute callback to send messages and log memories
                 const responseMessages = await callback(responseContent);
 
+                InteractionLogger.logAgentResponse({
+                    client: "telegram",
+                    agentId,
+                    userId,
+                    roomId,
+                    messageId,
+                    status: "sent",
+                });
+
                 // Update state after response
                 state = await this.runtime.updateRecentMessageState(state);
 
@@ -1072,7 +1095,14 @@ export class MessageManager {
             await this.runtime.evaluate(memory, state, shouldRespond, callback);
         } catch (error) {
             elizaLogger.error("❌ Error handling message:", error);
-            elizaLogger.error("Error sending message:", error);
+            InteractionLogger.logAgentResponse({
+                client: "telegram",
+                agentId,
+                userId,
+                roomId,
+                messageId,
+                status: "error",
+            });
         }
     }
     private initializeCommands(): void {
