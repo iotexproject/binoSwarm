@@ -71,14 +71,6 @@ export class MessageManager {
     }
 
     async handleMessage(message: DiscordMessage) {
-        elizaLogger.log("DISCORD_HANDLE_MSG", {
-            message,
-        });
-        const shouldSkip = this.shouldSkip(message);
-        if (shouldSkip) {
-            return;
-        }
-
         const userId = message.author.id as UUID;
         const userDiscordTag = `<@${userId}>`;
         const userName = message.author.username;
@@ -88,6 +80,13 @@ export class MessageManager {
         const roomId = stringToUuid(channelId + "-" + this.runtime.agentId);
         const userIdUUID = stringToUuid(userId);
         const messageId = this.buildMemoryId(message);
+
+        this._logMessageReceived(userIdUUID, roomId, messageId);
+
+        const shouldSkip = this.shouldSkip(message);
+        if (shouldSkip) {
+            return;
+        }
 
         try {
             await this.runtime.ensureConnection(
@@ -906,6 +905,16 @@ export class MessageManager {
         this._logAgentResponse("sent", userId, roomId, responseMemory);
 
         return response;
+    }
+
+    private _logMessageReceived(userId: UUID, roomId: UUID, messageId: UUID) {
+        InteractionLogger.logMessageReceived({
+            client: "discord",
+            agentId: this.runtime.agentId,
+            userId,
+            roomId,
+            messageId,
+        });
     }
 
     private _logAgentResponse(
