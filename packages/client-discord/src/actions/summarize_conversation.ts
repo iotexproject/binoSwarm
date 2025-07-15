@@ -22,6 +22,8 @@ import {
     ModelClass,
     State,
 } from "@elizaos/core";
+import * as fs from "fs";
+import path from "path";
 import { z } from "zod";
 import { dateRangeTemplate, summarizationTemplate } from "./templates";
 
@@ -210,7 +212,7 @@ const summarizeAction = {
             userId: message.userId,
             roomId: message.roomId,
             messageId: message.id,
-            actionName: "SUMMARIZE_CONVERSATION",
+            actionName: summarizeAction.name,
             tags: options.tags || ["discord", "summarize-conversation"],
         });
 
@@ -237,8 +239,8 @@ const summarizeAction = {
         const memories = await runtime.messageManager.getMemories({
             roomId,
             // subtract start from current time
-            start: parseInt(start as string),
-            end: parseInt(end as string),
+            start,
+            end,
             count: 10000,
             unique: false,
         });
@@ -323,16 +325,41 @@ ${currentSummary.trim()}
 `;
             await callback(callbackData);
         } else if (currentSummary.trim()) {
-            const summaryFilename = `content/conversation_summary_${Date.now()}`;
-            await runtime.cacheManager.set(summaryFilename, currentSummary);
-            // save the summary to a file
-            await callback(
-                {
-                    ...callbackData,
-                    text: `I've attached the summary of the conversation from \`${new Date(parseInt(start as string)).toString()}\` to \`${new Date(parseInt(end as string)).toString()}\` as a text file.`,
-                },
-                [summaryFilename]
-            );
+            const summaryFilename = `content/conversation_summary_${Date.now()}.md`;
+
+            try {
+                // Ensure directory exists
+                const dir = path.dirname(summaryFilename);
+                if (!fs.existsSync(dir)) {
+                    fs.mkdirSync(dir, { recursive: true });
+                }
+
+                // Write file directly first
+                await fs.promises.writeFile(
+                    summaryFilename,
+                    currentSummary,
+                    "utf8"
+                );
+
+                // Then cache it
+                await runtime.cacheManager.set(summaryFilename, currentSummary);
+
+                await callback(
+                    {
+                        ...callbackData,
+                        text: `I've attached the summary of the conversation from \`${new Date(start).toString()}\` to \`${new Date(end).toString()}\` as a text file.`,
+                    },
+                    [
+                        {
+                            attachment: summaryFilename,
+                            name: `summary_${Date.now()}.md`,
+                        },
+                    ]
+                );
+            } catch (error) {
+                elizaLogger.error("Error in file/cache process:", error);
+                throw error;
+            }
         } else {
             elizaLogger.warn(
                 "Empty response from summarize conversation action, skipping"
