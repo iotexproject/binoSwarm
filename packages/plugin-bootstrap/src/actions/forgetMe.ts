@@ -5,6 +5,8 @@ import {
     IAgentRuntime,
     Memory,
     State,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 
 const CONFIRMATION_PHRASE = "YES, I CONFIRM PERMANENT DELETION OF MY ACCOUNT";
@@ -34,11 +36,21 @@ export const forgetMeAction: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         _state: State | undefined,
-        _options: any,
+        options: any,
         callback: HandlerCallback
     ) => {
         const { userId, content } = message;
         const messageText = content.text?.toUpperCase() || "";
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "FORGET_ME",
+            tags: [], // Options are not used for tags in this action
+        });
 
         if (!userId) {
             elizaLogger.error(

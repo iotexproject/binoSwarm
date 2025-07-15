@@ -7,6 +7,8 @@ import {
     Memory,
     ModelClass,
     State,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 import { shouldFollowTemplate } from "../templates";
 
@@ -43,8 +45,16 @@ export const followRoomAction: Action = {
         );
         return userState !== "FOLLOWED" && userState !== "MUTED";
     },
-    handler: async (runtime: IAgentRuntime, message: Memory) => {
-        async function _shouldFollow(state: State, message: Memory): Promise<boolean> {
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        _state: State,
+        options: any
+    ) => {
+        async function _shouldFollow(
+            state: State,
+            message: Memory
+        ): Promise<boolean> {
             const shouldFollowContext = composeContext({
                 state,
                 template: shouldFollowTemplate, // Define this template separately
@@ -62,6 +72,16 @@ export const followRoomAction: Action = {
         }
 
         const state = await runtime.composeState(message);
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: followRoomAction.name,
+            tags: [], // Options are not passed to this handler, so no tags from options
+        });
 
         if (await _shouldFollow(state, message)) {
             await runtime.databaseAdapter.setParticipantUserState(

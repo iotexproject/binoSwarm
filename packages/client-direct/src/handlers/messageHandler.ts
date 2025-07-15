@@ -5,7 +5,6 @@ import {
     IAgentRuntime,
     Content,
     UUID,
-    elizaLogger,
 } from "@elizaos/core";
 import { DirectClient } from "../client";
 import { genRoomId, genUserId, composeContent } from "./helpers";
@@ -48,21 +47,6 @@ export class MessageHandler {
     endStream(): void {
         this.res.write("event: end\ndata: stream completed\n\n");
         this.res.end();
-    }
-
-    logResponse(
-        userMessage: any,
-        context: string,
-        responseMessage: Memory,
-        userId: string,
-        roomId: string
-    ): void {
-        elizaLogger.log("DIRECT_MESSAGE_RESPONSE_RES", {
-            body: { userMessage, context, responseMessage },
-            userId,
-            roomId,
-            type: "response",
-        });
     }
 
     async initiateMessageProcessing(): Promise<{

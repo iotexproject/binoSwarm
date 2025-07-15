@@ -28,7 +28,11 @@ export function genUserId(req: express.Request) {
     return stringToUuid(req.body.userId ?? "user");
 }
 
-export async function genResponse(runtime: IAgentRuntime, state: State, message: Memory) {
+export async function genResponse(
+    runtime: IAgentRuntime,
+    state: State,
+    message: Memory
+) {
     const context = composeContext({
         state,
         template:

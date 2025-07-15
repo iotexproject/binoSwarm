@@ -1,6 +1,7 @@
 import {
     Content,
     IAgentRuntime,
+    InteractionLogger,
     Memory,
     ModelClass,
     ServiceType,
@@ -797,10 +798,19 @@ export class VoiceManager extends EventEmitter {
         name: string,
         userName: string
     ) {
-        try {
-            const roomId = stringToUuid(channelId + "-" + this.runtime.agentId);
-            const userIdUUID = stringToUuid(userId);
+        const roomId = stringToUuid(channelId + "-" + this.runtime.agentId);
+        const userIdUUID = stringToUuid(userId);
+        const memoryId = stringToUuid(Date.now().toString());
 
+        InteractionLogger.logMessageReceived({
+            client: "discord",
+            agentId: this.runtime.agentId,
+            userId: userIdUUID,
+            roomId: roomId,
+            messageId: memoryId,
+        });
+
+        try {
             await this.runtime.ensureConnection(
                 userIdUUID,
                 roomId,
@@ -828,9 +838,6 @@ export class VoiceManager extends EventEmitter {
                 return null;
             }
 
-            const memoryId = stringToUuid(
-                channelId + "-voice-message-" + Date.now()
-            );
             const memory = {
                 id: memoryId,
                 agentId: this.runtime.agentId,
@@ -932,6 +939,15 @@ export class VoiceManager extends EventEmitter {
                     text,
                     inReplyTo,
                 };
+
+                InteractionLogger.logAgentResponse({
+                    client: "discord",
+                    agentId: runtime.agentId,
+                    userId: runtime.agentId,
+                    roomId,
+                    messageId,
+                    status: "sent",
+                });
                 this.buildAndSaveMemory(messageId, runtime, roomId, content);
             }
         });
@@ -979,7 +995,6 @@ export class VoiceManager extends EventEmitter {
     }
 
     private _generateResponse(context: string, message: Memory): any {
-        elizaLogger.debug("context: ", context);
         const response = streamWithTools({
             runtime: this.runtime,
             context,

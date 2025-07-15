@@ -46,7 +46,7 @@ export const generateImage = async (
 
         const parentTraceId = randomUUID();
         const langfuse = new Langfuse();
-        const trace =langfuse.trace({
+        const trace = langfuse.trace({
             id: parentTraceId,
             name: "generateImage",
         });

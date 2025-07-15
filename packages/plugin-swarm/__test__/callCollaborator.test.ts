@@ -12,6 +12,12 @@ vi.mock("@elizaos/core", () => ({
         LARGE: "LARGE",
     },
     generateTextWithTools: vi.fn(),
+    InteractionLogger: {
+        logMessageReceived: vi.fn(),
+        logAgentResponse: vi.fn(),
+        logAgentScheduledPost: vi.fn(),
+        logAgentActionCalled: vi.fn(),
+    },
 }));
 
 vi.mock("../src/tools/callAgentTool", () => ({

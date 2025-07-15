@@ -15,6 +15,7 @@ import {
     generateMessageResponse,
     Content,
     Memory,
+    InteractionLogger,
 } from "@elizaos/core";
 
 import { ClientBase } from "./base.ts";
@@ -165,6 +166,14 @@ export class TwitterActionProcessor {
                 return;
             }
 
+            InteractionLogger.logMessageReceived({
+                client: "twitter",
+                agentId: this.runtime.agentId,
+                userId: stringToUuid(tweet.userId),
+                roomId,
+                messageId: tweet.id,
+            });
+
             const tweetState = await this.composeTweetState(roomId, tweet);
             const actionResponse =
                 await this.genTwitterActionResponse(tweetState);
@@ -308,7 +317,7 @@ export class TwitterActionProcessor {
             }
 
             if (actionResponse.quote) {
-                await this.processQuote(tweet);
+                await this.processQuote(tweet, roomId);
                 executedActions.push("quote");
             }
 
@@ -358,7 +367,8 @@ export class TwitterActionProcessor {
         });
     }
 
-    private async processQuote(tweet: Tweet) {
+    private async processQuote(tweet: Tweet, roomId: UUID) {
+        const userId = stringToUuid(tweet.userId);
         try {
             const enrichedState = await this.composeStateForAction(
                 tweet,
@@ -372,8 +382,24 @@ export class TwitterActionProcessor {
                 tweet,
                 enrichedState
             );
+            InteractionLogger.logAgentResponse({
+                client: "twitter",
+                agentId: this.runtime.agentId,
+                userId,
+                roomId,
+                messageId: tweet.id,
+                status: "sent",
+            });
         } catch (error) {
             elizaLogger.error("Error in quote tweet generation:", error);
+            InteractionLogger.logAgentResponse({
+                client: "twitter",
+                agentId: this.runtime.agentId,
+                userId,
+                roomId,
+                messageId: tweet.id,
+                status: "error",
+            });
         }
     }
 
@@ -545,6 +571,11 @@ export class TwitterActionProcessor {
     }
 
     private async processReply(tweet: Tweet, roomId: UUID) {
+        const userId =
+            tweet.userId === this.client.profile.id
+                ? this.runtime.agentId
+                : stringToUuid(tweet.userId);
+
         try {
             const enrichedState = await this.composeStateForAction(
                 tweet,
@@ -587,11 +618,6 @@ export class TwitterActionProcessor {
                 enrichedState
             )) as State;
 
-            const userId =
-                tweet.userId === this.client.profile.id
-                    ? this.runtime.agentId
-                    : stringToUuid(tweet.userId);
-
             const originalMessage: Memory = {
                 id: stringToUuid(tweet.id + "-" + this.runtime.agentId),
                 agentId: this.runtime.agentId,
@@ -622,8 +648,24 @@ export class TwitterActionProcessor {
                     tags: ["twitter", "twitter-reply", "twitter-action"],
                 }
             );
+            InteractionLogger.logAgentResponse({
+                client: "twitter",
+                agentId: this.runtime.agentId,
+                userId,
+                roomId,
+                messageId: tweet.id,
+                status: "sent",
+            });
         } catch (error) {
             elizaLogger.error(`Error replying to tweet ${tweet.id}:`, error);
+            InteractionLogger.logAgentResponse({
+                client: "twitter",
+                agentId: this.runtime.agentId,
+                userId,
+                roomId,
+                messageId: tweet.id,
+                status: "error",
+            });
         }
     }
 }

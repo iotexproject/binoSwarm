@@ -11,6 +11,7 @@ import {
     State,
     stringToUuid,
     Memory,
+    InteractionLogger,
 } from "@elizaos/core";
 
 import { ClientBase } from "./base";
@@ -62,6 +63,15 @@ export class TwitterSearchClient {
             );
             const selectedTweet = await tweetSelector.selectTweet();
             const message = await this.createMessageFromTweet(selectedTweet);
+
+            InteractionLogger.logMessageReceived({
+                client: "twitter",
+                agentId: this.runtime.agentId,
+                userId: message.userId,
+                roomId: message.roomId,
+                messageId: selectedTweet.id,
+            });
+
             let state = await this.composeState(message, selectedTweet);
             await this.client.saveRequestMessage(message, state as State);
 
@@ -133,8 +143,24 @@ export class TwitterSearchClient {
                 );
 
                 await wait();
+                InteractionLogger.logAgentResponse({
+                    client: "twitter",
+                    agentId: this.runtime.agentId,
+                    userId: message.userId,
+                    roomId: message.roomId,
+                    messageId: selectedTweet.id,
+                    status: "sent",
+                });
             } catch (error) {
                 elizaLogger.error(`Error sending response post: ${error}`);
+                InteractionLogger.logAgentResponse({
+                    client: "twitter",
+                    agentId: this.runtime.agentId,
+                    userId: message.userId,
+                    roomId: message.roomId,
+                    messageId: selectedTweet.id,
+                    status: "error",
+                });
             }
         } catch (error) {
             elizaLogger.error("Error engaging with search terms:", error);

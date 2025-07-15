@@ -3,6 +3,9 @@ import {
     IAgentRuntime,
     Memory,
     type Action,
+    State,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 
 export const noneAction: Action = {
@@ -22,8 +25,20 @@ export const noneAction: Action = {
         "Respond but perform no additional action. This is the default if the agent is speaking and not doing anything additional.",
     handler: async (
         _runtime: IAgentRuntime,
-        _message: Memory
+        message: Memory,
+        _state: State | undefined,
+        options: any
     ): Promise<boolean> => {
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags?.[0] as AgentClient) || "unknown",
+            agentId: _runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "NONE",
+            tags: options.tags || ["bootstrap", "none"],
+        });
+
         return true;
     },
     examples: [

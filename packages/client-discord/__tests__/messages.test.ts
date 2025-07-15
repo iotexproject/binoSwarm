@@ -31,6 +31,12 @@ vi.mock("@elizaos/core", () => ({
     composeContext: vi.fn(() => "mocked context"),
     composeRandomUser: vi.fn(),
     UUID: String,
+    InteractionLogger: {
+        logMessageReceived: vi.fn(),
+        logAgentResponse: vi.fn(),
+        logAgentScheduledPost: vi.fn(),
+        logAgentActionCalled: vi.fn(),
+    },
 }));
 
 // Mock the VoiceManager

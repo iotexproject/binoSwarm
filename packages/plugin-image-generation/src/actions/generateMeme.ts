@@ -8,6 +8,8 @@ import {
     ModelClass,
     composeContext,
     generateObject,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 import { z } from "zod";
 
@@ -204,6 +206,7 @@ export const memeGeneration: Action = {
             templateId?: string;
             templateName?: string;
             textBoxes?: string[];
+            tags?: string[];
         },
         callback: HandlerCallback
     ) {
@@ -212,6 +215,16 @@ export const memeGeneration: Action = {
         } else {
             state = await runtime.updateRecentMessageState(state);
         }
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: memeGeneration.name,
+            tags: options.tags || ["image-generation", "generate-meme"],
+        });
 
         // Fetch available meme templates
         const memeTemplates = await fetchMemeTemplates();

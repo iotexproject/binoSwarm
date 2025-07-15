@@ -1,4 +1,4 @@
-import { IAgentRuntime, Memory, Evaluator } from "@elizaos/core";
+import { IAgentRuntime, Memory, Evaluator, elizaLogger } from "@elizaos/core";
 
 interface CleanupConfig {
     readonly maxAgeInDays: number;
@@ -65,12 +65,12 @@ async function handler(runtime: IAgentRuntime, message: Memory): Promise<void> {
         const totalRemoved = await cleanupUserMessages(runtime, userId, config);
 
         if (totalRemoved > 0) {
-            console.log(
+            elizaLogger.log(
                 `Cleanup: Removed ${totalRemoved} messages for user ${userId} across all rooms`
             );
         }
     } catch (error) {
-        console.error(`Cleanup failed for user ${userId}:`, error);
+        elizaLogger.error(`Cleanup failed for user ${userId}:`, error);
     }
 }
 

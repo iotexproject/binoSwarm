@@ -3,6 +3,7 @@ import {
     elizaLogger,
     generateObject,
     getModelSettings,
+    InteractionLogger,
 } from "@elizaos/core";
 import { generateText, trimTokens } from "@elizaos/core";
 import {
@@ -138,6 +139,16 @@ const summarizeAction = {
         callback: HandlerCallback
     ) => {
         state = (await runtime.composeState(message)) as State;
+
+        InteractionLogger.logAgentActionCalled({
+            client: "discord",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: summarizeAction.name,
+            tags: options.tags || ["discord", "chat-with-attachments"],
+        });
 
         const callbackData: Content = {
             text: "", // fill in later

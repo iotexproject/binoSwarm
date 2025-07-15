@@ -11,6 +11,8 @@ import {
     elizaLogger,
     ServiceType,
     IImageDescriptionService,
+    InteractionLogger,
+    AgentClient,
 } from "@elizaos/core";
 import { getFileLocationTemplate } from "../templates";
 import { FileLocationResultSchema, isFileLocationResult } from "../types";
@@ -26,10 +28,20 @@ export const describeImage: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         state: State,
-        options: { [key: string]: unknown },
+        options: { [key: string]: unknown; tags?: string[] },
         callback?: HandlerCallback
     ): Promise<boolean> => {
         // Create context with attachments and URL
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: describeImage.name,
+            tags: options.tags || ["node", "describe-image"],
+        });
+
         const getFileLocationContext = composeContext({
             state,
             template: getFileLocationTemplate,

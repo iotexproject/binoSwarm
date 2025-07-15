@@ -9,7 +9,12 @@ import { elizaLogger, stringToUuid } from "../src/index";
 import { trimTokens } from "../src/tokenTrimming";
 import { buildGenerationSettings } from "../src/generationHelpers";
 import { z } from "zod";
-import type { IAgentRuntime, Memory, ModelClass, ModelSettings } from "../src/types";
+import type {
+    IAgentRuntime,
+    Memory,
+    ModelClass,
+    ModelSettings,
+} from "../src/types";
 
 // Mock dependencies
 vi.mock("ai", () => ({

@@ -1,6 +1,13 @@
 import express from "express";
 
-import { stringToUuid, Content, Memory, HandlerCallback } from "@elizaos/core";
+import {
+    stringToUuid,
+    Content,
+    Memory,
+    HandlerCallback,
+    InteractionLogger,
+    UUID,
+} from "@elizaos/core";
 
 import { DirectClient } from "../client";
 import { MessageHandler } from "./messageHandler";
@@ -34,6 +41,14 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
     } = await messageHandler.initiateMessageProcessing();
     let state = initialState;
 
+    InteractionLogger.logMessageReceived({
+        client: "direct",
+        agentId: agentId as UUID,
+        userId: userId as UUID,
+        roomId: roomId as UUID,
+        messageId: memory.id,
+    });
+
     const callback: HandlerCallback = async (content: Content) => {
         if (content) {
             const stringified = stringifyContent(userId, content);
@@ -47,13 +62,14 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
                 createdAt: Date.now(),
             };
 
-            messageHandler.logResponse(
-                userMessage,
-                null,
-                responseMessage,
-                userId,
-                roomId
-            );
+            InteractionLogger.logAgentResponse({
+                client: "direct",
+                agentId: agentId as UUID,
+                userId: userId as UUID,
+                roomId: roomId as UUID,
+                messageId: memory.id,
+                status: "sent",
+            });
 
             await runtime.messageManager.createMemory({
                 memory: responseMessage,

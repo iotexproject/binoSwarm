@@ -8,6 +8,7 @@ import {
     Memory,
     ModelClass,
     State,
+    InteractionLogger,
 } from "@elizaos/core";
 import { z } from "zod";
 import { mediaAttachmentIdTemplate } from "./templates";
@@ -105,6 +106,16 @@ const transcribeMediaAction = {
         callback: HandlerCallback
     ) => {
         state = (await runtime.composeState(message)) as State;
+
+        InteractionLogger.logAgentActionCalled({
+            client: "discord",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "TRANSCRIBE_MEDIA",
+            tags: options.tags || ["discord", "transcribe-media"],
+        });
 
         const callbackData: Content = {
             text: "", // fill in later

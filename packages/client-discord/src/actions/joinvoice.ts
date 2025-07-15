@@ -10,6 +10,7 @@ import {
     State,
     generateText,
     ModelClass,
+    InteractionLogger,
 } from "@elizaos/core";
 import {
     Channel,
@@ -81,6 +82,16 @@ export default {
         if (!state) {
             elizaLogger.error("State is not available.");
         }
+
+        InteractionLogger.logAgentActionCalled({
+            client: "discord",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "JOIN_VOICE",
+            tags: [],
+        });
 
         // We normalize data in from voice channels
         const discordMessage = (state.discordChannel ||

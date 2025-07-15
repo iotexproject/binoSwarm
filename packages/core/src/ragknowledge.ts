@@ -596,7 +596,7 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
         processedContent: string,
         item: RAGKnowledgeItem,
         source: string,
-        isUnique: boolean,
+        isUnique: boolean
     ) {
         const chunks = await splitChunks(
             processedContent,
@@ -621,7 +621,10 @@ export class RAGKnowledgeManager implements IRAGKnowledgeManager {
 
         // For both single chunk and multiple chunks case, we follow the same pattern
         const agentId = this.runtime.agentId.toString();
-        const embeddings = await embedMany([processedContent, ...chunks], agentId);
+        const embeddings = await embedMany(
+            [processedContent, ...chunks],
+            agentId
+        );
         await Promise.all([
             this.persistVectorData(item, embeddings, source, chunks),
             this.persistRelationalData(item, chunks),

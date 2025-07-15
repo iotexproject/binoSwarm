@@ -13,6 +13,7 @@ import {
     ServiceType,
     State,
     UUID,
+    InteractionLogger,
 } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 import {
@@ -70,14 +71,6 @@ export class MessageManager {
     }
 
     async handleMessage(message: DiscordMessage) {
-        elizaLogger.log("DISCORD_HANDLE_MSG", {
-            message,
-        });
-        const shouldSkip = this.shouldSkip(message);
-        if (shouldSkip) {
-            return;
-        }
-
         const userId = message.author.id as UUID;
         const userDiscordTag = `<@${userId}>`;
         const userName = message.author.username;
@@ -87,6 +80,13 @@ export class MessageManager {
         const roomId = stringToUuid(channelId + "-" + this.runtime.agentId);
         const userIdUUID = stringToUuid(userId);
         const messageId = this.buildMemoryId(message);
+
+        this._logMessageReceived(userIdUUID, roomId, messageId);
+
+        const shouldSkip = this.shouldSkip(message);
+        if (shouldSkip) {
+            return;
+        }
 
         try {
             await this.runtime.ensureConnection(
@@ -233,6 +233,7 @@ export class MessageManager {
             }
             await this.runtime.evaluate(memory, state, shouldRespond);
         } catch (error) {
+            this._logAgentResponse("error", userIdUUID, roomId, messageId);
             elizaLogger.error("Error handling message:", error);
             if (message.channel.type === ChannelType.GuildVoice) {
                 await this.handleErrorInVoiceChannel(userId);
@@ -884,14 +885,35 @@ export class MessageManager {
             tags: ["discord", "discord-response"],
         });
 
-        elizaLogger.log("DISCORD_GEN_RESPONSE_RES", {
-            body: { message, context, response },
-            userId: userId,
-            roomId,
-            type: "response",
-        });
+        this._logAgentResponse("sent", userId, roomId, message.id);
 
         return response;
+    }
+
+    private _logMessageReceived(userId: UUID, roomId: UUID, messageId: UUID) {
+        InteractionLogger.logMessageReceived({
+            client: "discord",
+            agentId: this.runtime.agentId,
+            userId,
+            roomId,
+            messageId,
+        });
+    }
+
+    private _logAgentResponse(
+        status: "sent" | "error" | "ignored",
+        userId: UUID,
+        roomId: UUID,
+        messageId: UUID
+    ) {
+        InteractionLogger.logAgentResponse({
+            client: "discord",
+            agentId: this.runtime.agentId,
+            userId,
+            roomId,
+            messageId,
+            status,
+        });
     }
 
     private simulateTyping(message: DiscordMessage) {
@@ -899,7 +921,9 @@ export class MessageManager {
 
         const typingLoop = async () => {
             while (typing) {
-                await message.channel.sendTyping();
+                if (message.channel instanceof TextChannel) {
+                    await message.channel.sendTyping();
+                }
                 await new Promise((resolve) => setTimeout(resolve, 3000));
             }
         };

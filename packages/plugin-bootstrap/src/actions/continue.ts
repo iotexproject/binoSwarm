@@ -1,4 +1,4 @@
-import { composeContext, elizaLogger } from "@elizaos/core";
+import { AgentClient, composeContext, elizaLogger } from "@elizaos/core";
 import { generateMessageResponse, generateTrueOrFalse } from "@elizaos/core";
 import {
     Action,
@@ -9,6 +9,7 @@ import {
     Memory,
     ModelClass,
     State,
+    InteractionLogger,
 } from "@elizaos/core";
 import {
     continueMessageHandlerTemplate,
@@ -59,6 +60,16 @@ export const continueAction: Action = {
             state = (await runtime.composeState(message)) as State;
         }
         state = await runtime.updateRecentMessageState(state);
+
+        InteractionLogger.logAgentActionCalled({
+            client: (options.tags?.[0] as AgentClient) || "unknown",
+            agentId: runtime.agentId,
+            userId: message.userId,
+            roomId: message.roomId,
+            messageId: message.id,
+            actionName: "CONTINUE",
+            tags: options.tags || ["bootstrap", "continue"],
+        });
 
         // Get the agent's recent messages
         const agentMessages = state.recentMessagesData
@@ -122,7 +133,10 @@ export const continueAction: Action = {
             return;
         }
 
-        async function _shouldContinue(state: State, message: Memory): Promise<boolean> {
+        async function _shouldContinue(
+            state: State,
+            message: Memory
+        ): Promise<boolean> {
             // If none of the above conditions are met, use the generateText to decide
             const shouldRespondContext = composeContext({
                 state,
