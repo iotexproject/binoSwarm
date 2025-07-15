@@ -13,6 +13,7 @@ import {
     ServiceType,
     State,
     UUID,
+    InteractionLogger,
 } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 import {
@@ -233,6 +234,15 @@ export class MessageManager {
             }
             await this.runtime.evaluate(memory, state, shouldRespond);
         } catch (error) {
+            const responseMemory: Memory = {
+                id: stringToUuid(`${messageId}-err`),
+                content: { text: (error as Error).message },
+                createdAt: Date.now(),
+                roomId,
+                userId: this.runtime.agentId,
+                agentId: this.runtime.agentId,
+            };
+            this._logAgentResponse("error", userIdUUID, roomId, responseMemory);
             elizaLogger.error("Error handling message:", error);
             if (message.channel.type === ChannelType.GuildVoice) {
                 await this.handleErrorInVoiceChannel(userId);
@@ -884,14 +894,34 @@ export class MessageManager {
             tags: ["discord", "discord-response"],
         });
 
-        elizaLogger.log("DISCORD_GEN_RESPONSE_RES", {
-            body: { message, context, response },
-            userId: userId,
+        const responseMemory: Memory = {
+            id: stringToUuid(`${message.id}-res`),
+            userId: this.runtime.agentId,
+            agentId: this.runtime.agentId,
+            content: response,
             roomId,
-            type: "response",
-        });
+            createdAt: Date.now(),
+        };
+
+        this._logAgentResponse("sent", userId, roomId, responseMemory);
 
         return response;
+    }
+
+    private _logAgentResponse(
+        status: "sent" | "error" | "ignored",
+        userId: UUID,
+        roomId: UUID,
+        responseMemory: Memory
+    ) {
+        InteractionLogger.logAgentResponse({
+            client: "discord",
+            agentId: this.runtime.agentId,
+            userId,
+            roomId,
+            responseMemory,
+            status,
+        });
     }
 
     private simulateTyping(message: DiscordMessage) {
@@ -899,7 +929,9 @@ export class MessageManager {
 
         const typingLoop = async () => {
             while (typing) {
-                await message.channel.sendTyping();
+                if (message.channel instanceof TextChannel) {
+                    await message.channel.sendTyping();
+                }
                 await new Promise((resolve) => setTimeout(resolve, 3000));
             }
         };
