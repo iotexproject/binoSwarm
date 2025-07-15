@@ -1,6 +1,7 @@
 import {
     Content,
     IAgentRuntime,
+    InteractionLogger,
     Memory,
     ModelClass,
     ServiceType,
@@ -932,6 +933,22 @@ export class VoiceManager extends EventEmitter {
                     text,
                     inReplyTo,
                 };
+                const memory: Memory = {
+                    id: stringToUuid(messageId),
+                    userId: runtime.agentId,
+                    agentId: runtime.agentId,
+                    content,
+                    roomId,
+                    createdAt: Date.now(),
+                };
+                InteractionLogger.logAgentResponse({
+                    client: "discord",
+                    agentId: runtime.agentId,
+                    userId: runtime.agentId,
+                    roomId,
+                    responseMemory: memory,
+                    status: "sent",
+                });
                 this.buildAndSaveMemory(messageId, runtime, roomId, content);
             }
         });
@@ -979,7 +996,6 @@ export class VoiceManager extends EventEmitter {
     }
 
     private _generateResponse(context: string, message: Memory): any {
-        elizaLogger.debug("context: ", context);
         const response = streamWithTools({
             runtime: this.runtime,
             context,
