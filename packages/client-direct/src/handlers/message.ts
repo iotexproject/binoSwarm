@@ -1,6 +1,12 @@
 import express from "express";
 
-import { stringToUuid, Content, Memory, elizaLogger } from "@elizaos/core";
+import {
+    stringToUuid,
+    Content,
+    Memory,
+    InteractionLogger,
+    UUID,
+} from "@elizaos/core";
 
 import { DirectClient } from "../client";
 import { genResponse, stringifyContent } from "./helpers";
@@ -34,7 +40,15 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
     } = await messageHandler.initiateMessageProcessing();
     let state = initialState;
 
-    const { response, context } = await genResponse(runtime, state, memory);
+    InteractionLogger.logMessageReceived({
+        client: "direct",
+        agentId: agentId as UUID,
+        userId: userId as UUID,
+        roomId: roomId as UUID,
+        messageId: memory.id,
+    });
+
+    const { response } = await genResponse(runtime, state, memory);
 
     // Send initial response immediately
     const responseData = {
@@ -51,13 +65,14 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
         createdAt: Date.now(),
     };
 
-    messageHandler.logResponse(
-        userMessage,
-        context,
-        responseMessage,
-        userId,
-        roomId
-    );
+    InteractionLogger.logAgentResponse({
+        client: "direct",
+        agentId: agentId as UUID,
+        userId: userId as UUID,
+        roomId: roomId as UUID,
+        responseMemory: responseMessage,
+        status: "sent",
+    });
 
     await runtime.messageManager.createMemory({
         memory: responseMessage,
@@ -72,7 +87,6 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
         async (content: Content) => {
             if (content) {
                 const stringified = stringifyContent(userId, content);
-                elizaLogger.info(stringified);
                 res.write(`data: ${stringified}\n\n`);
             }
             return [memory];
