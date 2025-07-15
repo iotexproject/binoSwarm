@@ -57,7 +57,7 @@ export const muteRoomAction: Action = {
         const state = await runtime.composeState(message);
 
         InteractionLogger.logAgentActionCalled({
-            client: (options.tags[0] as AgentClient) || "unknown",
+            client: (options.tags?.[0] as AgentClient) || "unknown",
             agentId: runtime.agentId,
             userId: message.userId,
             roomId: message.roomId,

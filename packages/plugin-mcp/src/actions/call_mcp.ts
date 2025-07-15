@@ -44,7 +44,7 @@ export const mcpAction: Action = {
 
         try {
             InteractionLogger.logAgentActionCalled({
-                client: options.tags[0] as AgentClient,
+                client: options.tags?.[0] as AgentClient,
                 agentId: runtime.agentId,
                 userId: message.userId,
                 roomId: message.roomId,
