@@ -1,5 +1,5 @@
 import { elizaLogger } from "./logger";
-import { Memory, UUID } from "./types";
+import { UUID } from "./types";
 
 export type AgentClient = "direct" | "discord" | "twitter" | "telegram";
 
@@ -8,7 +8,7 @@ export type AgentMessageReceivedPayload = {
     agentId: UUID;
     userId: UUID;
     roomId: UUID;
-    messageId: UUID;
+    messageId: string;
 };
 
 export type AgentResponseSentPayload = {
@@ -16,7 +16,7 @@ export type AgentResponseSentPayload = {
     agentId: UUID;
     userId: UUID;
     roomId: UUID;
-    responseMemory: Memory;
+    messageId: string;
     status: "sent" | "ignored" | "error";
 };
 
@@ -39,7 +39,7 @@ export class InteractionLogger {
             agentId: payload.agentId,
             userId: payload.userId,
             roomId: payload.roomId,
-            messageId: payload.responseMemory.id,
+            messageId: payload.messageId,
             status: payload.status,
         });
     }

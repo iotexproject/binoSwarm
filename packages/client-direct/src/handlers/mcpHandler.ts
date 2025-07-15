@@ -67,7 +67,7 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
                 agentId: agentId as UUID,
                 userId: userId as UUID,
                 roomId: roomId as UUID,
-                responseMemory: responseMessage,
+                messageId: memory.id,
                 status: "sent",
             });
 

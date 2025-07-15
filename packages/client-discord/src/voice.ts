@@ -940,20 +940,13 @@ export class VoiceManager extends EventEmitter {
                     text,
                     inReplyTo,
                 };
-                const memory: Memory = {
-                    id: stringToUuid(messageId),
-                    userId: runtime.agentId,
-                    agentId: runtime.agentId,
-                    content,
-                    roomId,
-                    createdAt: Date.now(),
-                };
+
                 InteractionLogger.logAgentResponse({
                     client: "discord",
                     agentId: runtime.agentId,
                     userId: runtime.agentId,
                     roomId,
-                    responseMemory: memory,
+                    messageId,
                     status: "sent",
                 });
                 this.buildAndSaveMemory(messageId, runtime, roomId, content);
