@@ -13,6 +13,7 @@ import {
     IImageDescriptionService,
     ServiceType,
     UUID,
+    InteractionLogger,
 } from "@elizaos/core";
 import { ClientBase } from "./base";
 import {
@@ -87,8 +88,6 @@ export class TwitterInteractionClient {
     }
 
     private async prepareTweet(tweet: Tweet) {
-        elizaLogger.log("New Tweet found", tweet.permanentUrl);
-
         const roomId = stringToUuid(
             tweet.conversationId + "-" + this.runtime.agentId
         );
@@ -96,6 +95,14 @@ export class TwitterInteractionClient {
             tweet.userId === this.client.profile.id
                 ? this.runtime.agentId
                 : stringToUuid(tweet.userId!);
+
+        InteractionLogger.logMessageReceived({
+            client: "twitter",
+            agentId: this.runtime.agentId,
+            userId: userIdUUID,
+            roomId,
+            messageId: tweet.id,
+        });
 
         await this.runtime.ensureConnection(
             userIdUUID,
@@ -285,11 +292,21 @@ export class TwitterInteractionClient {
 
         const shouldRespond = await this.shouldRespond(state, message);
         if (!shouldRespond) {
-            elizaLogger.log("Not responding to message");
+            InteractionLogger.logAgentResponse({
+                client: "twitter",
+                agentId: this.runtime.agentId,
+                userId: message.userId,
+                roomId: message.roomId,
+                messageId: tweet.id,
+                status: "ignored",
+            });
             return;
         }
 
-        const { response, context } = await this.generateTweetResponse(state, message);
+        const { response, context } = await this.generateTweetResponse(
+            state,
+            message
+        );
         response.inReplyTo = tweetId;
 
         if (!response.text) {
@@ -333,8 +350,24 @@ export class TwitterInteractionClient {
 
             await this.saveResponseInfoToCache(context, tweet, response);
             await wait();
+            InteractionLogger.logAgentResponse({
+                client: "twitter",
+                agentId: this.runtime.agentId,
+                userId: message.userId,
+                roomId: message.roomId,
+                messageId: tweet.id,
+                status: "sent",
+            });
         } catch (error) {
             elizaLogger.error(`Error sending response tweet: ${error}`);
+            InteractionLogger.logAgentResponse({
+                client: "twitter",
+                agentId: this.runtime.agentId,
+                userId: message.userId,
+                roomId: message.roomId,
+                messageId: tweet.id,
+                status: "error",
+            });
         }
     }
 
@@ -371,7 +404,10 @@ export class TwitterInteractionClient {
         return { response, context };
     }
 
-    private async shouldRespond(state: State, message: Memory): Promise<boolean> {
+    private async shouldRespond(
+        state: State,
+        message: Memory
+    ): Promise<boolean> {
         const context = this.buildShouldRespondContext(state);
         const res = await generateShouldRespond({
             runtime: this.runtime,
