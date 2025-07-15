@@ -283,14 +283,14 @@ importers:
   packages/client-discord:
     dependencies:
       '@discordjs/opus':
-        specifier: github:discordjs/opus
-        version: https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba(encoding@0.1.13)
+        specifier: ^0.10.0
+        version: 0.10.0(encoding@0.1.13)
       '@discordjs/rest':
-        specifier: 2.4.0
-        version: 2.4.0
+        specifier: ^2.4.0
+        version: 2.5.1
       '@discordjs/voice':
-        specifier: 0.17.0
-        version: 0.17.0(@discordjs/opus@https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba(encoding@0.1.13))(ffmpeg-static@5.2.0)
+        specifier: ^0.18.0
+        version: 0.18.0(@discordjs/opus@0.10.0(encoding@0.1.13))(ffmpeg-static@5.2.0)
       '@elizaos/core':
         specifier: workspace:*
         version: link:../core
@@ -301,22 +301,22 @@ importers:
         specifier: workspace:*
         version: link:../plugin-node
       discord.js:
-        specifier: 14.16.3
+        specifier: ^14.16.3
         version: 14.16.3
       libsodium-wrappers:
-        specifier: 0.7.15
+        specifier: ^0.7.15
         version: 0.7.15
       onnxruntime-node:
         specifier: 1.20.1
         version: 1.20.1
       prism-media:
-        specifier: 1.3.5
-        version: 1.3.5(@discordjs/opus@https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba(encoding@0.1.13))(ffmpeg-static@5.2.0)
+        specifier: ^1.3.5
+        version: 1.3.5(@discordjs/opus@0.10.0(encoding@0.1.13))(ffmpeg-static@5.2.0)
       whatwg-url:
         specifier: 7.1.0
         version: 7.1.0
       zod:
-        specifier: 3.23.8
+        specifier: ^3.23.8
         version: 3.23.8
     devDependencies:
       '@vitest/coverage-v8':
@@ -413,7 +413,7 @@ importers:
         version: 5.1.2
       ai:
         specifier: ^4.3.7
-        version: 4.3.18(react@19.1.0)(zod@3.23.8)
+        version: 4.3.19(react@19.1.0)(zod@3.23.8)
       fastembed:
         specifier: 1.14.1
         version: 1.14.1
@@ -443,7 +443,7 @@ importers:
         version: 3.38.4
       langfuse-vercel:
         specifier: ^3.38.4
-        version: 3.38.4(ai@4.3.18(react@19.1.0)(zod@3.23.8))
+        version: 3.38.4(ai@4.3.19(react@19.1.0)(zod@3.23.8))
       openai:
         specifier: 4.73.0
         version: 4.73.0(encoding@0.1.13)(zod@3.23.8)
@@ -651,7 +651,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
-        version: 20.19.7
+        version: 20.19.8
       '@types/node-fetch':
         specifier: ^2.6.12
         version: 2.6.12
@@ -1227,24 +1227,21 @@ packages:
     resolution: {integrity: sha512-YJOVVZ545x24mHzANfYoy0BJX5PDyeZlpiJjDkUBM/V/Ao7TFX9lcUvCN4nr0tbr5ubeaXxtEBILUrHtTphVeQ==}
     hasBin: true
 
-  '@discordjs/opus@https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba':
-    resolution: {tarball: https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba}
-    version: 0.10.0
-    engines: {node: '>=18.0.0'}
+  '@discordjs/opus@0.10.0':
+    resolution: {integrity: sha512-HHEnSNrSPmFEyndRdQBJN2YE6egyXS9JUnJWyP6jficK0Y+qKMEZXyYTgmzpjrxXP1exM/hKaNP7BRBUEWkU5w==}
+    engines: {node: '>=12.0.0'}
 
-  '@discordjs/rest@2.4.0':
-    resolution: {integrity: sha512-Xb2irDqNcq+O8F0/k/NaDp7+t091p+acb51iA4bCKfIn+WFWd6HrNvcsSbMMxIR9NjcMZS6NReTKygqiQN+ntw==}
+  '@discordjs/rest@2.5.1':
+    resolution: {integrity: sha512-Tg9840IneBcbrAjcGaQzHUJWFNq1MMWZjTdjJ0WS/89IffaNKc++iOvffucPxQTF/gviO9+9r8kEPea1X5J2Dw==}
     engines: {node: '>=18'}
 
   '@discordjs/util@1.1.1':
     resolution: {integrity: sha512-eddz6UnOBEB1oITPinyrB2Pttej49M9FZQY8NxgEvc3tq6ZICZ19m70RsmzRdDHk80O9NoYN/25AqJl8vPVf/g==}
     engines: {node: '>=18'}
 
-  '@discordjs/voice@0.17.0':
-    resolution: {integrity: sha512-hArn9FF5ZYi1IkxdJEVnJi+OxlwLV0NJYWpKXsmNOojtGtAZHxmsELA+MZlu2KW1F/K1/nt7lFOfcMXNYweq9w==}
-    version: 0.17.0
-    engines: {node: '>=16.11.0'}
-    deprecated: This version uses deprecated encryption modes. Please use a newer version.
+  '@discordjs/voice@0.18.0':
+    resolution: {integrity: sha512-BvX6+VJE5/vhD9azV9vrZEt9hL1G+GlOdsQaVl5iv9n87fkXjf3cSwllhR3GdaUC8m6dqT8umXIWtn3yCu4afg==}
+    engines: {node: '>=18'}
 
   '@discordjs/ws@1.1.1':
     resolution: {integrity: sha512-PZ+vLpxGCRtmr2RMkqh8Zp+BenUaJqlS6xhgWKEZcgC/vfHLEzpHtKkB0sl3nZWpwtcKk6YWy+pU3okL2I97FA==}
@@ -3242,11 +3239,11 @@ packages:
   '@types/node@10.17.60':
     resolution: {integrity: sha512-F0KIgDJfy2nA3zMLmWGKxcH2ZVEtCZXHHdOQs2gSaQ27+lNeEfGxzkIw90aXswATX7AZ33tahPbzy6KAfUreVw==}
 
-  '@types/node@18.19.118':
-    resolution: {integrity: sha512-hIPK0hSrrcaoAu/gJMzN3QClXE4QdCdFvaenJ0JsjIbExP1JFFVH+RHcBt25c9n8bx5dkIfqKE+uw6BmBns7ug==}
+  '@types/node@18.19.119':
+    resolution: {integrity: sha512-d0F6m9itIPaKnrvEMlzE48UjwZaAnFW7Jwibacw9MNdqadjKNpUm9tfJYDwmShJmgqcoqYUX3EMKO1+RWiuuNg==}
 
-  '@types/node@20.19.7':
-    resolution: {integrity: sha512-1GM9z6BJOv86qkPvzh2i6VW5+VVrXxCLknfmTkWEqz+6DqosiY28XUWCTmBcJ0ACzKqx/iwdIREfo1fwExIlkA==}
+  '@types/node@20.19.8':
+    resolution: {integrity: sha512-HzbgCY53T6bfu4tT7Aq3TvViJyHjLjPNaAS3HOuMc9pw97KHsUtXNX4L+wu59g1WnjsZSko35MbEqnO58rihhw==}
 
   '@types/node@22.7.5':
     resolution: {integrity: sha512-jML7s2NAzMWc//QSJ1a3prpk78cOPchGvXJsC3C6R6PSMoooztvRVQEz89gmBTBY1SPMaqo5teB4uNHPdetShQ==}
@@ -3535,8 +3532,8 @@ packages:
     resolution: {integrity: sha512-4I7Td01quW/RpocfNayFdFVk1qSuoh0E7JrbRJ16nH01HhKFQ88INq9Sd+nd72zqRySlr9BmDA8xlEJ6vJMrYA==}
     engines: {node: '>=8'}
 
-  ai@4.3.18:
-    resolution: {integrity: sha512-Mn6JdNGB56GOyrfGJ746zzK6e0f6Ozr7lwfEYkQZjhf261wj1aAJgCvUsgML5/7pSiBJq3ytNEBVcR1oUKTCZw==}
+  ai@4.3.19:
+    resolution: {integrity: sha512-dIE2bfNpqHN3r6IINp9znguYdhIOheKW2LDigAMrgt/upT3B8eBGPSCblENvaZGoq+hxaN9fSMzjWpbqloP+7Q==}
     engines: {node: '>=18'}
     peerDependencies:
       react: ^18 || ^19 || ^19.0.0-rc
@@ -4372,6 +4369,9 @@ packages:
 
   discord-api-types@0.37.100:
     resolution: {integrity: sha512-a8zvUI0GYYwDtScfRd/TtaNBDTXwP5DiDVX7K5OmE+DRT57gBqKnwtOC5Ol8z0mRW8KQfETIgiB8U0YZ9NXiCA==}
+
+  discord-api-types@0.37.120:
+    resolution: {integrity: sha512-7xpNK0EiWjjDFp2nAhHXezE4OUWm7s1zhc/UXXN6hnFFU8dfoPHgV0Hx0RPiCa3ILRpdeh152icc68DGCyXYIw==}
 
   discord-api-types@0.37.83:
     resolution: {integrity: sha512-urGGYeWtWNYMKnYlZnOnDHm8fVRffQs3U0SpE8RHeiuLKb/u92APS8HoQnPTFbnXmY1vVnXjXO4dOxcAn3J+DA==}
@@ -6803,7 +6803,6 @@ packages:
 
   prism-media@1.3.5:
     resolution: {integrity: sha512-IQdl0Q01m4LrkN1EGIE9lphov5Hy7WWlH6ulf5QdGePLlPas9p2mhgddTEHrlaXYjjFToM1/rWuwF37VF4taaA==}
-    version: 1.3.5
     peerDependencies:
       '@discordjs/opus': '>=0.8.0 <1.0.0'
       ffmpeg-static: ^5.0.2 || ^4.2.7 || ^3.0.0 || ^2.4.0
@@ -7906,6 +7905,10 @@ packages:
 
   undici@6.19.8:
     resolution: {integrity: sha512-U8uCCl2x9TK3WANvmBavymRzxbfFYG+tAu+fgx3zxQy3qdagQqBLwJVrdyO1TBfUXvfKveMKJZhpvUYoOjM+4g==}
+    engines: {node: '>=18.17'}
+
+  undici@6.21.3:
+    resolution: {integrity: sha512-gBLkYIlEnSp8pFbT64yFgGE6UIB9tAkhukC23PmMDCe5Nd+cRqKxSjw5y54MK2AZMgZfJWMaNE4nYUHgi1XEOw==}
     engines: {node: '>=18.17'}
 
   undici@7.11.0:
@@ -9033,7 +9036,7 @@ snapshots:
   '@deepgram/sdk@3.13.0(encoding@0.1.13)':
     dependencies:
       '@deepgram/captions': 1.2.0
-      '@types/node': 18.19.118
+      '@types/node': 18.19.119
       cross-fetch: 3.2.0(encoding@0.1.13)
       deepmerge: 4.3.1
       events: 3.3.0
@@ -9087,7 +9090,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@discordjs/opus@https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba(encoding@0.1.13)':
+  '@discordjs/opus@0.10.0(encoding@0.1.13)':
     dependencies:
       '@discordjs/node-pre-gyp': 0.4.5(encoding@0.1.13)
       node-addon-api: 8.5.0
@@ -9095,25 +9098,25 @@ snapshots:
       - encoding
       - supports-color
 
-  '@discordjs/rest@2.4.0':
+  '@discordjs/rest@2.5.1':
     dependencies:
       '@discordjs/collection': 2.1.1
       '@discordjs/util': 1.1.1
       '@sapphire/async-queue': 1.5.5
       '@sapphire/snowflake': 3.5.5
       '@vladfrangu/async_event_emitter': 2.4.6
-      discord-api-types: 0.37.97
+      discord-api-types: 0.38.16
       magic-bytes.js: 1.12.1
       tslib: 2.8.1
-      undici: 6.19.8
+      undici: 6.21.3
 
   '@discordjs/util@1.1.1': {}
 
-  '@discordjs/voice@0.17.0(@discordjs/opus@https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba(encoding@0.1.13))(ffmpeg-static@5.2.0)':
+  '@discordjs/voice@0.18.0(@discordjs/opus@0.10.0(encoding@0.1.13))(ffmpeg-static@5.2.0)':
     dependencies:
       '@types/ws': 8.18.1
-      discord-api-types: 0.37.83
-      prism-media: 1.3.5(@discordjs/opus@https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba(encoding@0.1.13))(ffmpeg-static@5.2.0)
+      discord-api-types: 0.37.120
+      prism-media: 1.3.5(@discordjs/opus@0.10.0(encoding@0.1.13))(ffmpeg-static@5.2.0)
       tslib: 2.8.1
       ws: 8.18.0
     transitivePeerDependencies:
@@ -9127,7 +9130,7 @@ snapshots:
   '@discordjs/ws@1.1.1':
     dependencies:
       '@discordjs/collection': 2.1.1
-      '@discordjs/rest': 2.4.0
+      '@discordjs/rest': 2.5.1
       '@discordjs/util': 1.1.1
       '@sapphire/async-queue': 1.5.5
       '@types/ws': 8.18.1
@@ -11467,16 +11470,16 @@ snapshots:
 
   '@types/node-fetch@2.6.12':
     dependencies:
-      '@types/node': 20.19.7
+      '@types/node': 20.19.8
       form-data: 4.0.3
 
   '@types/node@10.17.60': {}
 
-  '@types/node@18.19.118':
+  '@types/node@18.19.119':
     dependencies:
       undici-types: 5.26.5
 
-  '@types/node@20.19.7':
+  '@types/node@20.19.8':
     dependencies:
       undici-types: 6.21.0
 
@@ -11567,11 +11570,11 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 22.8.4
+      '@types/node': 20.19.8
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 22.8.4
+      '@types/node': 20.19.8
     optional: true
 
   '@typescript-eslint/eslint-plugin@8.16.0(@typescript-eslint/parser@8.16.0(eslint@9.16.0)(typescript@5.6.3))(eslint@9.16.0)(typescript@5.6.3)':
@@ -11819,7 +11822,7 @@ snapshots:
       clean-stack: 2.2.0
       indent-string: 4.0.0
 
-  ai@4.3.18(react@19.1.0)(zod@3.23.8):
+  ai@4.3.19(react@19.1.0)(zod@3.23.8):
     dependencies:
       '@ai-sdk/provider': 1.1.3
       '@ai-sdk/provider-utils': 2.2.8(zod@3.23.8)
@@ -12624,6 +12627,8 @@ snapshots:
 
   discord-api-types@0.37.100: {}
 
+  discord-api-types@0.37.120: {}
+
   discord-api-types@0.37.83: {}
 
   discord-api-types@0.37.97: {}
@@ -12635,7 +12640,7 @@ snapshots:
       '@discordjs/builders': 1.11.2
       '@discordjs/collection': 1.5.3
       '@discordjs/formatters': 0.5.0
-      '@discordjs/rest': 2.4.0
+      '@discordjs/rest': 2.5.1
       '@discordjs/util': 1.1.1
       '@discordjs/ws': 1.1.1
       '@sapphire/snowflake': 3.5.3
@@ -13111,7 +13116,7 @@ snapshots:
 
   extract-zip@2.0.1:
     dependencies:
-      debug: 4.3.4
+      debug: 4.4.1(supports-color@5.5.0)
       get-stream: 5.2.0
       yauzl: 2.10.0
     optionalDependencies:
@@ -14081,9 +14086,9 @@ snapshots:
     dependencies:
       mustache: 4.2.0
 
-  langfuse-vercel@3.38.4(ai@4.3.18(react@19.1.0)(zod@3.23.8)):
+  langfuse-vercel@3.38.4(ai@4.3.19(react@19.1.0)(zod@3.23.8)):
     dependencies:
-      ai: 4.3.18(react@19.1.0)(zod@3.23.8)
+      ai: 4.3.19(react@19.1.0)(zod@3.23.8)
       langfuse: 3.38.4
       langfuse-core: 3.38.4
 
@@ -14981,7 +14986,7 @@ snapshots:
 
   openai@4.104.0(encoding@0.1.13)(ws@8.18.3)(zod@3.23.8):
     dependencies:
-      '@types/node': 18.19.118
+      '@types/node': 18.19.119
       '@types/node-fetch': 2.6.12
       abort-controller: 3.0.0
       agentkeepalive: 4.6.0
@@ -14996,7 +15001,7 @@ snapshots:
 
   openai@4.73.0(encoding@0.1.13)(zod@3.23.8):
     dependencies:
-      '@types/node': 18.19.118
+      '@types/node': 18.19.119
       '@types/node-fetch': 2.6.12
       abort-controller: 3.0.0
       agentkeepalive: 4.6.0
@@ -15010,7 +15015,7 @@ snapshots:
 
   openai@4.73.0(encoding@0.1.13)(zod@3.25.76):
     dependencies:
-      '@types/node': 18.19.118
+      '@types/node': 18.19.119
       '@types/node-fetch': 2.6.12
       abort-controller: 3.0.0
       agentkeepalive: 4.6.0
@@ -15501,9 +15506,9 @@ snapshots:
     dependencies:
       parse-ms: 2.1.0
 
-  prism-media@1.3.5(@discordjs/opus@https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba(encoding@0.1.13))(ffmpeg-static@5.2.0):
+  prism-media@1.3.5(@discordjs/opus@0.10.0(encoding@0.1.13))(ffmpeg-static@5.2.0):
     optionalDependencies:
-      '@discordjs/opus': https://codeload.github.com/discordjs/opus/tar.gz/09c713e90a3ae8640c47d024ff48ed87ebe934ba(encoding@0.1.13)
+      '@discordjs/opus': 0.10.0(encoding@0.1.13)
       ffmpeg-static: 5.2.0
 
   proc-log@4.2.0: {}
@@ -16696,6 +16701,8 @@ snapshots:
   undici-types@6.21.0: {}
 
   undici@6.19.8: {}
+
+  undici@6.21.3: {}
 
   undici@7.11.0: {}
 
