@@ -36,7 +36,7 @@ function getMetadata(message: Memory, tags?: string[]) {
         roomId: message.roomId,
         sessionId: message.id,
         langfuseTraceId: toTraceId(message.id),
-        tags: tags || [],
+        tags: [...(tags || []), message.agentId].filter(Boolean),
     };
 }
 

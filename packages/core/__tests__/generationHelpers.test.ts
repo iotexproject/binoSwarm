@@ -101,7 +101,7 @@ describe("buildGenerationSettings", () => {
                 agentId: mockMemory.agentId,
                 sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
-                tags: [],
+                tags: [mockMemory.agentId],
             });
         });
     });
@@ -124,7 +124,7 @@ describe("buildGenerationSettings", () => {
                 agentId: mockMemory.agentId,
                 sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
-                tags: [],
+                tags: [mockMemory.agentId],
             });
         });
     });
@@ -151,7 +151,7 @@ describe("buildGenerationSettings", () => {
                 agentId: memoryWithoutId.agentId,
                 sessionId: memoryWithoutId.id,
                 roomId: memoryWithoutId.roomId,
-                tags: [],
+                tags: [memoryWithoutId.agentId],
             });
         });
     });
