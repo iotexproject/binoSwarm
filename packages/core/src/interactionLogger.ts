@@ -20,6 +20,15 @@ export type AgentResponseSentPayload = {
     status: "sent" | "ignored" | "error";
 };
 
+export type AgentScheduledPostPayload = {
+    client: AgentClient;
+    agentId: UUID;
+    userId: UUID;
+    roomId: UUID;
+    messageId: string;
+    status: "scheduled" | "sent" | "failed";
+};
+
 export class InteractionLogger {
     public static logMessageReceived(
         payload: AgentMessageReceivedPayload
@@ -35,6 +44,19 @@ export class InteractionLogger {
 
     public static logAgentResponse(payload: AgentResponseSentPayload): void {
         elizaLogger.log("AGENT_RESPONSE_SENT", {
+            client: payload.client,
+            agentId: payload.agentId,
+            userId: payload.userId,
+            roomId: payload.roomId,
+            messageId: payload.messageId,
+            status: payload.status,
+        });
+    }
+
+    public static logAgentScheduledPost(
+        payload: AgentScheduledPostPayload
+    ): void {
+        elizaLogger.log("AGENT_SCHEDULED_POST", {
             client: payload.client,
             agentId: payload.agentId,
             userId: payload.userId,
