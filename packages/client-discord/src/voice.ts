@@ -798,10 +798,20 @@ export class VoiceManager extends EventEmitter {
         name: string,
         userName: string
     ) {
-        try {
-            const roomId = stringToUuid(channelId + "-" + this.runtime.agentId);
-            const userIdUUID = stringToUuid(userId);
 
+        const roomId = stringToUuid(channelId + "-" + this.runtime.agentId);
+        const userIdUUID = stringToUuid(userId);
+        const memoryId = stringToUuid(Date.now().toString());
+
+        InteractionLogger.logMessageReceived({
+            client: "discord",
+            agentId: this.runtime.agentId,
+            userId: userIdUUID,
+            roomId: roomId,
+            messageId: memoryId,
+        });
+
+        try {
             await this.runtime.ensureConnection(
                 userIdUUID,
                 roomId,
@@ -829,9 +839,6 @@ export class VoiceManager extends EventEmitter {
                 return null;
             }
 
-            const memoryId = stringToUuid(
-                channelId + "-voice-message-" + Date.now()
-            );
             const memory = {
                 id: memoryId,
                 agentId: this.runtime.agentId,
