@@ -9,6 +9,7 @@ import {
     generateMessageResponse,
     State,
     generateObject,
+    InteractionLogger,
 } from "@elizaos/core";
 
 import { ClientBase } from "./base.ts";
@@ -136,6 +137,12 @@ export class TwitterPostClient {
         try {
             const username = this.client.profile.username;
             const roomId = stringToUuid("twitter_generate_room-" + username);
+            const agentId = this.runtime.agentId;
+
+            // Generate a unique ID for this scheduled post attempt
+            const scheduledPostId = stringToUuid(
+                `scheduled_post_${Date.now()}_${Math.random()}`
+            );
 
             await this.runtime.ensureUserExists(
                 this.runtime.agentId,
@@ -145,21 +152,56 @@ export class TwitterPostClient {
             );
 
             const newTweetContent = await this.genAndCleanNewTweet(roomId);
+
             if (this.approvalRequired) {
+                InteractionLogger.logAgentScheduledPost({
+                    client: "twitter",
+                    agentId: agentId,
+                    userId: agentId,
+                    roomId: roomId,
+                    messageId: scheduledPostId,
+                    status: "scheduled",
+                });
+
                 await this.discordApprover.sendForApproval(
                     newTweetContent,
                     roomId,
                     newTweetContent
                 );
             } else {
-                await TwitterHelpers.postTweet(
-                    this.runtime,
-                    this.client,
-                    newTweetContent,
-                    roomId,
-                    newTweetContent,
-                    this.twitterUsername
-                );
+                try {
+                    await TwitterHelpers.postTweet(
+                        this.runtime,
+                        this.client,
+                        newTweetContent,
+                        roomId,
+                        newTweetContent,
+                        this.twitterUsername
+                    );
+
+                    InteractionLogger.logAgentScheduledPost({
+                        client: "twitter",
+                        agentId: agentId,
+                        userId: agentId,
+                        roomId: roomId,
+                        messageId: scheduledPostId,
+                        status: "sent",
+                    });
+                } catch (postError) {
+                    elizaLogger.error(
+                        "Error posting tweet directly:",
+                        postError
+                    );
+                    InteractionLogger.logAgentScheduledPost({
+                        client: "twitter",
+                        agentId: agentId,
+                        userId: agentId,
+                        roomId: roomId,
+                        messageId: scheduledPostId,
+                        status: "failed",
+                    });
+                    throw postError;
+                }
             }
         } catch (error) {
             elizaLogger.error("Error generating new tweet:", error);
