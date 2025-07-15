@@ -8,8 +8,7 @@ export type AgentMessageReceivedPayload = {
     agentId: UUID;
     userId: UUID;
     roomId: UUID;
-    messageId: UUID; // The user's incoming message ID
-    traceId?: string;
+    messageId: UUID;
 };
 
 export type AgentResponseSentPayload = {
@@ -17,8 +16,7 @@ export type AgentResponseSentPayload = {
     agentId: UUID;
     userId: UUID;
     roomId: UUID;
-    responseMemory: Memory; // The agent's response
-    traceId?: string;
+    responseMemory: Memory;
     status: "sent" | "ignored" | "error";
 };
 
@@ -32,7 +30,6 @@ export class InteractionLogger {
             userId: payload.userId,
             roomId: payload.roomId,
             messageId: payload.messageId,
-            traceId: payload.traceId,
         });
     }
 
@@ -44,7 +41,6 @@ export class InteractionLogger {
             roomId: payload.roomId,
             messageId: payload.responseMemory.id,
             status: payload.status,
-            traceId: payload.traceId,
         });
     }
 }
