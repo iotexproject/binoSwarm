@@ -1,7 +1,12 @@
 import { elizaLogger } from "./logger";
 import { UUID } from "./types";
 
-export type AgentClient = "direct" | "discord" | "twitter" | "telegram";
+export type AgentClient =
+    | "direct"
+    | "discord"
+    | "twitter"
+    | "telegram"
+    | "unknown";
 
 export type AgentMessageReceivedPayload = {
     client: AgentClient;
