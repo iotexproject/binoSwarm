@@ -1,5 +1,6 @@
 import express from "express";
-import { elizaLogger } from "@elizaos/core";
+import crypto from "crypto";
+import { elizaLogger, getEnvVariable } from "@elizaos/core";
 import { DirectClient } from "../client";
 import {
     DiscourseWebhookData,
@@ -16,6 +17,8 @@ export async function handleDiscourseWebhook(
 ): Promise<void> {
     try {
         const webhookData = validateDiscourseWebhook(req);
+
+        elizaLogger.log("Validated webhook:", webhookData);
 
         if (!shouldProcessEvent(webhookData)) {
             res.status(200).json({
@@ -39,6 +42,13 @@ export async function handleDiscourseWebhook(
             error instanceof Error ? error.message : "Unknown error";
         elizaLogger.error("Error processing discourse webhook:", error);
 
+        if (errorMessage === "Invalid webhook signature") {
+            res.status(401).json({
+                error: errorMessage,
+            });
+            return;
+        }
+
         res.status(500).json({
             error: errorMessage,
         });
@@ -59,6 +69,10 @@ export function validateDiscourseWebhook(
         throw new Error("Missing required Discourse webhook headers");
     }
 
+    if (!validateWebhookSignature(req.body, signature as string)) {
+        throw new Error("Invalid webhook signature");
+    }
+
     return {
         eventType: eventType as DiscourseEventType,
         instance: instance as string,
@@ -66,6 +80,45 @@ export function validateDiscourseWebhook(
         signature: signature as string,
         payload: req.body,
     };
+}
+
+export function validateWebhookSignature(
+    payload: any,
+    signature: string
+): boolean {
+    const webhookSecret = getEnvVariable("DISCOURSE_WEBHOOK_SECRET");
+
+    if (!webhookSecret) {
+        elizaLogger.warn(
+            "DISCOURSE_WEBHOOK_SECRET not configured, skipping signature validation"
+        );
+        return true; // Allow through if no secret configured
+    }
+
+    try {
+        // Extract the hash from the signature (format: "sha256=<hash>")
+        if (!signature.startsWith("sha256=")) {
+            return false;
+        }
+
+        const providedHash = signature.substring(7); // Remove "sha256=" prefix
+
+        // Compute the expected hash
+        const payloadString = JSON.stringify(payload);
+        const expectedHash = crypto
+            .createHmac("sha256", webhookSecret)
+            .update(payloadString, "utf8")
+            .digest("hex");
+
+        // Use timing-safe comparison to prevent timing attacks
+        return crypto.timingSafeEqual(
+            Buffer.from(providedHash, "hex"),
+            Buffer.from(expectedHash, "hex")
+        );
+    } catch (error) {
+        elizaLogger.error("Error validating webhook signature:", error);
+        return false;
+    }
 }
 
 export function shouldProcessEvent({
@@ -98,5 +151,4 @@ function isValidEventType(eventType: string): eventType is DiscourseEventType {
 // Future implementations will go here:
 // - processDiscourseQuestion()
 // - postDiscourseReply()
-// - validateWebhookSignature()
 // - shouldIgnoreLLMCall()

@@ -1,22 +1,41 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Request, Response } from "express";
+import crypto from "crypto";
+
+// Mock getEnvVariable before importing the module
+vi.mock("@elizaos/core", async () => {
+    const actual = await vi.importActual("@elizaos/core");
+    return {
+        ...actual,
+        getEnvVariable: vi.fn(),
+    };
+});
+
+// Mock the DirectClient to prevent server startup
+vi.mock("../client", () => ({
+    DirectClient: vi.fn(() => ({
+        start: vi.fn(),
+        stop: vi.fn(),
+        getRuntime: vi.fn(),
+        upload: vi.fn(),
+    })),
+}));
+
 import {
     handleDiscourseWebhook,
     validateDiscourseWebhook,
+    validateWebhookSignature,
     shouldProcessEvent,
 } from "./discourse";
+import { getEnvVariable } from "@elizaos/core";
 
-// Mock the DirectClient to prevent server startup
+const mockGetEnvVariable = getEnvVariable as any;
 const mockDirectClient = {
     start: vi.fn(),
     stop: vi.fn(),
     getRuntime: vi.fn(),
     upload: vi.fn(),
 };
-
-vi.mock("../client", () => ({
-    DirectClient: vi.fn(() => mockDirectClient),
-}));
 
 describe("Discourse Webhook Handler", () => {
     let mockReq: Partial<Request>;
@@ -31,15 +50,91 @@ describe("Discourse Webhook Handler", () => {
         vi.clearAllMocks();
     });
 
+    describe("validateWebhookSignature", () => {
+        const testSecret =
+            "90aee7c4d0b18da33a963299007617d6b3c44e943537014c2fa2839d5a3273d6";
+        const testPayload = { test: "data" };
+
+        beforeEach(() => {
+            mockGetEnvVariable.mockReturnValue(testSecret);
+        });
+
+        it("should validate correct signature", () => {
+            const payloadString = JSON.stringify(testPayload);
+            const expectedHash = crypto
+                .createHmac("sha256", testSecret)
+                .update(payloadString, "utf8")
+                .digest("hex");
+            const signature = `sha256=${expectedHash}`;
+
+            expect(validateWebhookSignature(testPayload, signature)).toBe(true);
+        });
+
+        it("should reject incorrect signature", () => {
+            const signature = "sha256=wronghash";
+            expect(validateWebhookSignature(testPayload, signature)).toBe(
+                false
+            );
+        });
+
+        it("should reject malformed signature without sha256 prefix", () => {
+            const signature = "invalidformat";
+            expect(validateWebhookSignature(testPayload, signature)).toBe(
+                false
+            );
+        });
+
+        it("should allow through when no secret is configured", () => {
+            mockGetEnvVariable.mockReturnValue(null);
+            const signature = "sha256=anyhash";
+            expect(validateWebhookSignature(testPayload, signature)).toBe(true);
+        });
+
+        it("should handle signature validation errors gracefully", () => {
+            const signature = "sha256=invalidhexformat!@#";
+            expect(validateWebhookSignature(testPayload, signature)).toBe(
+                false
+            );
+        });
+
+        it("should validate the provided test signature", () => {
+            // Test that our signature generation works correctly with the provided secret
+            const payloadString = JSON.stringify(testPayload);
+            const generatedHash = crypto
+                .createHmac("sha256", testSecret)
+                .update(payloadString, "utf8")
+                .digest("hex");
+            const generatedSignature = `sha256=${generatedHash}`;
+
+            expect(
+                validateWebhookSignature(testPayload, generatedSignature)
+            ).toBe(true);
+        });
+    });
+
     describe("validateDiscourseWebhook", () => {
-        it("should validate post_created webhook", () => {
+        const testSecret =
+            "90aee7c4d0b18da33a963299007617d6b3c44e943537014c2fa2839d5a3273d6";
+
+        beforeEach(() => {
+            mockGetEnvVariable.mockReturnValue(testSecret);
+        });
+
+        it("should validate webhook with correct signature", () => {
+            const payloadString = JSON.stringify(mockPostCreatedPayload);
+            const expectedHash = crypto
+                .createHmac("sha256", testSecret)
+                .update(payloadString, "utf8")
+                .digest("hex");
+            const signature = `sha256=${expectedHash}`;
+
             mockReq = {
                 headers: {
                     "x-discourse-instance": "https://community.example.com",
                     "x-discourse-event-id": "12345",
                     "x-discourse-event-type": "post",
                     "x-discourse-event": "post_created",
-                    "x-discourse-event-signature": "sha256=test-signature",
+                    "x-discourse-event-signature": signature,
                 },
                 body: mockPostCreatedPayload,
             };
@@ -52,14 +147,33 @@ describe("Discourse Webhook Handler", () => {
             expect(result.payload.post.id).toBe(12345);
         });
 
-        it("should validate any webhook with required headers", () => {
+        it("should throw error for invalid signature", () => {
+            mockReq = {
+                headers: {
+                    "x-discourse-instance": "https://community.example.com",
+                    "x-discourse-event-id": "12345",
+                    "x-discourse-event-type": "post",
+                    "x-discourse-event": "post_created",
+                    "x-discourse-event-signature": "sha256=invalidsignature",
+                },
+                body: mockPostCreatedPayload,
+            };
+
+            expect(() => validateDiscourseWebhook(mockReq as Request)).toThrow(
+                "Invalid webhook signature"
+            );
+        });
+
+        it("should validate any webhook with required headers when no secret configured", () => {
+            mockGetEnvVariable.mockReturnValue(null);
+
             mockReq = {
                 headers: {
                     "x-discourse-instance": "https://community.example.com",
                     "x-discourse-event-id": "12345",
                     "x-discourse-event-type": "topic",
                     "x-discourse-event": "topic_created",
-                    "x-discourse-event-signature": "sha256=test-signature",
+                    "x-discourse-event-signature": "sha256=any-signature",
                 },
                 body: { topic: { id: 123 } },
             };
@@ -224,14 +338,28 @@ describe("Discourse Webhook Handler", () => {
     });
 
     describe("handleDiscourseWebhook", () => {
+        const testSecret =
+            "90aee7c4d0b18da33a963299007617d6b3c44e943537014c2fa2839d5a3273d6";
+
+        beforeEach(() => {
+            mockGetEnvVariable.mockReturnValue(testSecret);
+        });
+
         it("should process valid webhook and return success", async () => {
+            const payloadString = JSON.stringify(mockPostCreatedPayload);
+            const expectedHash = crypto
+                .createHmac("sha256", testSecret)
+                .update(payloadString, "utf8")
+                .digest("hex");
+            const signature = `sha256=${expectedHash}`;
+
             mockReq = {
                 headers: {
                     "x-discourse-instance": "https://community.example.com",
                     "x-discourse-event-id": "12345",
                     "x-discourse-event-type": "post",
                     "x-discourse-event": "post_created",
-                    "x-discourse-event-signature": "sha256=test-signature",
+                    "x-discourse-event-signature": signature,
                 },
                 body: mockPostCreatedPayload,
             };
@@ -239,7 +367,7 @@ describe("Discourse Webhook Handler", () => {
             await handleDiscourseWebhook(
                 mockReq as Request,
                 mockRes as Response,
-                mockDirectClient as any // DirectClient is mocked, so we can pass any mock
+                mockDirectClient as any
             );
 
             expect(mockRes.status).toHaveBeenCalledWith(200);
@@ -255,13 +383,20 @@ describe("Discourse Webhook Handler", () => {
                 },
             };
 
+            const payloadString = JSON.stringify(deletedPayload);
+            const expectedHash = crypto
+                .createHmac("sha256", testSecret)
+                .update(payloadString, "utf8")
+                .digest("hex");
+            const signature = `sha256=${expectedHash}`;
+
             mockReq = {
                 headers: {
                     "x-discourse-instance": "https://community.example.com",
                     "x-discourse-event-id": "12345",
                     "x-discourse-event-type": "post",
                     "x-discourse-event": "post_created",
-                    "x-discourse-event-signature": "sha256=test-signature",
+                    "x-discourse-event-signature": signature,
                 },
                 body: deletedPayload,
             };
@@ -297,16 +432,48 @@ describe("Discourse Webhook Handler", () => {
             });
         });
 
+        it("should return 401 for invalid signature", async () => {
+            mockReq = {
+                headers: {
+                    "x-discourse-instance": "https://community.example.com",
+                    "x-discourse-event-id": "12345",
+                    "x-discourse-event-type": "post",
+                    "x-discourse-event": "post_created",
+                    "x-discourse-event-signature": "sha256=invalidsignature",
+                },
+                body: mockPostCreatedPayload,
+            };
+
+            await handleDiscourseWebhook(
+                mockReq as Request,
+                mockRes as Response,
+                mockDirectClient as any
+            );
+
+            expect(mockRes.status).toHaveBeenCalledWith(401);
+            expect(mockRes.json).toHaveBeenCalledWith({
+                error: "Invalid webhook signature",
+            });
+        });
+
         it("should return 200 for unsupported event types", async () => {
+            const topicPayload = { topic: { id: 123 } };
+            const payloadString = JSON.stringify(topicPayload);
+            const expectedHash = crypto
+                .createHmac("sha256", testSecret)
+                .update(payloadString, "utf8")
+                .digest("hex");
+            const signature = `sha256=${expectedHash}`;
+
             mockReq = {
                 headers: {
                     "x-discourse-instance": "https://community.example.com",
                     "x-discourse-event-id": "12345",
                     "x-discourse-event-type": "topic",
                     "x-discourse-event": "topic_created",
-                    "x-discourse-event-signature": "sha256=test-signature",
+                    "x-discourse-event-signature": signature,
                 },
-                body: { topic: { id: 123 } },
+                body: topicPayload,
             };
 
             await handleDiscourseWebhook(
