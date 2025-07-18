@@ -100,14 +100,16 @@ export function createApiRouter(directClient: DirectClient) {
         }
     );
 
-    // Discourse webhook endpoint
-    router.post(
-        "/:agentId/discourse/webhook",
-        globalRateLimiter, // Use existing rate limiter for now
-        async (req: express.Request, res: express.Response) => {
-            await handleDiscourseWebhook(req, res, directClient);
-        }
-    );
+    const discourseApiKey = getEnvVariable("DISCOURSE_API_KEY");
+    if (discourseApiKey) {
+        router.post(
+            "/:agentId/discourse/webhook",
+            globalRateLimiter, // Use existing rate limiter for now
+            async (req: express.Request, res: express.Response) => {
+                await handleDiscourseWebhook(req, res, directClient);
+            }
+        );
+    }
 
     return router;
 }
