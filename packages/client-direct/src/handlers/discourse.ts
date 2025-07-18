@@ -7,6 +7,9 @@ import {
     Memory,
     stringToUuid,
     UUID,
+    generateShouldRespond,
+    composeContext,
+    ModelClass,
 } from "@elizaos/core";
 import { DirectClient } from "../client";
 import {
@@ -16,6 +19,15 @@ import {
 } from "../types/discourse";
 import { DiscourseMsgHandler } from "./discourseMsgHandler";
 import { genResponse } from "./helpers";
+import { discourseShouldRespondTemplate } from "../templates";
+import { DiscourseClient } from "../clients/discourseClient";
+import {
+    discourseHandlerCallback,
+    extractTopicId,
+    extractPostNumber,
+    isReplyPost,
+    formatDiscourseResponse,
+} from "../utils/discourseUtils";
 
 const VALID_EVENT_TYPES = ["post_created"];
 
@@ -28,7 +40,7 @@ export async function handleDiscourseWebhook(
         validateRequestParams(req);
         const webhookData = validateDiscourseWebhook(req);
 
-        elizaLogger.log("Validated webhook:", webhookData);
+        elizaLogger.debug("Validated webhook:", webhookData);
 
         if (!shouldProcessEvent(webhookData)) {
             res.status(200).json({
@@ -38,15 +50,23 @@ export async function handleDiscourseWebhook(
             return;
         }
 
-        await handle(req, res, _directClient, webhookData);
+        const memory = await handle(req, res, _directClient, webhookData);
+        const newPostUrl = memory?.content?.url;
 
-        res.status(200).json({ status: "processed" });
+        res.status(200).json({
+            status: memory?.id ? "processed" : "ignored",
+            newPostUrl,
+        });
     } catch (error) {
         const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
         elizaLogger.error("Error processing discourse webhook:", error);
 
-        if (errorMessage === "Agent ID is required") {
+        if (
+            errorMessage === "Agent ID is required" ||
+            errorMessage === "Invalid or missing topic_id in webhook payload" ||
+            errorMessage === "Invalid or missing post_number in webhook payload"
+        ) {
             res.status(400).json({
                 error: errorMessage,
             });
@@ -78,7 +98,7 @@ export async function handle(
     res: express.Response,
     _directClient: DirectClient,
     webhookData: DiscourseWebhookData
-) {
+): Promise<Memory> {
     const discourseMsgHandler = new DiscourseMsgHandler(
         req,
         res,
@@ -104,32 +124,93 @@ export async function handle(
         messageId: memory.id,
     });
 
+    const shouldRespondContext = composeContext({
+        state,
+        template:
+            runtime.character.templates?.shouldRespondTemplate ||
+            discourseShouldRespondTemplate,
+    });
+
+    const shouldRespondDecision = await generateShouldRespond({
+        runtime,
+        context: shouldRespondContext,
+        modelClass: ModelClass.SMALL,
+        message: memory,
+        tags: ["discourse", "discourse-should-respond"],
+    });
+
+    if (shouldRespondDecision !== "RESPOND") {
+        elizaLogger.log(
+            `Agent decided not to respond: ${shouldRespondDecision}`
+        );
+        return null;
+    }
+
     const { response } = await genResponse(runtime, state, memory);
 
-    console.log("The agent would have responded with:", response);
-    // TODO: Send response to Discourse
+    const formattedResponse = formatDiscourseResponse(response);
 
-    const responseMessage: Memory = {
-        id: stringToUuid(messageId + "-" + agentId),
-        ...userMessage,
-        userId: agentId,
-        content: response,
-        createdAt: Date.now(),
-    };
+    const topicId = extractTopicId(webhookData.payload);
+    const originalPostNumber = extractPostNumber(webhookData.payload);
+    const replyToPostNumber = isReplyPost(webhookData.payload)
+        ? originalPostNumber
+        : undefined;
 
-    InteractionLogger.logAgentResponse({
-        client: "direct",
-        agentId: agentId as UUID,
-        userId: userId as UUID,
-        roomId: roomId as UUID,
-        messageId: memory.id,
-        status: "sent",
-    });
+    try {
+        const discourseClient = new DiscourseClient();
 
-    await runtime.messageManager.createMemory({
-        memory: responseMessage,
-        isUnique: true,
-    });
+        elizaLogger.debug("Sending response to Discourse", {
+            topicId,
+            replyToPostNumber,
+            responseLength: formattedResponse.text?.length || 0,
+        });
+
+        const responseMemory = await discourseHandlerCallback(
+            discourseClient,
+            formattedResponse,
+            roomId as UUID,
+            runtime,
+            topicId,
+            replyToPostNumber
+        );
+
+        InteractionLogger.logAgentResponse({
+            client: "direct",
+            agentId: agentId as UUID,
+            userId: userId as UUID,
+            roomId: roomId as UUID,
+            messageId: responseMemory.id,
+            status: "sent",
+        });
+
+        return responseMemory;
+    } catch (error) {
+        elizaLogger.error("Failed to send response to Discourse:", error);
+
+        InteractionLogger.logAgentResponse({
+            client: "direct",
+            agentId: agentId as UUID,
+            userId: userId as UUID,
+            roomId: roomId as UUID,
+            messageId: memory.id,
+            status: "error",
+        });
+
+        const responseMessage: Memory = {
+            id: stringToUuid(messageId + "-" + agentId),
+            ...userMessage,
+            userId: agentId,
+            content: formattedResponse,
+            createdAt: Date.now(),
+        };
+
+        await runtime.messageManager.createMemory({
+            memory: responseMessage,
+            isUnique: true,
+        });
+
+        throw error;
+    }
 }
 
 function validateRequestParams(req: express.Request) {
@@ -175,18 +256,16 @@ export function validateWebhookSignature(
         elizaLogger.warn(
             "DISCOURSE_WEBHOOK_SECRET not configured, skipping signature validation"
         );
-        return true; // Allow through if no secret configured
+        return true;
     }
 
     try {
-        // Extract the hash from the signature (format: "sha256=<hash>")
         if (!signature.startsWith("sha256=")) {
             return false;
         }
 
-        const providedHash = signature.substring(7); // Remove "sha256=" prefix
+        const providedHash = signature.substring(7);
 
-        // Compute the expected hash
         const payloadString = JSON.stringify(payload);
         const expectedHash = crypto
             .createHmac("sha256", webhookSecret)

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Request, Response } from "express";
 import crypto from "crypto";
 import type { Mock } from "vitest";
+import { discourseShouldRespondTemplate } from "../templates";
 
 vi.mock("@elizaos/core", async () => {
     const actual = await vi.importActual("@elizaos/core");
@@ -18,13 +19,40 @@ vi.mock("@elizaos/core", async () => {
             log: vi.fn(),
             error: vi.fn(),
             warn: vi.fn(),
+            debug: vi.fn(),
         },
+        generateShouldRespond: vi.fn(),
+        ModelClass: {
+            SMALL: "small",
+            LARGE: "large",
+        },
+        composeRandomUser: vi.fn(),
     };
 });
 
 // Mock helpers module
 vi.mock("./helpers", () => ({
     genResponse: vi.fn(),
+}));
+
+// Mock DiscourseClient
+vi.mock("../clients/discourseClient", () => ({
+    DiscourseClient: vi.fn(),
+}));
+
+// Mock discourse utils
+vi.mock("../utils/discourseUtils", () => ({
+    discourseHandlerCallback: vi.fn(() => {
+        return {
+            id: "123",
+            agentId: "test-agent-id",
+            userId: "test-user-id",
+        };
+    }),
+    extractTopicId: vi.fn(),
+    extractPostNumber: vi.fn(),
+    isReplyPost: vi.fn(),
+    formatDiscourseResponse: vi.fn(),
 }));
 
 import {
@@ -39,9 +67,20 @@ import {
     generateMessageResponse as _generateMessageResponse,
     composeContext as _composeContext,
     InteractionLogger as _InteractionLogger,
+    generateShouldRespond as _generateShouldRespond,
+    ModelClass as _ModelClass,
+    composeRandomUser as _composeRandomUser,
 } from "@elizaos/core";
 import { DirectClient } from "../client";
 import { genResponse } from "./helpers";
+import { DiscourseClient } from "../clients/discourseClient";
+import {
+    discourseHandlerCallback,
+    extractTopicId,
+    extractPostNumber,
+    isReplyPost,
+    formatDiscourseResponse,
+} from "../utils/discourseUtils";
 
 const mockGetEnvVariable = getEnvVariable as any;
 
@@ -396,6 +435,30 @@ describe("Discourse Webhook Handler", () => {
                 },
                 context: "test context",
             });
+            // Mock generateShouldRespond to return RESPOND by default
+            vi.mocked(_generateShouldRespond).mockResolvedValue("RESPOND");
+            vi.mocked(_composeContext).mockReturnValue("mock context");
+            vi.mocked(_composeRandomUser).mockReturnValue("mock template");
+
+            // Mock Discourse utils
+            vi.mocked(extractTopicId).mockReturnValue(123);
+            vi.mocked(extractPostNumber).mockReturnValue(1);
+            vi.mocked(isReplyPost).mockReturnValue(false);
+            vi.mocked(formatDiscourseResponse).mockImplementation(
+                (content) => content
+            );
+
+            // Mock DiscourseClient constructor
+            vi.mocked(DiscourseClient).mockImplementation(
+                () =>
+                    ({
+                        createPost: vi.fn(),
+                        testConnection: vi.fn(),
+                        getBaseUrl: vi
+                            .fn()
+                            .mockReturnValue("https://test.discourse.com"),
+                    }) as any
+            );
         });
 
         it("should process valid webhook and return success", async () => {
@@ -591,6 +654,82 @@ describe("Discourse Webhook Handler", () => {
                 status: "ignored",
                 reason: "Event filtered out",
             });
+        });
+
+        it("should return 400 for invalid or missing topic_id", async () => {
+            // Mock extractTopicId to throw the expected error
+            vi.mocked(extractTopicId).mockImplementation(() => {
+                throw new Error(
+                    "Invalid or missing topic_id in webhook payload"
+                );
+            });
+
+            const payloadString = JSON.stringify(mockPostCreatedPayload);
+            const expectedHash = crypto
+                .createHmac("sha256", testSecret)
+                .update(payloadString, "utf8")
+                .digest("hex");
+            const signature = `sha256=${expectedHash}`;
+
+            mockReq = {
+                headers: {
+                    "x-discourse-instance": "https://community.example.com",
+                    "x-discourse-event-id": "12345",
+                    "x-discourse-event-type": "post",
+                    "x-discourse-event": "post_created",
+                    "x-discourse-event-signature": signature,
+                },
+                body: mockPostCreatedPayload,
+                params: { agentId: "test-agent-id" },
+            };
+
+            await handleDiscourseWebhook(
+                mockReq as Request,
+                mockRes as Response,
+                mockDirectClient as any
+            );
+
+            expect(mockRes.json).toHaveBeenCalledWith({
+                error: "Invalid or missing topic_id in webhook payload",
+            });
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+        });
+
+        it("should return 400 for invalid or missing post_number", async () => {
+            // Mock extractPostNumber to throw the expected error
+            vi.mocked(extractPostNumber).mockImplementation(() => {
+                throw new Error("Invalid or missing post_number in webhook payload");
+            });
+
+            const payloadString = JSON.stringify(mockPostCreatedPayload);
+            const expectedHash = crypto
+                .createHmac("sha256", testSecret)
+                .update(payloadString, "utf8")
+                .digest("hex");
+            const signature = `sha256=${expectedHash}`;
+
+            mockReq = {
+                headers: {
+                    "x-discourse-instance": "https://community.example.com",
+                    "x-discourse-event-id": "12345",
+                    "x-discourse-event-type": "post",
+                    "x-discourse-event": "post_created",
+                    "x-discourse-event-signature": signature,
+                },
+                body: mockPostCreatedPayload,
+                params: { agentId: "test-agent-id" },
+            };
+
+            await handleDiscourseWebhook(
+                mockReq as Request,
+                mockRes as Response,
+                mockDirectClient as any
+            );
+
+            expect(mockRes.json).toHaveBeenCalledWith({
+                error: "Invalid or missing post_number in webhook payload",
+            });
+            expect(mockRes.status).toHaveBeenCalledWith(400);
         });
     });
 });
@@ -877,6 +1016,51 @@ describe("handle function", () => {
             },
             context: "test context",
         });
+
+        // Mock generateShouldRespond to return RESPOND by default
+        vi.mocked(_generateShouldRespond).mockResolvedValue("RESPOND");
+        vi.mocked(_composeContext).mockReturnValue("mock context");
+        vi.mocked(_composeRandomUser).mockReturnValue("mock template");
+
+        // Mock Discourse utils
+        vi.mocked(extractTopicId).mockReturnValue(123);
+        vi.mocked(extractPostNumber).mockReturnValue(1);
+        vi.mocked(isReplyPost).mockReturnValue(false);
+        vi.mocked(formatDiscourseResponse).mockImplementation(
+            (content) => content
+        );
+
+        // Mock DiscourseClient constructor
+        vi.mocked(DiscourseClient).mockImplementation(
+            () =>
+                ({
+                    createPost: vi.fn(),
+                    testConnection: vi.fn(),
+                    getBaseUrl: vi
+                        .fn()
+                        .mockReturnValue("https://test.discourse.com"),
+                }) as any
+        );
+
+        // Mock Discourse utils
+        vi.mocked(extractTopicId).mockReturnValue(123);
+        vi.mocked(extractPostNumber).mockReturnValue(1);
+        vi.mocked(isReplyPost).mockReturnValue(false);
+        vi.mocked(formatDiscourseResponse).mockImplementation(
+            (content) => content
+        );
+
+        // Mock DiscourseClient constructor
+        vi.mocked(DiscourseClient).mockImplementation(
+            () =>
+                ({
+                    createPost: vi.fn(),
+                    testConnection: vi.fn(),
+                    getBaseUrl: vi
+                        .fn()
+                        .mockReturnValue("https://test.discourse.com"),
+                }) as any
+        );
     });
 
     it("should successfully process discourse webhook", async () => {
@@ -924,10 +1108,20 @@ describe("handle function", () => {
             status: "sent",
         });
 
-        // Verify both memories were created (user message and agent response)
-        expect(
-            mockDirectClient.getRuntime().messageManager.createMemory
-        ).toHaveBeenCalledTimes(2);
+        // Verify discourseHandlerCallback was called to send response to Discourse
+        expect(discourseHandlerCallback).toHaveBeenCalledWith(
+            expect.any(Object), // DiscourseClient instance
+            expect.objectContaining({
+                text: "Test response from agent",
+                action: "CONTINUE",
+            }),
+            expect.any(String), // roomId
+            expect.objectContaining({
+                agentId: "test-agent-id",
+            }),
+            123, // topicId
+            undefined // replyToPostNumber
+        );
     });
 
     it("should handle genResponse throwing an error", async () => {
@@ -970,7 +1164,7 @@ describe("handle function", () => {
         ).rejects.toThrow("Memory creation failed");
     });
 
-    it("should create proper response message structure", async () => {
+    it("should send formatted response to Discourse", async () => {
         const { handle } = await import("./discourse");
 
         await handle(
@@ -980,30 +1174,29 @@ describe("handle function", () => {
             mockWebhookData
         );
 
-        const createMemoryCalls =
-            mockDirectClient.getRuntime().messageManager.createMemory.mock
-                .calls;
+        // Verify formatDiscourseResponse was called
+        expect(formatDiscourseResponse).toHaveBeenCalledWith({
+            text: "Test response from agent",
+            action: "CONTINUE",
+        });
 
-        // Check the response message (second call)
-        const responseMemoryCall = createMemoryCalls[1];
-        const responseMemory = responseMemoryCall[0].memory;
-
-        expect(responseMemory).toMatchObject({
-            id: expect.any(String),
-            userId: "test-agent-id", // Should be agent ID for response
-            content: {
+        // Verify discourseHandlerCallback was called with correct parameters
+        expect(discourseHandlerCallback).toHaveBeenCalledWith(
+            expect.any(Object), // DiscourseClient instance
+            expect.objectContaining({
                 text: "Test response from agent",
                 action: "CONTINUE",
-            },
-            createdAt: expect.any(Number),
-        });
+            }),
+            expect.any(String), // roomId
+            expect.objectContaining({
+                agentId: "test-agent-id",
+            }),
+            123, // topicId
+            undefined // replyToPostNumber (not a reply)
+        );
     });
 
-    it("should log console message about response", async () => {
-        const consoleSpy = vi
-            .spyOn(console, "log")
-            .mockImplementation(() => {});
-
+    it("should extract topic information from webhook data", async () => {
         const { handle } = await import("./discourse");
 
         await handle(
@@ -1013,15 +1206,10 @@ describe("handle function", () => {
             mockWebhookData
         );
 
-        expect(consoleSpy).toHaveBeenCalledWith(
-            "The agent would have responded with:",
-            {
-                text: "Test response from agent",
-                action: "CONTINUE",
-            }
-        );
-
-        consoleSpy.mockRestore();
+        // Verify extraction functions were called
+        expect(extractTopicId).toHaveBeenCalledWith(mockWebhookData.payload);
+        expect(extractPostNumber).toHaveBeenCalledWith(mockWebhookData.payload);
+        expect(isReplyPost).toHaveBeenCalledWith(mockWebhookData.payload);
     });
 
     it("should handle InteractionLogger errors gracefully", async () => {
@@ -1043,5 +1231,163 @@ describe("handle function", () => {
                 mockWebhookData
             )
         ).rejects.toThrow("Logging failed");
+    });
+
+    it("should not call genResponse when agent decides to IGNORE", async () => {
+        // Reset all mocks to ensure clean state
+        vi.clearAllMocks();
+
+        // Re-setup required mocks
+        vi.mocked(_generateShouldRespond).mockResolvedValue("IGNORE");
+        vi.mocked(_composeContext).mockReturnValue("mock context");
+        vi.mocked(_composeRandomUser).mockReturnValue("mock template");
+        // Ensure InteractionLogger works correctly
+        vi.mocked(_InteractionLogger.logMessageReceived).mockImplementation(
+            () => {}
+        );
+        vi.mocked(_InteractionLogger.logAgentResponse).mockImplementation(
+            () => {}
+        );
+
+        const { handle } = await import("./discourse");
+
+        await handle(
+            mockReq as Request,
+            mockRes as Response,
+            mockDirectClient,
+            mockWebhookData
+        );
+
+        // Verify generateShouldRespond was called
+        expect(_generateShouldRespond).toHaveBeenCalledWith({
+            runtime: expect.objectContaining({
+                agentId: "test-agent-id",
+            }),
+            context: "mock context",
+            modelClass: "small",
+            message: expect.objectContaining({
+                content: expect.objectContaining({
+                    text: expect.stringContaining("IoTeX"),
+                }),
+            }),
+            tags: ["discourse", "discourse-should-respond"],
+        });
+
+        // Verify genResponse was NOT called since agent decided to ignore
+        expect(genResponse).not.toHaveBeenCalled();
+
+        // Verify discourseHandlerCallback was NOT called since agent decided to ignore
+        expect(discourseHandlerCallback).not.toHaveBeenCalled();
+
+        // Verify only user message memory was created (no agent response)
+        expect(
+            mockDirectClient.getRuntime().messageManager.createMemory
+        ).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not call genResponse when agent decides to STOP", async () => {
+        // Reset all mocks to ensure clean state
+        vi.clearAllMocks();
+
+        // Re-setup required mocks
+        vi.mocked(_generateShouldRespond).mockResolvedValue("STOP");
+        vi.mocked(_composeContext).mockReturnValue("mock context");
+        vi.mocked(_composeRandomUser).mockReturnValue("mock template");
+        // Ensure InteractionLogger works correctly
+        vi.mocked(_InteractionLogger.logMessageReceived).mockImplementation(
+            () => {}
+        );
+        vi.mocked(_InteractionLogger.logAgentResponse).mockImplementation(
+            () => {}
+        );
+
+        const { handle } = await import("./discourse");
+
+        await handle(
+            mockReq as Request,
+            mockRes as Response,
+            mockDirectClient,
+            mockWebhookData
+        );
+
+        // Verify genResponse was NOT called since agent decided to stop
+        expect(genResponse).not.toHaveBeenCalled();
+
+        // Verify discourseHandlerCallback was NOT called since agent decided to stop
+        expect(discourseHandlerCallback).not.toHaveBeenCalled();
+
+        // Verify only user message memory was created (no agent response)
+        expect(
+            mockDirectClient.getRuntime().messageManager.createMemory
+        ).toHaveBeenCalledTimes(1);
+    });
+
+    it("should compose context with discourse template", async () => {
+        // Reset all mocks to ensure clean state
+        vi.clearAllMocks();
+
+        // Re-setup required mocks
+        vi.mocked(_generateShouldRespond).mockResolvedValue("RESPOND");
+        vi.mocked(_composeContext).mockReturnValue("mock context");
+        vi.mocked(_composeRandomUser).mockReturnValue("mock template");
+        vi.mocked(genResponse).mockResolvedValue({
+            response: { text: "Test response", action: "CONTINUE" },
+            context: "test context",
+        });
+        // Ensure InteractionLogger works correctly
+        vi.mocked(_InteractionLogger.logMessageReceived).mockImplementation(
+            () => {}
+        );
+        vi.mocked(_InteractionLogger.logAgentResponse).mockImplementation(
+            () => {}
+        );
+
+        const { handle } = await import("./discourse");
+
+        await handle(
+            mockReq as Request,
+            mockRes as Response,
+            mockDirectClient,
+            mockWebhookData
+        );
+
+        // Verify composeContext was called with the correct parameters
+        expect(_composeContext).toHaveBeenCalledWith({
+            state: expect.objectContaining({ test: "state" }),
+            template: discourseShouldRespondTemplate
+        });
+    });
+
+    it("should handle generateShouldRespond throwing an error", async () => {
+        // Reset all mocks to ensure clean state
+        vi.clearAllMocks();
+
+        // Re-setup required mocks
+        vi.mocked(_composeContext).mockReturnValue("mock context");
+        vi.mocked(_composeRandomUser).mockReturnValue("mock template");
+        vi.mocked(_generateShouldRespond).mockRejectedValue(
+            new Error("Should respond failed")
+        );
+        // Ensure InteractionLogger works correctly
+        vi.mocked(_InteractionLogger.logMessageReceived).mockImplementation(
+            () => {}
+        );
+        vi.mocked(_InteractionLogger.logAgentResponse).mockImplementation(
+            () => {}
+        );
+
+        const { handle } = await import("./discourse");
+
+        await expect(
+            handle(
+                mockReq as Request,
+                mockRes as Response,
+                mockDirectClient,
+                mockWebhookData
+            )
+        ).rejects.toThrow("Should respond failed");
+
+        // Verify genResponse was NOT called due to the error
+        expect(genResponse).not.toHaveBeenCalled();
     });
 });
