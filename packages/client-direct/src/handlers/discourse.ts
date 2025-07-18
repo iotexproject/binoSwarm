@@ -7,6 +7,7 @@ import {
     DiscourseEventType,
     PostCreatedPayload,
 } from "../types/discourse";
+import { DiscourseMsgHandler } from "./discourseMsgHandler";
 
 const VALID_EVENT_TYPES = ["post_created"];
 
@@ -16,6 +17,7 @@ export async function handleDiscourseWebhook(
     _directClient: DirectClient
 ): Promise<void> {
     try {
+        validateRequestParams(req);
         const webhookData = validateDiscourseWebhook(req);
 
         elizaLogger.log("Validated webhook:", webhookData);
@@ -27,6 +29,13 @@ export async function handleDiscourseWebhook(
             });
             return;
         }
+
+        const discourseMsgHandler = new DiscourseMsgHandler(
+            req,
+            res,
+            _directClient
+        );
+        await discourseMsgHandler.initiateDiscourseProcessing(webhookData);
 
         // TODO: Process the webhook data and generate response
         // This will be implemented in next phase
@@ -42,6 +51,20 @@ export async function handleDiscourseWebhook(
             error instanceof Error ? error.message : "Unknown error";
         elizaLogger.error("Error processing discourse webhook:", error);
 
+        if (errorMessage === "Agent ID is required") {
+            res.status(400).json({
+                error: errorMessage,
+            });
+            return;
+        }
+
+        if (errorMessage === "Agent runtime not found") {
+            res.status(404).json({
+                error: errorMessage,
+            });
+            return;
+        }
+
         if (errorMessage === "Invalid webhook signature") {
             res.status(401).json({
                 error: errorMessage,
@@ -52,6 +75,12 @@ export async function handleDiscourseWebhook(
         res.status(500).json({
             error: errorMessage,
         });
+    }
+}
+
+function validateRequestParams(req: express.Request) {
+    if (!req.params?.agentId) {
+        throw new Error("Agent ID is required");
     }
 }
 

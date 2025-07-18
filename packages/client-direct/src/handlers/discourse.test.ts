@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Request, Response } from "express";
 import crypto from "crypto";
+import type { Mock } from "vitest";
 
 // Mock getEnvVariable before importing the module
 vi.mock("@elizaos/core", async () => {
@@ -11,31 +12,34 @@ vi.mock("@elizaos/core", async () => {
     };
 });
 
-// Mock the DirectClient to prevent server startup
-vi.mock("../client", () => ({
-    DirectClient: vi.fn(() => ({
-        start: vi.fn(),
-        stop: vi.fn(),
-        getRuntime: vi.fn(),
-        upload: vi.fn(),
-    })),
-}));
-
 import {
     handleDiscourseWebhook,
     validateDiscourseWebhook,
     validateWebhookSignature,
     shouldProcessEvent,
 } from "./discourse";
+import { DiscourseMsgHandler } from "./discourseMsgHandler";
 import { getEnvVariable } from "@elizaos/core";
+import { DirectClient } from "../client";
 
 const mockGetEnvVariable = getEnvVariable as any;
+
 const mockDirectClient = {
     start: vi.fn(),
     stop: vi.fn(),
-    getRuntime: vi.fn(),
+    getRuntime: vi.fn().mockReturnValue({
+        agentId: "test-agent-id",
+        ensureConnection: vi.fn(),
+        messageManager: {
+            createMemory: vi.fn(),
+        },
+    }),
     upload: vi.fn(),
 };
+// Mock the DirectClient to prevent server startup
+vi.mock("../client", () => ({
+    DirectClient: vi.fn(() => mockDirectClient),
+}));
 
 describe("Discourse Webhook Handler", () => {
     let mockReq: Partial<Request>;
@@ -137,6 +141,7 @@ describe("Discourse Webhook Handler", () => {
                     "x-discourse-event-signature": signature,
                 },
                 body: mockPostCreatedPayload,
+                params: { agentId: "test-agent-id" },
             };
 
             const result = validateDiscourseWebhook(mockReq as Request);
@@ -157,6 +162,7 @@ describe("Discourse Webhook Handler", () => {
                     "x-discourse-event-signature": "sha256=invalidsignature",
                 },
                 body: mockPostCreatedPayload,
+                params: { agentId: "test-agent-id" },
             };
 
             expect(() => validateDiscourseWebhook(mockReq as Request)).toThrow(
@@ -176,6 +182,7 @@ describe("Discourse Webhook Handler", () => {
                     "x-discourse-event-signature": "sha256=any-signature",
                 },
                 body: { topic: { id: 123 } },
+                params: { agentId: "test-agent-id" },
             };
 
             const result = validateDiscourseWebhook(mockReq as Request);
@@ -189,6 +196,7 @@ describe("Discourse Webhook Handler", () => {
             mockReq = {
                 headers: {},
                 body: {},
+                params: { agentId: "test-agent-id" },
             };
 
             expect(() => validateDiscourseWebhook(mockReq as Request)).toThrow(
@@ -362,16 +370,18 @@ describe("Discourse Webhook Handler", () => {
                     "x-discourse-event-signature": signature,
                 },
                 body: mockPostCreatedPayload,
+                params: { agentId: "test-agent-id" },
             };
 
+            const mockDirectClient = new DirectClient();
             await handleDiscourseWebhook(
                 mockReq as Request,
                 mockRes as Response,
-                mockDirectClient as any
+                mockDirectClient
             );
 
-            expect(mockRes.status).toHaveBeenCalledWith(200);
             expect(mockRes.json).toHaveBeenCalledWith({ status: "processed" });
+            expect(mockRes.status).toHaveBeenCalledWith(200);
         });
 
         it("should ignore events that should not be processed", async () => {
@@ -399,6 +409,7 @@ describe("Discourse Webhook Handler", () => {
                     "x-discourse-event-signature": signature,
                 },
                 body: deletedPayload,
+                params: { agentId: "test-agent-id" },
             };
 
             await handleDiscourseWebhook(
@@ -418,6 +429,7 @@ describe("Discourse Webhook Handler", () => {
             mockReq = {
                 headers: {},
                 body: {},
+                params: { agentId: "test-agent-id" },
             };
 
             await handleDiscourseWebhook(
@@ -432,6 +444,25 @@ describe("Discourse Webhook Handler", () => {
             });
         });
 
+        it("should return bad request for missing agentId", async () => {
+            mockReq = {
+                headers: {},
+                body: {},
+                params: {},
+            };
+
+            await handleDiscourseWebhook(
+                mockReq as Request,
+                mockRes as Response,
+                mockDirectClient as any
+            );
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith({
+                error: "Agent ID is required",
+            });
+        });
+
         it("should return 401 for invalid signature", async () => {
             mockReq = {
                 headers: {
@@ -442,6 +473,7 @@ describe("Discourse Webhook Handler", () => {
                     "x-discourse-event-signature": "sha256=invalidsignature",
                 },
                 body: mockPostCreatedPayload,
+                params: { agentId: "test-agent-id" },
             };
 
             await handleDiscourseWebhook(
@@ -453,6 +485,25 @@ describe("Discourse Webhook Handler", () => {
             expect(mockRes.status).toHaveBeenCalledWith(401);
             expect(mockRes.json).toHaveBeenCalledWith({
                 error: "Invalid webhook signature",
+            });
+        });
+
+        it("should return 404 for missing agent runtime", async () => {
+            mockReq = {
+                headers: {},
+                body: {},
+                params: { agentId: "non-existent-agent-id" },
+            };
+
+            await handleDiscourseWebhook(
+                mockReq as Request,
+                mockRes as Response,
+                mockDirectClient as any
+            );
+
+            expect(mockRes.status).toHaveBeenCalledWith(404);
+            expect(mockRes.json).toHaveBeenCalledWith({
+                error: "Agent runtime not found",
             });
         });
 
@@ -474,6 +525,7 @@ describe("Discourse Webhook Handler", () => {
                     "x-discourse-event-signature": signature,
                 },
                 body: topicPayload,
+                params: { agentId: "test-agent-id" },
             };
 
             await handleDiscourseWebhook(
@@ -513,3 +565,202 @@ const mockPostCreatedPayload = {
         user_deleted: false,
     },
 };
+
+describe("DiscourseMsgHandler", () => {
+    let mockReq: Partial<Request>;
+    let mockRes: Partial<Response>;
+    let mockDirectClient: Partial<DirectClient>;
+    let handler: DiscourseMsgHandler;
+
+    beforeEach(() => {
+        mockReq = {
+            headers: {},
+            body: {},
+            params: { agentId: "test-agent-id" },
+        };
+
+        mockRes = {
+            status: vi.fn().mockReturnThis() as Mock,
+            json: vi.fn().mockReturnThis() as Mock,
+        };
+
+        mockDirectClient = new DirectClient();
+
+        handler = new DiscourseMsgHandler(
+            mockReq as Request,
+            mockRes as Response,
+            mockDirectClient as DirectClient
+        );
+    });
+
+    describe("constructor", () => {
+        it("should create instance with required dependencies", () => {
+            expect(handler).toBeInstanceOf(DiscourseMsgHandler);
+            expect(handler["req"]).toBe(mockReq);
+            expect(handler["res"]).toBe(mockRes);
+            expect(handler["directClient"]).toBe(mockDirectClient);
+        });
+    });
+
+    describe("initializeDiscourseProcessing", () => {
+        it("should initialize basic processing components", async () => {
+            const webhookData = {
+                eventType: "post_created",
+                instance: "https://community.example.com",
+                eventId: "12345",
+                signature: "sha256=test",
+                payload: {
+                    post: {
+                        id: 1,
+                        username: "testuser",
+                        created_at: "2025-01-15T19:00:00.000Z",
+                        raw: "How does IoTeX DID work?",
+                        topic_id: 123,
+                        topic_slug: "test-question",
+                        topic_title: "Test Question",
+                        category_id: 1,
+                        category_slug: "general",
+                        user_id: 5678,
+                        post_number: 1,
+                        moderator: false,
+                        admin: false,
+                        staff: false,
+                        deleted_at: null,
+                        user_deleted: false,
+                        hidden: false,
+                    },
+                },
+            };
+
+            const result =
+                await handler.initiateDiscourseProcessing(webhookData);
+
+            expect(result).toHaveProperty("roomId");
+            expect(result).toHaveProperty("userId");
+            expect(result).toHaveProperty("runtime");
+            expect(result).toHaveProperty("agentId");
+            expect(result).toHaveProperty("content");
+            expect(result).toHaveProperty("messageId");
+            expect(result).toHaveProperty("memory");
+
+            expect(mockDirectClient.getRuntime).toHaveBeenCalledWith(
+                "test-agent-id"
+            );
+            expect(
+                mockDirectClient.getRuntime("test-agent-id").ensureConnection
+            ).toHaveBeenCalled();
+        });
+
+        it("should generate discourse-specific roomId from topic_id", async () => {
+            const webhookData = {
+                eventType: "post_created",
+                instance: "https://community.example.com",
+                eventId: "12345",
+                signature: "sha256=test",
+                payload: {
+                    post: {
+                        id: 1,
+                        username: "testuser",
+                        created_at: "2025-01-15T19:00:00.000Z",
+                        raw: "Test question",
+                        topic_id: 456,
+                        topic_slug: "test-question",
+                        topic_title: "Test Question",
+                        category_id: 1,
+                        category_slug: "general",
+                        user_id: 5678,
+                        post_number: 1,
+                        moderator: false,
+                        admin: false,
+                        staff: false,
+                        deleted_at: null,
+                        user_deleted: false,
+                        hidden: false,
+                    },
+                },
+            };
+
+            const result =
+                await handler.initiateDiscourseProcessing(webhookData);
+
+            expect(typeof result.roomId).toBe("string");
+            expect(result.roomId).toMatch(/^[0-9a-f-]+$/); // UUID format
+        });
+
+        it("should generate userId from username", async () => {
+            const webhookData = {
+                eventType: "post_created",
+                instance: "https://community.example.com",
+                eventId: "12345",
+                signature: "sha256=test",
+                payload: {
+                    post: {
+                        id: 1,
+                        username: "discourse_user",
+                        created_at: "2025-01-15T19:00:00.000Z",
+                        raw: "Test question",
+                        topic_id: 123,
+                        topic_slug: "test-question",
+                        topic_title: "Test Question",
+                        category_id: 1,
+                        category_slug: "general",
+                        user_id: 5678,
+                        post_number: 1,
+                        moderator: false,
+                        admin: false,
+                        staff: false,
+                        deleted_at: null,
+                        user_deleted: false,
+                        hidden: false,
+                    },
+                },
+            };
+
+            const result =
+                await handler.initiateDiscourseProcessing(webhookData);
+
+            expect(typeof result.userId).toBe("string");
+            expect(result.userId).toMatch(/^[0-9a-f-]+$/); // UUID format
+        });
+
+        it("should create proper content from post data", async () => {
+            const webhookData = {
+                eventType: "post_created",
+                instance: "https://community.example.com",
+                eventId: "12345",
+                signature: "sha256=test",
+                payload: {
+                    post: {
+                        id: 1,
+                        username: "testuser",
+                        created_at: "2025-01-15T19:00:00.000Z",
+                        raw: "How does IoTeX DID identity system work with blockchain?",
+                        topic_id: 123,
+                        topic_slug: "test-question",
+                        topic_title: "IoTeX DID Question",
+                        category_id: 1,
+                        category_slug: "general",
+                        user_id: 5678,
+                        post_number: 1,
+                        moderator: false,
+                        admin: false,
+                        staff: false,
+                        deleted_at: null,
+                        user_deleted: false,
+                        hidden: false,
+                    },
+                },
+            };
+
+            const result =
+                await handler.initiateDiscourseProcessing(webhookData);
+
+            expect(result.content).toHaveProperty(
+                "text",
+                "How does IoTeX DID identity system work with blockchain?"
+            );
+            expect(result.content).toHaveProperty("source", "discourse");
+            expect(result.content).toHaveProperty("attachments", []);
+        });
+    });
+});
