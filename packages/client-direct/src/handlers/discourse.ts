@@ -1,6 +1,13 @@
 import express from "express";
 import crypto from "crypto";
-import { elizaLogger, getEnvVariable } from "@elizaos/core";
+import {
+    elizaLogger,
+    getEnvVariable,
+    InteractionLogger,
+    Memory,
+    stringToUuid,
+    UUID,
+} from "@elizaos/core";
 import { DirectClient } from "../client";
 import {
     DiscourseWebhookData,
@@ -8,6 +15,7 @@ import {
     PostCreatedPayload,
 } from "../types/discourse";
 import { DiscourseMsgHandler } from "./discourseMsgHandler";
+import { genResponse } from "./helpers";
 
 const VALID_EVENT_TYPES = ["post_created"];
 
@@ -30,20 +38,7 @@ export async function handleDiscourseWebhook(
             return;
         }
 
-        const discourseMsgHandler = new DiscourseMsgHandler(
-            req,
-            res,
-            _directClient
-        );
-        await discourseMsgHandler.initiateDiscourseProcessing(webhookData);
-
-        // TODO: Process the webhook data and generate response
-        // This will be implemented in next phase
-        elizaLogger.log(
-            "Processing webhook:",
-            webhookData.eventType,
-            webhookData.eventId
-        );
+        await handle(req, res, _directClient, webhookData);
 
         res.status(200).json({ status: "processed" });
     } catch (error) {
@@ -76,6 +71,65 @@ export async function handleDiscourseWebhook(
             error: errorMessage,
         });
     }
+}
+
+export async function handle(
+    req: express.Request,
+    res: express.Response,
+    _directClient: DirectClient,
+    webhookData: DiscourseWebhookData
+) {
+    const discourseMsgHandler = new DiscourseMsgHandler(
+        req,
+        res,
+        _directClient
+    );
+    const {
+        roomId,
+        userId,
+        runtime,
+        agentId,
+        userMessage,
+        messageId,
+        memory,
+        state: initialState,
+    } = await discourseMsgHandler.initiateDiscourseProcessing(webhookData);
+    const state = initialState;
+
+    InteractionLogger.logMessageReceived({
+        client: "direct",
+        agentId: agentId as UUID,
+        userId: userId as UUID,
+        roomId: roomId as UUID,
+        messageId: memory.id,
+    });
+
+    const { response } = await genResponse(runtime, state, memory);
+
+    console.log("The agent would have responded with:", response);
+    // TODO: Send response to Discourse
+
+    const responseMessage: Memory = {
+        id: stringToUuid(messageId + "-" + agentId),
+        ...userMessage,
+        userId: agentId,
+        content: response,
+        createdAt: Date.now(),
+    };
+
+    InteractionLogger.logAgentResponse({
+        client: "direct",
+        agentId: agentId as UUID,
+        userId: userId as UUID,
+        roomId: roomId as UUID,
+        messageId: memory.id,
+        status: "sent",
+    });
+
+    await runtime.messageManager.createMemory({
+        memory: responseMessage,
+        isUnique: true,
+    });
 }
 
 function validateRequestParams(req: express.Request) {

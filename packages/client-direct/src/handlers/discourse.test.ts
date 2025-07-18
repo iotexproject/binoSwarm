@@ -3,14 +3,29 @@ import { Request, Response } from "express";
 import crypto from "crypto";
 import type { Mock } from "vitest";
 
-// Mock getEnvVariable before importing the module
 vi.mock("@elizaos/core", async () => {
     const actual = await vi.importActual("@elizaos/core");
     return {
         ...actual,
         getEnvVariable: vi.fn(),
+        generateMessageResponse: vi.fn(),
+        composeContext: vi.fn(),
+        InteractionLogger: {
+            logMessageReceived: vi.fn(),
+            logAgentResponse: vi.fn(),
+        },
+        elizaLogger: {
+            log: vi.fn(),
+            error: vi.fn(),
+            warn: vi.fn(),
+        },
     };
 });
+
+// Mock helpers module
+vi.mock("./helpers", () => ({
+    genResponse: vi.fn(),
+}));
 
 import {
     handleDiscourseWebhook,
@@ -19,8 +34,14 @@ import {
     shouldProcessEvent,
 } from "./discourse";
 import { DiscourseMsgHandler } from "./discourseMsgHandler";
-import { getEnvVariable } from "@elizaos/core";
+import {
+    getEnvVariable,
+    generateMessageResponse as _generateMessageResponse,
+    composeContext as _composeContext,
+    InteractionLogger as _InteractionLogger,
+} from "@elizaos/core";
 import { DirectClient } from "../client";
+import { genResponse } from "./helpers";
 
 const mockGetEnvVariable = getEnvVariable as any;
 
@@ -35,6 +56,17 @@ const mockDirectClient = {
                 messageManager: {
                     createMemory: vi.fn(),
                 },
+                character: {
+                    name: "TestAgent",
+                    templates: {
+                        directMessageHandlerTemplate: "Test template",
+                        messageHandlerTemplate: "Test template",
+                    },
+                },
+                composeState: vi.fn().mockResolvedValue({}),
+                updateRecentMessageState: vi.fn().mockResolvedValue({}),
+                processActions: vi.fn(),
+                evaluate: vi.fn(),
             };
         }
         return null;
@@ -356,6 +388,14 @@ describe("Discourse Webhook Handler", () => {
 
         beforeEach(() => {
             mockGetEnvVariable.mockReturnValue(testSecret);
+            // Mock genResponse to return a test response
+            vi.mocked(genResponse).mockResolvedValue({
+                response: {
+                    text: "Test response from agent",
+                    action: "CONTINUE",
+                },
+                context: "test context",
+            });
         });
 
         it("should process valid webhook and return success", async () => {
@@ -773,5 +813,235 @@ describe("DiscourseMsgHandler", () => {
             expect(result.content).toHaveProperty("source", "discourse");
             expect(result.content).toHaveProperty("attachments", []);
         });
+    });
+});
+
+describe("handle function", () => {
+    let mockReq: Partial<Request>;
+    let mockRes: Partial<Response>;
+    let mockDirectClient: any;
+    let mockWebhookData: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        mockReq = {
+            headers: {
+                "x-discourse-instance": "https://community.example.com",
+                "x-discourse-event-id": "12345",
+                "x-discourse-event-type": "post",
+                "x-discourse-event": "post_created",
+            },
+            body: mockPostCreatedPayload,
+            params: { agentId: "test-agent-id" },
+        };
+
+        mockRes = {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn().mockReturnThis(),
+        };
+
+        mockDirectClient = {
+            getRuntime: vi.fn().mockReturnValue({
+                agentId: "test-agent-id",
+                ensureConnection: vi.fn(),
+                messageManager: {
+                    createMemory: vi.fn(),
+                },
+                character: {
+                    name: "TestAgent",
+                    templates: {
+                        directMessageHandlerTemplate: "Test template",
+                    },
+                },
+                composeState: vi.fn().mockResolvedValue({ test: "state" }),
+                updateRecentMessageState: vi.fn().mockResolvedValue({}),
+                processActions: vi.fn(),
+                evaluate: vi.fn(),
+            }),
+        };
+
+        mockWebhookData = {
+            eventType: "post_created" as const,
+            instance: "https://community.example.com",
+            eventId: "12345",
+            signature: "sha256=test",
+            payload: mockPostCreatedPayload,
+        };
+
+        // Mock genResponse to return a test response
+        vi.mocked(genResponse).mockResolvedValue({
+            response: {
+                text: "Test response from agent",
+                action: "CONTINUE",
+            },
+            context: "test context",
+        });
+    });
+
+    it("should successfully process discourse webhook", async () => {
+        const { handle } = await import("./discourse");
+
+        await handle(
+            mockReq as Request,
+            mockRes as Response,
+            mockDirectClient,
+            mockWebhookData
+        );
+
+        // Verify InteractionLogger was called for message received
+        expect(_InteractionLogger.logMessageReceived).toHaveBeenCalledWith({
+            client: "direct",
+            agentId: "test-agent-id",
+            userId: expect.any(String),
+            roomId: expect.any(String),
+            messageId: expect.any(String),
+        });
+
+        // Verify genResponse was called
+        expect(genResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+                agentId: "test-agent-id",
+                character: expect.objectContaining({
+                    name: "TestAgent",
+                }),
+            }),
+            expect.objectContaining({ test: "state" }),
+            expect.objectContaining({
+                content: expect.objectContaining({
+                    text: expect.stringContaining("IoTeX"),
+                }),
+            })
+        );
+
+        // Verify InteractionLogger was called for agent response
+        expect(_InteractionLogger.logAgentResponse).toHaveBeenCalledWith({
+            client: "direct",
+            agentId: "test-agent-id",
+            userId: expect.any(String),
+            roomId: expect.any(String),
+            messageId: expect.any(String),
+            status: "sent",
+        });
+
+        // Verify both memories were created (user message and agent response)
+        expect(
+            mockDirectClient.getRuntime().messageManager.createMemory
+        ).toHaveBeenCalledTimes(2);
+    });
+
+    it("should handle genResponse throwing an error", async () => {
+        vi.mocked(genResponse).mockRejectedValue(
+            new Error("Generation failed")
+        );
+
+        const { handle } = await import("./discourse");
+
+        await expect(
+            handle(
+                mockReq as Request,
+                mockRes as Response,
+                mockDirectClient,
+                mockWebhookData
+            )
+        ).rejects.toThrow("Generation failed");
+
+        // Verify that memory creation was still attempted for user message
+        expect(
+            mockDirectClient.getRuntime().messageManager.createMemory
+        ).toHaveBeenCalledTimes(1);
+    });
+
+    it("should handle runtime methods throwing errors", async () => {
+        mockDirectClient.getRuntime().messageManager.createMemory = vi
+            .fn()
+            .mockRejectedValueOnce(new Error("Memory creation failed"))
+            .mockResolvedValueOnce(undefined);
+
+        const { handle } = await import("./discourse");
+
+        await expect(
+            handle(
+                mockReq as Request,
+                mockRes as Response,
+                mockDirectClient,
+                mockWebhookData
+            )
+        ).rejects.toThrow("Memory creation failed");
+    });
+
+    it("should create proper response message structure", async () => {
+        const { handle } = await import("./discourse");
+
+        await handle(
+            mockReq as Request,
+            mockRes as Response,
+            mockDirectClient,
+            mockWebhookData
+        );
+
+        const createMemoryCalls =
+            mockDirectClient.getRuntime().messageManager.createMemory.mock
+                .calls;
+
+        // Check the response message (second call)
+        const responseMemoryCall = createMemoryCalls[1];
+        const responseMemory = responseMemoryCall[0].memory;
+
+        expect(responseMemory).toMatchObject({
+            id: expect.any(String),
+            userId: "test-agent-id", // Should be agent ID for response
+            content: {
+                text: "Test response from agent",
+                action: "CONTINUE",
+            },
+            createdAt: expect.any(Number),
+        });
+    });
+
+    it("should log console message about response", async () => {
+        const consoleSpy = vi
+            .spyOn(console, "log")
+            .mockImplementation(() => {});
+
+        const { handle } = await import("./discourse");
+
+        await handle(
+            mockReq as Request,
+            mockRes as Response,
+            mockDirectClient,
+            mockWebhookData
+        );
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+            "The agent would have responded with:",
+            {
+                text: "Test response from agent",
+                action: "CONTINUE",
+            }
+        );
+
+        consoleSpy.mockRestore();
+    });
+
+    it("should handle InteractionLogger errors gracefully", async () => {
+        // Mock InteractionLogger to throw an error
+        vi.mocked(_InteractionLogger.logMessageReceived).mockImplementation(
+            () => {
+                throw new Error("Logging failed");
+            }
+        );
+
+        const { handle } = await import("./discourse");
+
+        // Should still complete despite logging error
+        await expect(
+            handle(
+                mockReq as Request,
+                mockRes as Response,
+                mockDirectClient,
+                mockWebhookData
+            )
+        ).rejects.toThrow("Logging failed");
     });
 });
