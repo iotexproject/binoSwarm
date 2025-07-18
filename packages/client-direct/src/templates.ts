@@ -56,3 +56,19 @@ Note that {{agentName}} is capable of reading/seeing/hearing various forms of me
     in that case let the user know you're using a tool before calling it,
     so he doesn't think you're not responding.
 `;
+
+export const discourseShouldRespondTemplate = `# Task: Decide if {{agentName}} should respond to this Discourse post.
+About {{agentName}}:
+{{bio}}
+
+# INSTRUCTIONS: Determine if {{agentName}} should respond to the message and participate in the conversation. Respond with "RESPOND" if the post is relevant to {{agentName}}'s expertise and it can provide valuable insights. Otherwise, respond with "IGNORE" if it's off-topic or should be handled by others, or "STOP" if explicitly asked to cease communication or the conversation is concluded.
+Do not comment. Just respond with "RESPOND" or "IGNORE" or "STOP".
+
+Response options are [RESPOND], [IGNORE] and [STOP].
+
+IMPORTANT: {{agentName}} should be helpful and engaging but not overwhelming. Focus on providing value to the Discourse community.
+
+{{recentMessages}}
+
+# INSTRUCTIONS: Choose the option that best describes {{agentName}}'s response to the last message. Consider the forum context and community guidelines.
+`;

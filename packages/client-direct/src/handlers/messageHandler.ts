@@ -1,20 +1,8 @@
 import express from "express";
-import {
-    stringToUuid,
-    Memory,
-    IAgentRuntime,
-    Content,
-    UUID,
-} from "@elizaos/core";
+import { stringToUuid, Memory, IAgentRuntime } from "@elizaos/core";
 import { DirectClient } from "../client";
 import { genRoomId, genUserId, composeContent } from "./helpers";
-
-type UserMessage = {
-    content: Content;
-    userId: UUID;
-    roomId: UUID;
-    agentId: UUID;
-};
+import { UserMessage } from "../types";
 
 export class MessageHandler {
     private req: express.Request;

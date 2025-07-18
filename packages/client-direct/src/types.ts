@@ -1,3 +1,4 @@
+import { Content, UUID } from "@elizaos/core";
 import type { Request as ExpressRequest } from "express";
 
 export interface CustomRequest extends ExpressRequest {
@@ -10,4 +11,11 @@ export type Guild = {
     icon: string | null;
     banner: string | null;
     owner: boolean;
+};
+
+export type UserMessage = {
+    content: Content;
+    userId: UUID;
+    roomId: UUID;
+    agentId: UUID;
 };
