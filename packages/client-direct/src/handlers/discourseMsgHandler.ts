@@ -5,6 +5,7 @@ import {
     IAgentRuntime,
     Content,
     UUID,
+    State
 } from "@elizaos/core";
 import { DirectClient } from "../client";
 import { DiscourseWebhookData } from "../types/discourse";
@@ -35,6 +36,8 @@ export class DiscourseMsgHandler {
         content: Content;
         messageId: UUID;
         memory: Memory;
+        state: State;
+        userMessage: UserMessage;
     }> {
         const { post } = webhookData.payload;
 
@@ -79,6 +82,10 @@ export class DiscourseMsgHandler {
             isUnique: true,
         });
 
+        const state = await runtime.composeState(discourseMessage, {
+            agentName: runtime.character.name,
+        });
+
         return {
             roomId,
             userId,
@@ -87,6 +94,8 @@ export class DiscourseMsgHandler {
             content,
             messageId,
             memory,
+            state,
+            userMessage: discourseMessage,
         };
     }
 

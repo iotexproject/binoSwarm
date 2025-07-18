@@ -654,6 +654,8 @@ describe("DiscourseMsgHandler", () => {
             expect(result).toHaveProperty("content");
             expect(result).toHaveProperty("messageId");
             expect(result).toHaveProperty("memory");
+            expect(result).toHaveProperty("state");
+            expect(result).toHaveProperty("userMessage");
 
             expect(mockDirectClient.getRuntime).toHaveBeenCalledWith(
                 "test-agent-id"
