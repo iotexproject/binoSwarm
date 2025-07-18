@@ -33,3 +33,24 @@ export interface DiscourseWebhookData {
     signature: string;
     payload: PostCreatedPayload;
 }
+
+export interface DiscoursePostRequest {
+    raw: string;
+    topic_id: number;
+    created_at: string;
+    reply_to_post_number: number;
+}
+
+export interface DiscoursePostResponse {
+    id: number;
+    created_at: string;
+    raw: string;
+    post_number: number;
+    topic_id: number;
+    topic_slug?: string;
+}
+
+export interface DiscourseApiError {
+    action: string;
+    errors: string[];
+}
