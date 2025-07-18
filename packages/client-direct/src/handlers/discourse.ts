@@ -309,8 +309,3 @@ function shouldProcessPost({ post }: PostCreatedPayload): boolean {
 function isValidEventType(eventType: string): eventType is DiscourseEventType {
     return VALID_EVENT_TYPES.includes(eventType);
 }
-
-// Future implementations will go here:
-// - processDiscourseQuestion()
-// - postDiscourseReply()
-// - shouldIgnoreLLMCall()
