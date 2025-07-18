@@ -698,7 +698,9 @@ describe("Discourse Webhook Handler", () => {
         it("should return 400 for invalid or missing post_number", async () => {
             // Mock extractPostNumber to throw the expected error
             vi.mocked(extractPostNumber).mockImplementation(() => {
-                throw new Error("Invalid or missing post_number in webhook payload");
+                throw new Error(
+                    "Invalid or missing post_number in webhook payload"
+                );
             });
 
             const payloadString = JSON.stringify(mockPostCreatedPayload);
@@ -1354,7 +1356,7 @@ describe("handle function", () => {
         // Verify composeContext was called with the correct parameters
         expect(_composeContext).toHaveBeenCalledWith({
             state: expect.objectContaining({ test: "state" }),
-            template: discourseShouldRespondTemplate
+            template: discourseShouldRespondTemplate,
         });
     });
 

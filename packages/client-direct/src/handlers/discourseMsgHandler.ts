@@ -5,7 +5,7 @@ import {
     IAgentRuntime,
     Content,
     UUID,
-    State
+    State,
 } from "@elizaos/core";
 import { DirectClient } from "../client";
 import { DiscourseWebhookData } from "../types/discourse";
@@ -43,7 +43,6 @@ export class DiscourseMsgHandler {
 
         const roomId = this.genDiscourseRoomId(post.topic_id);
         const userId = this.genDiscourseUserId(post.username);
-
 
         const runtime = this.directClient.getRuntime(this.req.params.agentId);
         if (!runtime) {
