@@ -31,7 +31,7 @@ vi.mock("@elizaos/core", async () => {
 });
 
 // Mock helpers module
-vi.mock("./helpers", () => ({
+vi.mock("../handlers/helpers", () => ({
     genResponse: vi.fn(),
 }));
 
@@ -60,8 +60,8 @@ import {
     validateDiscourseWebhook,
     validateWebhookSignature,
     shouldProcessEvent,
-} from "./discourse";
-import { DiscourseMsgHandler } from "./discourseMsgHandler";
+} from "../handlers/discourse";
+import { DiscourseMsgHandler } from "../handlers/discourseMsgHandler";
 import {
     getEnvVariable,
     generateMessageResponse as _generateMessageResponse,
@@ -72,7 +72,7 @@ import {
     composeRandomUser as _composeRandomUser,
 } from "@elizaos/core";
 import { DirectClient } from "../client";
-import { genResponse } from "./helpers";
+import { genResponse } from "../handlers/helpers";
 import { DiscourseClient } from "../clients/discourseClient";
 import {
     discourseHandlerCallback,
@@ -1064,7 +1064,7 @@ describe("handle function", () => {
     });
 
     it("should successfully process discourse webhook", async () => {
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         await handle(
             mockReq as Request,
@@ -1129,7 +1129,7 @@ describe("handle function", () => {
             new Error("Generation failed")
         );
 
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         await expect(
             handle(
@@ -1152,7 +1152,7 @@ describe("handle function", () => {
             .mockRejectedValueOnce(new Error("Memory creation failed"))
             .mockResolvedValueOnce(undefined);
 
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         await expect(
             handle(
@@ -1165,7 +1165,7 @@ describe("handle function", () => {
     });
 
     it("should send formatted response to Discourse", async () => {
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         await handle(
             mockReq as Request,
@@ -1197,7 +1197,7 @@ describe("handle function", () => {
     });
 
     it("should extract topic information from webhook data", async () => {
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         await handle(
             mockReq as Request,
@@ -1220,7 +1220,7 @@ describe("handle function", () => {
             }
         );
 
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         // Should still complete despite logging error
         await expect(
@@ -1249,7 +1249,7 @@ describe("handle function", () => {
             () => {}
         );
 
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         await handle(
             mockReq as Request,
@@ -1301,7 +1301,7 @@ describe("handle function", () => {
             () => {}
         );
 
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         await handle(
             mockReq as Request,
@@ -1342,7 +1342,7 @@ describe("handle function", () => {
             () => {}
         );
 
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         await handle(
             mockReq as Request,
@@ -1376,7 +1376,7 @@ describe("handle function", () => {
             () => {}
         );
 
-        const { handle } = await import("./discourse");
+        const { handle } = await import("../handlers/discourse");
 
         await expect(
             handle(

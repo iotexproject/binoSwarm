@@ -7,11 +7,11 @@ import {
     afterEach,
     MockedFunction,
 } from "vitest";
-import { DiscourseClient } from "../discourseClient";
+import { DiscourseClient } from "../clients/discourseClient";
 import {
     DiscoursePostRequest,
     DiscoursePostResponse,
-} from "../../types/discourse";
+} from "../types/discourse";
 import { getEnvVariable } from "@elizaos/core";
 
 // Mock the @elizaos/core module
