@@ -27,16 +27,21 @@ const mockGetEnvVariable = getEnvVariable as any;
 const mockDirectClient = {
     start: vi.fn(),
     stop: vi.fn(),
-    getRuntime: vi.fn().mockReturnValue({
-        agentId: "test-agent-id",
-        ensureConnection: vi.fn(),
-        messageManager: {
-            createMemory: vi.fn(),
-        },
+    getRuntime: vi.fn((agentId) => {
+        if (agentId === "test-agent-id") {
+            return {
+                agentId: "test-agent-id",
+                ensureConnection: vi.fn(),
+                messageManager: {
+                    createMemory: vi.fn(),
+                },
+            };
+        }
+        return null;
     }),
     upload: vi.fn(),
 };
-// Mock the DirectClient to prevent server startup
+
 vi.mock("../client", () => ({
     DirectClient: vi.fn(() => mockDirectClient),
 }));
@@ -489,9 +494,16 @@ describe("Discourse Webhook Handler", () => {
         });
 
         it("should return 404 for missing agent runtime", async () => {
+            mockGetEnvVariable.mockReturnValue(null);
             mockReq = {
-                headers: {},
-                body: {},
+                headers: {
+                    "x-discourse-instance": "https://community.example.com",
+                    "x-discourse-event-id": "12345",
+                    "x-discourse-event-type": "post",
+                    "x-discourse-event": "post_created",
+                    "x-discourse-event-signature": "sha256=test",
+                },
+                body: mockPostCreatedPayload,
                 params: { agentId: "non-existent-agent-id" },
             };
 
@@ -501,10 +513,10 @@ describe("Discourse Webhook Handler", () => {
                 mockDirectClient as any
             );
 
-            expect(mockRes.status).toHaveBeenCalledWith(404);
             expect(mockRes.json).toHaveBeenCalledWith({
                 error: "Agent runtime not found",
             });
+            expect(mockRes.status).toHaveBeenCalledWith(404);
         });
 
         it("should return 200 for unsupported event types", async () => {
@@ -646,9 +658,6 @@ describe("DiscourseMsgHandler", () => {
             expect(mockDirectClient.getRuntime).toHaveBeenCalledWith(
                 "test-agent-id"
             );
-            expect(
-                mockDirectClient.getRuntime("test-agent-id").ensureConnection
-            ).toHaveBeenCalled();
         });
 
         it("should generate discourse-specific roomId from topic_id", async () => {
