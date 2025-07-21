@@ -2,6 +2,7 @@ export interface DiscoursePost {
     id: number;
     username: string;
     created_at: string;
+    cooked: string;
     raw: string; // The actual text content - most important field
     post_number: number; // To check if original post (1) or reply (>1)
     topic_id: number;
