@@ -165,6 +165,7 @@ describe("DiscourseClient", () => {
 
             const mockPostResponse: DiscoursePostResponse = {
                 id: 456,
+                // @ts-expect-error - name is not in the type
                 name: "Test User",
                 username: "testuser",
                 avatar_template: "/test/avatar.png",
@@ -195,6 +196,139 @@ describe("DiscourseClient", () => {
             });
 
             expect(result).toEqual(mockPostResponse);
+        });
+
+        it("should successfully create a post with URLs and images", async () => {
+            const mockPostRequest: DiscoursePostRequest = {
+                raw: "Check out https://example.com/article.html\n\n![Image|555x500](upload://testimage.jpeg)\n\nThis is informative content. @user1 @user2",
+                topic_id: 123,
+                created_at: "2025-01-01T00:00:00Z",
+                reply_to_post_number: 1,
+            };
+
+            const mockPostResponse: DiscoursePostResponse = {
+                id: 456,
+                created_at: "2025-01-01T00:00:00Z",
+                raw: mockPostRequest.raw,
+                post_number: 2,
+                topic_id: 123,
+            };
+
+            const mockFetchResponse = {
+                ok: true,
+                json: vi.fn().mockResolvedValue(mockPostResponse),
+            };
+
+            vi.mocked(fetch).mockResolvedValue(mockFetchResponse as any);
+
+            const result = await discourseClient.createPost(mockPostRequest);
+
+            expect(fetch).toHaveBeenCalledWith(`${mockBaseUrl}/posts.json`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Api-Key": mockApiKey,
+                    "Api-Username": mockApiUsername,
+                },
+                body: JSON.stringify(mockPostRequest),
+            });
+
+            expect(result).toEqual(mockPostResponse);
+            expect(result.raw).toContain("https://example.com/article.html");
+            expect(result.raw).toContain(
+                "![Image|555x500](upload://testimage.jpeg)"
+            );
+        });
+
+        it("should handle posts with multiple images and URLs", async () => {
+            const complexContent =
+                "Here are some resources:\n\nhttps://docs.example.com/guide\n\n![Screenshot1|600x400](upload://screenshot1.png)\n![Screenshot2|400x300](upload://screenshot2.jpg)\n\nAlso check https://blog.example.com for updates.";
+
+            const mockPostRequest: DiscoursePostRequest = {
+                raw: complexContent,
+                topic_id: 123,
+                created_at: "2025-01-01T00:00:00Z",
+                reply_to_post_number: 1,
+            };
+
+            const mockPostResponse: DiscoursePostResponse = {
+                id: 456,
+                created_at: "2025-01-01T00:00:00Z",
+                raw: complexContent,
+                post_number: 2,
+                topic_id: 123,
+            };
+
+            const mockFetchResponse = {
+                ok: true,
+                json: vi.fn().mockResolvedValue(mockPostResponse),
+            };
+
+            vi.mocked(fetch).mockResolvedValue(mockFetchResponse as any);
+
+            const result = await discourseClient.createPost(mockPostRequest);
+
+            expect(result.raw).toContain("https://docs.example.com/guide");
+            expect(result.raw).toContain("https://blog.example.com");
+            expect(result.raw).toContain("upload://screenshot1.png");
+            expect(result.raw).toContain("upload://screenshot2.jpg");
+        });
+
+        it("should validate content length including URLs and markdown", async () => {
+            // Create content that would exceed limit when including URLs and markdown
+            const baseContent = "a".repeat(31950);
+            const urlsAndImages =
+                "\n\nhttps://example.com/very-long-url-path-that-adds-significant-length\n\n![Image|600x400](upload://verylongimagenamethataddslengthtothecontent.jpeg)";
+            const longContent = baseContent + urlsAndImages;
+
+            const mockPostRequest: DiscoursePostRequest = {
+                raw: longContent,
+                topic_id: 123,
+                created_at: "2025-01-01T00:00:00Z",
+                reply_to_post_number: 1,
+            };
+
+            await expect(
+                discourseClient.createPost(mockPostRequest)
+            ).rejects.toThrow(
+                "Post content exceeds maximum length of 32,000 characters"
+            );
+        });
+
+        it("should handle markdown with special characters in URLs", async () => {
+            const specialContent =
+                "Check this out: https://example.com/path?param=value&other=123#section\n\n![Special Image|500x300](upload://image-with-special_chars.png)";
+
+            const mockPostRequest: DiscoursePostRequest = {
+                raw: specialContent,
+                topic_id: 123,
+                created_at: "2025-01-01T00:00:00Z",
+                reply_to_post_number: 1,
+            };
+
+            const mockPostResponse: DiscoursePostResponse = {
+                id: 456,
+                created_at: "2025-01-01T00:00:00Z",
+                raw: specialContent,
+                post_number: 2,
+                topic_id: 123,
+            };
+
+            const mockFetchResponse = {
+                ok: true,
+                json: vi.fn().mockResolvedValue(mockPostResponse),
+            };
+
+            vi.mocked(fetch).mockResolvedValue(mockFetchResponse as any);
+
+            const result = await discourseClient.createPost(mockPostRequest);
+
+            expect(result.raw).toContain(
+                "https://example.com/path?param=value&other=123#section"
+            );
+            expect(result.raw).toContain(
+                "upload://image-with-special_chars.png"
+            );
         });
 
         it("should throw error for empty post content", async () => {
