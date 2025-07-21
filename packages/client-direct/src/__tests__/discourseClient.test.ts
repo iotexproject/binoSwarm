@@ -165,6 +165,7 @@ describe("DiscourseClient", () => {
 
             const mockPostResponse: DiscoursePostResponse = {
                 id: 456,
+                // @ts-expect-error - name is not in the type
                 name: "Test User",
                 username: "testuser",
                 avatar_template: "/test/avatar.png",
