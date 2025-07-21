@@ -18,6 +18,7 @@ import {
 } from "./rate-limiter";
 import paywallMiddleware from "./paywall";
 import { handleMCPMessage } from "./handlers/mcpHandler";
+import { handleDiscourseWebhook } from "./handlers/discourse";
 
 export function createApiRouter(directClient: DirectClient) {
     const router = express.Router();
@@ -98,5 +99,17 @@ export function createApiRouter(directClient: DirectClient) {
             await messageStream.handleMessageStream(req, res, directClient);
         }
     );
+
+    const discourseApiKey = getEnvVariable("DISCOURSE_API_KEY");
+    if (discourseApiKey) {
+        router.post(
+            "/:agentId/discourse/webhook",
+            globalRateLimiter, // Use existing rate limiter for now
+            async (req: express.Request, res: express.Response) => {
+                await handleDiscourseWebhook(req, res, directClient);
+            }
+        );
+    }
+
     return router;
 }
