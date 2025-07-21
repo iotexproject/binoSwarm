@@ -419,6 +419,28 @@ describe("Discourse Webhook Handler", () => {
 
             expect(shouldProcessEvent(webhookData)).toBe(true);
         });
+
+        it("should skip posts from agent itself to prevent infinite loops", () => {
+            mockGetEnvVariable.mockReturnValue("agent-username");
+
+            const agentPayload = {
+                ...mockPostCreatedPayload,
+                post: {
+                    ...mockPostCreatedPayload.post,
+                    username: "agent-username",
+                },
+            };
+
+            const webhookData = {
+                eventType: "post_created" as const,
+                instance: "https://community.example.com",
+                eventId: "12345",
+                signature: "sha256=test",
+                payload: agentPayload,
+            };
+
+            expect(shouldProcessEvent(webhookData)).toBe(false);
+        });
     });
 
     describe("handleDiscourseWebhook", () => {
@@ -488,7 +510,10 @@ describe("Discourse Webhook Handler", () => {
                 mockDirectClient
             );
 
-            expect(mockRes.json).toHaveBeenCalledWith({ status: "processed" });
+            expect(mockRes.json).toHaveBeenCalledWith({
+                status: "accepted",
+                message: "Accepted for processing",
+            });
             expect(mockRes.status).toHaveBeenCalledWith(200);
         });
 

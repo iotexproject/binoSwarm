@@ -34,7 +34,7 @@ const VALID_EVENT_TYPES = ["post_created"];
 export async function handleDiscourseWebhook(
     req: express.Request,
     res: express.Response,
-    _directClient: DirectClient
+    directClient: DirectClient
 ): Promise<void> {
     try {
         validateRequestParams(req);
@@ -50,31 +50,42 @@ export async function handleDiscourseWebhook(
             return;
         }
 
-        const memory = await handle(req, res, _directClient, webhookData);
-        const newPostUrl = memory?.content?.url;
+        // Validate agent runtime exists before accepting
+        const agentId = req.params.agentId;
+        const runtime = directClient.getRuntime(agentId);
+        if (!runtime) {
+            res.status(404).json({
+                error: "Agent runtime not found",
+            });
+            return;
+        }
 
-        res.status(200).json({
-            status: memory?.id ? "processed" : "ignored",
-            newPostUrl,
-        });
-    } catch (error) {
-        const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-        elizaLogger.error("Error processing discourse webhook:", error);
-
-        if (
-            errorMessage === "Agent ID is required" ||
-            errorMessage === "Invalid or missing topic_id in webhook payload" ||
-            errorMessage === "Invalid or missing post_number in webhook payload"
-        ) {
+        // Validate critical payload fields before accepting
+        try {
+            extractTopicId(webhookData.payload);
+            extractPostNumber(webhookData.payload);
+        } catch (error) {
+            const errorMessage =
+                error instanceof Error ? error.message : "Unknown error";
             res.status(400).json({
                 error: errorMessage,
             });
             return;
         }
 
-        if (errorMessage === "Agent runtime not found") {
-            res.status(404).json({
+        res.status(200).json({
+            status: "accepted",
+            message: "Accepted for processing",
+        });
+
+        processWebhookAsync(req, res, directClient, webhookData);
+    } catch (error) {
+        const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+        elizaLogger.error("Error processing discourse webhook:", error);
+
+        if (errorMessage === "Agent ID is required") {
+            res.status(400).json({
                 error: errorMessage,
             });
             return;
@@ -93,17 +104,26 @@ export async function handleDiscourseWebhook(
     }
 }
 
+async function processWebhookAsync(
+    req: express.Request,
+    res: express.Response,
+    directClient: DirectClient,
+    webhookData: DiscourseWebhookData
+): Promise<void> {
+    try {
+        await handle(req, res, directClient, webhookData);
+    } catch (error) {
+        elizaLogger.error("Error in async webhook processing:", error);
+    }
+}
+
 export async function handle(
     req: express.Request,
     res: express.Response,
-    _directClient: DirectClient,
+    directClient: DirectClient,
     webhookData: DiscourseWebhookData
 ): Promise<Memory> {
-    const discourseMsgHandler = new DiscourseMsgHandler(
-        req,
-        res,
-        _directClient
-    );
+    const discourseMsgHandler = new DiscourseMsgHandler(req, res, directClient);
     const {
         roomId,
         userId,
@@ -301,6 +321,22 @@ function shouldProcessPost({ post }: PostCreatedPayload): boolean {
 
     if (post.hidden) {
         return false;
+    }
+
+    try {
+        const agentUsername = getEnvVariable("DISCOURSE_API_USERNAME");
+        if (agentUsername && post.username === agentUsername) {
+            elizaLogger.debug("Ignoring message from myself", {
+                username: post.username,
+                postId: post.id,
+            });
+            return false;
+        }
+    } catch (error) {
+        elizaLogger.warn(
+            "Could not retrieve agent username for self-message filtering:",
+            error
+        );
     }
 
     return true;
