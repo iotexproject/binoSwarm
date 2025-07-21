@@ -31,12 +31,13 @@ export function genUserId(req: express.Request) {
 export async function genResponse(
     runtime: IAgentRuntime,
     state: State,
-    message: Memory
+    message: Memory,
+    customTemplate?: string
 ) {
     const context = composeContext({
         state,
         template:
-            runtime.character.templates?.discourseMessageHandlerTemplate ||
+            customTemplate ||
             runtime.character.templates?.directMessageHandlerTemplate ||
             runtime.character.templates?.messageHandlerTemplate ||
             messageHandlerTemplate,

@@ -166,7 +166,12 @@ export async function handle(
         return null;
     }
 
-    const { response } = await genResponse(runtime, state, memory);
+    const { response } = await genResponse(
+        runtime,
+        state,
+        memory,
+        runtime.character.templates?.discourseMessageHandlerTemplate as string
+    );
 
     const formattedResponse = formatDiscourseResponse(response);
 
