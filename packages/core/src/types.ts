@@ -739,6 +739,7 @@ export type Character = {
         discordVoiceHandlerTemplate?: TemplateType;
         discordShouldRespondTemplate?: TemplateType;
         discordMessageHandlerTemplate?: TemplateType;
+        discourseMessageHandlerTemplate?: TemplateType;
         slackMessageHandlerTemplate?: TemplateType;
         slackShouldRespondTemplate?: TemplateType;
         imageSystemPrompt?: string;

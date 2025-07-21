@@ -36,6 +36,7 @@ export async function genResponse(
     const context = composeContext({
         state,
         template:
+            runtime.character.templates?.discourseMessageHandlerTemplate ||
             runtime.character.templates?.directMessageHandlerTemplate ||
             runtime.character.templates?.messageHandlerTemplate ||
             messageHandlerTemplate,
