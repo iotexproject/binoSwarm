@@ -109,6 +109,7 @@ const mockDirectClient = {
                     templates: {
                         directMessageHandlerTemplate: "Test template",
                         messageHandlerTemplate: "Test template",
+                        discourseMessageHandlerTemplate: "Test discourse template",
                     },
                 },
                 composeState: vi.fn().mockResolvedValue({}),
@@ -842,6 +843,7 @@ describe("DiscourseMsgHandler", () => {
                 templates: {
                     directMessageHandlerTemplate: "Test template",
                     messageHandlerTemplate: "Test template",
+                    discourseMessageHandlerTemplate: "Test discourse template",
                 },
             },
             composeState: vi.fn().mockResolvedValue({}),
@@ -1441,6 +1443,8 @@ describe("DiscourseMsgHandler", () => {
                         name: "TestAgent",
                         templates: {
                             directMessageHandlerTemplate: "Test template",
+                            messageHandlerTemplate: "Test template",
+                            discourseMessageHandlerTemplate: "Test discourse template",
                         },
                     },
                     composeState: vi.fn().mockResolvedValue({ test: "state" }),
@@ -1545,7 +1549,8 @@ describe("DiscourseMsgHandler", () => {
                     content: expect.objectContaining({
                         text: expect.stringContaining("IoTeX"),
                     }),
-                })
+                }),
+                "Test discourse template"
             );
 
             // Verify InteractionLogger was called for agent response
