@@ -109,7 +109,8 @@ const mockDirectClient = {
                     templates: {
                         directMessageHandlerTemplate: "Test template",
                         messageHandlerTemplate: "Test template",
-                        discourseMessageHandlerTemplate: "Test discourse template",
+                        discourseMessageHandlerTemplate:
+                            "Test discourse template",
                     },
                 },
                 composeState: vi.fn().mockResolvedValue({}),
@@ -1444,7 +1445,8 @@ describe("DiscourseMsgHandler", () => {
                         templates: {
                             directMessageHandlerTemplate: "Test template",
                             messageHandlerTemplate: "Test template",
-                            discourseMessageHandlerTemplate: "Test discourse template",
+                            discourseMessageHandlerTemplate:
+                                "Test discourse template",
                         },
                     },
                     composeState: vi.fn().mockResolvedValue({ test: "state" }),

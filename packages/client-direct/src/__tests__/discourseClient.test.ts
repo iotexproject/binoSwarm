@@ -235,11 +235,14 @@ describe("DiscourseClient", () => {
 
             expect(result).toEqual(mockPostResponse);
             expect(result.raw).toContain("https://example.com/article.html");
-            expect(result.raw).toContain("![Image|555x500](upload://testimage.jpeg)");
+            expect(result.raw).toContain(
+                "![Image|555x500](upload://testimage.jpeg)"
+            );
         });
 
         it("should handle posts with multiple images and URLs", async () => {
-            const complexContent = "Here are some resources:\n\nhttps://docs.example.com/guide\n\n![Screenshot1|600x400](upload://screenshot1.png)\n![Screenshot2|400x300](upload://screenshot2.jpg)\n\nAlso check https://blog.example.com for updates.";
+            const complexContent =
+                "Here are some resources:\n\nhttps://docs.example.com/guide\n\n![Screenshot1|600x400](upload://screenshot1.png)\n![Screenshot2|400x300](upload://screenshot2.jpg)\n\nAlso check https://blog.example.com for updates.";
 
             const mockPostRequest: DiscoursePostRequest = {
                 raw: complexContent,
@@ -274,7 +277,8 @@ describe("DiscourseClient", () => {
         it("should validate content length including URLs and markdown", async () => {
             // Create content that would exceed limit when including URLs and markdown
             const baseContent = "a".repeat(31950);
-            const urlsAndImages = "\n\nhttps://example.com/very-long-url-path-that-adds-significant-length\n\n![Image|600x400](upload://verylongimagenamethataddslengthtothecontent.jpeg)";
+            const urlsAndImages =
+                "\n\nhttps://example.com/very-long-url-path-that-adds-significant-length\n\n![Image|600x400](upload://verylongimagenamethataddslengthtothecontent.jpeg)";
             const longContent = baseContent + urlsAndImages;
 
             const mockPostRequest: DiscoursePostRequest = {
@@ -292,7 +296,8 @@ describe("DiscourseClient", () => {
         });
 
         it("should handle markdown with special characters in URLs", async () => {
-            const specialContent = "Check this out: https://example.com/path?param=value&other=123#section\n\n![Special Image|500x300](upload://image-with-special_chars.png)";
+            const specialContent =
+                "Check this out: https://example.com/path?param=value&other=123#section\n\n![Special Image|500x300](upload://image-with-special_chars.png)";
 
             const mockPostRequest: DiscoursePostRequest = {
                 raw: specialContent,
@@ -318,8 +323,12 @@ describe("DiscourseClient", () => {
 
             const result = await discourseClient.createPost(mockPostRequest);
 
-            expect(result.raw).toContain("https://example.com/path?param=value&other=123#section");
-            expect(result.raw).toContain("upload://image-with-special_chars.png");
+            expect(result.raw).toContain(
+                "https://example.com/path?param=value&other=123#section"
+            );
+            expect(result.raw).toContain(
+                "upload://image-with-special_chars.png"
+            );
         });
 
         it("should throw error for empty post content", async () => {
