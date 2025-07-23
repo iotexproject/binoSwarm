@@ -729,11 +729,8 @@ export type Character = {
         twitterMessageHandlerTemplate?: TemplateType;
         twitterShouldRespondTemplate?: TemplateType;
         farcasterPostTemplate?: TemplateType;
-        lensPostTemplate?: TemplateType;
         farcasterMessageHandlerTemplate?: TemplateType;
-        lensMessageHandlerTemplate?: TemplateType;
         farcasterShouldRespondTemplate?: TemplateType;
-        lensShouldRespondTemplate?: TemplateType;
         telegramMessageHandlerTemplate?: TemplateType;
         telegramShouldRespondTemplate?: TemplateType;
         discordVoiceHandlerTemplate?: TemplateType;
@@ -778,7 +775,6 @@ export type Character = {
     /** Optional configuration */
     settings?: {
         secrets?: { [key: string]: string };
-        intiface?: boolean;
         imageSettings?: {
             steps?: number;
             width?: number;
