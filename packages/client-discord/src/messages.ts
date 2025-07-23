@@ -316,7 +316,12 @@ export class MessageManager {
         if (!canSendResult.canSend) {
             elizaLogger.warn(
                 `Cannot send message to channel ${message.channel}`,
-                canSendResult
+                {
+                    ...canSendResult,
+                    missingPermissions: canSendResult.missingPermissions?.map(
+                        (p) => String(p)
+                    ),
+                }
             );
         }
         return canSendResult.canSend;
