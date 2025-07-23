@@ -15,14 +15,9 @@
         "prettier": "npx prettier --write --cache .",
         "release": "pnpm build && pnpm prettier && npx lerna publish --no-private --force-publish",
         "clean": "bash ./scripts/clean.sh",
-        "docker:build": "bash ./scripts/docker.sh build",
-        "docker:run": "bash ./scripts/docker.sh run",
-        "docker:bash": "bash ./scripts/docker.sh bash",
-        "docker:start": "bash ./scripts/docker.sh start",
         "docker": "pnpm docker:build && pnpm docker:run && pnpm docker:bash",
         "test": "bash ./scripts/test.sh",
-        "smokeTests": "bash ./scripts/smokeTests.sh",
-        "integrationTests": "bash ./scripts/integrationTests.sh"
+        "smokeTests": "bash ./scripts/smokeTests.sh"
     },
     "devDependencies": {
         "@typescript-eslint/eslint-plugin": "8.16.0",

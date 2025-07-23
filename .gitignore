@@ -7,7 +7,6 @@ node_modules
 .env_main
 concatenated-output.ts
 embedding-cache.json
-packages/plugin-buttplug/intiface-engine
 
 .idea
 .DS_Store

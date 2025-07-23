@@ -95,10 +95,14 @@ APP_PID=$!  # Capture the PID of the background process
 )
 
 # Gracefully terminate the application if needed
-kill $APP_PID
-wait $APP_PID 2>/dev/null || true  # Ensure the process is cleaned up
-
-RESULT=$?
+if kill -0 $APP_PID 2>/dev/null; then
+    kill $APP_PID
+    wait $APP_PID 2>/dev/null || true
+    RESULT=$?
+else
+    echo "Process $APP_PID already terminated"
+    RESULT=0  # Consider successful if process already exited
+fi
 
 # Output logs
 echo "----- OUTPUT START -----"

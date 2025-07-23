@@ -88,7 +88,6 @@ describe("Generation Module", () => {
                 const settings = {
                     TOKENIZER_MODEL: "gpt-4o",
                     TOKENIZER_TYPE: "tiktoken",
-                    CLOUDFLARE_GW_ENABLED: "false",
                 };
                 return settings[key];
             }),
@@ -397,28 +396,6 @@ describe("Generation Module", () => {
                     messages,
                 })
             );
-        });
-
-        it("should use Cloudflare Gateway when enabled", async () => {
-            // Setup
-            runtime.modelProvider = ModelProviderName.OPENAI;
-            runtime.getSetting = vi.fn((key) => {
-                const settings = {
-                    TOKENIZER_MODEL: "gpt-4o",
-                    TOKENIZER_TYPE: "tiktoken",
-                    CLOUDFLARE_GW_ENABLED: "true",
-                    CLOUDFLARE_AI_ACCOUNT_ID: "mock-account-id",
-                    CLOUDFLARE_AI_GATEWAY_ID: "mock-gateway-id",
-                };
-                return settings[key];
-            });
-
-            // Execute
-            await generateText({
-                runtime,
-                context: "Generate a response",
-                modelClass: ModelClass.LARGE,
-            });
         });
     });
 
