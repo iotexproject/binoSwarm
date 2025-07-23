@@ -24,17 +24,26 @@ describe("ImpossibleCloudProvider", () => {
     const validApiResponse = {
         $schema: "test-schema",
         data: {
-            totalCapacity: { cpu: 100, memory: 200 },
-            bookedCapacity: { cpu: 50, memory: 100 },
-            hardwareProvidersCount: 10,
-            hyperNodesCount: 5,
-            scalerNodesCount: 3,
-            hyperNodesLocation: { "us-east": 2, "eu-west": 3 },
-            scalerNodesLocation: { "us-east": 1, "eu-west": 2 },
-            ICNLStaked: 1000,
-            ICNTStaked: 2000,
-            ICNLCount: 50,
-            TVLTotal: "1000000",
+            hardwareProvidersCount: 3,
+            hyperNodesCount: 1,
+            scalerNodesCount: 2,
+            hyperNodesLocation: {
+                ARE: 1,
+                AUS: 2,
+            },
+            scalerNodesLocation: {
+                DEU: 1,
+                DNK: 2,
+            },
+            ICNLStaked: 31,
+            ICNTStaked: "100000000000000000000000000",
+            ICNLCount: 3,
+            TVLTotal: "100000000000000000000000000",
+            totalCapacity: "100000000000000000000000000",
+            bookedCapacity: "0",
+            totalUnlocked: "188300000000000000000000000",
+            minStakePeriod: "P1D",
+            maxICNTEfficiency: "100000000000000000000000000",
         },
     };
 
@@ -75,12 +84,25 @@ describe("ImpossibleCloudProvider", () => {
                 "https://api.test.com/stats"
             );
             expect(result).toContain("Impossible Cloud Network Statistics:");
-            expect(result).toContain("Hardware Providers: 10");
-            expect(result).toContain("Hyper Nodes: 5");
-            expect(result).toContain("Scaler Nodes: 3");
-            expect(result).toContain("ICNL Staked: 1000");
-            expect(result).toContain("ICNT Staked: 2000");
-            expect(result).toContain("TVL Total: 1000000");
+            expect(result).toContain("Hardware Providers: 3");
+            expect(result).toContain("Hyper Nodes: 1");
+            expect(result).toContain("Scaler Nodes: 2");
+            expect(result).toContain("ICNL Staked: 31");
+            expect(result).toContain(
+                "ICNT Staked: 100000000000000000000000000"
+            );
+            expect(result).toContain("TVL Total: 100000000000000000000000000");
+            expect(result).toContain(
+                "Total Capacity: 100000000000000000000000000"
+            );
+            expect(result).toContain("Booked Capacity: 0");
+            expect(result).toContain(
+                "Total Unlocked: 188300000000000000000000000"
+            );
+            expect(result).toContain("Min Stake Period: P1D");
+            expect(result).toContain(
+                "Max ICNTEfficiency: 100000000000000000000000000"
+            );
         });
 
         it("should throw error when ICN_API_URL is not set", async () => {
@@ -173,18 +195,21 @@ describe("ImpossibleCloudProvider", () => {
             const result = await icnProvider.get(mockRuntime, {} as Memory);
 
             expect(result).toContain(
-                'Total Capacity: {"cpu":100,"memory":200}'
+                "Total Capacity: 100000000000000000000000000"
             );
+            expect(result).toContain("Booked Capacity: 0");
+            expect(result).toContain('Hyper Node Locations: {"ARE":1,"AUS":2}');
             expect(result).toContain(
-                'Booked Capacity: {"cpu":50,"memory":100}'
+                'Scaler Node Locations: {"DEU":1,"DNK":2}'
             );
+            expect(result).toContain("ICNL Count: 3");
             expect(result).toContain(
-                'Hyper Node Locations: {"us-east":2,"eu-west":3}'
+                "Total Unlocked: 188300000000000000000000000"
             );
+            expect(result).toContain("Min Stake Period: P1D");
             expect(result).toContain(
-                'Scaler Node Locations: {"us-east":1,"eu-west":2}'
+                "Max ICNTEfficiency: 100000000000000000000000000"
             );
-            expect(result).toContain("ICNL Count: 50");
         });
     });
 

@@ -11,21 +11,23 @@ import type {
 import { elizaLogger } from "@elizaos/core";
 import * as path from "path";
 
-const ICNCapacitySchema = z.record(z.string(), z.number());
 const ICNNodeLocationSchema = z.record(z.string(), z.number());
 
 const ICNDataSchema = z.object({
-    totalCapacity: ICNCapacitySchema,
-    bookedCapacity: ICNCapacitySchema,
+    totalCapacity: z.string(),
+    bookedCapacity: z.string(),
     hardwareProvidersCount: z.number(),
     hyperNodesCount: z.number(),
     scalerNodesCount: z.number(),
     hyperNodesLocation: ICNNodeLocationSchema,
     scalerNodesLocation: ICNNodeLocationSchema,
     ICNLStaked: z.number(),
-    ICNTStaked: z.number(),
+    ICNTStaked: z.string(),
     ICNLCount: z.number(),
     TVLTotal: z.string(), // Represented as a string in the API response
+    totalUnlocked: z.string(),
+    minStakePeriod: z.string(),
+    maxICNTEfficiency: z.string(),
 });
 
 const ICNNetworkStatsResponseSchema = z.object({
@@ -134,8 +136,8 @@ export const icnProvider: Provider = {
             const stats = await provider.getNetworkStats();
 
             return `Impossible Cloud Network Statistics:
-- Total Capacity: ${JSON.stringify(stats.data.totalCapacity)}
-- Booked Capacity: ${JSON.stringify(stats.data.bookedCapacity)}
+- Total Capacity: ${stats.data.totalCapacity}
+- Booked Capacity: ${stats.data.bookedCapacity}
 - Hardware Providers: ${stats.data.hardwareProvidersCount}
 - Hyper Nodes: ${stats.data.hyperNodesCount}
 - Scaler Nodes: ${stats.data.scalerNodesCount}
@@ -144,7 +146,10 @@ export const icnProvider: Provider = {
 - ICNL Staked: ${stats.data.ICNLStaked}
 - ICNT Staked: ${stats.data.ICNTStaked}
 - ICNL Count: ${stats.data.ICNLCount}
-- TVL Total: ${stats.data.TVLTotal}`;
+- TVL Total: ${stats.data.TVLTotal}
+- Total Unlocked: ${stats.data.totalUnlocked}
+- Min Stake Period: ${stats.data.minStakePeriod}
+- Max ICNTEfficiency: ${stats.data.maxICNTEfficiency}`;
         } catch (error) {
             elizaLogger.error("Error in Impossible Cloud provider:", error);
             return null;
