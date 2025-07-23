@@ -18,8 +18,6 @@ vi.mock("../settings", () => {
             OPENAI_API_KEY: "mock-openai-key",
             ANTHROPIC_API_KEY: "mock-anthropic-key",
             OPENROUTER_API_KEY: "mock-openrouter-key",
-            ETERNALAI_MODEL: "mock-eternal-model",
-            ETERNALAI_URL: "https://mock.eternal.ai",
             LLAMACLOUD_MODEL_SMALL: "mock-llama-small",
             LLAMACLOUD_MODEL_LARGE: "mock-llama-large",
             TOGETHER_MODEL_SMALL: "mock-together-small",
