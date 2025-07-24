@@ -84,7 +84,7 @@ export class MemoryManager implements IMemoryManager {
         const existingMessage = await this.getMemoryById(memory.id);
 
         if (existingMessage) {
-            elizaLogger.error(
+            elizaLogger.warn(
                 `Memory already exists, skipping, memory: ${memory.id}, content: ${memory.content.text}`
             );
             return;
