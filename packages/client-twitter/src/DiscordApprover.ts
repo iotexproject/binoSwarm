@@ -285,8 +285,7 @@ export class DiscordApprover {
                 return;
             }
 
-            // Check approval status
-            elizaLogger.log("Checking approval status...");
+            elizaLogger.debug("Checking approval status...");
             const approvalStatus: PendingTweetApprovalStatus =
                 await this.checkApprovalStatus(pendingTweet.discordMessageId);
 
