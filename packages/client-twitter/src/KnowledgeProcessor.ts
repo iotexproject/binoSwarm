@@ -96,7 +96,7 @@ export class KnowledgeProcessor {
             const validTweets = await this.fetchAndValidateTweets(username);
 
             if (validTweets.length === 0) {
-                elizaLogger.log(
+                elizaLogger.debug(
                     `No valid tweets found for ${username}, skipping`
                 );
                 return;
