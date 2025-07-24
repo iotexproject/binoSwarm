@@ -17,31 +17,46 @@ const RELEVANCE_THRESHOLD = 0.5;
 
 const analysisSchema = z.object({
     tweetId: z.string().describe("The ID of the tweet"),
-    summary: z
-        .string()
-        .nullable()
-        .default("")
-        .describe("A concise summary of the tweet"),
-    knowledgePoints: z
-        .array(z.string())
-        .nullable()
-        .default([])
-        .describe(
-            "Specific facts or insights extracted from both text and media"
-        ),
-    mediaInsights: z
-        .array(z.string())
-        .nullable()
-        .default([])
-        .describe("Insights extracted from media"),
-    topics: z
-        .array(z.string())
-        .nullable()
-        .default([])
-        .describe("Topics or categories relevant to the tweet"),
+    summary: z.string().describe("A concise summary of the tweet"),
     relevanceScore: z
         .number()
         .describe("A score between 0 and 1, where 1 is highly informative"),
+    knowledgePoints: z
+        .preprocess((val) => {
+            if (typeof val === "string") {
+                return [val];
+            }
+            return val;
+        }, z.array(z.string()))
+        .nullable()
+        .default([])
+        .describe(
+            "Specific facts or insights extracted from both text and media. If N/A, return an empty array."
+        ),
+    mediaInsights: z
+        .preprocess((val) => {
+            if (typeof val === "string") {
+                return [val];
+            }
+            return val;
+        }, z.array(z.string()))
+        .nullable()
+        .default([])
+        .describe(
+            "Insights extracted from media. If N/A, return an empty array."
+        ),
+    topics: z
+        .preprocess((val) => {
+            if (typeof val === "string") {
+                return [val];
+            }
+            return val;
+        }, z.array(z.string()))
+        .nullable()
+        .default([])
+        .describe(
+            "Topics or categories relevant to the tweet. If N/A, return an empty array."
+        ),
 });
 
 const analysisArraySchema = z.object({
