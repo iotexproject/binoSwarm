@@ -42,6 +42,21 @@ vi.mock("@elizaos/core", async () => {
                         topics: ["Random"],
                         relevanceScore: 0.3,
                     },
+                    {
+                        summary:
+                            "This tweet is a general greeting to the DePIN community, promoting decentralized innovation and connection.",
+                        relevanceScore: 0.5,
+                        tweetId: "789",
+                        knowledgePoints:
+                            "The tweet uses hashtags #Web3, #DePIN, #Growth, and #DePIN25, indicating a focus on Web3 and decentralized physical infrastructure networks,",
+                    },
+                    {
+                        knowledgePoints: "N/A",
+                        relevanceScore: 0,
+                        tweetId: "1234",
+                        summary:
+                            "This tweet is a reply to another user and contains only an informal interjection ('ERTI!!'). It is not informative.",
+                    },
                 ],
             },
         }),
