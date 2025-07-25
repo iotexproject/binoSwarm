@@ -6,7 +6,6 @@ import { getModelSettings, getModel } from "./models.ts";
 import {
     IAgentRuntime,
     ModelClass,
-    GenerationSettings,
     ModelProviderName,
     ModelSettings,
     Memory,
@@ -53,13 +52,14 @@ export async function generateTextWithTools({
     validateModelSettings(modelSettings, provider);
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
-    const modelOptions: GenerationSettings = buildGenerationSettings(
+    const modelOptions = buildGenerationSettings({
         context,
         modelSettings,
+        agentName: runtime.character?.name,
         message,
         functionId,
-        tags
-    );
+        tags,
+    });
     const model = getModel(provider, modelSettings.name);
 
     const mcpClients = enableGlobalMcp
@@ -112,13 +112,14 @@ export function streamWithTools({
     const modelSettings = getModelSettings(provider, modelClass);
     validateModelSettings(modelSettings, provider);
 
-    const modelOptions = buildGenerationSettings(
+    const modelOptions = buildGenerationSettings({
         context,
         modelSettings,
+        agentName: runtime.character?.name,
         message,
         functionId,
-        tags
-    );
+        tags,
+    });
     const model = getModel(provider, modelSettings.name);
 
     const result = streamText({

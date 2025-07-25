@@ -294,13 +294,14 @@ describe("Generation With Tools", () => {
                 mockModelSettings.maxInputTokens,
                 mockRuntime
             );
-            expect(buildGenerationSettings).toHaveBeenCalledWith(
-                mockContext,
-                mockModelSettings,
-                mockMessage,
-                "generateTextWithTools",
-                ["test"]
-            );
+            expect(buildGenerationSettings).toHaveBeenCalledWith({
+                context: mockContext,
+                modelSettings: mockModelSettings,
+                agentName: mockRuntime.character.name,
+                message: mockMessage,
+                functionId: "generateTextWithTools",
+                tags: ["test"],
+            });
             expect(getModel).toHaveBeenCalledWith(
                 mockRuntime.modelProvider,
                 mockModelSettings.name
@@ -459,13 +460,14 @@ describe("Generation With Tools", () => {
                 mockRuntime.modelProvider,
                 mockModelClass
             );
-            expect(buildGenerationSettings).toHaveBeenCalledWith(
-                mockContext,
-                mockModelSettings,
-                mockMessage,
-                "streamWithTools",
-                ["test"]
-            );
+            expect(buildGenerationSettings).toHaveBeenCalledWith({
+                context: mockContext,
+                modelSettings: mockModelSettings,
+                agentName: mockRuntime.character.name,
+                message: mockMessage,
+                functionId: "streamWithTools",
+                tags: ["test"],
+            });
             expect(getModel).toHaveBeenCalledWith(
                 mockRuntime.modelProvider,
                 mockModelSettings.name

@@ -1,13 +1,20 @@
 import { GenerationSettings, Memory, ModelSettings } from "./types.ts";
 import { createHash } from "crypto";
 
+type GenerationSettingsOptions = {
+    context: string;
+    modelSettings: ModelSettings;
+    agentName: string;
+    message?: Memory;
+    functionId?: string;
+    tags?: string[];
+};
+
 export function buildGenerationSettings(
-    context: string,
-    modelSettings: ModelSettings,
-    message?: Memory,
-    functionId?: string,
-    tags?: string[]
+    opts: GenerationSettingsOptions
 ): GenerationSettings {
+    const { context, modelSettings, agentName, message, functionId, tags } =
+        opts;
     return {
         prompt: context,
         temperature: modelSettings.temperature,
@@ -17,13 +24,13 @@ export function buildGenerationSettings(
         experimental_telemetry: {
             isEnabled: true,
             functionId,
-            metadata: getMetadata(message, tags),
+            metadata: getMetadata(message, agentName, tags),
         },
         stop: modelSettings.stop,
     };
 }
 
-function getMetadata(message: Memory, tags?: string[]) {
+function getMetadata(message: Memory, agentName: string, tags?: string[]) {
     if (!message) {
         return {
             tags: tags || [],
@@ -36,7 +43,7 @@ function getMetadata(message: Memory, tags?: string[]) {
         roomId: message.roomId,
         sessionId: message.id,
         langfuseTraceId: toTraceId(message.id),
-        tags: [...(tags || []), message.agentId].filter(Boolean),
+        tags: [...(tags || []), message.agentId, agentName].filter(Boolean),
     };
 }
 

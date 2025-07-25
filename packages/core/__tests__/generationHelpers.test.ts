@@ -32,7 +32,11 @@ describe("buildGenerationSettings", () => {
         it("should return GenerationSettings with mapped model settings", () => {
             const context = "Test prompt context";
 
-            const result = buildGenerationSettings(context, mockModelSettings);
+            const result = buildGenerationSettings({
+                context,
+                modelSettings: mockModelSettings,
+                agentName: "test-agent",
+            });
 
             expect(result).toEqual({
                 prompt: context,
@@ -58,10 +62,11 @@ describe("buildGenerationSettings", () => {
                 presence_penalty: undefined,
             };
 
-            const result = buildGenerationSettings(
-                "test",
-                modelSettingsWithoutPenalties
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: modelSettingsWithoutPenalties,
+                agentName: "test-agent",
+            });
 
             expect(result.frequencyPenalty).toBeUndefined();
             expect(result.presencePenalty).toBeUndefined();
@@ -72,12 +77,12 @@ describe("buildGenerationSettings", () => {
         it("should set functionId in telemetry", () => {
             const functionId = "test-function-123";
 
-            const result = buildGenerationSettings(
-                "test",
-                mockModelSettings,
-                undefined,
-                functionId
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+                functionId,
+                agentName: "test-agent",
+            });
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
             expect(result.experimental_telemetry!.metadata).toEqual({
@@ -88,11 +93,12 @@ describe("buildGenerationSettings", () => {
 
     describe("when called with message but no functionId", () => {
         it("should set metadata and functionId with undefined prefix", () => {
-            const result = buildGenerationSettings(
-                "test",
-                mockModelSettings,
-                mockMemory
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+                message: mockMemory,
+                agentName: "test-agent",
+            });
 
             expect(result.experimental_telemetry!.functionId).toBe(undefined);
             expect(result.experimental_telemetry!.metadata).toEqual({
@@ -101,7 +107,7 @@ describe("buildGenerationSettings", () => {
                 agentId: mockMemory.agentId,
                 sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
-                tags: [mockMemory.agentId],
+                tags: [mockMemory.agentId, "test-agent"],
             });
         });
     });
@@ -110,12 +116,13 @@ describe("buildGenerationSettings", () => {
         it("should combine functionId with message id and include metadata", () => {
             const functionId = "test-function";
 
-            const result = buildGenerationSettings(
-                "test",
-                mockModelSettings,
-                mockMemory,
-                functionId
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+                message: mockMemory,
+                functionId,
+                agentName: "test-agent",
+            });
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
             expect(result.experimental_telemetry!.metadata).toEqual({
@@ -124,7 +131,7 @@ describe("buildGenerationSettings", () => {
                 agentId: mockMemory.agentId,
                 sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
-                tags: [mockMemory.agentId],
+                tags: [mockMemory.agentId, "test-agent"],
             });
         });
     });
@@ -137,12 +144,13 @@ describe("buildGenerationSettings", () => {
             };
             const functionId = "test-function-789";
 
-            const result = buildGenerationSettings(
-                "test",
-                mockModelSettings,
-                memoryWithoutId,
-                functionId
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+                message: memoryWithoutId,
+                functionId,
+                agentName: "test-agent",
+            });
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
             expect(result.experimental_telemetry!.metadata).toEqual({
@@ -151,14 +159,18 @@ describe("buildGenerationSettings", () => {
                 agentId: memoryWithoutId.agentId,
                 sessionId: memoryWithoutId.id,
                 roomId: memoryWithoutId.roomId,
-                tags: [memoryWithoutId.agentId],
+                tags: [memoryWithoutId.agentId, "test-agent"],
             });
         });
     });
 
     describe("edge cases", () => {
         it("should handle empty context string", () => {
-            const result = buildGenerationSettings("", mockModelSettings);
+            const result = buildGenerationSettings({
+                context: "",
+                modelSettings: mockModelSettings,
+                agentName: "test-agent",
+            });
 
             expect(result.prompt).toBe("");
         });
@@ -169,10 +181,11 @@ describe("buildGenerationSettings", () => {
                 stop: [],
             };
 
-            const result = buildGenerationSettings(
-                "test",
-                modelSettingsEmptyStop
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: modelSettingsEmptyStop,
+                agentName: "test-agent",
+            });
 
             expect(result.stop).toEqual([]);
         });
@@ -183,10 +196,11 @@ describe("buildGenerationSettings", () => {
                 temperature: 0,
             };
 
-            const result = buildGenerationSettings(
-                "test",
-                modelSettingsZeroTemp
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: modelSettingsZeroTemp,
+                agentName: "test-agent",
+            });
 
             expect(result.temperature).toBe(0);
         });
@@ -198,10 +212,11 @@ describe("buildGenerationSettings", () => {
                 presence_penalty: 0,
             };
 
-            const result = buildGenerationSettings(
-                "test",
-                modelSettingsZeroPenalties
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: modelSettingsZeroPenalties,
+                agentName: "test-agent",
+            });
 
             expect(result.frequencyPenalty).toBe(0);
             expect(result.presencePenalty).toBe(0);
@@ -210,7 +225,11 @@ describe("buildGenerationSettings", () => {
 
     describe("telemetry configuration", () => {
         it("should always enable telemetry", () => {
-            const result = buildGenerationSettings("test", mockModelSettings);
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+                agentName: "test-agent",
+            });
 
             expect(result.experimental_telemetry!.isEnabled).toBe(true);
         });
@@ -218,7 +237,11 @@ describe("buildGenerationSettings", () => {
         it("should preserve all model settings properties", () => {
             const context = "Complex test prompt";
 
-            const result = buildGenerationSettings(context, mockModelSettings);
+            const result = buildGenerationSettings({
+                context,
+                modelSettings: mockModelSettings,
+                agentName: "test-agent",
+            });
 
             expect(result.prompt).toBe(context);
             expect(result.temperature).toBe(mockModelSettings.temperature);
