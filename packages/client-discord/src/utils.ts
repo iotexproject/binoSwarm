@@ -134,8 +134,6 @@ export async function sendMessageInChunks(
     return sentMessages;
 }
 
-
-
 export function canSendMessage(channel) {
     // validate input
     if (!channel) {

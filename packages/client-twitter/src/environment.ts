@@ -138,8 +138,9 @@ export async function validateTwitterConfig(
             ),
 
             TWITTER_POST_ENABLED:
-                parseBooleanFromText(runtime.getSetting("TWITTER_POST_ENABLED")) ??
-                false,
+                parseBooleanFromText(
+                    runtime.getSetting("TWITTER_POST_ENABLED")
+                ) ?? false,
 
             // int in minutes
             POST_INTERVAL_MIN: safeParsePositiveInt(
