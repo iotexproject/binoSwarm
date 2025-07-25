@@ -60,6 +60,7 @@ export const TwitterClientInterface: Client = {
         if (manager.search) {
             await manager.search.start();
         }
+        await manager.actions.start();
         await manager.interaction.start();
 
         return manager;

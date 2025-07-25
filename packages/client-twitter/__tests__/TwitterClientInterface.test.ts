@@ -47,7 +47,9 @@ describe("TwitterClientInterface", () => {
     const mockInteractionClient = {
         start: vi.fn(),
     };
-    const mockActionProcessor = {};
+    const mockActionProcessor = {
+        start: vi.fn(),
+    };
 
     beforeEach(() => {
         vi.spyOn(elizaosCore.elizaLogger, "log").mockImplementation(() => {});
@@ -64,6 +66,7 @@ describe("TwitterClientInterface", () => {
             TWITTER_2FA_SECRET: "secret",
             TWITTER_RETRY_LIMIT: DEFAULT_TWITTER_RETRY_LIMIT,
             TWITTER_POLL_INTERVAL: DEFAULT_TWITTER_POLL_INTERVAL,
+            TWITTER_POST_ENABLED: true,
             TWITTER_TARGET_USERS: [],
             TWITTER_KNOWLEDGE_USERS: [],
             TWITTER_SEARCH_TERMS: [],
