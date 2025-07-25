@@ -16,7 +16,9 @@ class TwitterManager {
     constructor(runtime: IAgentRuntime, twitterConfig: TwitterConfig) {
         this.client = new ClientBase(runtime, twitterConfig);
 
-        this.post = new TwitterPostClient(this.client, runtime);
+        if (twitterConfig.TWITTER_POST_ENABLED) {
+            this.post = new TwitterPostClient(this.client, runtime);
+        }
         this.actions = new TwitterActionProcessor(this.client, runtime);
         if (twitterConfig.TWITTER_SEARCH_ENABLE) {
             this.search = new TwitterSearchClient(this.client, runtime);
@@ -27,7 +29,9 @@ class TwitterManager {
     async stop() {
         elizaLogger.log("Stopping Twitter client components...");
 
-        await this.post.stop();
+        if (this.post) {
+            await this.post.stop();
+        }
         await this.actions.stop();
 
         if (this.search) {
@@ -50,7 +54,9 @@ export const TwitterClientInterface: Client = {
         const manager = new TwitterManager(runtime, twitterConfig);
 
         await manager.client.init();
-        await manager.post.start();
+        if (manager.post) {
+            await manager.post.start();
+        }
         if (manager.search) {
             await manager.search.start();
         }
