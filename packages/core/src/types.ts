@@ -820,10 +820,6 @@ export type Character = {
             shouldIgnoreDirectMessages?: boolean;
             shouldRespondOnlyToMentions?: boolean;
             messageSimilarityThreshold?: number;
-            isPartOfTeam?: boolean;
-            teamAgentIds?: string[];
-            teamLeaderId?: string;
-            teamMemberInterestKeywords?: string[];
         };
         telegram?: {
             shouldIgnoreBotMessages?: boolean;
@@ -832,10 +828,6 @@ export type Character = {
             shouldOnlyJoinInAllowedGroups?: boolean;
             allowedGroupIds?: string[];
             messageSimilarityThreshold?: number;
-            isPartOfTeam?: boolean;
-            teamAgentIds?: string[];
-            teamLeaderId?: string;
-            teamMemberInterestKeywords?: string[];
         };
         slack?: {
             shouldIgnoreBotMessages?: boolean;
