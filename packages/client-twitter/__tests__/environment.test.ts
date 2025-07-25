@@ -30,6 +30,7 @@ describe("Twitter Environment Configuration", () => {
             ACTION_TIMELINE_TYPE: "foryou",
             MAX_ACTIONS_PROCESSING: "1",
             MAX_TWEET_LENGTH: "280",
+            TWITTER_POST_ENABLED: "",
         },
         getEnv: function (key: string) {
             return this.env[key] || null;
