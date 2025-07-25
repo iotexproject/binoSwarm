@@ -59,13 +59,13 @@ export async function generateText({
 
     context = await trimTokens(context, max_in, runtime);
 
-    const modelOptions = buildGenerationSettings(
+    const modelOptions = buildGenerationSettings({
         context,
-        settings,
+        modelSettings: settings,
         message,
         functionId,
-        tags
-    );
+        tags,
+    });
 
     const llmModel = getModel(provider, settings.name);
 
@@ -105,13 +105,13 @@ export async function generateObject<T>({
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
 
-    const modelOptions = buildGenerationSettings(
+    const modelOptions = buildGenerationSettings({
         context,
         modelSettings,
         message,
         functionId,
-        tags
-    );
+        tags,
+    });
 
     const model = getModel(provider, modelSettings.name);
 
@@ -147,13 +147,12 @@ export async function generateObjectFromMessages<T>({
     const modelSettings = getModelSettings(provider, modelClass);
     validateSettings(modelSettings, provider);
 
-    const modelOptions = buildGenerationSettings(
-        "",
+    const modelOptions = buildGenerationSettings({
+        context: "",
         modelSettings,
-        undefined,
-        "generateObjectFromMessages",
-        tags
-    );
+        functionId: "generateObjectFromMessages",
+        tags,
+    });
     delete modelOptions.prompt;
 
     const model = getModel(provider, modelSettings.name);

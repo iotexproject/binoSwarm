@@ -1,13 +1,16 @@
 import { GenerationSettings, Memory, ModelSettings } from "./types.ts";
 import { createHash } from "crypto";
 
-export function buildGenerationSettings(
-    context: string,
-    modelSettings: ModelSettings,
-    message?: Memory,
-    functionId?: string,
-    tags?: string[]
-): GenerationSettings {
+type GenerationSettingsOptions = {
+    context: string;
+    modelSettings: ModelSettings;
+    message?: Memory;
+    functionId?: string;
+    tags?: string[];
+};
+
+export function buildGenerationSettings(opts: GenerationSettingsOptions): GenerationSettings {
+    const { context, modelSettings, message, functionId, tags } = opts;
     return {
         prompt: context,
         temperature: modelSettings.temperature,

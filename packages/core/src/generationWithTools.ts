@@ -53,13 +53,13 @@ export async function generateTextWithTools({
     validateModelSettings(modelSettings, provider);
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
-    const modelOptions: GenerationSettings = buildGenerationSettings(
+    const modelOptions: GenerationSettings = buildGenerationSettings({
         context,
         modelSettings,
         message,
         functionId,
-        tags
-    );
+        tags,
+    });
     const model = getModel(provider, modelSettings.name);
 
     const mcpClients = enableGlobalMcp
@@ -112,13 +112,13 @@ export function streamWithTools({
     const modelSettings = getModelSettings(provider, modelClass);
     validateModelSettings(modelSettings, provider);
 
-    const modelOptions = buildGenerationSettings(
+    const modelOptions = buildGenerationSettings({
         context,
         modelSettings,
         message,
         functionId,
-        tags
-    );
+        tags,
+    });
     const model = getModel(provider, modelSettings.name);
 
     const result = streamText({

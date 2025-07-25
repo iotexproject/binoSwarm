@@ -32,7 +32,10 @@ describe("buildGenerationSettings", () => {
         it("should return GenerationSettings with mapped model settings", () => {
             const context = "Test prompt context";
 
-            const result = buildGenerationSettings(context, mockModelSettings);
+            const result = buildGenerationSettings({
+                context,
+                modelSettings: mockModelSettings,
+            });
 
             expect(result).toEqual({
                 prompt: context,
@@ -58,10 +61,10 @@ describe("buildGenerationSettings", () => {
                 presence_penalty: undefined,
             };
 
-            const result = buildGenerationSettings(
-                "test",
-                modelSettingsWithoutPenalties
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: modelSettingsWithoutPenalties,
+            });
 
             expect(result.frequencyPenalty).toBeUndefined();
             expect(result.presencePenalty).toBeUndefined();
@@ -72,12 +75,11 @@ describe("buildGenerationSettings", () => {
         it("should set functionId in telemetry", () => {
             const functionId = "test-function-123";
 
-            const result = buildGenerationSettings(
-                "test",
-                mockModelSettings,
-                undefined,
-                functionId
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+                functionId,
+            });
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
             expect(result.experimental_telemetry!.metadata).toEqual({
@@ -88,11 +90,11 @@ describe("buildGenerationSettings", () => {
 
     describe("when called with message but no functionId", () => {
         it("should set metadata and functionId with undefined prefix", () => {
-            const result = buildGenerationSettings(
-                "test",
-                mockModelSettings,
-                mockMemory
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+                message: mockMemory,
+            });
 
             expect(result.experimental_telemetry!.functionId).toBe(undefined);
             expect(result.experimental_telemetry!.metadata).toEqual({
@@ -110,12 +112,12 @@ describe("buildGenerationSettings", () => {
         it("should combine functionId with message id and include metadata", () => {
             const functionId = "test-function";
 
-            const result = buildGenerationSettings(
-                "test",
-                mockModelSettings,
-                mockMemory,
-                functionId
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+                message: mockMemory,
+                functionId,
+            });
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
             expect(result.experimental_telemetry!.metadata).toEqual({
@@ -137,12 +139,12 @@ describe("buildGenerationSettings", () => {
             };
             const functionId = "test-function-789";
 
-            const result = buildGenerationSettings(
-                "test",
-                mockModelSettings,
-                memoryWithoutId,
-                functionId
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+                message: memoryWithoutId,
+                functionId,
+            });
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
             expect(result.experimental_telemetry!.metadata).toEqual({
@@ -158,7 +160,10 @@ describe("buildGenerationSettings", () => {
 
     describe("edge cases", () => {
         it("should handle empty context string", () => {
-            const result = buildGenerationSettings("", mockModelSettings);
+            const result = buildGenerationSettings({
+                context: "",
+                modelSettings: mockModelSettings,
+            });
 
             expect(result.prompt).toBe("");
         });
@@ -169,10 +174,10 @@ describe("buildGenerationSettings", () => {
                 stop: [],
             };
 
-            const result = buildGenerationSettings(
-                "test",
-                modelSettingsEmptyStop
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: modelSettingsEmptyStop,
+            });
 
             expect(result.stop).toEqual([]);
         });
@@ -183,10 +188,10 @@ describe("buildGenerationSettings", () => {
                 temperature: 0,
             };
 
-            const result = buildGenerationSettings(
-                "test",
-                modelSettingsZeroTemp
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: modelSettingsZeroTemp,
+            });
 
             expect(result.temperature).toBe(0);
         });
@@ -198,10 +203,10 @@ describe("buildGenerationSettings", () => {
                 presence_penalty: 0,
             };
 
-            const result = buildGenerationSettings(
-                "test",
-                modelSettingsZeroPenalties
-            );
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: modelSettingsZeroPenalties,
+            });
 
             expect(result.frequencyPenalty).toBe(0);
             expect(result.presencePenalty).toBe(0);
@@ -210,7 +215,10 @@ describe("buildGenerationSettings", () => {
 
     describe("telemetry configuration", () => {
         it("should always enable telemetry", () => {
-            const result = buildGenerationSettings("test", mockModelSettings);
+            const result = buildGenerationSettings({
+                context: "test",
+                modelSettings: mockModelSettings,
+            });
 
             expect(result.experimental_telemetry!.isEnabled).toBe(true);
         });
@@ -218,7 +226,10 @@ describe("buildGenerationSettings", () => {
         it("should preserve all model settings properties", () => {
             const context = "Complex test prompt";
 
-            const result = buildGenerationSettings(context, mockModelSettings);
+            const result = buildGenerationSettings({
+                context,
+                modelSettings: mockModelSettings,
+            });
 
             expect(result.prompt).toBe(context);
             expect(result.temperature).toBe(mockModelSettings.temperature);
