@@ -4,6 +4,7 @@ import {
     elizaLogger,
     trimTokens,
     generateObject,
+    splitMessage,
 } from "@elizaos/core";
 import {
     ChannelType,
@@ -98,7 +99,7 @@ export async function sendMessageInChunks(
     files: any[]
 ): Promise<DiscordMessage[]> {
     const sentMessages: DiscordMessage[] = [];
-    const messages = splitMessage(content);
+    const messages = splitMessage(content, MAX_MESSAGE_LENGTH);
     try {
         for (let i = 0; i < messages.length; i++) {
             const message = messages[i];
@@ -133,38 +134,7 @@ export async function sendMessageInChunks(
     return sentMessages;
 }
 
-function splitMessage(content: string): string[] {
-    const messages: string[] = [];
-    let currentMessage = "";
 
-    const rawLines = content?.split("\n") || [];
-    // split all lines into MAX_MESSAGE_LENGTH chunks so any long lines are split
-    const lines = rawLines
-        .map((line) => {
-            const chunks = [];
-            while (line.length > MAX_MESSAGE_LENGTH) {
-                chunks.push(line.slice(0, MAX_MESSAGE_LENGTH));
-                line = line.slice(MAX_MESSAGE_LENGTH);
-            }
-            chunks.push(line);
-            return chunks;
-        })
-        .flat();
-
-    for (const line of lines) {
-        if (currentMessage.length + line.length + 1 > MAX_MESSAGE_LENGTH) {
-            messages.push(currentMessage.trim());
-            currentMessage = "";
-        }
-        currentMessage += line + "\n";
-    }
-
-    if (currentMessage.trim().length > 0) {
-        messages.push(currentMessage.trim());
-    }
-
-    return messages;
-}
 
 export function canSendMessage(channel) {
     // validate input

@@ -18,6 +18,7 @@ import {
     UUID,
     Media,
     cosineSimilarity,
+    splitMessage,
 } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 
@@ -600,7 +601,7 @@ export class MessageManager {
                 }
             });
         } else {
-            const chunks = this.splitMessage(content.text);
+            const chunks = splitMessage(content.text, MAX_MESSAGE_LENGTH);
             const sentMessages: Message.TextMessage[] = [];
 
             for (let i = 0; i < chunks.length; i++) {
@@ -694,25 +695,6 @@ export class MessageManager {
         } catch (error) {
             elizaLogger.error("Error sending animation:", error);
         }
-    }
-
-    // Split message into smaller parts
-    private splitMessage(text: string): string[] {
-        const chunks: string[] = [];
-        let currentChunk = "";
-
-        const lines = text.split("\n");
-        for (const line of lines) {
-            if (currentChunk.length + line.length + 1 <= MAX_MESSAGE_LENGTH) {
-                currentChunk += (currentChunk ? "\n" : "") + line;
-            } else {
-                if (currentChunk) chunks.push(currentChunk);
-                currentChunk = line;
-            }
-        }
-
-        if (currentChunk) chunks.push(currentChunk);
-        return chunks;
     }
 
     // Generate a response using AI

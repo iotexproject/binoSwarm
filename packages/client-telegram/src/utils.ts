@@ -24,24 +24,3 @@ export function escapeMarkdown(text: string): string {
         })
         .join("");
 }
-
-/**
- * Splits a message into chunks that fit within Telegram's message length limit
- */
-export function splitMessage(text: string, maxLength: number = 4096): string[] {
-    const chunks: string[] = [];
-    let currentChunk = "";
-
-    const lines = text.split("\n");
-    for (const line of lines) {
-        if (currentChunk.length + line.length + 1 <= maxLength) {
-            currentChunk += (currentChunk ? "\n" : "") + line;
-        } else {
-            if (currentChunk) chunks.push(currentChunk);
-            currentChunk = line;
-        }
-    }
-
-    if (currentChunk) chunks.push(currentChunk);
-    return chunks;
-}

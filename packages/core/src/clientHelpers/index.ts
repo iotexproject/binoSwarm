@@ -88,3 +88,39 @@ export function cosineSimilarity(
 
     return dotProduct / maxMagnitude;
 }
+
+export function splitMessage(content: string, maxLength: number): string[] {
+    const messages: string[] = [];
+    let currentMessage = "";
+
+    const rawLines = content?.split("\n") || [];
+    // split all lines into MAX_MESSAGE_LENGTH chunks so any long lines are split
+    const lines = rawLines
+        .map((line) => {
+            const chunks = [];
+            while (line.length > maxLength) {
+                chunks.push(line.slice(0, maxLength));
+                line = line.slice(maxLength);
+            }
+            chunks.push(line);
+            return chunks;
+        })
+        .flat();
+
+    for (const line of lines) {
+        if (
+            currentMessage.length > 0 &&
+            currentMessage.length + line.length >= maxLength
+        ) {
+            messages.push(currentMessage.trim());
+            currentMessage = "";
+        }
+        currentMessage += line + "\n";
+    }
+
+    if (currentMessage.trim().length > 0) {
+        messages.push(currentMessage.trim());
+    }
+
+    return messages;
+}
