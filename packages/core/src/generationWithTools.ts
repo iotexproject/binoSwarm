@@ -55,6 +55,7 @@ export async function generateTextWithTools({
     const modelOptions = buildGenerationSettings({
         context,
         modelSettings,
+        agentName: runtime.character?.name,
         message,
         functionId,
         tags,
@@ -114,6 +115,7 @@ export function streamWithTools({
     const modelOptions = buildGenerationSettings({
         context,
         modelSettings,
+        agentName: runtime.character?.name,
         message,
         functionId,
         tags,

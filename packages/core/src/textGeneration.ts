@@ -62,6 +62,7 @@ export async function generateText({
     const modelOptions = buildGenerationSettings({
         context,
         modelSettings: settings,
+        agentName: runtime.character?.name,
         message,
         functionId,
         tags,
@@ -108,6 +109,7 @@ export async function generateObject<T>({
     const modelOptions = buildGenerationSettings({
         context,
         modelSettings,
+        agentName: runtime.character?.name,
         message,
         functionId,
         tags,
@@ -150,6 +152,7 @@ export async function generateObjectFromMessages<T>({
     const modelOptions = buildGenerationSettings({
         context: "",
         modelSettings,
+        agentName: runtime.character?.name,
         functionId: "generateObjectFromMessages",
         tags,
     });

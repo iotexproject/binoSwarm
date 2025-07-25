@@ -35,6 +35,7 @@ describe("buildGenerationSettings", () => {
             const result = buildGenerationSettings({
                 context,
                 modelSettings: mockModelSettings,
+                agentName: "test-agent",
             });
 
             expect(result).toEqual({
@@ -64,6 +65,7 @@ describe("buildGenerationSettings", () => {
             const result = buildGenerationSettings({
                 context: "test",
                 modelSettings: modelSettingsWithoutPenalties,
+                agentName: "test-agent",
             });
 
             expect(result.frequencyPenalty).toBeUndefined();
@@ -79,6 +81,7 @@ describe("buildGenerationSettings", () => {
                 context: "test",
                 modelSettings: mockModelSettings,
                 functionId,
+                agentName: "test-agent",
             });
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
@@ -94,6 +97,7 @@ describe("buildGenerationSettings", () => {
                 context: "test",
                 modelSettings: mockModelSettings,
                 message: mockMemory,
+                agentName: "test-agent",
             });
 
             expect(result.experimental_telemetry!.functionId).toBe(undefined);
@@ -103,7 +107,7 @@ describe("buildGenerationSettings", () => {
                 agentId: mockMemory.agentId,
                 sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
-                tags: [mockMemory.agentId],
+                tags: [mockMemory.agentId, "test-agent"],
             });
         });
     });
@@ -117,6 +121,7 @@ describe("buildGenerationSettings", () => {
                 modelSettings: mockModelSettings,
                 message: mockMemory,
                 functionId,
+                agentName: "test-agent",
             });
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
@@ -126,7 +131,7 @@ describe("buildGenerationSettings", () => {
                 agentId: mockMemory.agentId,
                 sessionId: mockMemory.id,
                 roomId: mockMemory.roomId,
-                tags: [mockMemory.agentId],
+                tags: [mockMemory.agentId, "test-agent"],
             });
         });
     });
@@ -144,6 +149,7 @@ describe("buildGenerationSettings", () => {
                 modelSettings: mockModelSettings,
                 message: memoryWithoutId,
                 functionId,
+                agentName: "test-agent",
             });
 
             expect(result.experimental_telemetry!.functionId).toBe(functionId);
@@ -153,7 +159,7 @@ describe("buildGenerationSettings", () => {
                 agentId: memoryWithoutId.agentId,
                 sessionId: memoryWithoutId.id,
                 roomId: memoryWithoutId.roomId,
-                tags: [memoryWithoutId.agentId],
+                tags: [memoryWithoutId.agentId, "test-agent"],
             });
         });
     });
@@ -163,6 +169,7 @@ describe("buildGenerationSettings", () => {
             const result = buildGenerationSettings({
                 context: "",
                 modelSettings: mockModelSettings,
+                agentName: "test-agent",
             });
 
             expect(result.prompt).toBe("");
@@ -177,6 +184,7 @@ describe("buildGenerationSettings", () => {
             const result = buildGenerationSettings({
                 context: "test",
                 modelSettings: modelSettingsEmptyStop,
+                agentName: "test-agent",
             });
 
             expect(result.stop).toEqual([]);
@@ -191,6 +199,7 @@ describe("buildGenerationSettings", () => {
             const result = buildGenerationSettings({
                 context: "test",
                 modelSettings: modelSettingsZeroTemp,
+                agentName: "test-agent",
             });
 
             expect(result.temperature).toBe(0);
@@ -206,6 +215,7 @@ describe("buildGenerationSettings", () => {
             const result = buildGenerationSettings({
                 context: "test",
                 modelSettings: modelSettingsZeroPenalties,
+                agentName: "test-agent",
             });
 
             expect(result.frequencyPenalty).toBe(0);
@@ -218,6 +228,7 @@ describe("buildGenerationSettings", () => {
             const result = buildGenerationSettings({
                 context: "test",
                 modelSettings: mockModelSettings,
+                agentName: "test-agent",
             });
 
             expect(result.experimental_telemetry!.isEnabled).toBe(true);
@@ -229,6 +240,7 @@ describe("buildGenerationSettings", () => {
             const result = buildGenerationSettings({
                 context,
                 modelSettings: mockModelSettings,
+                agentName: "test-agent",
             });
 
             expect(result.prompt).toBe(context);

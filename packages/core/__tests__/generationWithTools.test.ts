@@ -297,6 +297,7 @@ describe("Generation With Tools", () => {
             expect(buildGenerationSettings).toHaveBeenCalledWith({
                 context: mockContext,
                 modelSettings: mockModelSettings,
+                agentName: mockRuntime.character.name,
                 message: mockMessage,
                 functionId: "generateTextWithTools",
                 tags: ["test"],
@@ -462,6 +463,7 @@ describe("Generation With Tools", () => {
             expect(buildGenerationSettings).toHaveBeenCalledWith({
                 context: mockContext,
                 modelSettings: mockModelSettings,
+                agentName: mockRuntime.character.name,
                 message: mockMessage,
                 functionId: "streamWithTools",
                 tags: ["test"],
