@@ -6,7 +6,6 @@ import { getModelSettings, getModel } from "./models.ts";
 import {
     IAgentRuntime,
     ModelClass,
-    GenerationSettings,
     ModelProviderName,
     ModelSettings,
     Memory,
@@ -53,7 +52,7 @@ export async function generateTextWithTools({
     validateModelSettings(modelSettings, provider);
 
     context = await trimTokens(context, modelSettings.maxInputTokens, runtime);
-    const modelOptions: GenerationSettings = buildGenerationSettings({
+    const modelOptions = buildGenerationSettings({
         context,
         modelSettings,
         message,
