@@ -1,20 +1,3 @@
-export const TEAM_COORDINATION = {
-    KEYWORDS: [
-        "team",
-        "everyone",
-        "all agents",
-        "team update",
-        "gm team",
-        "hello team",
-        "hey team",
-        "hi team",
-        "morning team",
-        "evening team",
-        "night team",
-        "update team",
-    ],
-} as const;
-
 export const MESSAGE_CONSTANTS = {
     MAX_MESSAGES: 10,
     RECENT_MESSAGE_COUNT: 3,
