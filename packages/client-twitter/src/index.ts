@@ -23,6 +23,21 @@ class TwitterManager {
         }
         this.interaction = new TwitterInteractionClient(this.client, runtime);
     }
+
+    async stop() {
+        elizaLogger.log("Stopping Twitter client components...");
+
+        await this.post.stop();
+        await this.actions.stop();
+
+        if (this.search) {
+            await this.search.stop();
+        }
+
+        await this.interaction.stop();
+
+        elizaLogger.log("Twitter client stopped successfully");
+    }
 }
 
 export const TwitterClientInterface: Client = {
@@ -45,7 +60,9 @@ export const TwitterClientInterface: Client = {
     },
 
     async stop(_runtime: IAgentRuntime) {
-        elizaLogger.warn("Twitter client does not support stopping yet");
+        elizaLogger.log(
+            "Twitter client stop requested - cleanup handled by returned manager instance"
+        );
     },
 };
 

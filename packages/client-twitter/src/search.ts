@@ -28,6 +28,7 @@ export class TwitterSearchClient {
     runtime: IAgentRuntime;
     twitterUsername: string;
     private respondedTweets: Set<string> = new Set();
+    private searchTimeout: NodeJS.Timeout | null = null;
 
     constructor(client: ClientBase, runtime: IAgentRuntime) {
         this.client = client;
@@ -39,6 +40,13 @@ export class TwitterSearchClient {
         this.engageWithSearchTermsLoop();
     }
 
+    async stop() {
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = null;
+        }
+    }
+
     private engageWithSearchTermsLoop() {
         this.engageWithSearchTerms().catch((error) => {
             elizaLogger.error("Error in search terms engagement loop:", error);
@@ -48,7 +56,7 @@ export class TwitterSearchClient {
         elizaLogger.log(
             `Next twitter search scheduled in ${randomMinutes} minutes`
         );
-        setTimeout(
+        this.searchTimeout = setTimeout(
             () => this.engageWithSearchTermsLoop(),
             randomMinutes * 60 * 1000
         );

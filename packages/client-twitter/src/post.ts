@@ -25,6 +25,7 @@ export class TwitterPostClient {
 
     private approvalRequired: boolean = false;
     private discordApprover: DiscordApprover;
+    private postTimeout: NodeJS.Timeout | null = null;
 
     constructor(client: ClientBase, runtime: IAgentRuntime) {
         this.client = client;
@@ -33,6 +34,13 @@ export class TwitterPostClient {
 
         this.logConfigOnInitialization();
         this.configureApprovals();
+    }
+
+    async stop() {
+        if (this.postTimeout) {
+            clearTimeout(this.postTimeout);
+            this.postTimeout = null;
+        }
     }
 
     private configureApprovals() {
@@ -88,7 +96,7 @@ export class TwitterPostClient {
     }
 
     private setupNextTweetIteration(delayMs: number) {
-        setTimeout(() => {
+        this.postTimeout = setTimeout(() => {
             this.generateNewTweetLoop();
         }, delayMs);
 

@@ -157,8 +157,8 @@ describe("TwitterClientInterface", () => {
     describe("stop", () => {
         it("should log a warning that stop is not implemented", async () => {
             await TwitterClientInterface.stop(mockRuntime);
-            expect(elizaosCore.elizaLogger.warn).toHaveBeenCalledWith(
-                "Twitter client does not support stopping yet"
+            expect(elizaosCore.elizaLogger.log).toHaveBeenCalledWith(
+                "Twitter client stop requested - cleanup handled by returned manager instance"
             );
         });
     });
