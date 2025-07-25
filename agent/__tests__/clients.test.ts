@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { initializeClients } from "../src/clients";
-import { AutoClientInterface } from "@elizaos/client-auto";
 import { DiscordClientInterface } from "@elizaos/client-discord";
 import { TelegramClientInterface } from "@elizaos/client-telegram";
 import { TwitterClientInterface } from "@elizaos/client-twitter";
@@ -66,29 +65,9 @@ describe("initializeClients", () => {
         // Verify
         expect(result).toEqual({});
         expect(elizaLogger.log).toHaveBeenCalled();
-        expect(AutoClientInterface.start).not.toHaveBeenCalled();
         expect(DiscordClientInterface.start).not.toHaveBeenCalled();
         expect(TelegramClientInterface.start).not.toHaveBeenCalled();
         expect(TwitterClientInterface.start).not.toHaveBeenCalled();
-    });
-
-    it("should initialize auto client when configured", async () => {
-        // @ts-expect-error: mock character
-        const character: Character = {
-            name: "Test Character",
-            id: "test-id",
-            clients: [Clients.AUTO],
-        } as Character;
-
-        const mockAutoClient = { name: "mockAutoClient" };
-        vi.mocked(AutoClientInterface.start).mockResolvedValue(mockAutoClient);
-
-        // Execute
-        const result = await initializeClients(character, mockRuntime);
-
-        // Verify
-        expect(AutoClientInterface.start).toHaveBeenCalledWith(mockRuntime);
-        expect(result).toEqual({ auto: mockAutoClient });
     });
 
     it("should initialize all standard clients when configured", async () => {
@@ -96,20 +75,13 @@ describe("initializeClients", () => {
         const character: Character = {
             name: "Test Character",
             id: "test-id",
-            clients: [
-                Clients.AUTO,
-                Clients.DISCORD,
-                Clients.TELEGRAM,
-                Clients.TWITTER,
-            ],
+            clients: [Clients.DISCORD, Clients.TELEGRAM, Clients.TWITTER],
         } as Character;
 
-        const mockAutoClient = { name: "mockAutoClient" };
         const mockDiscordClient = { name: "mockDiscordClient" };
         const mockTelegramClient = { name: "mockTelegramClient" };
         const mockTwitterClient = { name: "mockTwitterClient" };
 
-        vi.mocked(AutoClientInterface.start).mockResolvedValue(mockAutoClient);
         vi.mocked(DiscordClientInterface.start).mockResolvedValue(
             mockDiscordClient
         );
@@ -120,17 +92,13 @@ describe("initializeClients", () => {
             mockTwitterClient
         );
 
-        // Execute
         const result = await initializeClients(character, mockRuntime);
 
-        // Verify
-        expect(AutoClientInterface.start).toHaveBeenCalledWith(mockRuntime);
         expect(DiscordClientInterface.start).toHaveBeenCalledWith(mockRuntime);
         expect(TelegramClientInterface.start).toHaveBeenCalledWith(mockRuntime);
         expect(TwitterClientInterface.start).toHaveBeenCalledWith(mockRuntime);
 
         expect(result).toEqual({
-            auto: mockAutoClient,
             discord: mockDiscordClient,
             telegram: mockTelegramClient,
             twitter: mockTwitterClient,
@@ -142,18 +110,15 @@ describe("initializeClients", () => {
         const character: Character = {
             name: "Test Character",
             id: "test-id",
-            clients: [Clients.AUTO, Clients.DISCORD],
+            clients: [Clients.DISCORD],
         } as Character;
 
-        vi.mocked(AutoClientInterface.start).mockResolvedValue(null);
         vi.mocked(DiscordClientInterface.start).mockResolvedValue({
             name: "mockDiscordClient",
         });
 
-        // Execute
         const result = await initializeClients(character, mockRuntime);
 
-        // Verify
         expect(result).toEqual({
             discord: { name: "mockDiscordClient" },
         });
@@ -167,23 +132,17 @@ describe("initializeClients", () => {
             clients: ["AuTo", "DiScOrD"],
         } as Character;
 
-        const mockAutoClient = { name: "mockAutoClient" };
         const mockDiscordClient = { name: "mockDiscordClient" };
 
-        vi.mocked(AutoClientInterface.start).mockResolvedValue(mockAutoClient);
         vi.mocked(DiscordClientInterface.start).mockResolvedValue(
             mockDiscordClient
         );
 
-        // Execute
         const result = await initializeClients(character, mockRuntime);
 
-        // Verify
-        expect(AutoClientInterface.start).toHaveBeenCalledWith(mockRuntime);
         expect(DiscordClientInterface.start).toHaveBeenCalledWith(mockRuntime);
 
         expect(result).toEqual({
-            auto: mockAutoClient,
             discord: mockDiscordClient,
         });
     });

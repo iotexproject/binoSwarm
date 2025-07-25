@@ -23,7 +23,6 @@
         "@elizaos-plugins/plugin-membase": "workspace:*",
         "@elizaos/adapter-postgres": "workspace:*",
         "@elizaos/adapter-redis": "workspace:*",
-        "@elizaos/client-auto": "workspace:*",
         "@elizaos/client-direct": "workspace:*",
         "@elizaos/client-discord": "workspace:*",
         "@elizaos/client-telegram": "workspace:*",
