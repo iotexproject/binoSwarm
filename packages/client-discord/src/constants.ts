@@ -1,20 +1,3 @@
-export const TEAM_COORDINATION = {
-    KEYWORDS: [
-        "team",
-        "everyone",
-        "all agents",
-        "team update",
-        "gm team",
-        "hello team",
-        "hey team",
-        "hi team",
-        "morning team",
-        "evening team",
-        "night team",
-        "update team",
-    ],
-} as const;
-
 export const MESSAGE_CONSTANTS = {
     MAX_MESSAGES: 10,
     RECENT_MESSAGE_COUNT: 3,
@@ -30,20 +13,6 @@ export const MESSAGE_LENGTH_THRESHOLDS = {
     SHORT_MESSAGE: 10,
     VERY_SHORT_MESSAGE: 2,
     IGNORE_RESPONSE: 4,
-} as const;
-
-export const TIMING_CONSTANTS = {
-    LEADER_RESPONSE_TIMEOUT: 3000,
-    TEAM_MEMBER_DELAY: 1500,
-    LEADER_DELAY_MIN: 3000,
-    LEADER_DELAY_MAX: 4000,
-    TEAM_MEMBER_DELAY_MIN: 1000,
-    TEAM_MEMBER_DELAY_MAX: 3000,
-} as const;
-
-export const RESPONSE_CHANCES = {
-    AFTER_LEADER: 0.5, // 50% chance
-    FREQUENT_CHATTER: 0.5, // Base chance for frequent responders
 } as const;
 
 export const LOSE_INTEREST_WORDS = [

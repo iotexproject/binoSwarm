@@ -15,7 +15,6 @@ import {
 import { ClientBase } from "./base.ts";
 import { twitterPostTemplate, twitterQSPrompt } from "./templates.ts";
 import { TwitterHelpers } from "./helpers.ts";
-import { DiscordApprover } from "./DiscordApprover.ts";
 import qsTool from "./providers.ts";
 
 export class TwitterPostClient {
@@ -23,8 +22,7 @@ export class TwitterPostClient {
     runtime: IAgentRuntime;
     twitterUsername: string;
 
-    private approvalRequired: boolean = false;
-    private discordApprover: DiscordApprover;
+    private postTimeout: NodeJS.Timeout | null = null;
 
     constructor(client: ClientBase, runtime: IAgentRuntime) {
         this.client = client;
@@ -32,21 +30,12 @@ export class TwitterPostClient {
         this.twitterUsername = this.client.twitterConfig.TWITTER_USERNAME;
 
         this.logConfigOnInitialization();
-        this.configureApprovals();
     }
 
-    private configureApprovals() {
-        const approvalRequired: boolean =
-            this.runtime
-                .getSetting("TWITTER_APPROVAL_ENABLED")
-                ?.toLocaleLowerCase() === "true";
-        if (approvalRequired) {
-            this.discordApprover = new DiscordApprover(
-                this.runtime,
-                this.client,
-                this.twitterUsername
-            );
-            this.approvalRequired = true;
+    async stop() {
+        if (this.postTimeout) {
+            clearTimeout(this.postTimeout);
+            this.postTimeout = null;
         }
     }
 
@@ -73,10 +62,6 @@ export class TwitterPostClient {
             await this.generateNewTweet();
         }
         await this.generateNewTweetLoop();
-
-        if (this.approvalRequired) {
-            this.discordApprover.runPendingTweetCheckLoop();
-        }
     }
 
     private async generateNewTweetLoop() {
@@ -88,7 +73,7 @@ export class TwitterPostClient {
     }
 
     private setupNextTweetIteration(delayMs: number) {
-        setTimeout(() => {
+        this.postTimeout = setTimeout(() => {
             this.generateNewTweetLoop();
         }, delayMs);
 
@@ -128,9 +113,6 @@ export class TwitterPostClient {
         return lastPost?.timestamp ?? 0;
     }
 
-    /**
-     * Generates and posts a new tweet.
-     */
     private async generateNewTweet() {
         elizaLogger.log("Generating new tweet");
 
@@ -153,55 +135,35 @@ export class TwitterPostClient {
 
             const newTweetContent = await this.genAndCleanNewTweet(roomId);
 
-            if (this.approvalRequired) {
+            try {
+                await TwitterHelpers.postTweet(
+                    this.runtime,
+                    this.client,
+                    newTweetContent,
+                    roomId,
+                    newTweetContent,
+                    this.twitterUsername
+                );
+
                 InteractionLogger.logAgentScheduledPost({
                     client: "twitter",
                     agentId: agentId,
                     userId: agentId,
                     roomId: roomId,
                     messageId: scheduledPostId,
-                    status: "scheduled",
+                    status: "sent",
                 });
-
-                await this.discordApprover.sendForApproval(
-                    newTweetContent,
-                    roomId,
-                    newTweetContent
-                );
-            } else {
-                try {
-                    await TwitterHelpers.postTweet(
-                        this.runtime,
-                        this.client,
-                        newTweetContent,
-                        roomId,
-                        newTweetContent,
-                        this.twitterUsername
-                    );
-
-                    InteractionLogger.logAgentScheduledPost({
-                        client: "twitter",
-                        agentId: agentId,
-                        userId: agentId,
-                        roomId: roomId,
-                        messageId: scheduledPostId,
-                        status: "sent",
-                    });
-                } catch (postError) {
-                    elizaLogger.error(
-                        "Error posting tweet directly:",
-                        postError
-                    );
-                    InteractionLogger.logAgentScheduledPost({
-                        client: "twitter",
-                        agentId: agentId,
-                        userId: agentId,
-                        roomId: roomId,
-                        messageId: scheduledPostId,
-                        status: "failed",
-                    });
-                    throw postError;
-                }
+            } catch (postError) {
+                elizaLogger.error("Error posting tweet directly:", postError);
+                InteractionLogger.logAgentScheduledPost({
+                    client: "twitter",
+                    agentId: agentId,
+                    userId: agentId,
+                    roomId: roomId,
+                    messageId: scheduledPostId,
+                    status: "failed",
+                });
+                throw postError;
             }
         } catch (error) {
             elizaLogger.error("Error generating new tweet:", error);

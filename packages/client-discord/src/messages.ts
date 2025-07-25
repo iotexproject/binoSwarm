@@ -14,6 +14,7 @@ import {
     State,
     UUID,
     InteractionLogger,
+    cosineSimilarity,
 } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 import {
@@ -35,11 +36,7 @@ import {
     MESSAGE_CONSTANTS,
     MESSAGE_LENGTH_THRESHOLDS,
 } from "./constants";
-import {
-    sendMessageInChunks,
-    canSendMessage,
-    cosineSimilarity,
-} from "./utils.ts";
+import { sendMessageInChunks, canSendMessage } from "./utils.ts";
 
 interface MessageContext {
     content: string;

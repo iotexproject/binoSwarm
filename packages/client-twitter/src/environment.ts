@@ -40,6 +40,7 @@ export const twitterEnvSchema = z.object({
     TWITTER_TARGET_USERS: z.array(twitterUsernameSchema).default([]),
     TWITTER_KNOWLEDGE_USERS: z.array(twitterUsernameSchema).default([]),
     TWITTER_SEARCH_TERMS: z.array(z.string()).default([]),
+    TWITTER_POST_ENABLED: z.boolean().default(false),
     POST_INTERVAL_MIN: z.number().int(),
     POST_INTERVAL_MAX: z.number().int(),
     ENABLE_ACTION_PROCESSING: z.boolean(),
@@ -135,6 +136,11 @@ export async function validateTwitterConfig(
             TWITTER_KNOWLEDGE_USERS: parseTargetUsers(
                 runtime.getSetting("TWITTER_KNOWLEDGE_USERS")
             ),
+
+            TWITTER_POST_ENABLED:
+                parseBooleanFromText(
+                    runtime.getSetting("TWITTER_POST_ENABLED")
+                ) ?? false,
 
             // int in minutes
             POST_INTERVAL_MIN: safeParsePositiveInt(

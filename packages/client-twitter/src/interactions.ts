@@ -33,6 +33,7 @@ export class TwitterInteractionClient {
     client: ClientBase;
     runtime: IAgentRuntime;
     knowledgeProcessor: KnowledgeProcessor;
+    private interactionTimeout: NodeJS.Timeout | null = null;
 
     constructor(client: ClientBase, runtime: IAgentRuntime) {
         this.client = client;
@@ -43,13 +44,20 @@ export class TwitterInteractionClient {
     async start() {
         const handleTwitterInteractionsLoop = () => {
             this.handleTwitterInteractions();
-            setTimeout(
+            this.interactionTimeout = setTimeout(
                 handleTwitterInteractionsLoop,
                 // Defaults to 2 minutes
                 this.client.twitterConfig.TWITTER_POLL_INTERVAL * 1000
             );
         };
         handleTwitterInteractionsLoop();
+    }
+
+    async stop() {
+        if (this.interactionTimeout) {
+            clearTimeout(this.interactionTimeout);
+            this.interactionTimeout = null;
+        }
     }
 
     async handleTwitterInteractions() {
