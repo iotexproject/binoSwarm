@@ -17,12 +17,13 @@ import {
     State,
     UUID,
     Media,
+    cosineSimilarity,
 } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 
 import { generateMessageResponse, generateShouldRespond } from "@elizaos/core";
 
-import { cosineSimilarity, escapeMarkdown } from "./utils";
+import { escapeMarkdown } from "./utils";
 import {
     MESSAGE_CONSTANTS,
     TIMING_CONSTANTS,

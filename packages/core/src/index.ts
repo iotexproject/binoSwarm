@@ -32,3 +32,4 @@ export * from "./generationWithTools.ts";
 export * from "./textGeneration.ts";
 export * from "./MCPManager.ts";
 export * from "./interactionLogger";
+export * from "./clientHelpers/index.ts";
