@@ -2,15 +2,11 @@ import { Context, Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import { IAgentRuntime, elizaLogger } from "@elizaos/core";
 import { MessageManager } from "./messageManager.ts";
-import { getOrCreateRecommenderInBe } from "./getOrCreateRecommenderInBe.ts";
 
 export class TelegramClient {
     private bot: Telegraf<Context>;
     private runtime: IAgentRuntime;
     private messageManager: MessageManager;
-    private backend;
-    private backendToken;
-    private tgTrader;
     private options;
 
     constructor(runtime: IAgentRuntime, botToken: string) {
@@ -26,9 +22,6 @@ export class TelegramClient {
         this.runtime = runtime;
         this.bot = new Telegraf(botToken, this.options);
         this.messageManager = new MessageManager(this.bot, this.runtime);
-        this.backend = runtime.getSetting("BACKEND_URL");
-        this.backendToken = runtime.getSetting("BACKEND_TOKEN");
-        this.tgTrader = runtime.getSetting("TG_TRADER"); // boolean To Be added to the settings
         elizaLogger.log("✅ TelegramClient constructor completed");
     }
 
@@ -110,31 +103,6 @@ export class TelegramClient {
                 // Check group authorization first
                 if (!(await this.isGroupAuthorized(ctx))) {
                     return;
-                }
-
-                if (this.tgTrader) {
-                    const userId = ctx.from?.id.toString();
-                    const username =
-                        ctx.from?.username || ctx.from?.first_name || "Unknown";
-                    if (!userId) {
-                        elizaLogger.warn(
-                            "Received message from a user without an ID."
-                        );
-                        return;
-                    }
-                    try {
-                        await getOrCreateRecommenderInBe(
-                            userId,
-                            username,
-                            this.backendToken,
-                            this.backend
-                        );
-                    } catch (error) {
-                        elizaLogger.error(
-                            "Error getting or creating recommender in backend",
-                            error
-                        );
-                    }
                 }
 
                 await this.messageManager.handleMessage(ctx);
