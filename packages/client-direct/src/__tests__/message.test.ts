@@ -27,9 +27,6 @@ vi.mock("@elizaos/core", async () => {
         generateImage: vi.fn(),
         generateCaption: vi.fn(),
         getEmbeddingZeroVector: vi.fn().mockReturnValue([]),
-        MsgPreprocessor: vi.fn().mockImplementation(() => ({
-            preprocess: vi.fn(),
-        })),
     };
 });
 

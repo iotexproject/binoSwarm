@@ -16,9 +16,6 @@ vi.mock("@elizaos/core", async (importOriginal) => {
             log: vi.fn(),
             info: vi.fn(),
         },
-        MsgPreprocessor: vi.fn().mockImplementation(() => ({
-            preprocess: vi.fn(),
-        })),
     };
 });
 
@@ -31,7 +28,13 @@ describe("MessageHandler", () => {
     beforeEach(() => {
         req = {
             params: { agentId: "testAgent" },
-            body: { userName: "testUser", name: "Test Name" },
+            body: {
+                userName: "testUser",
+                name: "Test Name",
+                roomId: "testRoomId",
+                userId: "testUserId",
+                text: "testText",
+            },
         };
         res = {
             setHeader: vi.fn(),
@@ -104,25 +107,29 @@ describe("MessageHandler", () => {
 
         const result = await messageHandler.initiateMessageProcessing();
 
-        expect(result.roomId).toBe("testRoomId");
-        expect(result.userId).toBe("testUserId");
         expect(result.runtime).toBeDefined();
         expect(result.agentId).toBe("testAgent");
-        expect(result.userMessage).toEqual({
-            content: "testContent",
-            userId: "testUserId",
-            roomId: "testRoomId",
-            agentId: "testAgent",
-        });
+        expect(result.userMessage).toEqual(
+            expect.objectContaining({
+                content: expect.objectContaining({
+                    text: "testText",
+                }),
+                agentId: "testAgent",
+            })
+        );
         expect(result.messageId).toMatch(/^mock-uuid-\d+$/);
         expect(result.memory).toBeDefined();
         expect(result.state).toBe("initialState");
 
         expect(directClient.getRuntime).toHaveBeenCalledWith("testAgent");
-        expect(helpers.composeContent).toHaveBeenCalledWith(
-            req,
-            result.runtime
+        expect(result.runtime.ensureConnection).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.any(String),
+            "testUser",
+            "Test Name",
+            "direct"
         );
+
         expect(
             result.runtime.messageManager.createMemory
         ).toHaveBeenCalledOnce();

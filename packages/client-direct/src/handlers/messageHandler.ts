@@ -6,8 +6,6 @@ import {
     MsgPreprocessor,
 } from "@elizaos/core";
 import { DirectClient } from "../client";
-import { genRoomId, genUserId, composeContent } from "./helpers";
-import { UserMessage } from "../types";
 
 export class MessageHandler {
     private req: express.Request;
@@ -55,11 +53,12 @@ export class MessageHandler {
         const runtime = this.directClient.getRuntime(this.req.params.agentId);
         const msgPreprocessor = new MsgPreprocessor(runtime);
 
-        const roomId = genRoomId(this.req);
-        const userId = genUserId(this.req);
-        const agentId = runtime.agentId;
+        const messageId = stringToUuid(Date.now().toString());
 
-        await msgPreprocessor.preprocess({
+        const memory = await msgPreprocessor.preprocess({
+            rawMessageId: messageId,
+            text: this.req.body.text,
+            attachments: this.req.body.attachments,
             rawUserId: this.req.body.userId,
             rawRoomId: this.req.body.roomId,
             userName: this.req.body.userName,
@@ -67,36 +66,29 @@ export class MessageHandler {
             source: "direct",
         });
 
-        const content = await composeContent(this.req, runtime);
-        const userMessage: UserMessage = {
-            content,
-            userId,
-            roomId,
-            agentId,
-        };
-
-        const messageId = stringToUuid(Date.now().toString());
-        const memory: Memory = {
-            id: stringToUuid(messageId + "-" + userId),
-            ...userMessage,
-            createdAt: Date.now(),
-        };
-
-        await runtime.messageManager.createMemory({
-            memory,
-            isUnique: true,
-        });
-
-        const state = await runtime.composeState(userMessage, {
-            agentName: runtime.character.name,
-        });
+        const state = await runtime.composeState(
+            {
+                content: memory.content,
+                userId: memory.userId,
+                roomId: memory.roomId,
+                agentId: memory.agentId,
+            },
+            {
+                agentName: runtime.character.name,
+            }
+        );
 
         return {
-            roomId,
-            userId,
+            roomId: memory.roomId,
+            userId: memory.userId,
             runtime,
-            agentId,
-            userMessage,
+            agentId: memory.agentId,
+            userMessage: {
+                content: memory.content,
+                userId: memory.userId,
+                roomId: memory.roomId,
+                agentId: memory.agentId,
+            },
             messageId,
             memory,
             state,
