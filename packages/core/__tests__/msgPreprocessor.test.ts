@@ -1,8 +1,5 @@
 import { expect, beforeAll, vi } from "vitest";
-import {
-    MsgPreprocessor,
-    ReceivedMessage,
-} from "../src/MsgPreprocessor";
+import { MsgPreprocessor, ReceivedMessage } from "../src/MsgPreprocessor";
 import { IAgentRuntime, UUID } from "../src/types";
 import { stringToUuid } from "../src/uuid";
 
@@ -36,6 +33,8 @@ describe("MsgPreprocessor", () => {
             userName: "testUserName",
             userScreenName: "testUserScreenName",
             source: "discord",
+            createdAt: 1717000000000,
+            messageUrl: "https://discord.com/channels/1234567890/1234567890",
         };
     });
 
@@ -73,12 +72,13 @@ describe("MsgPreprocessor", () => {
         await msgPreprocessor.preprocess(receivedMessage);
         expect(runtime.messageManager.createMemory).toHaveBeenCalledWith({
             memory: {
-                id: "uuid-testMessageId-uuid-testUserId",
+                id: "uuid-testMessageId-test",
                 content: {
                     text: "testText",
                     attachments: [],
                     source: "discord",
                     inReplyTo: undefined,
+                    url: "https://discord.com/channels/1234567890/1234567890",
                 },
                 userId: "uuid-testUserId",
                 roomId: "uuid-testRoomId",
