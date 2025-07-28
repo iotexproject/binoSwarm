@@ -15,32 +15,32 @@ import {
 import * as elizaosCore from "@elizaos/core";
 const { elizaLogger } = elizaosCore;
 
-// Mock @elizaos/core
-vi.mock("@elizaos/core", () => ({
-    elizaLogger: {
-        info: vi.fn(),
-        error: vi.fn(),
-        debug: vi.fn(),
-        warn: vi.fn(),
-        log: vi.fn(),
-    },
-    getEmbeddingZeroVector: () => new Array(1536).fill(0),
-    stringToUuid: (str: string) => str,
-    generateMessageResponse: vi.fn(),
-    generateShouldRespond: vi.fn(),
-    composeContext: vi.fn(() => "mocked context"),
-    composeRandomUser: vi.fn(),
-    UUID: String,
-    InteractionLogger: {
-        logMessageReceived: vi.fn(),
-        logAgentResponse: vi.fn(),
-        logAgentScheduledPost: vi.fn(),
-        logAgentActionCalled: vi.fn(),
-    },
-    MsgPreprocessor: vi.fn().mockImplementation(() => ({
-        preprocess: vi.fn(),
-    })),
-}));
+vi.mock("@elizaos/core", async () => {
+    const actual = await vi.importActual("@elizaos/core");
+    return {
+        ...actual,
+        elizaLogger: {
+            info: vi.fn(),
+            error: vi.fn(),
+            debug: vi.fn(),
+            warn: vi.fn(),
+            log: vi.fn(),
+        },
+        getEmbeddingZeroVector: () => new Array(1536).fill(0),
+        stringToUuid: (str: string) => str,
+        generateMessageResponse: vi.fn(),
+        generateShouldRespond: vi.fn(),
+        composeContext: vi.fn(() => "mocked context"),
+        composeRandomUser: vi.fn(),
+        UUID: String,
+        InteractionLogger: {
+            logMessageReceived: vi.fn(),
+            logAgentResponse: vi.fn(),
+            logAgentScheduledPost: vi.fn(),
+            logAgentActionCalled: vi.fn(),
+        },
+    };
+});
 
 // Mock the VoiceManager
 vi.mock("../src/voice.ts", () => ({
@@ -250,6 +250,8 @@ describe("MessageManager", () => {
 
             await messageManager.handleMessage(message);
 
+            // Verify interaction with runtime
+            expect(mockRuntime.ensureConnection).toHaveBeenCalled();
             expect(mockRuntime.messageManager.createMemory).toHaveBeenCalled();
         });
 
@@ -323,6 +325,8 @@ describe("MessageManager", () => {
 
             await messageManager.handleMessage(message);
 
+            // Verify interaction with runtime
+            expect(mockRuntime.ensureConnection).toHaveBeenCalled();
             expect(
                 mockAttachmentManagerInstance.processAttachments
             ).toHaveBeenCalledWith(mockAttachmentCollection);
