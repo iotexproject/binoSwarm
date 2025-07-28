@@ -13,6 +13,7 @@ export interface ReceivedMessage {
     attachments: Media[];
     inReplyTo?: UUID;
     createdAt?: number;
+    messageUrl?: string;
 }
 
 export class MsgPreprocessor {
@@ -48,6 +49,7 @@ export class MsgPreprocessor {
             attachments: message.attachments,
             source: message.source,
             inReplyTo: message.inReplyTo,
+            url: message.messageUrl,
         };
 
         const userMessage = {
@@ -67,7 +69,7 @@ export class MsgPreprocessor {
     }
 
     private genMemoryId(messageId: string) {
-        return stringToUuid(messageId + "-" + this.userId);
+        return stringToUuid(messageId + "-" + this.runtime.agentId);
     }
 
     private genRoomId(roomId: string) {
