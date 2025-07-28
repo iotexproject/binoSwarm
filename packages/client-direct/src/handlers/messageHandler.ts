@@ -1,5 +1,10 @@
 import express from "express";
-import { stringToUuid, Memory, IAgentRuntime } from "@elizaos/core";
+import {
+    stringToUuid,
+    Memory,
+    IAgentRuntime,
+    MsgPreprocessor,
+} from "@elizaos/core";
 import { DirectClient } from "../client";
 import { genRoomId, genUserId, composeContent } from "./helpers";
 import { UserMessage } from "../types";
@@ -47,18 +52,20 @@ export class MessageHandler {
         memory: Memory;
         state: any; // Consider a more specific type if available
     }> {
+        const runtime = this.directClient.getRuntime(this.req.params.agentId);
+        const msgPreprocessor = new MsgPreprocessor(runtime);
+
         const roomId = genRoomId(this.req);
         const userId = genUserId(this.req);
-        const runtime = this.directClient.getRuntime(this.req.params.agentId);
         const agentId = runtime.agentId;
 
-        await runtime.ensureConnection(
-            userId,
-            roomId,
-            this.req.body.userName,
-            this.req.body.name,
-            "direct"
-        );
+        await msgPreprocessor.preprocess({
+            rawUserId: this.req.body.userId,
+            rawRoomId: this.req.body.roomId,
+            userName: this.req.body.userName,
+            userScreenName: this.req.body.name,
+            source: "direct",
+        });
 
         const content = await composeContent(this.req, runtime);
         const userMessage: UserMessage = {

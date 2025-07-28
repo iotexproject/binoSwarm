@@ -37,6 +37,9 @@ vi.mock("@elizaos/core", () => ({
         logAgentScheduledPost: vi.fn(),
         logAgentActionCalled: vi.fn(),
     },
+    MsgPreprocessor: vi.fn().mockImplementation(() => ({
+        preprocess: vi.fn(),
+    })),
 }));
 
 // Mock the VoiceManager
@@ -247,8 +250,6 @@ describe("MessageManager", () => {
 
             await messageManager.handleMessage(message);
 
-            // Verify interaction with runtime
-            expect(mockRuntime.ensureConnection).toHaveBeenCalled();
             expect(mockRuntime.messageManager.createMemory).toHaveBeenCalled();
         });
 
@@ -322,8 +323,6 @@ describe("MessageManager", () => {
 
             await messageManager.handleMessage(message);
 
-            // Verify the message was processed with the attachment
-            expect(mockRuntime.ensureConnection).toHaveBeenCalled();
             expect(
                 mockAttachmentManagerInstance.processAttachments
             ).toHaveBeenCalledWith(mockAttachmentCollection);

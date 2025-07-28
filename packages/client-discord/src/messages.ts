@@ -1,4 +1,8 @@
-import { composeContext, composeRandomUser } from "@elizaos/core";
+import {
+    composeContext,
+    composeRandomUser,
+    MsgPreprocessor,
+} from "@elizaos/core";
 import { generateMessageResponse, generateShouldRespond } from "@elizaos/core";
 import {
     Content,
@@ -84,16 +88,16 @@ export class MessageManager {
         if (shouldSkip) {
             return;
         }
+        const msgPreprocessor = new MsgPreprocessor(this.runtime);
+        await msgPreprocessor.preprocess({
+            rawUserId: userId,
+            rawRoomId: channelId + "-" + this.runtime.agentId,
+            userName,
+            userScreenName: name,
+            source: "discord",
+        });
 
         try {
-            await this.runtime.ensureConnection(
-                userIdUUID,
-                roomId,
-                userName,
-                name,
-                "discord"
-            );
-
             const content: Content = await this.buildContent(message);
             const memory: Memory = {
                 content,

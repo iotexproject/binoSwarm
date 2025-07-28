@@ -21,6 +21,9 @@ vi.mock("@elizaos/core", async () => {
         },
         stringToUuid: vi.fn().mockReturnValue("mock-uuid"),
         getEmbeddingZeroVector: vi.fn().mockReturnValue([]),
+        MsgPreprocessor: vi.fn().mockImplementation(() => ({
+            preprocess: vi.fn(),
+        })),
     };
 });
 

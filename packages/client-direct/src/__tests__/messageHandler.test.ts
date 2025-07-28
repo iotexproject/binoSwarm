@@ -16,6 +16,9 @@ vi.mock("@elizaos/core", async (importOriginal) => {
             log: vi.fn(),
             info: vi.fn(),
         },
+        MsgPreprocessor: vi.fn().mockImplementation(() => ({
+            preprocess: vi.fn(),
+        })),
     };
 });
 
@@ -116,13 +119,6 @@ describe("MessageHandler", () => {
         expect(result.state).toBe("initialState");
 
         expect(directClient.getRuntime).toHaveBeenCalledWith("testAgent");
-        expect(result.runtime.ensureConnection).toHaveBeenCalledWith(
-            "testUserId",
-            "testRoomId",
-            "testUser",
-            "Test Name",
-            "direct"
-        );
         expect(helpers.composeContent).toHaveBeenCalledWith(
             req,
             result.runtime
