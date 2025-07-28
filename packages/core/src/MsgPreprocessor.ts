@@ -45,7 +45,7 @@ export class MsgPreprocessor {
     private async buildMemory(message: ReceivedMessage): Promise<Memory> {
         const content: Content = {
             text: message.text,
-            attachments: message.attachments, // TODO: describe attachments
+            attachments: message.attachments,
             source: message.source,
             inReplyTo: message.inReplyTo,
         };

@@ -6,6 +6,7 @@ import {
     MsgPreprocessor,
 } from "@elizaos/core";
 import { DirectClient } from "../client";
+import { collectAndDescribeAttachments } from "./helpers";
 
 export class MessageHandler {
     private req: express.Request;
@@ -54,11 +55,15 @@ export class MessageHandler {
         const msgPreprocessor = new MsgPreprocessor(runtime);
 
         const messageId = stringToUuid(Date.now().toString());
+        const attachments = await collectAndDescribeAttachments(
+            this.req,
+            runtime
+        );
 
         const memory = await msgPreprocessor.preprocess({
             rawMessageId: messageId,
             text: this.req.body.text,
-            attachments: this.req.body.attachments,
+            attachments,
             rawUserId: this.req.body.userId,
             rawRoomId: this.req.body.roomId,
             userName: this.req.body.userName,

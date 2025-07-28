@@ -79,7 +79,7 @@ function extractTextFromRequest(req: express.Request) {
     return text;
 }
 
-async function collectAndDescribeAttachments(
+export async function collectAndDescribeAttachments(
     req: express.Request,
     runtime: IAgentRuntime
 ) {
