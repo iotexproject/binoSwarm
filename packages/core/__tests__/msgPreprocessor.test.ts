@@ -2,11 +2,11 @@ import { expect, beforeAll, vi } from "vitest";
 import {
     MsgPreprocessor,
     ReceivedMessage,
-} from "../src/clientHelpers/MsgPreprocessor";
+} from "../src/MsgPreprocessor";
 import { IAgentRuntime, UUID } from "../src/types";
-import { stringToUuid } from "@elizaos/core";
+import { stringToUuid } from "../src/uuid";
 
-vi.mock("@elizaos/core", () => ({
+vi.mock("../src/uuid", () => ({
     stringToUuid: vi.fn(),
 }));
 
@@ -22,9 +22,15 @@ describe("MsgPreprocessor", () => {
         runtime = {
             agentId: "test" as UUID,
             ensureConnection: vi.fn(),
+            messageManager: {
+                createMemory: vi.fn(),
+            },
         } as unknown as IAgentRuntime;
 
         receivedMessage = {
+            rawMessageId: "testMessageId",
+            text: "testText",
+            attachments: [],
             rawUserId: "testUserId",
             rawRoomId: "testRoomId",
             userName: "testUserName",
@@ -59,5 +65,27 @@ describe("MsgPreprocessor", () => {
     it("should generate a user id if not provided", () => {
         const msgPreprocessor = new MsgPreprocessor(runtime);
         expect(() => msgPreprocessor["genUserId"]("")).toThrow();
+    });
+
+    it("should create and save a memory", async () => {
+        const msgPreprocessor = new MsgPreprocessor(runtime);
+
+        await msgPreprocessor.preprocess(receivedMessage);
+        expect(runtime.messageManager.createMemory).toHaveBeenCalledWith({
+            memory: {
+                id: "uuid-testMessageId-uuid-testUserId",
+                content: {
+                    text: "testText",
+                    attachments: [],
+                    source: "discord",
+                    inReplyTo: undefined,
+                },
+                userId: "uuid-testUserId",
+                roomId: "uuid-testRoomId",
+                agentId: "test",
+                createdAt: expect.any(Number),
+            },
+            isUnique: true,
+        });
     });
 });
