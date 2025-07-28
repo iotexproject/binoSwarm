@@ -89,33 +89,40 @@ export class MessageManager {
             return;
         }
         const msgPreprocessor = new MsgPreprocessor(this.runtime);
-        await msgPreprocessor.preprocess({
-            rawUserId: userId,
-            rawRoomId: channelId + "-" + this.runtime.agentId,
-            userName,
-            userScreenName: name,
-            source: "discord",
-        });
 
         try {
-            const content: Content = await this.buildContent(message);
-            const memory: Memory = {
-                content,
-                userId: userIdUUID,
-                agentId: this.runtime.agentId,
-                roomId,
-                id: this.buildMemoryId(message),
+            const { processedContent, attachments } =
+                await this.processMessageMedia(message);
+            await this.processAudioAttachments(message, attachments);
+            
+            const memory = await msgPreprocessor.preprocess({
+                rawMessageId: message.id,
+                text: processedContent,
+                attachments: [],
+                rawUserId: userId,
+                rawRoomId: channelId + "-" + this.runtime.agentId,
+                userName,
+                userScreenName: name,
+                source: "discord",
+                inReplyTo: message.reference?.messageId
+                    ? stringToUuid(
+                          message.reference.messageId +
+                              "-" +
+                              this.runtime.agentId
+                      )
+                    : undefined,
+                messageUrl: message.url,
                 createdAt: message.createdTimestamp,
-            };
-
-            if (content.text) {
-                this.updateInterest(message, userIdUUID, userName, content);
+            });
+            if (memory.content.text) {
+                this.updateInterest(
+                    message,
+                    userIdUUID,
+                    userName,
+                    memory.content
+                );
             }
 
-            await this.runtime.messageManager.createMemory({
-                memory,
-                isUnique: true,
-            });
             let state = await this.runtime.composeState(memory, {
                 discordClient: this.client,
                 discordMessage: message,
@@ -363,25 +370,6 @@ export class MessageManager {
                     -MESSAGE_CONSTANTS.MAX_MESSAGES
                 );
         }
-    }
-
-    private async buildContent(message: DiscordMessage<boolean>) {
-        const { processedContent, attachments } =
-            await this.processMessageMedia(message);
-        await this.processAudioAttachments(message, attachments);
-
-        const content: Content = {
-            text: processedContent,
-            attachments,
-            source: "discord",
-            url: message.url,
-            inReplyTo: message.reference?.messageId
-                ? stringToUuid(
-                      message.reference.messageId + "-" + this.runtime.agentId
-                  )
-                : undefined,
-        };
-        return content;
     }
 
     private async processAudioAttachments(
