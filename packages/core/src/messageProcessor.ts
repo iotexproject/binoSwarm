@@ -48,16 +48,11 @@ export class MessageProcessor {
             message.source
         );
 
-        const memory = await this.buildMemory(message);
-        this.messageToProcess = memory;
+        this.messageToProcess = await this.buildMemory(message);
+        await this.saveMemory(this.messageToProcess);
+        this.state = await this.runtime.composeState(this.messageToProcess);
 
-        await this.runtime.messageManager.createMemory({
-            memory,
-            isUnique: true,
-        });
-        this.state = await this.runtime.composeState(memory);
-
-        return { memory, state: this.state };
+        return { memory: this.messageToProcess, state: this.state };
     }
 
     async generate(
@@ -65,6 +60,21 @@ export class MessageProcessor {
         tags: string[],
         callback: HandlerCallback
     ) {
+        const response = await this.genResponse(template, tags);
+        await callback(response);
+
+        const responseMessage = this.buildResponseMemory(response);
+        await this.saveMemory(responseMessage);
+        await this.refreshStateAfterResponse();
+
+        return response;
+    }
+
+    private async refreshStateAfterResponse() {
+        this.state = await this.runtime.updateRecentMessageState(this.state);
+    }
+
+    private async genResponse(template: TemplateType, tags: string[]) {
         const context = composeContext({
             state: this.state,
             template,
@@ -77,17 +87,14 @@ export class MessageProcessor {
             message: this.messageToProcess,
             tags,
         });
+        return response;
+    }
 
-        await callback(response);
-
-        const responseMessage = this.buildResponseMemory(response);
+    private async saveMemory(memory: Memory) {
         await this.runtime.messageManager.createMemory({
-            memory: responseMessage,
+            memory,
             isUnique: true,
         });
-        this.state = await this.runtime.updateRecentMessageState(this.state);
-
-        return response;
     }
 
     private buildResponseMemory(content: Content): Memory {
@@ -119,16 +126,12 @@ export class MessageProcessor {
         };
 
         const memory: Memory = {
-            id: this.genMemoryId(message.rawMessageId),
             ...userMessage,
+            id: stringToUuid(message.rawMessageId + "-" + this.runtime.agentId),
             createdAt: message.createdAt ?? Date.now(), // TODO: check if this is consistent across clients
         };
 
         return memory;
-    }
-
-    private genMemoryId(messageId: string) {
-        return stringToUuid(messageId + "-" + this.runtime.agentId);
     }
 
     private genRoomId(roomId: string) {
