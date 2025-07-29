@@ -101,7 +101,7 @@ export class MessageManager {
                   )
                 : undefined;
 
-            const { memory, state } = await msgPreprocessor.preprocess({
+            const { memory, state: initialState } = await msgPreprocessor.preprocess({
                 rawMessageId: message.id,
                 text: processedContent,
                 attachments: [],
@@ -114,6 +114,7 @@ export class MessageManager {
                 messageUrl: message.url,
                 createdAt: message.createdTimestamp,
             });
+            let state = initialState;
 
             if (memory.content.text) {
                 this.updateInterest(
