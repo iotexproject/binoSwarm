@@ -101,7 +101,7 @@ export class MessageManager {
                   )
                 : undefined;
 
-            const { memory, state: initialState } =
+            const { memory, state } =
                 await msgProcessor.preprocess({
                     rawMessageId: message.id,
                     text: processedContent,
@@ -115,7 +115,6 @@ export class MessageManager {
                     messageUrl: message.url,
                     createdAt: message.createdTimestamp,
                 });
-            let state = initialState;
 
             if (memory.content.text) {
                 this.updateInterest(
@@ -161,24 +160,6 @@ export class MessageManager {
             });
 
             if (shouldRespond) {
-                const stopTyping = this.simulateTyping(message);
-
-                const template =
-                    this.runtime.character.templates
-                        ?.discordMessageHandlerTemplate ||
-                    discordMessageHandlerTemplate;
-                const responseContent = await msgProcessor
-                    .respond(template, ["discord", "discord-response"])
-                    .finally(() => {
-                        stopTyping();
-                    });
-
-                responseContent.text = responseContent.text?.trim();
-                responseContent.inReplyTo = this.buildMemoryId(message);
-
-                if (!responseContent.text) {
-                    return;
-                }
                 const callback: HandlerCallback = async (
                     content: Content,
                     files: any[]
@@ -202,12 +183,6 @@ export class MessageManager {
                             roomId,
                             memories
                         );
-                        for (const m of memories) {
-                            await this.runtime.messageManager.createMemory({
-                                memory: m,
-                                isUnique: true,
-                            });
-                        }
                         return memories;
                     } catch (error) {
                         elizaLogger.error("Error sending message:", error);
@@ -215,17 +190,19 @@ export class MessageManager {
                     }
                 };
 
-                const responseMessages = await callback(responseContent);
-                state = await this.runtime.updateRecentMessageState(state);
-                await this.runtime.processActions(
-                    memory,
-                    responseMessages,
-                    state,
-                    callback,
-                    {
-                        tags: ["discord", "discord-message"],
-                    }
-                );
+                const stopTyping = this.simulateTyping(message);
+
+                const template =
+                    this.runtime.character.templates
+                        ?.discordMessageHandlerTemplate ||
+                    discordMessageHandlerTemplate;
+
+                const tags = ["discord", "discord-response"];
+                await msgProcessor
+                    .respond(template, tags, callback)
+                    .finally(() => {
+                        stopTyping();
+                    });
             }
             await this.runtime.evaluate(memory, state, shouldRespond);
         } catch (error) {
