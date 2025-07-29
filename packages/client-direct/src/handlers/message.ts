@@ -1,12 +1,6 @@
 import express from "express";
 
-import {
-    stringToUuid,
-    Content,
-    Memory,
-    InteractionLogger,
-    UUID,
-} from "@elizaos/core";
+import { Content, InteractionLogger, UUID } from "@elizaos/core";
 
 import { DirectClient } from "../client";
 import { stringifyContent } from "./helpers";
@@ -29,18 +23,8 @@ export async function handleMessage(
 }
 
 async function handle(res: express.Response, messageHandler: MessageHandler) {
-    const {
-        roomId,
-        userId,
-        runtime,
-        agentId,
-        userMessage,
-        messageId,
-        memory,
-        state: initialState,
-        msgProcessor,
-    } = await messageHandler.initiateMessageProcessing();
-    let state = initialState;
+    const { roomId, userId, runtime, agentId, memory, state, msgProcessor } =
+        await messageHandler.initiateMessageProcessing();
 
     InteractionLogger.logMessageReceived({
         client: "direct",
@@ -54,25 +38,17 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
         runtime.character.templates?.directMessageHandlerTemplate ||
         runtime.character.templates?.messageHandlerTemplate ||
         messageHandlerTemplate;
-    const response = await msgProcessor.respond(template, [
-        "direct",
-        "direct-response",
-    ]);
 
-    // Send initial response immediately
-    const responseData = {
-        id: messageId,
-        ...response,
+    const callback = async (content: Content) => {
+        if (content) {
+            const stringified = stringifyContent(userId, content);
+            res.write(`data: ${stringified}\n\n`);
+        }
+        return [];
     };
-    res.write(`data: ${JSON.stringify(responseData)}\n\n`);
 
-    const responseMessage: Memory = {
-        id: stringToUuid(messageId + "-" + agentId),
-        ...userMessage,
-        userId: agentId,
-        content: response,
-        createdAt: Date.now(),
-    };
+    const tags = ["direct", "direct-response"];
+    await msgProcessor.respond(template, tags, callback);
 
     InteractionLogger.logAgentResponse({
         client: "direct",
@@ -82,28 +58,6 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
         messageId: memory.id,
         status: "sent",
     });
-
-    await runtime.messageManager.createMemory({
-        memory: responseMessage,
-        isUnique: true,
-    });
-    state = await runtime.updateRecentMessageState(state);
-
-    await runtime.processActions(
-        memory,
-        [responseMessage],
-        state,
-        async (content: Content) => {
-            if (content) {
-                const stringified = stringifyContent(userId, content);
-                res.write(`data: ${stringified}\n\n`);
-            }
-            return [memory];
-        },
-        {
-            tags: ["direct-client", "direct-client-message"],
-        }
-    );
 
     await runtime.evaluate(memory, state);
     messageHandler.endStream();
