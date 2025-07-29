@@ -114,7 +114,7 @@ export class MessageManager {
                 messageUrl: message.url,
                 createdAt: message.createdTimestamp,
             });
-            
+
             if (memory.content.text) {
                 this.updateInterest(
                     message,
@@ -124,13 +124,7 @@ export class MessageManager {
                 );
             }
 
-            let state = await this.runtime.composeState(memory, {
-                discordClient: this.client,
-                discordMessage: message,
-                agentName:
-                    this.runtime.character.name ||
-                    this.client.user?.displayName,
-            });
+            let state = await this.runtime.composeState(memory);
 
             const hasPerms = this.hasPermissionsToSendMsg(message);
             if (!hasPerms) {

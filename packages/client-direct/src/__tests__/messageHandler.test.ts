@@ -136,8 +136,7 @@ describe("MessageHandler", () => {
         expect(result.runtime.composeState).toHaveBeenCalledWith(
             expect.objectContaining({
                 ...result.userMessage,
-            }),
-            { agentName: "TestAgentName" }
+            })
         );
     });
 });
