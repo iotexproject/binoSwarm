@@ -39,8 +39,9 @@ export class MsgPreprocessor {
             memory,
             isUnique: true,
         });
+        const state = await this.runtime.composeState(memory);
 
-        return memory;
+        return { memory, state };
     }
 
     private async buildMemory(message: ReceivedMessage): Promise<Memory> {

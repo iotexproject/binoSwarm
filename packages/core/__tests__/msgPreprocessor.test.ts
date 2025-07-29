@@ -1,6 +1,6 @@
 import { expect, beforeAll, vi } from "vitest";
 import { MsgPreprocessor, ReceivedMessage } from "../src/MsgPreprocessor";
-import { IAgentRuntime, UUID } from "../src/types";
+import { IAgentRuntime, State, UUID } from "../src/types";
 import { stringToUuid } from "../src/uuid";
 
 vi.mock("../src/uuid", () => ({
@@ -22,6 +22,7 @@ describe("MsgPreprocessor", () => {
             messageManager: {
                 createMemory: vi.fn(),
             },
+            composeState: vi.fn(),
         } as unknown as IAgentRuntime;
 
         receivedMessage = {
@@ -87,5 +88,14 @@ describe("MsgPreprocessor", () => {
             },
             isUnique: true,
         });
+    });
+
+    it("should compose state", async () => {
+        const msgPreprocessor = new MsgPreprocessor(runtime);
+        vi.mocked(runtime.composeState).mockResolvedValue({
+            state: "testState",
+        } as unknown as State);
+        const { memory } = await msgPreprocessor.preprocess(receivedMessage);
+        expect(runtime.composeState).toHaveBeenCalledWith(memory);
     });
 });
