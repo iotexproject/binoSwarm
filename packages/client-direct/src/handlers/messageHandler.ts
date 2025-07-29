@@ -60,7 +60,7 @@ export class MessageHandler {
             runtime
         );
 
-        const memory = await msgPreprocessor.preprocess({
+        const { memory, state } = await msgPreprocessor.preprocess({
             rawMessageId: messageId,
             text: this.req.body.text,
             attachments,
@@ -70,8 +70,6 @@ export class MessageHandler {
             userScreenName: this.req.body.name,
             source: "direct",
         });
-
-        const state = await runtime.composeState(memory);
 
         return {
             roomId: memory.roomId,

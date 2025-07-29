@@ -101,7 +101,7 @@ export class MessageManager {
                   )
                 : undefined;
 
-            const memory = await msgPreprocessor.preprocess({
+            const { memory, state } = await msgPreprocessor.preprocess({
                 rawMessageId: message.id,
                 text: processedContent,
                 attachments: [],
@@ -123,8 +123,6 @@ export class MessageManager {
                     memory.content
                 );
             }
-
-            let state = await this.runtime.composeState(memory);
 
             const hasPerms = this.hasPermissionsToSendMsg(message);
             if (!hasPerms) {
