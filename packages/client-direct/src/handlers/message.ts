@@ -48,7 +48,7 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
         messageId: memory.id,
     });
 
-    const { response } = await genResponse(runtime, state, memory);
+    const response = await genResponse(runtime, state, memory);
 
     // Send initial response immediately
     const responseData = {

@@ -51,7 +51,7 @@ export async function genResponse(
         tags: ["direct", "direct-response"],
     });
 
-    return { response, context };
+    return response;
 }
 
 export async function composeContent(
