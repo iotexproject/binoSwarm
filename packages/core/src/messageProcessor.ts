@@ -1,6 +1,16 @@
 import { stringToUuid } from "./uuid";
 
-import { Content, IAgentRuntime, Memory, Media, UUID } from "./types";
+import {
+    Content,
+    IAgentRuntime,
+    Memory,
+    Media,
+    UUID,
+    State,
+    ModelClass,
+} from "./types";
+import { composeContext } from "./context";
+import { generateMessageResponse } from "./generation";
 
 export interface ReceivedMessage {
     rawMessageId: string;
@@ -19,6 +29,8 @@ export interface ReceivedMessage {
 export class MessageProcessor {
     private roomId: UUID;
     private userId: UUID;
+    private state: State;
+    private messageToProcess: Memory;
 
     constructor(private readonly runtime: IAgentRuntime) {}
 
@@ -35,13 +47,32 @@ export class MessageProcessor {
         );
 
         const memory = await this.buildMemory(message);
+        this.messageToProcess = memory;
+
         await this.runtime.messageManager.createMemory({
             memory,
             isUnique: true,
         });
-        const state = await this.runtime.composeState(memory);
+        this.state = await this.runtime.composeState(memory);
 
-        return { memory, state };
+        return { memory, state: this.state };
+    }
+
+    async generate(template: string, tags: string[]) {
+        const context = composeContext({
+            state: this.state,
+            template,
+        });
+
+        const response = await generateMessageResponse({
+            runtime: this.runtime,
+            context,
+            modelClass: ModelClass.LARGE,
+            message: this.messageToProcess,
+            tags,
+        });
+
+        return response;
     }
 
     private async buildMemory(message: ReceivedMessage): Promise<Memory> {

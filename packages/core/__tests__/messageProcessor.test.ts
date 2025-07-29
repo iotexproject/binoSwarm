@@ -1,10 +1,20 @@
 import { expect, beforeAll, vi } from "vitest";
 import { MessageProcessor, ReceivedMessage } from "../src/messageProcessor";
-import { IAgentRuntime, State, UUID } from "../src/types";
+import { IAgentRuntime, ModelClass, State, UUID } from "../src/types";
 import { stringToUuid } from "../src/uuid";
+import { composeContext } from "../src/context";
+import { generateMessageResponse } from "../src/generation";
 
 vi.mock("../src/uuid", () => ({
     stringToUuid: vi.fn(),
+}));
+
+vi.mock("../src/context", () => ({
+    composeContext: vi.fn(),
+}));
+
+vi.mock("../src/generation", () => ({
+    generateMessageResponse: vi.fn(),
 }));
 
 vi.mocked(stringToUuid).mockImplementation(
@@ -14,15 +24,23 @@ vi.mocked(stringToUuid).mockImplementation(
 describe("MsgPreprocessor", () => {
     let runtime: IAgentRuntime;
     let receivedMessage: ReceivedMessage;
+    let mockState: State;
 
     beforeAll(() => {
+        mockState = {
+            agentId: "testAgentId",
+            agentName: "testAgentName",
+            bio: "testBio",
+            system: "testSystem",
+            lore: "testLore",
+        } as unknown as State;
         runtime = {
             agentId: "test" as UUID,
             ensureConnection: vi.fn(),
             messageManager: {
                 createMemory: vi.fn(),
             },
-            composeState: vi.fn(),
+            composeState: vi.fn().mockResolvedValue(mockState),
         } as unknown as IAgentRuntime;
 
         receivedMessage = {
@@ -92,10 +110,40 @@ describe("MsgPreprocessor", () => {
 
     it("should compose state", async () => {
         const msgPreprocessor = new MessageProcessor(runtime);
-        vi.mocked(runtime.composeState).mockResolvedValue({
-            state: "testState",
-        } as unknown as State);
         const { memory } = await msgPreprocessor.preprocess(receivedMessage);
         expect(runtime.composeState).toHaveBeenCalledWith(memory);
+    });
+
+    it("should composeContext and generate message response", async () => {
+        const msgPreprocessor = new MessageProcessor(runtime);
+        vi.mocked(composeContext).mockReturnValue("testContext");
+        vi.mocked(generateMessageResponse).mockResolvedValue({
+            text: "testResponse",
+        });
+        await msgPreprocessor.preprocess(receivedMessage);
+
+        const tags = ["discord", "discord-response"];
+        await msgPreprocessor.generate("testTemplate", tags);
+        expect(composeContext).toHaveBeenCalledWith({
+            state: mockState,
+            template: "testTemplate",
+        });
+
+        expect(generateMessageResponse).toHaveBeenCalledWith(
+            expect.objectContaining({
+                runtime,
+                context: "testContext",
+                modelClass: ModelClass.LARGE,
+                message: expect.objectContaining({
+                    id: "uuid-testMessageId-test",
+                    content: expect.objectContaining({
+                        text: receivedMessage.text,
+                        source: receivedMessage.source,
+                        url: receivedMessage.messageUrl,
+                    }),
+                }),
+                tags,
+            })
+        );
     });
 });
