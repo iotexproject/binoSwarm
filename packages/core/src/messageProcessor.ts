@@ -8,6 +8,7 @@ import {
     UUID,
     State,
     ModelClass,
+    TemplateType,
 } from "./types";
 import { composeContext } from "./context";
 import { generateMessageResponse } from "./generation";
@@ -58,7 +59,7 @@ export class MessageProcessor {
         return { memory, state: this.state };
     }
 
-    async generate(template: string, tags: string[]) {
+    async generate(template: TemplateType, tags: string[]) {
         const context = composeContext({
             state: this.state,
             template,
