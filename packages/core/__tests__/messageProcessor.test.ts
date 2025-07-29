@@ -1,6 +1,14 @@
-import { expect, beforeAll, vi } from "vitest";
+import { expect, beforeEach, afterEach, vi } from "vitest";
 import { MessageProcessor, ReceivedMessage } from "../src/messageProcessor";
-import { IAgentRuntime, ModelClass, State, UUID } from "../src/types";
+import {
+    Content,
+    HandlerCallback,
+    IAgentRuntime,
+    Memory,
+    ModelClass,
+    State,
+    UUID,
+} from "../src/types";
 import { stringToUuid } from "../src/uuid";
 import { composeContext } from "../src/context";
 import { generateMessageResponse } from "../src/generation";
@@ -25,8 +33,10 @@ describe("MsgPreprocessor", () => {
     let runtime: IAgentRuntime;
     let receivedMessage: ReceivedMessage;
     let mockState: State;
+    let tags: string[];
+    let callback: HandlerCallback;
 
-    beforeAll(() => {
+    beforeEach(() => {
         mockState = {
             agentId: "testAgentId",
             agentName: "testAgentName",
@@ -41,6 +51,7 @@ describe("MsgPreprocessor", () => {
                 createMemory: vi.fn(),
             },
             composeState: vi.fn().mockResolvedValue(mockState),
+            updateRecentMessageState: vi.fn().mockResolvedValue(mockState),
         } as unknown as IAgentRuntime;
 
         receivedMessage = {
@@ -55,6 +66,12 @@ describe("MsgPreprocessor", () => {
             createdAt: 1717000000000,
             messageUrl: "https://discord.com/channels/1234567890/1234567890",
         };
+        tags = ["direct", "direct-response"];
+        callback = vi.fn();
+    });
+
+    afterEach(() => {
+        vi.clearAllMocks();
     });
 
     it("should be initialized with runtime", () => {
@@ -121,9 +138,7 @@ describe("MsgPreprocessor", () => {
             text: "testResponse",
         });
         await msgPreprocessor.preprocess(receivedMessage);
-
-        const tags = ["discord", "discord-response"];
-        await msgPreprocessor.generate("testTemplate", tags);
+        await msgPreprocessor.generate("testTemplate", tags, callback);
         expect(composeContext).toHaveBeenCalledWith({
             state: mockState,
             template: "testTemplate",
@@ -143,6 +158,40 @@ describe("MsgPreprocessor", () => {
                     }),
                 }),
                 tags,
+            })
+        );
+    });
+
+    it("should send response to the user and save the memory", async () => {
+        const msgPreprocessor = new MessageProcessor(runtime);
+        vi.mocked(composeContext).mockReturnValue("testContext");
+        vi.mocked(generateMessageResponse).mockResolvedValue({
+            text: "testResponse",
+        });
+        vi.mocked(callback).mockImplementation(async (response: Content) => {
+            expect(response).toEqual({
+                text: "testResponse",
+            });
+            return [{} as Memory];
+        });
+        await msgPreprocessor.preprocess(receivedMessage);
+
+        vi.mocked(runtime.messageManager.createMemory).mockResolvedValue();
+
+        await msgPreprocessor.generate("testTemplate", tags, callback);
+
+        expect(callback).toHaveBeenCalledWith({
+            text: "testResponse",
+        });
+        expect(runtime.messageManager.createMemory).toHaveBeenCalledWith(
+            expect.objectContaining({
+                memory: expect.objectContaining({
+                    id: "uuid-uuid-testMessageId-test-test",
+                    content: {
+                        text: "testResponse",
+                    },
+                }),
+                isUnique: true,
             })
         );
     });

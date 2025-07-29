@@ -9,6 +9,7 @@ import {
     State,
     ModelClass,
     TemplateType,
+    HandlerCallback,
 } from "./types";
 import { composeContext } from "./context";
 import { generateMessageResponse } from "./generation";
@@ -59,7 +60,11 @@ export class MessageProcessor {
         return { memory, state: this.state };
     }
 
-    async generate(template: TemplateType, tags: string[]) {
+    async generate(
+        template: TemplateType,
+        tags: string[],
+        callback: HandlerCallback
+    ) {
         const context = composeContext({
             state: this.state,
             template,
@@ -73,7 +78,28 @@ export class MessageProcessor {
             tags,
         });
 
+        await callback(response);
+
+        const responseMessage = this.buildResponseMemory(response);
+        await this.runtime.messageManager.createMemory({
+            memory: responseMessage,
+            isUnique: true,
+        });
+        this.state = await this.runtime.updateRecentMessageState(this.state);
+
         return response;
+    }
+
+    private buildResponseMemory(content: Content): Memory {
+        return {
+            ...this.messageToProcess,
+            id: stringToUuid(
+                this.messageToProcess.id + "-" + this.runtime.agentId
+            ),
+            userId: this.runtime.agentId,
+            content,
+            createdAt: Date.now(),
+        };
     }
 
     private async buildMemory(message: ReceivedMessage): Promise<Memory> {
