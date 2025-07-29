@@ -94,7 +94,13 @@ export class MessageManager {
             const { processedContent, attachments } =
                 await this.processMessageMedia(message);
             await this.processAudioAttachments(message, attachments);
-            
+
+            const inReplyTo = message.reference?.messageId
+                ? stringToUuid(
+                      message.reference.messageId + "-" + this.runtime.agentId
+                  )
+                : undefined;
+
             const memory = await msgPreprocessor.preprocess({
                 rawMessageId: message.id,
                 text: processedContent,
@@ -104,16 +110,11 @@ export class MessageManager {
                 userName,
                 userScreenName: name,
                 source: "discord",
-                inReplyTo: message.reference?.messageId
-                    ? stringToUuid(
-                          message.reference.messageId +
-                              "-" +
-                              this.runtime.agentId
-                      )
-                    : undefined,
+                inReplyTo,
                 messageUrl: message.url,
                 createdAt: message.createdTimestamp,
             });
+            
             if (memory.content.text) {
                 this.updateInterest(
                     message,
