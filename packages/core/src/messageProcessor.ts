@@ -36,7 +36,10 @@ export class MessageProcessor {
 
     constructor(private readonly runtime: IAgentRuntime) {}
 
-    async preprocess(message: ReceivedMessage) {
+    async preprocess(message: ReceivedMessage): Promise<{
+        memory: Memory;
+        state: State;
+    }> {
         this.roomId = this.genRoomId(message.rawRoomId);
         this.userId = this.genUserId(message.rawUserId);
 
@@ -48,7 +51,7 @@ export class MessageProcessor {
             message.source
         );
 
-        this.messageToProcess = await this.buildMemory(message);
+        this.messageToProcess = this.buildMemory(message);
         await this.saveMemory(this.messageToProcess);
         this.state = await this.runtime.composeState(this.messageToProcess);
 
@@ -59,30 +62,35 @@ export class MessageProcessor {
         template: TemplateType,
         tags: string[],
         callback: HandlerCallback
-    ) {
+    ): Promise<void> {
         const response = await this.genResponse(template, tags);
-        await callback(response);
 
-        const responseMessage = this.buildResponseMemory(response);
-        await this.saveMemory(responseMessage);
+        const callbackWithMemorySaving = async (content: Content) => {
+            const memories = await callback(content);
+            await this.saveMemories(memories);
+            return memories;
+        };
+
+        const memories = await callbackWithMemorySaving(response);
         await this.refreshStateAfterResponse();
 
         await this.runtime.processActions(
             this.messageToProcess,
-            [responseMessage],
+            memories,
             this.state,
-            callback,
+            callbackWithMemorySaving,
             { tags }
         );
-
-        return response;
     }
 
-    private async refreshStateAfterResponse() {
+    private async refreshStateAfterResponse(): Promise<void> {
         this.state = await this.runtime.updateRecentMessageState(this.state);
     }
 
-    private async genResponse(template: TemplateType, tags: string[]) {
+    private async genResponse(
+        template: TemplateType,
+        tags: string[]
+    ): Promise<Content> {
         const context = composeContext({
             state: this.state,
             template,
@@ -95,29 +103,25 @@ export class MessageProcessor {
             message: this.messageToProcess,
             tags,
         });
+
+        response.inReplyTo = this.messageToProcess.id;
         return response;
     }
 
-    private async saveMemory(memory: Memory) {
+    private async saveMemories(memories: Memory[]): Promise<void> {
+        for (const memory of memories) {
+            await this.saveMemory(memory);
+        }
+    }
+
+    private async saveMemory(memory: Memory): Promise<void> {
         await this.runtime.messageManager.createMemory({
             memory,
             isUnique: true,
         });
     }
 
-    private buildResponseMemory(content: Content): Memory {
-        return {
-            ...this.messageToProcess,
-            id: stringToUuid(
-                this.messageToProcess.id + "-" + this.runtime.agentId
-            ),
-            userId: this.runtime.agentId,
-            content,
-            createdAt: Date.now(),
-        };
-    }
-
-    private async buildMemory(message: ReceivedMessage): Promise<Memory> {
+    private buildMemory(message: ReceivedMessage): Memory {
         const content: Content = {
             text: message.text,
             attachments: message.attachments,
@@ -142,14 +146,14 @@ export class MessageProcessor {
         return memory;
     }
 
-    private genRoomId(roomId: string) {
+    private genRoomId(roomId: string): UUID {
         if (!roomId) {
             throw new Error("Room id is required");
         }
         return stringToUuid(roomId);
     }
 
-    private genUserId(userId: string) {
+    private genUserId(userId: string): UUID {
         if (!userId) {
             throw new Error("User id is required");
         }

@@ -138,6 +138,9 @@ describe("MsgPreprocessor", () => {
         vi.mocked(generateMessageResponse).mockResolvedValue({
             text: "testResponse",
         });
+        vi.mocked(callback).mockImplementation(async () => {
+            return [{} as Memory];
+        });
         await msgPreprocessor.preprocess(receivedMessage);
         await msgPreprocessor.respond("testTemplate", tags, callback);
         expect(composeContext).toHaveBeenCalledWith({
@@ -169,11 +172,14 @@ describe("MsgPreprocessor", () => {
         vi.mocked(generateMessageResponse).mockResolvedValue({
             text: "testResponse",
         });
-        vi.mocked(callback).mockImplementation(async (response: Content) => {
-            expect(response).toEqual({
-                text: "testResponse",
-            });
-            return [{} as Memory];
+        vi.mocked(callback).mockImplementation(async (_response: Content) => {
+            return [
+                {
+                    ...msgPreprocessor["messageToProcess"],
+                    content: { text: "testResponse" },
+                    id: "uuid-uuid-testMessageId-test-test",
+                } as Memory,
+            ];
         });
         await msgPreprocessor.preprocess(receivedMessage);
 
@@ -183,6 +189,7 @@ describe("MsgPreprocessor", () => {
 
         expect(callback).toHaveBeenCalledWith({
             text: "testResponse",
+            inReplyTo: "uuid-testMessageId-test",
         });
         expect(runtime.messageManager.createMemory).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -204,9 +211,6 @@ describe("MsgPreprocessor", () => {
             text: "testResponse",
         });
         vi.mocked(callback).mockImplementation(async (response: Content) => {
-            expect(response).toEqual({
-                text: "testResponse",
-            });
             return [{} as Memory];
         });
         await msgPreprocessor.preprocess(receivedMessage);
@@ -226,9 +230,9 @@ describe("MsgPreprocessor", () => {
 
         expect(runtime.processActions).toHaveBeenCalledWith(
             memory,
-            [responseMessage],
+            [{}],
             state,
-            callback,
+            expect.any(Function),
             {
                 tags: ["direct", "direct-response"],
             }
