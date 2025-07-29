@@ -161,22 +161,16 @@ export class MessageManager {
             });
 
             if (shouldRespond) {
-                const context = composeContext({
-                    state,
-                    template:
-                        this.runtime.character.templates
-                            ?.discordMessageHandlerTemplate ||
-                        discordMessageHandlerTemplate,
-                });
-
-                // simulate discord typing while generating a response
                 const stopTyping = this.simulateTyping(message);
-
-                const responseContent = await this._generateResponse(
-                    memory,
-                    state,
-                    context
-                ).finally(() => {
+              
+                const template =
+                    this.runtime.character.templates
+                        ?.discordMessageHandlerTemplate ||
+                    discordMessageHandlerTemplate;
+                const responseContent = await msgProcessor.generate(template, [
+                    "discord",
+                    "discord-response",
+                ]).finally(() => {
                     stopTyping();
                 });
 
