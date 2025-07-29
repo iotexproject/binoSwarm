@@ -1,7 +1,7 @@
 import {
     composeContext,
     composeRandomUser,
-    MsgPreprocessor,
+    MessageProcessor,
 } from "@elizaos/core";
 import { generateMessageResponse, generateShouldRespond } from "@elizaos/core";
 import {
@@ -88,7 +88,7 @@ export class MessageManager {
         if (shouldSkip) {
             return;
         }
-        const msgPreprocessor = new MsgPreprocessor(this.runtime);
+        const msgProcessor = new MessageProcessor(this.runtime);
 
         try {
             const { processedContent, attachments } =
@@ -101,19 +101,20 @@ export class MessageManager {
                   )
                 : undefined;
 
-            const { memory, state: initialState } = await msgPreprocessor.preprocess({
-                rawMessageId: message.id,
-                text: processedContent,
-                attachments: [],
-                rawUserId: userId,
-                rawRoomId: channelId + "-" + this.runtime.agentId,
-                userName,
-                userScreenName: name,
-                source: "discord",
-                inReplyTo,
-                messageUrl: message.url,
-                createdAt: message.createdTimestamp,
-            });
+            const { memory, state: initialState } =
+                await msgProcessor.preprocess({
+                    rawMessageId: message.id,
+                    text: processedContent,
+                    attachments: [],
+                    rawUserId: userId,
+                    rawRoomId: channelId + "-" + this.runtime.agentId,
+                    userName,
+                    userScreenName: name,
+                    source: "discord",
+                    inReplyTo,
+                    messageUrl: message.url,
+                    createdAt: message.createdTimestamp,
+                });
             let state = initialState;
 
             if (memory.content.text) {

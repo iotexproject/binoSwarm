@@ -16,7 +16,7 @@ export interface ReceivedMessage {
     messageUrl?: string;
 }
 
-export class MsgPreprocessor {
+export class MessageProcessor {
     private roomId: UUID;
     private userId: UUID;
 

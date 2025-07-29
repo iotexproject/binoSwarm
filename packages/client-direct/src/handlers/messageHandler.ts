@@ -3,7 +3,7 @@ import {
     stringToUuid,
     Memory,
     IAgentRuntime,
-    MsgPreprocessor,
+    MessageProcessor,
 } from "@elizaos/core";
 import { DirectClient } from "../client";
 import { collectAndDescribeAttachments } from "./helpers";
@@ -52,7 +52,7 @@ export class MessageHandler {
         state: any; // Consider a more specific type if available
     }> {
         const runtime = this.directClient.getRuntime(this.req.params.agentId);
-        const msgPreprocessor = new MsgPreprocessor(runtime);
+        const msgProcessor = new MessageProcessor(runtime);
 
         const messageId = stringToUuid(Date.now().toString());
         const attachments = await collectAndDescribeAttachments(
@@ -60,7 +60,7 @@ export class MessageHandler {
             runtime
         );
 
-        const { memory, state } = await msgPreprocessor.preprocess({
+        const { memory, state } = await msgProcessor.preprocess({
             rawMessageId: messageId,
             text: this.req.body.text,
             attachments,
