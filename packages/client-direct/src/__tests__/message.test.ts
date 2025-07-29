@@ -35,7 +35,7 @@ vi.mock("@elizaos/core", async () => {
                 },
                 state: { agentId: "test-agent-id" },
             }),
-            generate: vi.fn().mockResolvedValue({
+            respond: vi.fn().mockResolvedValue({
                 text: "Test response",
                 action: null,
             }),

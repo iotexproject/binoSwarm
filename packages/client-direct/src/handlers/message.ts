@@ -54,7 +54,7 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
         runtime.character.templates?.directMessageHandlerTemplate ||
         runtime.character.templates?.messageHandlerTemplate ||
         messageHandlerTemplate;
-    const response = await msgProcessor.generate(template, [
+    const response = await msgProcessor.respond(template, [
         "direct",
         "direct-response",
     ]);

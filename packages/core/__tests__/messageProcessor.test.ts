@@ -138,7 +138,7 @@ describe("MsgPreprocessor", () => {
             text: "testResponse",
         });
         await msgPreprocessor.preprocess(receivedMessage);
-        await msgPreprocessor.generate("testTemplate", tags, callback);
+        await msgPreprocessor.respond("testTemplate", tags, callback);
         expect(composeContext).toHaveBeenCalledWith({
             state: mockState,
             template: "testTemplate",
@@ -178,7 +178,7 @@ describe("MsgPreprocessor", () => {
 
         vi.mocked(runtime.messageManager.createMemory).mockResolvedValue();
 
-        await msgPreprocessor.generate("testTemplate", tags, callback);
+        await msgPreprocessor.respond("testTemplate", tags, callback);
 
         expect(callback).toHaveBeenCalledWith({
             text: "testResponse",

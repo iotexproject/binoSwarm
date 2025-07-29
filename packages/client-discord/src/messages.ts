@@ -162,17 +162,16 @@ export class MessageManager {
 
             if (shouldRespond) {
                 const stopTyping = this.simulateTyping(message);
-              
+
                 const template =
                     this.runtime.character.templates
                         ?.discordMessageHandlerTemplate ||
                     discordMessageHandlerTemplate;
-                const responseContent = await msgProcessor.generate(template, [
-                    "discord",
-                    "discord-response",
-                ]).finally(() => {
-                    stopTyping();
-                });
+                const responseContent = await msgProcessor
+                    .respond(template, ["discord", "discord-response"])
+                    .finally(() => {
+                        stopTyping();
+                    });
 
                 responseContent.text = responseContent.text?.trim();
                 responseContent.inReplyTo = this.buildMemoryId(message);

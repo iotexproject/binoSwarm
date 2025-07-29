@@ -55,7 +55,7 @@ export class MessageProcessor {
         return { memory: this.messageToProcess, state: this.state };
     }
 
-    async generate(
+    async respond(
         template: TemplateType,
         tags: string[],
         callback: HandlerCallback
