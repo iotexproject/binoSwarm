@@ -166,7 +166,7 @@ export async function handle(
         return null;
     }
 
-    const { response } = await genResponse(
+    const response = await genResponse(
         runtime,
         state,
         memory,

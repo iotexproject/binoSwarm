@@ -56,6 +56,9 @@ describe("MCP Handler", () => {
                 text: "Test MCP message",
                 userId: "test-user",
                 roomId: "test-room",
+                userName: "test-username",
+                name: "Test User",
+                attachments: [],
             },
         };
 
@@ -337,8 +340,6 @@ describe("MCP Handler", () => {
                     content: expect.objectContaining({
                         text: "Test MCP message",
                     }),
-                    userId: "mock-uuid",
-                    roomId: "mock-uuid",
                 }),
                 expect.any(Object), // state
                 {}, // options

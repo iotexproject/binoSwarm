@@ -1,4 +1,8 @@
-import { composeContext, composeRandomUser } from "@elizaos/core";
+import {
+    composeContext,
+    composeRandomUser,
+    MessageProcessor,
+} from "@elizaos/core";
 import { generateMessageResponse, generateShouldRespond } from "@elizaos/core";
 import {
     Content,
@@ -84,41 +88,42 @@ export class MessageManager {
         if (shouldSkip) {
             return;
         }
+        const msgProcessor = new MessageProcessor(this.runtime);
 
         try {
-            await this.runtime.ensureConnection(
-                userIdUUID,
-                roomId,
-                userName,
-                name,
-                "discord"
-            );
+            const { processedContent, attachments } =
+                await this.processMessageMedia(message);
+            await this.processAudioAttachments(message, attachments);
 
-            const content: Content = await this.buildContent(message);
-            const memory: Memory = {
-                content,
-                userId: userIdUUID,
-                agentId: this.runtime.agentId,
-                roomId,
-                id: this.buildMemoryId(message),
-                createdAt: message.createdTimestamp,
-            };
+            const inReplyTo = message.reference?.messageId
+                ? stringToUuid(
+                      message.reference.messageId + "-" + this.runtime.agentId
+                  )
+                : undefined;
 
-            if (content.text) {
-                this.updateInterest(message, userIdUUID, userName, content);
+            const { memory, state } =
+                await msgProcessor.preprocess({
+                    rawMessageId: message.id,
+                    text: processedContent,
+                    attachments: [],
+                    rawUserId: userId,
+                    rawRoomId: channelId + "-" + this.runtime.agentId,
+                    userName,
+                    userScreenName: name,
+                    source: "discord",
+                    inReplyTo,
+                    messageUrl: message.url,
+                    createdAt: message.createdTimestamp,
+                });
+
+            if (memory.content.text) {
+                this.updateInterest(
+                    message,
+                    userIdUUID,
+                    userName,
+                    memory.content
+                );
             }
-
-            await this.runtime.messageManager.createMemory({
-                memory,
-                isUnique: true,
-            });
-            let state = await this.runtime.composeState(memory, {
-                discordClient: this.client,
-                discordMessage: message,
-                agentName:
-                    this.runtime.character.name ||
-                    this.client.user?.displayName,
-            });
 
             const hasPerms = this.hasPermissionsToSendMsg(message);
             if (!hasPerms) {
@@ -155,31 +160,6 @@ export class MessageManager {
             });
 
             if (shouldRespond) {
-                const context = composeContext({
-                    state,
-                    template:
-                        this.runtime.character.templates
-                            ?.discordMessageHandlerTemplate ||
-                        discordMessageHandlerTemplate,
-                });
-
-                // simulate discord typing while generating a response
-                const stopTyping = this.simulateTyping(message);
-
-                const responseContent = await this._generateResponse(
-                    memory,
-                    state,
-                    context
-                ).finally(() => {
-                    stopTyping();
-                });
-
-                responseContent.text = responseContent.text?.trim();
-                responseContent.inReplyTo = this.buildMemoryId(message);
-
-                if (!responseContent.text) {
-                    return;
-                }
                 const callback: HandlerCallback = async (
                     content: Content,
                     files: any[]
@@ -203,12 +183,6 @@ export class MessageManager {
                             roomId,
                             memories
                         );
-                        for (const m of memories) {
-                            await this.runtime.messageManager.createMemory({
-                                memory: m,
-                                isUnique: true,
-                            });
-                        }
                         return memories;
                     } catch (error) {
                         elizaLogger.error("Error sending message:", error);
@@ -216,17 +190,19 @@ export class MessageManager {
                     }
                 };
 
-                const responseMessages = await callback(responseContent);
-                state = await this.runtime.updateRecentMessageState(state);
-                await this.runtime.processActions(
-                    memory,
-                    responseMessages,
-                    state,
-                    callback,
-                    {
-                        tags: ["discord", "discord-message"],
-                    }
-                );
+                const stopTyping = this.simulateTyping(message);
+
+                const template =
+                    this.runtime.character.templates
+                        ?.discordMessageHandlerTemplate ||
+                    discordMessageHandlerTemplate;
+
+                const tags = ["discord", "discord-response"];
+                await msgProcessor
+                    .respond(template, tags, callback)
+                    .finally(() => {
+                        stopTyping();
+                    });
             }
             await this.runtime.evaluate(memory, state, shouldRespond);
         } catch (error) {
@@ -359,25 +335,6 @@ export class MessageManager {
                     -MESSAGE_CONSTANTS.MAX_MESSAGES
                 );
         }
-    }
-
-    private async buildContent(message: DiscordMessage<boolean>) {
-        const { processedContent, attachments } =
-            await this.processMessageMedia(message);
-        await this.processAudioAttachments(message, attachments);
-
-        const content: Content = {
-            text: processedContent,
-            attachments,
-            source: "discord",
-            url: message.url,
-            inReplyTo: message.reference?.messageId
-                ? stringToUuid(
-                      message.reference.messageId + "-" + this.runtime.agentId
-                  )
-                : undefined,
-        };
-        return content;
     }
 
     private async processAudioAttachments(

@@ -102,9 +102,6 @@ export class TwitterSearchClient {
 
             const response = responseContent;
 
-            elizaLogger.log(
-                `Bot would respond to tweet ${selectedTweet.id} with: ${response.text}`
-            );
             try {
                 const responseMessages = await twitterHandlerCallback(
                     this.client,
