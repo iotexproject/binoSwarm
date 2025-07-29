@@ -50,6 +50,7 @@ export class MessageHandler {
         messageId: string;
         memory: Memory;
         state: any; // Consider a more specific type if available
+        msgProcessor: MessageProcessor;
     }> {
         const runtime = this.directClient.getRuntime(this.req.params.agentId);
         const msgProcessor = new MessageProcessor(runtime);
@@ -85,6 +86,7 @@ export class MessageHandler {
             messageId,
             memory,
             state,
+            msgProcessor,
         };
     }
 }

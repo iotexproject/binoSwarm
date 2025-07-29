@@ -27,6 +27,19 @@ vi.mock("@elizaos/core", async () => {
         generateImage: vi.fn(),
         generateCaption: vi.fn(),
         getEmbeddingZeroVector: vi.fn().mockReturnValue([]),
+        MessageProcessor: vi.fn().mockImplementation(() => ({
+            preprocess: vi.fn().mockResolvedValue({
+                memory: {
+                    id: "test-message-id",
+                    content: { text: "Test message" },
+                },
+                state: { agentId: "test-agent-id" },
+            }),
+            generate: vi.fn().mockResolvedValue({
+                text: "Test response",
+                action: null,
+            }),
+        })),
     };
 });
 

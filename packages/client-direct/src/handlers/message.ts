@@ -9,8 +9,9 @@ import {
 } from "@elizaos/core";
 
 import { DirectClient } from "../client";
-import { genResponse, stringifyContent } from "./helpers";
+import { stringifyContent } from "./helpers";
 import { MessageHandler } from "./messageHandler";
+import { messageHandlerTemplate } from "../templates";
 
 export async function handleMessage(
     req: express.Request,
@@ -37,6 +38,7 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
         messageId,
         memory,
         state: initialState,
+        msgProcessor,
     } = await messageHandler.initiateMessageProcessing();
     let state = initialState;
 
@@ -48,7 +50,14 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
         messageId: memory.id,
     });
 
-    const response = await genResponse(runtime, state, memory);
+    const template =
+        runtime.character.templates?.directMessageHandlerTemplate ||
+        runtime.character.templates?.messageHandlerTemplate ||
+        messageHandlerTemplate;
+    const response = await msgProcessor.generate(template, [
+        "direct",
+        "direct-response",
+    ]);
 
     // Send initial response immediately
     const responseData = {
