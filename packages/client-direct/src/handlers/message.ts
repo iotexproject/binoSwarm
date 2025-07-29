@@ -1,6 +1,12 @@
 import express from "express";
 
-import { Content, InteractionLogger, UUID } from "@elizaos/core";
+import {
+    Content,
+    InteractionLogger,
+    Memory,
+    stringToUuid,
+    UUID,
+} from "@elizaos/core";
 
 import { DirectClient } from "../client";
 import { stringifyContent } from "./helpers";
@@ -44,7 +50,14 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
             const stringified = stringifyContent(userId, content);
             res.write(`data: ${stringified}\n\n`);
         }
-        return [];
+        const responseMessage: Memory = {
+            ...memory,
+            id: stringToUuid(memory.id + "-" + agentId),
+            content,
+            userId: agentId as UUID,
+            createdAt: Date.now(),
+        };
+        return [responseMessage];
     };
 
     const tags = ["direct", "direct-response"];
