@@ -67,6 +67,14 @@ export class MessageProcessor {
         await this.saveMemory(responseMessage);
         await this.refreshStateAfterResponse();
 
+        await this.runtime.processActions(
+            this.messageToProcess,
+            [responseMessage],
+            this.state,
+            callback,
+            { tags }
+        );
+
         return response;
     }
 

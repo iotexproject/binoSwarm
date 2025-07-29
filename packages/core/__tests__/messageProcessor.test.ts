@@ -52,6 +52,7 @@ describe("MsgPreprocessor", () => {
             },
             composeState: vi.fn().mockResolvedValue(mockState),
             updateRecentMessageState: vi.fn().mockResolvedValue(mockState),
+            processActions: vi.fn(),
         } as unknown as IAgentRuntime;
 
         receivedMessage = {
@@ -193,6 +194,44 @@ describe("MsgPreprocessor", () => {
                 }),
                 isUnique: true,
             })
+        );
+    });
+
+    it("should process actions", async () => {
+        const msgPreprocessor = new MessageProcessor(runtime);
+        vi.mocked(composeContext).mockReturnValue("testContext");
+        vi.mocked(generateMessageResponse).mockResolvedValue({
+            text: "testResponse",
+        });
+        vi.mocked(callback).mockImplementation(async (response: Content) => {
+            expect(response).toEqual({
+                text: "testResponse",
+            });
+            return [{} as Memory];
+        });
+        await msgPreprocessor.preprocess(receivedMessage);
+        await msgPreprocessor.respond("testTemplate", tags, callback);
+
+        const memory = msgPreprocessor["messageToProcess"];
+        const responseMessage = {
+            ...memory,
+            id: stringToUuid(memory.id + "-test"),
+            userId: runtime.agentId,
+            content: {
+                text: "testResponse",
+            },
+            createdAt: Date.now(),
+        };
+        const state = msgPreprocessor["state"];
+
+        expect(runtime.processActions).toHaveBeenCalledWith(
+            memory,
+            [responseMessage],
+            state,
+            callback,
+            {
+                tags: ["direct", "direct-response"],
+            }
         );
     });
 });
