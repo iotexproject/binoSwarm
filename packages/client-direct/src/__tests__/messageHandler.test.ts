@@ -134,7 +134,9 @@ describe("MessageHandler", () => {
             result.runtime.messageManager.createMemory
         ).toHaveBeenCalledOnce();
         expect(result.runtime.composeState).toHaveBeenCalledWith(
-            result.userMessage,
+            expect.objectContaining({
+                ...result.userMessage,
+            }),
             { agentName: "TestAgentName" }
         );
     });

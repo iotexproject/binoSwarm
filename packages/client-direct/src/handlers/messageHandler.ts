@@ -71,17 +71,9 @@ export class MessageHandler {
             source: "direct",
         });
 
-        const state = await runtime.composeState(
-            {
-                content: memory.content,
-                userId: memory.userId,
-                roomId: memory.roomId,
-                agentId: memory.agentId,
-            },
-            {
-                agentName: runtime.character.name,
-            }
-        );
+        const state = await runtime.composeState(memory, {
+            agentName: runtime.character.name,
+        });
 
         return {
             roomId: memory.roomId,
