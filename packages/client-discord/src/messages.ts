@@ -3,7 +3,7 @@ import {
     composeRandomUser,
     MessageProcessor,
 } from "@elizaos/core";
-import { generateMessageResponse, generateShouldRespond } from "@elizaos/core";
+import { generateShouldRespond } from "@elizaos/core";
 import {
     Content,
     HandlerCallback,
@@ -17,7 +17,6 @@ import {
     ServiceType,
     State,
     UUID,
-    InteractionLogger,
     cosineSimilarity,
 } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
@@ -82,8 +81,6 @@ export class MessageManager {
         const userIdUUID = stringToUuid(userId);
         const messageId = this.buildMemoryId(message);
 
-        this._logMessageReceived(userIdUUID, roomId, messageId);
-
         const shouldSkip = this.shouldSkip(message);
         if (shouldSkip) {
             return;
@@ -101,20 +98,19 @@ export class MessageManager {
                   )
                 : undefined;
 
-            const { memory, state } =
-                await msgProcessor.preprocess({
-                    rawMessageId: message.id,
-                    text: processedContent,
-                    attachments: [],
-                    rawUserId: userId,
-                    rawRoomId: channelId + "-" + this.runtime.agentId,
-                    userName,
-                    userScreenName: name,
-                    source: "discord",
-                    inReplyTo,
-                    messageUrl: message.url,
-                    createdAt: message.createdTimestamp,
-                });
+            const { memory, state } = await msgProcessor.preprocess({
+                rawMessageId: message.id,
+                text: processedContent,
+                attachments: [],
+                rawUserId: userId,
+                rawRoomId: channelId + "-" + this.runtime.agentId,
+                userName,
+                userScreenName: name,
+                source: "discord",
+                inReplyTo,
+                messageUrl: message.url,
+                createdAt: message.createdTimestamp,
+            });
 
             if (memory.content.text) {
                 this.updateInterest(
@@ -206,7 +202,6 @@ export class MessageManager {
             }
             await this.runtime.evaluate(memory, state, shouldRespond);
         } catch (error) {
-            this._logAgentResponse("error", userIdUUID, roomId, messageId);
             elizaLogger.error("Error handling message:", error);
             if (message.channel.type === ChannelType.GuildVoice) {
                 await this.handleErrorInVoiceChannel(userId);
@@ -827,52 +822,6 @@ export class MessageManager {
             );
             return false;
         }
-    }
-
-    private async _generateResponse(
-        message: Memory,
-        _state: State,
-        context: string
-    ): Promise<Content> {
-        const { userId, roomId } = message;
-
-        const response = await generateMessageResponse({
-            runtime: this.runtime,
-            context,
-            modelClass: ModelClass.LARGE,
-            message,
-            tags: ["discord", "discord-response"],
-        });
-
-        this._logAgentResponse("sent", userId, roomId, message.id);
-
-        return response;
-    }
-
-    private _logMessageReceived(userId: UUID, roomId: UUID, messageId: UUID) {
-        InteractionLogger.logMessageReceived({
-            client: "discord",
-            agentId: this.runtime.agentId,
-            userId,
-            roomId,
-            messageId,
-        });
-    }
-
-    private _logAgentResponse(
-        status: "sent" | "error" | "ignored",
-        userId: UUID,
-        roomId: UUID,
-        messageId: UUID
-    ) {
-        InteractionLogger.logAgentResponse({
-            client: "discord",
-            agentId: this.runtime.agentId,
-            userId,
-            roomId,
-            messageId,
-            status,
-        });
     }
 
     private simulateTyping(message: DiscordMessage) {
