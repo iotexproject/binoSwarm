@@ -2,7 +2,7 @@
 FROM node:23.3.0-slim AS builder
 
 # Install pnpm globally and necessary build tools
-RUN npm install -g pnpm@9.4.0 && \
+RUN npm install -g pnpm@10.14.0 && \
     apt-get update && apt-get install -y \
     git \
     python3 \
@@ -65,7 +65,7 @@ RUN pnpm prune --prod
 FROM node:23.3.0-slim
 
 # Install runtime dependencies including Playwright dependencies and FFmpeg
-RUN npm install -g pnpm@9.4.0 && \
+RUN npm install -g pnpm@10.14.0 && \
     apt-get update && \
     apt-get install -y \
     git \
