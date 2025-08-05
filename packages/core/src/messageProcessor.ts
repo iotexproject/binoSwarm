@@ -13,6 +13,7 @@ import {
 } from "./types";
 import { composeContext } from "./context";
 import { generateMessageResponse } from "./generation";
+import { InteractionLogger, AgentClient } from "./interactionLogger";
 
 export interface ReceivedMessage {
     rawMessageId: string;
@@ -20,7 +21,7 @@ export interface ReceivedMessage {
     userName: string;
     userScreenName: string;
     rawRoomId: string;
-    source: string;
+    source: AgentClient;
     text: string;
     attachments: Media[];
     inReplyTo?: UUID;
@@ -29,6 +30,7 @@ export interface ReceivedMessage {
 }
 
 export class MessageProcessor {
+    private receivedMessage: ReceivedMessage;
     private roomId: UUID;
     private userId: UUID;
     private state: State;
@@ -40,6 +42,7 @@ export class MessageProcessor {
         memory: Memory;
         state: State;
     }> {
+        this.receivedMessage = message;
         this.roomId = this.genRoomId(message.rawRoomId);
         this.userId = this.genUserId(message.rawUserId);
 
@@ -54,6 +57,8 @@ export class MessageProcessor {
         this.messageToProcess = this.buildMemory(message);
         await this.saveMemory(this.messageToProcess);
         this.state = await this.runtime.composeState(this.messageToProcess);
+
+        this.logMessageReceived();
 
         return { memory: this.messageToProcess, state: this.state };
     }
@@ -81,6 +86,16 @@ export class MessageProcessor {
             callbackWithMemorySaving,
             { tags }
         );
+    }
+
+    private logMessageReceived() {
+        InteractionLogger.logMessageReceived({
+            client: this.receivedMessage.source,
+            agentId: this.runtime.agentId,
+            userId: this.userId,
+            roomId: this.roomId,
+            messageId: this.messageToProcess.id,
+        });
     }
 
     private async refreshStateAfterResponse(): Promise<void> {
