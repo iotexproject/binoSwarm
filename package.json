@@ -16,7 +16,7 @@
         "release": "pnpm build && pnpm prettier && npx lerna publish --no-private --force-publish",
         "clean": "bash ./scripts/clean.sh",
         "docker": "pnpm docker:build && pnpm docker:run && pnpm docker:bash",
-        "test": "bash ./scripts/test.sh",
+        "test": "pnpm -r run test:coverage",
         "smokeTests": "bash ./scripts/smokeTests.sh"
     },
     "devDependencies": {
