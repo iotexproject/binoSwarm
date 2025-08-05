@@ -200,7 +200,6 @@ export class MessageManager {
                         stopTyping();
                     });
             }
-            await this.runtime.evaluate(memory, state, shouldRespond);
         } catch (error) {
             elizaLogger.error("Error handling message:", error);
             if (message.channel.type === ChannelType.GuildVoice) {

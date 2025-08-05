@@ -87,6 +87,7 @@ export class MessageProcessor {
                 callbackWithMemorySaving,
                 { tags }
             );
+            this.runtime.evaluate(this.messageToProcess, this.state);
             this.logAgentResponse("sent");
         } catch (error) {
             this.logAgentResponse("error");

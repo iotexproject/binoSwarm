@@ -53,6 +53,7 @@ describe("MsgPreprocessor", () => {
             composeState: vi.fn().mockResolvedValue(mockState),
             updateRecentMessageState: vi.fn().mockResolvedValue(mockState),
             processActions: vi.fn(),
+            evaluate: vi.fn(),
         } as unknown as IAgentRuntime;
 
         receivedMessage = {

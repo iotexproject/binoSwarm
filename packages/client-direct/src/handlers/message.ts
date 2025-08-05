@@ -23,7 +23,7 @@ export async function handleMessage(
 }
 
 async function handle(res: express.Response, messageHandler: MessageHandler) {
-    const { userId, runtime, agentId, memory, state, msgProcessor } =
+    const { userId, runtime, agentId, memory, msgProcessor } =
         await messageHandler.initiateMessageProcessing();
 
     const template =
@@ -49,6 +49,5 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
     const tags = ["direct", "direct-response"];
     await msgProcessor.respond(template, tags, callback);
 
-    await runtime.evaluate(memory, state);
     messageHandler.endStream();
 }
