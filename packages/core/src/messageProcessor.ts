@@ -68,24 +68,30 @@ export class MessageProcessor {
         tags: string[],
         callback: HandlerCallback
     ): Promise<void> {
-        const response = await this.genResponse(template, tags);
+        try {
+            const response = await this.genResponse(template, tags);
 
-        const callbackWithMemorySaving = async (content: Content) => {
-            const memories = await callback(content);
-            await this.saveMemories(memories);
-            return memories;
-        };
+            const callbackWithMemorySaving = async (content: Content) => {
+                const memories = await callback(content);
+                await this.saveMemories(memories);
+                return memories;
+            };
 
-        const memories = await callbackWithMemorySaving(response);
-        await this.refreshStateAfterResponse();
+            const memories = await callbackWithMemorySaving(response);
+            await this.refreshStateAfterResponse();
 
-        await this.runtime.processActions(
-            this.messageToProcess,
-            memories,
-            this.state,
-            callbackWithMemorySaving,
-            { tags }
-        );
+            await this.runtime.processActions(
+                this.messageToProcess,
+                memories,
+                this.state,
+                callbackWithMemorySaving,
+                { tags }
+            );
+            this.logAgentResponse("sent");
+        } catch (error) {
+            this.logAgentResponse("error");
+            throw error;
+        }
     }
 
     private logMessageReceived() {
@@ -95,6 +101,17 @@ export class MessageProcessor {
             userId: this.userId,
             roomId: this.roomId,
             messageId: this.messageToProcess.id,
+        });
+    }
+
+    private logAgentResponse(status: "sent" | "error" | "ignored") {
+        InteractionLogger.logAgentResponse({
+            client: this.receivedMessage.source,
+            agentId: this.runtime.agentId,
+            userId: this.userId,
+            roomId: this.roomId,
+            messageId: this.messageToProcess.id,
+            status,
         });
     }
 
