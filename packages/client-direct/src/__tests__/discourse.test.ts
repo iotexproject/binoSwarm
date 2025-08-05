@@ -462,11 +462,8 @@ describe("Discourse Webhook Handler", () => {
             mockGetEnvVariable.mockReturnValue(testSecret);
             // Mock genResponse to return a test response
             vi.mocked(genResponse).mockResolvedValue({
-                response: {
-                    text: "Test response from agent",
-                    action: "CONTINUE",
-                },
-                context: "test context",
+                text: "Test response from agent",
+                action: "CONTINUE",
             });
             // Mock generateShouldRespond to return RESPOND by default
             vi.mocked(_generateShouldRespond).mockResolvedValue("RESPOND");
@@ -1466,11 +1463,8 @@ describe("DiscourseMsgHandler", () => {
 
             // Mock genResponse to return a test response
             vi.mocked(genResponse).mockResolvedValue({
-                response: {
-                    text: "Test response from agent",
-                    action: "CONTINUE",
-                },
-                context: "test context",
+                text: "Test response from agent",
+                action: "CONTINUE",
             });
 
             // Mock generateShouldRespond to return RESPOND by default
@@ -1792,8 +1786,8 @@ describe("DiscourseMsgHandler", () => {
             vi.mocked(_composeContext).mockReturnValue("mock context");
             vi.mocked(_composeRandomUser).mockReturnValue("mock template");
             vi.mocked(genResponse).mockResolvedValue({
-                response: { text: "Test response", action: "CONTINUE" },
-                context: "test context",
+                text: "Test response",
+                action: "CONTINUE",
             });
             // Ensure InteractionLogger works correctly
             vi.mocked(_InteractionLogger.logMessageReceived).mockImplementation(

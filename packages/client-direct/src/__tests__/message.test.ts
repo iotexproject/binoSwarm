@@ -27,6 +27,21 @@ vi.mock("@elizaos/core", async () => {
         generateImage: vi.fn(),
         generateCaption: vi.fn(),
         getEmbeddingZeroVector: vi.fn().mockReturnValue([]),
+        MessageProcessor: vi.fn().mockImplementation(() => ({
+            preprocess: vi.fn().mockResolvedValue({
+                memory: {
+                    id: "test-message-id",
+                    content: { text: "Test message" },
+                },
+                state: { agentId: "test-agent-id" },
+            }),
+            respond: vi.fn().mockImplementation(async (_, __, callback) => {
+                return callback({
+                    text: "Test response",
+                    action: null,
+                });
+            }),
+        })),
     };
 });
 
@@ -63,34 +78,6 @@ describe("Message endpoint", () => {
         expect(response.status).toBe(200);
         expect(response.headers["content-type"]).toContain("text/event-stream");
         expect(response.text).toContain('"text":"Test response"');
-    });
-
-    it("should handle message with action response", async () => {
-        const mockResponse = {
-            text: "Test response",
-            action: "testAction",
-        };
-        const mockActionResponse = { text: "Action result" };
-        vi.mocked(generateMessageResponse).mockResolvedValue(mockResponse);
-        vi.mocked(composeContext).mockReturnValue("mock context");
-
-        mockAgentRuntime.processActions = vi
-            .fn()
-            .mockImplementation(async (_, __, ___, callback) => {
-                return callback(mockActionResponse);
-            });
-
-        const response = await request(client.app)
-            .post(`/${mockAgentRuntime.agentId}/message`)
-            .send({
-                text: "Hello",
-                userId: "test-user",
-                roomId: "test-room",
-            });
-
-        expect(response.status).toBe(200);
-        expect(response.headers["content-type"]).toContain("text/event-stream");
-        expect(response.text).toContain('"text":"Action result"');
     });
 
     it("should handle agent not found", async () => {

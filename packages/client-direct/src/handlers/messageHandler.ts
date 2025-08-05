@@ -1,8 +1,12 @@
 import express from "express";
-import { stringToUuid, Memory, IAgentRuntime } from "@elizaos/core";
+import {
+    stringToUuid,
+    Memory,
+    IAgentRuntime,
+    MessageProcessor,
+} from "@elizaos/core";
 import { DirectClient } from "../client";
-import { genRoomId, genUserId, composeContent } from "./helpers";
-import { UserMessage } from "../types";
+import { collectAndDescribeAttachments } from "./helpers";
 
 export class MessageHandler {
     private req: express.Request;
@@ -46,53 +50,43 @@ export class MessageHandler {
         messageId: string;
         memory: Memory;
         state: any; // Consider a more specific type if available
+        msgProcessor: MessageProcessor;
     }> {
-        const roomId = genRoomId(this.req);
-        const userId = genUserId(this.req);
         const runtime = this.directClient.getRuntime(this.req.params.agentId);
-        const agentId = runtime.agentId;
-
-        await runtime.ensureConnection(
-            userId,
-            roomId,
-            this.req.body.userName,
-            this.req.body.name,
-            "direct"
-        );
-
-        const content = await composeContent(this.req, runtime);
-        const userMessage: UserMessage = {
-            content,
-            userId,
-            roomId,
-            agentId,
-        };
+        const msgProcessor = new MessageProcessor(runtime);
 
         const messageId = stringToUuid(Date.now().toString());
-        const memory: Memory = {
-            id: stringToUuid(messageId + "-" + userId),
-            ...userMessage,
-            createdAt: Date.now(),
-        };
+        const attachments = await collectAndDescribeAttachments(
+            this.req,
+            runtime
+        );
 
-        await runtime.messageManager.createMemory({
-            memory,
-            isUnique: true,
-        });
-
-        const state = await runtime.composeState(userMessage, {
-            agentName: runtime.character.name,
+        const { memory, state } = await msgProcessor.preprocess({
+            rawMessageId: messageId,
+            text: this.req.body.text,
+            attachments,
+            rawUserId: this.req.body.userId,
+            rawRoomId: this.req.body.roomId,
+            userName: this.req.body.userName,
+            userScreenName: this.req.body.name,
+            source: "direct",
         });
 
         return {
-            roomId,
-            userId,
+            roomId: memory.roomId,
+            userId: memory.userId,
             runtime,
-            agentId,
-            userMessage,
+            agentId: memory.agentId,
+            userMessage: {
+                content: memory.content,
+                userId: memory.userId,
+                roomId: memory.roomId,
+                agentId: memory.agentId,
+            },
             messageId,
             memory,
             state,
+            msgProcessor,
         };
     }
 }
