@@ -1,12 +1,6 @@
 import express from "express";
 
-import {
-    Content,
-    InteractionLogger,
-    Memory,
-    stringToUuid,
-    UUID,
-} from "@elizaos/core";
+import { Content, Memory, stringToUuid, UUID } from "@elizaos/core";
 
 import { DirectClient } from "../client";
 import { stringifyContent } from "./helpers";
@@ -29,16 +23,8 @@ export async function handleMessage(
 }
 
 async function handle(res: express.Response, messageHandler: MessageHandler) {
-    const { roomId, userId, runtime, agentId, memory, state, msgProcessor } =
+    const { userId, runtime, agentId, memory, state, msgProcessor } =
         await messageHandler.initiateMessageProcessing();
-
-    InteractionLogger.logMessageReceived({
-        client: "direct",
-        agentId: agentId as UUID,
-        userId: userId as UUID,
-        roomId: roomId as UUID,
-        messageId: memory.id,
-    });
 
     const template =
         runtime.character.templates?.directMessageHandlerTemplate ||
@@ -62,15 +48,6 @@ async function handle(res: express.Response, messageHandler: MessageHandler) {
 
     const tags = ["direct", "direct-response"];
     await msgProcessor.respond(template, tags, callback);
-
-    InteractionLogger.logAgentResponse({
-        client: "direct",
-        agentId: agentId as UUID,
-        userId: userId as UUID,
-        roomId: roomId as UUID,
-        messageId: memory.id,
-        status: "sent",
-    });
 
     await runtime.evaluate(memory, state);
     messageHandler.endStream();
