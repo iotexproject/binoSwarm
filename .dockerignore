@@ -27,3 +27,6 @@ build
 scripts/cleaned_tweets.json
 scripts/responses.json
 scripts/tweets.json
+
+# Ignore env files
+.env.*
