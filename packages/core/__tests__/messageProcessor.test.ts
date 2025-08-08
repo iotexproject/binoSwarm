@@ -188,10 +188,13 @@ describe("MsgPreprocessor", () => {
 
         await msgPreprocessor.respond("testTemplate", tags, callback);
 
-        expect(callback).toHaveBeenCalledWith({
-            text: "testResponse",
-            inReplyTo: "uuid-testMessageId-test",
-        });
+        expect(callback).toHaveBeenCalledWith(
+            {
+                text: "testResponse",
+                inReplyTo: "uuid-testMessageId-test",
+            },
+            []
+        );
         expect(runtime.messageManager.createMemory).toHaveBeenCalledWith(
             expect.objectContaining({
                 memory: expect.objectContaining({
