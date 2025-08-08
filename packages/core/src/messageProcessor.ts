@@ -71,13 +71,16 @@ export class MessageProcessor {
         try {
             const response = await this.genResponse(template, tags);
 
-            const callbackWithMemorySaving = async (content: Content) => {
-                const memories = await callback(content);
+            const callbackWithMemorySaving = async (
+                content: Content,
+                files: any[]
+            ) => {
+                const memories = await callback(content, files);
                 await this.saveMemories(memories);
                 return memories;
             };
 
-            const memories = await callbackWithMemorySaving(response);
+            const memories = await callbackWithMemorySaving(response, []);
             await this.refreshStateAfterResponse();
 
             await this.runtime.processActions(
