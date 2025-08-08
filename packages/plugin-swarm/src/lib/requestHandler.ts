@@ -36,6 +36,13 @@ export async function callAgent(
         },
         body: JSON.stringify({
             text: message,
+            // internal room id between agents, collaborator agent will track questions
+            // from all agents in this room
+            roomId: url,
+            // user id is not important, and shouldn't be constant for the agent since the
+            // questions are coming from different users and clients
+            // Keeping changing based on timestamp is enough
+            userId: Date.now().toString(),
         }),
     });
 
