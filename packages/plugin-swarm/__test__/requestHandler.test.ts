@@ -89,6 +89,10 @@ describe("callAgent", () => {
         const agentUrl = "https://test-agent.com";
         const message = "Hello, agent!";
 
+        // mock Date.now() to return a fixed timestamp
+        const originalDateNow = Date.now;
+        Date.now = vi.fn().mockReturnValue(1717756800000); // 2024-06-01T00:00:00Z
+
         await callAgent(agentUrl, message, onDataMock);
 
         expect(mockFetchWithPayment).toHaveBeenCalledWith(
@@ -100,6 +104,8 @@ describe("callAgent", () => {
                 },
                 body: JSON.stringify({
                     text: message,
+                    roomId: agentUrl + "/message-paid",
+                    userId: Date.now().toString(),
                 }),
             }
         );
@@ -111,6 +117,8 @@ describe("callAgent", () => {
             "response:",
             mockResponse
         );
+
+        Date.now = originalDateNow;
     });
 
     it("should throw error when EVM_PRIVATE_KEY is not set", async () => {
