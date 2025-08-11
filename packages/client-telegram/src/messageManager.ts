@@ -444,18 +444,8 @@ export class MessageManager {
             messageId,
         });
 
-        if (
-            this.runtime.character.clientConfig?.telegram
-                ?.shouldIgnoreBotMessages &&
-            ctx.from.is_bot
-        ) {
-            return;
-        }
-        if (
-            this.runtime.character.clientConfig?.telegram
-                ?.shouldIgnoreDirectMessages &&
-            ctx.chat?.type === "private"
-        ) {
+        const shouldSkip = this.isOutOfScope(ctx);
+        if (shouldSkip) {
             return;
         }
 
@@ -645,6 +635,25 @@ export class MessageManager {
                 status: "error",
             });
         }
+    }
+
+    private isOutOfScope(ctx) {
+        let shouldSkip = false;
+        if (
+            this.runtime.character.clientConfig?.telegram
+                ?.shouldIgnoreBotMessages &&
+            ctx.from.is_bot
+        ) {
+            shouldSkip = true;
+        }
+        if (
+            this.runtime.character.clientConfig?.telegram
+                ?.shouldIgnoreDirectMessages &&
+            ctx.chat?.type === "private"
+        ) {
+            shouldSkip = true;
+        }
+        return shouldSkip;
     }
 
     private initializeCommands(): void {
