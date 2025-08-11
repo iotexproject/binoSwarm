@@ -120,28 +120,18 @@ export class MessageWall {
     }
 
     private isInterestedButShort(message: Message, messageContent: string) {
+        if (!this.interestChannels[message.channelId]) {
+            return false;
+        }
         return (
-            this.interestChannels[message.channelId] &&
-            messageContent.length < MESSAGE_LENGTH_THRESHOLDS.VERY_SHORT_MESSAGE
+            messageContent.length <=
+            MESSAGE_LENGTH_THRESHOLDS.VERY_SHORT_MESSAGE
         );
     }
 
     private isAskedToStop(messageContent: string) {
-        const characterName = this.runtime.character.name;
-        const targetedPhrases = [
-            characterName + " stop responding",
-            characterName + " stop talking",
-            characterName + " shut up",
-            characterName + " stfu",
-            "stop talking" + characterName,
-            characterName + " stop talking",
-            "shut up " + characterName,
-            characterName + " shut up",
-            "stfu " + characterName,
-            characterName + " stfu",
-            "chill" + characterName,
-            characterName + " chill",
-        ];
+        const characterName = this.runtime.character.name.toLowerCase();
+        const targetedPhrases = genTargetPhrases(characterName);
 
         return targetedPhrases.some((phrase) =>
             messageContent.includes(phrase)
@@ -186,4 +176,10 @@ export class MessageWall {
         );
         return messageContent;
     }
+}
+function genTargetPhrases(characterName: string) {
+    const phrases = LOSE_INTEREST_WORDS.map((word) => {
+        return [characterName + " " + word, word + " " + characterName];
+    });
+    return phrases.flat();
 }
