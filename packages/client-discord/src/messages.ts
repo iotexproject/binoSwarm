@@ -1,10 +1,8 @@
 import {
+    generateShouldRespond,
     composeContext,
     composeRandomUser,
     MessageProcessor,
-} from "@elizaos/core";
-import { generateShouldRespond } from "@elizaos/core";
-import {
     Content,
     HandlerCallback,
     IAgentRuntime,
@@ -18,43 +16,26 @@ import {
     State,
     UUID,
     cosineSimilarity,
+    MessageWall,
+    InterestChannels,
+    stringToUuid,
+    elizaLogger,
 } from "@elizaos/core";
-import { stringToUuid } from "@elizaos/core";
 import {
     ChannelType,
     Client,
     Message as DiscordMessage,
     TextChannel,
 } from "discord.js";
-import { elizaLogger } from "@elizaos/core";
+
 import { AttachmentManager } from "./attachments.ts";
 import { VoiceManager } from "./voice.ts";
 import {
     discordShouldRespondTemplate,
     discordMessageHandlerTemplate,
 } from "./templates.ts";
-import {
-    IGNORE_RESPONSE_WORDS,
-    LOSE_INTEREST_WORDS,
-    MESSAGE_CONSTANTS,
-    MESSAGE_LENGTH_THRESHOLDS,
-} from "./constants";
+import { MESSAGE_CONSTANTS } from "./constants";
 import { sendMessageInChunks, canSendMessage } from "./utils.ts";
-
-interface MessageContext {
-    content: string;
-    timestamp: number;
-}
-
-export type InterestChannels = {
-    [key: string]: {
-        currentHandler: string | undefined;
-        lastMessageSent: number;
-        messages: { userId: UUID; userName: string; content: Content }[];
-        previousContext?: MessageContext;
-        contextSimilarityThreshold?: number;
-    };
-};
 
 export class MessageManager {
     private client: Client;
@@ -62,12 +43,19 @@ export class MessageManager {
     private attachmentManager: AttachmentManager;
     private interestChannels: InterestChannels = {};
     private voiceManager: VoiceManager;
+    private messageWall: MessageWall;
 
     constructor(discordClient: any, voiceManager: VoiceManager) {
         this.client = discordClient.client;
         this.voiceManager = voiceManager;
         this.runtime = discordClient.runtime;
         this.attachmentManager = new AttachmentManager(this.runtime);
+        this.messageWall = new MessageWall(
+            this.runtime,
+            this.interestChannels,
+            this.client.user?.username.toLowerCase(),
+            `<@!?${this.client.user?.id}>`
+        );
     }
 
     async handleMessage(message: DiscordMessage) {
@@ -81,7 +69,7 @@ export class MessageManager {
         const userIdUUID = stringToUuid(userId);
         const messageId = this.buildMemoryId(message);
 
-        const shouldSkip = this.shouldSkip(message);
+        const shouldSkip = this.isOutOfScope(message);
         if (shouldSkip) {
             return;
         }
@@ -126,7 +114,7 @@ export class MessageManager {
                 return;
             }
 
-            const shouldIgnore = this.shouldIgnore(message);
+            const shouldIgnore = this.messageWall.isDismissive(message);
             if (shouldIgnore) {
                 return;
             }
@@ -350,7 +338,7 @@ export class MessageManager {
         }
     }
 
-    private shouldSkip(message: DiscordMessage<boolean>) {
+    private isOutOfScope(message: DiscordMessage<boolean>) {
         const config = this.runtime.character.clientConfig?.discord;
         const isInteraction = message.interaction;
         const isMyself = message.author.id === this.client.user?.id;
@@ -523,7 +511,7 @@ export class MessageManager {
 
     private async _analyzeContextSimilarity(
         currentMessage: string,
-        previousContext?: MessageContext,
+        previousContext?: InterestChannels[string]["previousContext"],
         agentLastMessage?: string
     ): Promise<number> {
         if (!previousContext) return 1; // No previous context to compare against
@@ -622,117 +610,6 @@ export class MessageManager {
         }
 
         return true;
-    }
-
-    private shouldIgnore(message: DiscordMessage): boolean {
-        const messageContent = this.normalizeMessageContent(message);
-
-        const isShort = this.isShortWithLoseInterestWords(messageContent);
-        const isTargeted = this.isAskedToStop(messageContent);
-        if (isShort || isTargeted) {
-            delete this.interestChannels[message.channelId];
-            return true;
-        }
-
-        const isShortNoInterest = this.isNoInterestAndShort(
-            messageContent,
-            message
-        );
-        const isShortWithInterest = this.isInterestedButShort(
-            message,
-            messageContent
-        );
-        const isIgnoreResponse = this.isWithIgnoreWords(message);
-        if (isShortNoInterest || isShortWithInterest || isIgnoreResponse) {
-            return true;
-        }
-
-        return false;
-    }
-
-    private isWithIgnoreWords(message: DiscordMessage<boolean>) {
-        return (
-            message.content.length <
-                MESSAGE_LENGTH_THRESHOLDS.IGNORE_RESPONSE &&
-            IGNORE_RESPONSE_WORDS.some((word) =>
-                message.content.toLowerCase().includes(word)
-            )
-        );
-    }
-
-    private isInterestedButShort(
-        message: DiscordMessage<boolean>,
-        messageContent: string
-    ) {
-        return (
-            this.interestChannels[message.channelId] &&
-            messageContent.length < MESSAGE_LENGTH_THRESHOLDS.VERY_SHORT_MESSAGE
-        );
-    }
-
-    private isAskedToStop(messageContent: string) {
-        const targetedPhrases = [
-            this.runtime.character.name + " stop responding",
-            this.runtime.character.name + " stop talking",
-            this.runtime.character.name + " shut up",
-            this.runtime.character.name + " stfu",
-            "stop talking" + this.runtime.character.name,
-            this.runtime.character.name + " stop talking",
-            "shut up " + this.runtime.character.name,
-            this.runtime.character.name + " shut up",
-            "stfu " + this.runtime.character.name,
-            this.runtime.character.name + " stfu",
-            "chill" + this.runtime.character.name,
-            this.runtime.character.name + " chill",
-        ];
-
-        return targetedPhrases.some((phrase) =>
-            messageContent.includes(phrase)
-        );
-    }
-
-    private isNoInterestAndShort(
-        messageContent: string,
-        message: DiscordMessage<boolean>
-    ) {
-        const isShort =
-            messageContent.length < MESSAGE_LENGTH_THRESHOLDS.SHORT_MESSAGE &&
-            !this.interestChannels[message.channelId];
-        return isShort;
-    }
-
-    private isShortWithLoseInterestWords(messageContent: string) {
-        return (
-            messageContent.length < MESSAGE_LENGTH_THRESHOLDS.LOSE_INTEREST &&
-            LOSE_INTEREST_WORDS.some((word) => messageContent.includes(word))
-        );
-    }
-
-    private normalizeMessageContent(message: DiscordMessage<boolean>): string {
-        let messageContent = message.content.toLowerCase();
-
-        messageContent = this.replaceBotIdWithCharacterName(messageContent);
-        messageContent = this.replaceBotUserNameWithName(messageContent);
-        messageContent = messageContent.replace(/[^a-zA-Z0-9\s]/g, "");
-        return messageContent;
-    }
-
-    private replaceBotUserNameWithName(messageContent: string) {
-        const botUsername = this.client.user?.username.toLowerCase();
-        messageContent = messageContent.replace(
-            new RegExp(`\\b${botUsername}\\b`, "g"),
-            this.runtime.character.name.toLowerCase()
-        );
-        return messageContent;
-    }
-
-    private replaceBotIdWithCharacterName(messageContent: string) {
-        const botMention = `<@!?${this.client.user?.id}>`;
-        messageContent = messageContent.replace(
-            new RegExp(botMention, "gi"),
-            this.runtime.character.name.toLowerCase()
-        );
-        return messageContent;
     }
 
     private async shouldRespond(
