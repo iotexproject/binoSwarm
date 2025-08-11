@@ -8,47 +8,7 @@ export const MESSAGE_CONSTANTS = {
     DEFAULT_SIMILARITY_THRESHOLD_FOLLOW_UPS: 0.2,
 } as const;
 
-export const MESSAGE_LENGTH_THRESHOLDS = {
-    LOSE_INTEREST: 100,
-    SHORT_MESSAGE: 10,
-    VERY_SHORT_MESSAGE: 2,
-    IGNORE_RESPONSE: 4,
-} as const;
 
-export const LOSE_INTEREST_WORDS = [
-    "shut up",
-    "stop",
-    "please shut up",
-    "shut up please",
-    "dont talk",
-    "silence",
-    "stop talking",
-    "be quiet",
-    "hush",
-    "wtf",
-    "chill",
-    "stfu",
-    "stupid bot",
-    "dumb bot",
-    "stop responding",
-    "god damn it",
-    "god damn",
-    "goddamnit",
-    "can you not",
-    "can you stop",
-    "be quiet",
-    "hate you",
-    "hate this",
-    "fuck up",
-] as const;
 
-export const IGNORE_RESPONSE_WORDS = [
-    "lol",
-    "nm",
-    "uh",
-    "wtf",
-    "stfu",
-    "dumb",
-    "jfc",
-    "omg",
-] as const;
+
+
