@@ -9,6 +9,14 @@ import { Message } from "@telegraf/types";
 vi.mock("telegraf", () => {
     return {
         Telegraf: vi.fn().mockImplementation(() => ({
+            __handlers: {} as Record<string, Function>,
+            command: vi.fn(function (
+                this: any,
+                cmd: string,
+                handler: Function
+            ) {
+                this.__handlers[cmd] = handler;
+            }),
             telegram: {
                 sendMessage: vi
                     .fn()
@@ -198,6 +206,313 @@ describe("MessageManager", () => {
 
             await (messageManager as any).sendAnimation(ctx, "/bad/path.gif");
             expect(mockBot.telegram.sendAnimation).toHaveBeenCalled();
+        });
+    });
+
+    describe("_analyzeContextSimilarity (lines 65-81)", () => {
+        it("returns 1 when previousContext is missing (line 69)", async () => {
+            const res = await (messageManager as any)._analyzeContextSimilarity(
+                "now",
+                undefined,
+                undefined
+            );
+            expect(res).toBe(1);
+        });
+
+        it("computes similarity * timeWeight (approximately)", async () => {
+            const spy = vi
+                .spyOn(Core as any, "cosineSimilarity")
+                .mockReturnValue(0.8);
+            const ts = Date.now();
+            const res = await (messageManager as any)._analyzeContextSimilarity(
+                "Current",
+                { content: "Previous", timestamp: ts },
+                "AgentLast"
+            );
+            expect(res).toBeLessThanOrEqual(0.8);
+            expect(res).toBeGreaterThan(0.6);
+            spy.mockRestore();
+        });
+    });
+
+    describe("processImage document and error paths (lines 190-210)", () => {
+        it("describes image from document mime (lines 190-197)", async () => {
+            (mockBot as any).botInfo = { id: 2, username: "bot" };
+            const docMsg = {
+                document: { file_id: "doc123", mime_type: "image/png" },
+            } as unknown as Message;
+            const imageService = {
+                describeImage: vi
+                    .fn()
+                    .mockResolvedValue({ title: "T", description: "D" }),
+            };
+            (mockRuntime as any).getService = vi
+                .fn()
+                .mockReturnValue(imageService);
+
+            const res = await (messageManager as any).processImage(docMsg);
+            expect(res).toEqual({ description: "[Image: T\nD]" });
+            expect(mockBot.telegram.getFileLink).toHaveBeenCalledWith("doc123");
+        });
+
+        it("returns null on error (lines 208-210)", async () => {
+            (mockBot.telegram.getFileLink as any).mockRejectedValueOnce(
+                new Error("boom")
+            );
+            const msg = {
+                photo: [{ file_id: "x" }],
+            } as unknown as Message;
+
+            const res = await (messageManager as any).processImage(msg);
+            expect(res).toBeNull();
+        });
+    });
+
+    describe("_shouldRespond branches (lines 215-285)", () => {
+        const baseState = {} as any;
+        const baseMemory = {
+            id: "m1",
+            content: { text: "t" },
+        } as any;
+
+        beforeEach(() => {
+            (mockRuntime as any).agentId = "agent-SR";
+            (mockRuntime as any).character = {
+                clientConfig: { telegram: {} },
+                templates: {},
+            };
+        });
+
+        it("delegates to _isMessageForMe when mentions-only is true (lines 221-225)", async () => {
+            (
+                mockRuntime as any
+            ).character.clientConfig.telegram.shouldRespondOnlyToMentions =
+                true;
+            vi.spyOn(messageManager as any, "_isMessageForMe").mockReturnValue(
+                true
+            );
+            const message = { chat: { type: "group" }, text: "x" } as any;
+            const res = await (messageManager as any)._shouldRespond(
+                message,
+                baseState,
+                baseMemory
+            );
+            expect(res).toBe(true);
+        });
+
+        it("returns true when bot is mentioned (lines 228-234)", async () => {
+            (mockBot as any).botInfo = { username: "botu" };
+            const message = {
+                chat: { type: "group" },
+                text: "hello @botu",
+            } as any;
+            const res = await (messageManager as any)._shouldRespond(
+                message,
+                baseState,
+                baseMemory
+            );
+            expect(res).toBe(true);
+        });
+
+        it("returns true for private chat (lines 236-239)", async () => {
+            const message = { chat: { type: "private" } } as any;
+            const res = await (messageManager as any)._shouldRespond(
+                message,
+                baseState,
+                baseMemory
+            );
+            expect(res).toBe(true);
+        });
+
+        it("returns false for images in group chats (lines 241-248)", async () => {
+            const photoMsg = {
+                chat: { type: "group" },
+                photo: [{ file_id: "p" }],
+            } as any;
+            const res1 = await (messageManager as any)._shouldRespond(
+                photoMsg,
+                baseState,
+                baseMemory
+            );
+            expect(res1).toBe(false);
+
+            const docMsg = {
+                chat: { type: "group" },
+                document: { mime_type: "image/jpeg" },
+            } as any;
+            const res2 = await (messageManager as any)._shouldRespond(
+                docMsg,
+                baseState,
+                baseMemory
+            );
+            expect(res2).toBe(false);
+        });
+
+        it("checks chatState currentHandler context and returns false when context says no (lines 253-260)", async () => {
+            const chatId = 321;
+            const message = {
+                chat: { id: chatId, type: "group" },
+                text: "x",
+            } as any;
+            (messageManager as any).interestChats[chatId.toString()] = {
+                currentHandler: "123", // different from bot id initially
+            };
+            // set bot id to match, to enter branch
+            (mockBot as any).botInfo = { id: 123, username: "u" };
+            vi.spyOn(
+                messageManager as any,
+                "_shouldRespondBasedOnContext"
+            ).mockResolvedValue(false);
+
+            const res = await (messageManager as any)._shouldRespond(
+                message,
+                baseState,
+                baseMemory
+            );
+            expect(res).toBe(false);
+        });
+
+        it("AI decision path returns RESPOND and DO_NOT_RESPOND (lines 264-284)", async () => {
+            const message = {
+                chat: { id: 7, type: "group" },
+                text: "x",
+            } as any;
+            vi.spyOn(
+                messageManager as any,
+                "_shouldRespondBasedOnContext"
+            ).mockResolvedValue(true);
+            (messageManager as any).interestChats["7"] = {
+                currentHandler: (mockBot as any).botInfo?.id?.toString?.(),
+            } as any;
+
+            const shouldRespondSpy = vi
+                .spyOn(Core as any, "generateShouldRespond")
+                .mockResolvedValueOnce("RESPOND")
+                .mockResolvedValueOnce("DO_NOT_RESPOND");
+
+            const res1 = await (messageManager as any)._shouldRespond(
+                message,
+                baseState,
+                baseMemory
+            );
+            const res2 = await (messageManager as any)._shouldRespond(
+                message,
+                baseState,
+                baseMemory
+            );
+            expect(res1).toBe(true);
+            expect(res2).toBe(false);
+            shouldRespondSpy.mockRestore();
+        });
+    });
+
+    describe("sendMessageInChunks with attachments (lines 293-308)", () => {
+        it("routes gif to sendAnimation and images to sendImage", async () => {
+            const ctx = {
+                telegram: mockBot.telegram,
+                chat: { id: CHAT_ID },
+            } as any;
+            const animSpy = vi
+                .spyOn(messageManager as any, "sendAnimation")
+                .mockResolvedValue(undefined);
+            const imgSpy = vi
+                .spyOn(messageManager as any, "sendImage")
+                .mockResolvedValue(undefined);
+            const content = {
+                text: "ignored",
+                attachments: [
+                    { contentType: "image/gif", url: "u1", description: "d1" },
+                    { contentType: "image/png", url: "u2", description: "d2" },
+                ],
+            } as any;
+
+            await (messageManager as any).sendMessageInChunks(ctx, content);
+            expect(animSpy).toHaveBeenCalledWith(ctx, "u1", "d1");
+            expect(imgSpy).toHaveBeenCalledWith(ctx, "u2", "d2");
+        });
+    });
+
+    describe("file-not-found branches in sendImage/sendAnimation (lines 348-349, 384-385)", () => {
+        it("sendImage logs error when file missing", async () => {
+            const existsSpy = (await import("fs")).default.existsSync as any;
+            existsSpy.mockReturnValueOnce(false);
+            const ctx = {
+                telegram: mockBot.telegram,
+                chat: { id: CHAT_ID },
+            } as any;
+            await (messageManager as any).sendImage(ctx, "/no/such.jpg");
+            expect(mockBot.telegram.sendPhoto).not.toHaveBeenCalledWith(
+                CHAT_ID,
+                expect.anything(),
+                expect.anything()
+            );
+        });
+
+        it("sendAnimation logs error when file missing", async () => {
+            const existsSpy = (await import("fs")).default.existsSync as any;
+            existsSpy.mockReturnValueOnce(false);
+            const ctx = {
+                telegram: mockBot.telegram,
+                chat: { id: CHAT_ID },
+            } as any;
+            await (messageManager as any).sendAnimation(ctx, "/no/such.gif");
+            expect(mockBot.telegram.sendAnimation).not.toHaveBeenCalledWith(
+                CHAT_ID,
+                expect.anything(),
+                expect.anything()
+            );
+        });
+    });
+
+    describe("isOutOfScope (lines 640-657)", () => {
+        it("ignores direct messages when configured (lines 650-655)", () => {
+            (mockRuntime as any).character = {
+                clientConfig: {
+                    telegram: { shouldIgnoreDirectMessages: true },
+                },
+            } as any;
+            const ctx = {
+                chat: { type: "private" },
+                from: { is_bot: false },
+            } as any;
+            const res = (messageManager as any).isOutOfScope(ctx);
+            expect(res).toBe(true);
+        });
+    });
+
+    describe("initializeCommands and start command (lines 659-683)", () => {
+        it("catches errors during initializeCommands (lines 664-666)", () => {
+            const badBot = new (Telegraf as any)("t");
+            badBot.command = vi.fn(() => {
+                throw new Error("cmd fail");
+            });
+            // Should not throw
+            new MessageManager(badBot, mockRuntime);
+        });
+
+        it("handleStartCommand sends welcome in private chat (lines 670-679)", async () => {
+            (mockBot as any).botInfo = { username: "welcomebot" };
+            const ctx = {
+                chat: { type: "private" },
+                sendMessage: vi.fn().mockResolvedValue(undefined),
+                botInfo: (mockBot as any).botInfo,
+            } as any;
+            await (messageManager as any).handleStartCommand(ctx);
+            expect(ctx.sendMessage).toHaveBeenCalledWith(
+                "Welcome to " +
+                    "welcomebot" +
+                    "! Let's the DePIN revolution begin!"
+            );
+        });
+
+        it("handleStartCommand catches error (lines 680-682)", async () => {
+            const ctx = {
+                chat: { type: "private" },
+                sendMessage: vi.fn().mockRejectedValue(new Error("send fail")),
+                botInfo: { username: "x" },
+            } as any;
+            await (messageManager as any).handleStartCommand(ctx);
+            expect(ctx.sendMessage).toHaveBeenCalled();
         });
     });
 
@@ -919,6 +1234,66 @@ describe("MessageManager", () => {
             )._shouldRespondBasedOnContext(message, chatState);
             expect(res).toBe(false);
         });
+
+        it("uses runtime messageSimilarityThreshold when chatState threshold is absent (line 137)", async () => {
+            (mockRuntime as any).character = {
+                clientConfig: { telegram: { messageSimilarityThreshold: 0.7 } },
+                templates: {},
+            };
+            const message = {
+                chat: { id: CHAT_ID, type: "group" },
+                text: "current message",
+            } as unknown as Message;
+
+            const chatState: any = {
+                currentHandler: (mockBot as any).botInfo.id.toString(),
+                messages: [
+                    { userId: "u3", content: { text: "current message" } },
+                    { userId: "u4", content: { text: "previous message" } },
+                ],
+            };
+
+            vi.spyOn(messageManager as any, "_isMessageForMe").mockReturnValue(
+                false
+            );
+            vi.spyOn(
+                messageManager as any,
+                "_analyzeContextSimilarity"
+            ).mockResolvedValue(0.71);
+
+            const res = await (
+                messageManager as any
+            )._shouldRespondBasedOnContext(message, chatState);
+            expect(res).toBe(true);
+        });
+
+        it("accepts caption as message text source (lines 88-92)", async () => {
+            const message = {
+                chat: { id: CHAT_ID, type: "group" },
+                caption: "caption content",
+            } as unknown as Message;
+
+            const chatState: any = {
+                currentHandler: (mockBot as any).botInfo.id.toString(),
+                messages: [
+                    { userId: "u3", content: { text: "caption content" } },
+                    { userId: "u4", content: { text: "previous" } },
+                ],
+            };
+
+            vi.spyOn(messageManager as any, "_isMessageForMe").mockReturnValue(
+                false
+            );
+            vi.spyOn(
+                messageManager as any,
+                "_analyzeContextSimilarity"
+            ).mockResolvedValue(1);
+
+            const res = await (
+                messageManager as any
+            )._shouldRespondBasedOnContext(message, chatState);
+            expect(res).toBe(true);
+        });
     });
 
     describe("_isMessageForMe (lines 147-175)", () => {
@@ -971,6 +1346,16 @@ describe("MessageManager", () => {
             const message = {
                 chat: { id: CHAT_ID, type: "group" },
                 text: "hello @testbot",
+            } as unknown as Message;
+
+            const res = (messageManager as any)._isMessageForMe(message);
+            expect(res).toBe(true);
+        });
+
+        it("treats caption as message text for mention detection (lines 151-155, 161)", () => {
+            const message = {
+                chat: { id: CHAT_ID, type: "group" },
+                caption: "hello @testbot",
             } as unknown as Message;
 
             const res = (messageManager as any)._isMessageForMe(message);
