@@ -17,5 +17,18 @@ describe("Telegram Utils", () => {
         it("should handle empty string", () => {
             expect(escapeMarkdown("")).toBe("");
         });
+
+        it("should not escape when the entire text is a fenced code block", () => {
+            const input = "```\n*bold* _italic_ `code`\n```";
+            expect(escapeMarkdown(input)).toBe(input);
+        });
+
+        it("should preserve embedded fenced code blocks and escape outside text", () => {
+            const input =
+                "Hello ```\n*bold* _italic_ `code`\n``` World *star* _under_ `code`";
+            const expected =
+                "Hello ```\n*bold* _italic_ `code`\n``` World \\*star\\* \\_under\\_ \\`code\\`";
+            expect(escapeMarkdown(input)).toBe(expected);
+        });
     });
 });
