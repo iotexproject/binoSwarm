@@ -5,6 +5,7 @@ import {
     elizaLogger,
     ServiceType,
     composeRandomUser,
+    MessageProcessor,
 } from "@elizaos/core";
 import {
     Content,
@@ -59,6 +60,154 @@ export class MessageManager {
         this.bot = bot;
         this.runtime = runtime;
         this.initializeCommands();
+    }
+
+    public async handleMessage(ctx: Context): Promise<void> {
+        const shouldSkip = this.isOutOfScope(ctx);
+        if (shouldSkip) {
+            return;
+        }
+        const userId = ctx.from.id.toString();
+        const userIdUUID = stringToUuid(userId);
+
+        const { username, first_name } = ctx.from;
+        const userName = username || first_name || "Unknown User";
+
+        const chatId = ctx.chat?.id.toString();
+        const roomId = stringToUuid(chatId + "-" + this.runtime.agentId);
+
+        const message = ctx.message;
+        const msgRawId = message.message_id.toString();
+        const messageId = stringToUuid(msgRawId + "-" + roomId);
+
+        const msgProcessor = new MessageProcessor(this.runtime);
+
+        try {
+            const attachments = await this.processImage(message);
+            const inReplyTo =
+                "reply_to_message" in message && message.reply_to_message
+                    ? stringToUuid(
+                          message.reply_to_message.message_id.toString() +
+                              "-" +
+                              roomId.toString()
+                      )
+                    : undefined;
+            let messageText = "";
+            if ("text" in message) {
+                messageText = message.text;
+            } else if ("caption" in message && message.caption) {
+                messageText = message.caption;
+            }
+
+            const { memory, state } = await msgProcessor.preprocess({
+                rawMessageId: msgRawId,
+                text: messageText,
+                attachments,
+                rawUserId: userId,
+                rawRoomId: chatId + "-" + this.runtime.agentId,
+                userName,
+                userScreenName: first_name,
+                source: "telegram",
+                inReplyTo,
+                createdAt: message.date * 1000,
+            });
+            // Decide whether to respond
+            const shouldRespond = await this._shouldRespond(
+                message,
+                state,
+                memory
+            );
+
+            if (!shouldRespond) {
+                InteractionLogger.logAgentResponse({
+                    client: "telegram",
+                    agentId: this.runtime.agentId,
+                    userId: userIdUUID,
+                    roomId,
+                    messageId,
+                    status: "ignored",
+                });
+            }
+
+            const callback: HandlerCallback = async (content: Content) => {
+                try {
+                    if (!content.inReplyTo && message.message_id) {
+                        content.inReplyTo = messageId;
+                    }
+                    const sentMessages = await this.sendMessageInChunks(
+                        ctx,
+                        content,
+                        message.message_id
+                    );
+                    const memories: Memory[] = [];
+                    if (sentMessages && sentMessages.length > 0) {
+                        await this.populateMemories(
+                            sentMessages,
+                            roomId,
+                            content,
+                            messageId,
+                            memories
+                        );
+                    }
+                    return memories;
+                } catch (error) {
+                    elizaLogger.error("❌ Error in Telegram callback:", error);
+                    return [];
+                }
+            };
+
+            if (shouldRespond) {
+                const template =
+                    this.runtime.character.templates
+                        ?.telegramMessageHandlerTemplate ||
+                    this.runtime.character?.templates?.messageHandlerTemplate ||
+                    telegramMessageHandlerTemplate;
+                const tags = ["telegram", "telegram-response"];
+                await msgProcessor.respond(template, tags, callback);
+            }
+        } catch (error) {
+            elizaLogger.error("❌ Error handling message:", error);
+        }
+    }
+
+    private async populateMemories(
+        sentMessages: Message.TextMessage[],
+        roomId: UUID,
+        content: Content,
+        messageId: UUID,
+        memories: Memory[]
+    ) {
+        // Create memories for each sent message
+        for (let i = 0; i < sentMessages.length; i++) {
+            const sentMessage = sentMessages[i];
+            const isLastMessage = i === sentMessages.length - 1;
+
+            const memory: Memory = {
+                id: stringToUuid(
+                    sentMessage.message_id.toString() + "-" + roomId.toString()
+                ),
+                agentId: this.runtime.agentId,
+                userId: this.runtime.agentId,
+                roomId,
+                content: {
+                    ...content,
+                    text: sentMessage.text,
+                    inReplyTo: messageId,
+                },
+                createdAt: sentMessage.date * 1000,
+            };
+
+            memory.content.action = !isLastMessage
+                ? "CONTINUE"
+                : content.action;
+
+            await this.runtime.messageManager.createMemory({
+                memory,
+                isUnique: true,
+            });
+            memories.push(memory);
+        }
+        return memories;
     }
 
     private async _analyzeContextSimilarity(
@@ -174,27 +323,11 @@ export class MessageManager {
         );
     }
 
-    private async processImage(
-        message: Message
-    ): Promise<{ description: string } | null> {
-        try {
-            let imageUrl: string | null = null;
+    private async processImage(message: Message): Promise<Media[]> {
+        const attachments: Media[] = [];
 
-            if ("photo" in message && message.photo?.length > 0) {
-                const photo = message.photo[message.photo.length - 1];
-                const fileLink = await this.bot.telegram.getFileLink(
-                    photo.file_id
-                );
-                imageUrl = fileLink.toString();
-            } else if (
-                "document" in message &&
-                message.document?.mime_type?.startsWith("image/")
-            ) {
-                const fileLink = await this.bot.telegram.getFileLink(
-                    message.document.file_id
-                );
-                imageUrl = fileLink.toString();
-            }
+        try {
+            const imageUrl = await this.extractImgUrl(message);
 
             if (imageUrl) {
                 const imageDescriptionService =
@@ -203,13 +336,39 @@ export class MessageManager {
                     );
                 const { title, description } =
                     await imageDescriptionService.describeImage(imageUrl);
-                return { description: `[Image: ${title}\n${description}]` };
+                attachments.push({
+                    id: `image-${Date.now()}`,
+                    url: imageUrl,
+                    title: title || "Image",
+                    source: "Telegram",
+                    description: description || "Image description",
+                    text: description || "Image content not available",
+                });
             }
         } catch (error) {
             elizaLogger.error("❌ Error processing image:", error);
         }
 
-        return null;
+        return attachments;
+    }
+
+    private async extractImgUrl(message: Message): Promise<string | null> {
+        let imageUrl: string | null = null;
+
+        if ("photo" in message && message.photo?.length > 0) {
+            const photo = message.photo[message.photo.length - 1];
+            const fileLink = await this.bot.telegram.getFileLink(photo.file_id);
+            imageUrl = fileLink.toString();
+        } else if (
+            "document" in message &&
+            message.document?.mime_type?.startsWith("image/")
+        ) {
+            const fileLink = await this.bot.telegram.getFileLink(
+                message.document.file_id
+            );
+            imageUrl = fileLink.toString();
+        }
+        return imageUrl;
     }
 
     private async _shouldRespond(
@@ -217,34 +376,11 @@ export class MessageManager {
         state: State,
         memory: Memory
     ): Promise<boolean> {
-        if (
-            this.runtime.character.clientConfig?.telegram
-                ?.shouldRespondOnlyToMentions
-        ) {
-            return this._isMessageForMe(message);
-        }
+        const isMentioned = this.checkIfMentioned(message);
+        const isDM = this.checkIfDM(message);
 
-        // Respond if bot is mentioned
-        if (
-            "text" in message &&
-            message.text?.includes(`@${this.bot.botInfo?.username}`)
-        ) {
-            elizaLogger.info(`Bot mentioned`);
+        if (isMentioned || isDM) {
             return true;
-        }
-
-        // Respond to private chats
-        if (message.chat.type === "private") {
-            return true;
-        }
-
-        // Don't respond to images in group chats
-        if (
-            "photo" in message ||
-            ("document" in message &&
-                message.document?.mime_type?.startsWith("image/"))
-        ) {
-            return false;
         }
 
         const chatId = message.chat.id.toString();
@@ -284,6 +420,14 @@ export class MessageManager {
         return false;
     }
 
+    private checkIfDM(message: Message) {
+        return message.chat.type === "private";
+    }
+
+    private checkIfMentioned(message: Message) {
+        return message["text"]?.includes(`@${this.bot.botInfo?.username}`);
+    }
+
     private async sendMessageInChunks(
         ctx: Context,
         content: Content,
@@ -306,6 +450,7 @@ export class MessageManager {
                     );
                 }
             });
+            return [];
         } else {
             const chunks = splitMessage(content.text, MAX_MESSAGE_LENGTH);
             const sentMessages: Message.TextMessage[] = [];
@@ -419,241 +564,17 @@ export class MessageManager {
         return response;
     }
 
-    public async handleMessage(ctx: Context): Promise<void> {
-        if (!ctx.message || !ctx.from) {
-            return;
-        }
-        const userId = stringToUuid(ctx.from.id.toString()) as UUID;
-        const userName =
-            ctx.from.username || ctx.from.first_name || "Unknown User";
-        const agentId = this.runtime.agentId;
-        const chatIdUUID = stringToUuid(
-            ctx.chat?.id.toString() + "-" + this.runtime.agentId
-        ) as UUID;
-        const roomId = chatIdUUID;
-        const message = ctx.message;
-        const messageId = stringToUuid(
-            message.message_id.toString() + "-" + roomId.toString()
-        ) as UUID;
+    private isOutOfScope(ctx: Context): boolean {
+        const config = this.runtime.character.clientConfig?.telegram;
+        const emptyMessageOrFrom = !ctx.message || !ctx.from;
+        const shouldIgnoreBots = config?.shouldIgnoreBotMessages;
+        const isIgnoringBot = shouldIgnoreBots && ctx.from.is_bot;
+        const shouldIgnoreDM = config?.shouldIgnoreDirectMessages;
+        const isIgnoringDM = shouldIgnoreDM && ctx.chat?.type === "private";
+        const onlyMentions = config?.shouldRespondOnlyToMentions;
+        const notForMe = onlyMentions && !this._isMessageForMe(ctx.message);
 
-        InteractionLogger.logMessageReceived({
-            client: "telegram",
-            agentId,
-            userId,
-            roomId,
-            messageId,
-        });
-
-        const shouldSkip = this.isOutOfScope(ctx);
-        if (shouldSkip) {
-            return;
-        }
-
-        try {
-            await this.runtime.ensureConnection(
-                userId,
-                roomId,
-                userName,
-                userName,
-                "telegram"
-            );
-
-            const imageInfo = await this.processImage(message);
-
-            let messageText = "";
-            if ("text" in message) {
-                messageText = message.text;
-            } else if ("caption" in message && message.caption) {
-                messageText = message.caption;
-            }
-
-            // Combine text and image description
-            const fullText = imageInfo
-                ? `${messageText} ${imageInfo.description}`
-                : messageText;
-
-            if (!fullText) {
-                return;
-            }
-
-            // Create content
-            const content: Content = {
-                text: fullText,
-                source: "telegram",
-                inReplyTo:
-                    "reply_to_message" in message && message.reply_to_message
-                        ? stringToUuid(
-                              message.reply_to_message.message_id.toString() +
-                                  "-" +
-                                  roomId.toString()
-                          )
-                        : undefined,
-            };
-
-            // Create memory for the message
-            const memory: Memory = {
-                id: messageId,
-                agentId,
-                userId,
-                roomId,
-                content,
-                createdAt: message.date * 1000,
-            };
-
-            await this.runtime.messageManager.createMemory({
-                memory,
-                isUnique: true,
-            });
-
-            // Update state with the new memory
-            let state = await this.runtime.composeState(memory);
-            state = await this.runtime.updateRecentMessageState(state);
-
-            // Decide whether to respond
-            const shouldRespond = await this._shouldRespond(
-                message,
-                state,
-                memory
-            );
-
-            if (!shouldRespond) {
-                InteractionLogger.logAgentResponse({
-                    client: "telegram",
-                    agentId,
-                    userId,
-                    roomId,
-                    messageId,
-                    status: "ignored",
-                });
-            }
-
-            // Send response in chunks
-            const callback: HandlerCallback = async (content: Content) => {
-                const sentMessages = await this.sendMessageInChunks(
-                    ctx,
-                    content,
-                    message.message_id
-                );
-                if (sentMessages) {
-                    const memories: Memory[] = [];
-
-                    // Create memories for each sent message
-                    for (let i = 0; i < sentMessages.length; i++) {
-                        const sentMessage = sentMessages[i];
-                        const isLastMessage = i === sentMessages.length - 1;
-
-                        const memory: Memory = {
-                            id: stringToUuid(
-                                sentMessage.message_id.toString() +
-                                    "-" +
-                                    roomId.toString()
-                            ),
-                            agentId,
-                            userId: agentId,
-                            roomId,
-                            content: {
-                                ...content,
-                                text: sentMessage.text,
-                                inReplyTo: messageId,
-                            },
-                            createdAt: sentMessage.date * 1000,
-                        };
-
-                        memory.content.action = !isLastMessage
-                            ? "CONTINUE"
-                            : content.action;
-
-                        await this.runtime.messageManager.createMemory({
-                            memory,
-                            isUnique: true,
-                        });
-                        memories.push(memory);
-                    }
-
-                    return memories;
-                }
-            };
-
-            if (shouldRespond) {
-                // Generate response
-                const context = composeContext({
-                    state,
-                    template:
-                        this.runtime.character.templates
-                            ?.telegramMessageHandlerTemplate ||
-                        this.runtime.character?.templates
-                            ?.messageHandlerTemplate ||
-                        telegramMessageHandlerTemplate,
-                });
-
-                const responseContent = await this._generateResponse(
-                    memory,
-                    state,
-                    context
-                );
-
-                if (!responseContent || !responseContent.text) {
-                    return;
-                }
-
-                // Execute callback to send messages and log memories
-                const responseMessages = await callback(responseContent);
-
-                InteractionLogger.logAgentResponse({
-                    client: "telegram",
-                    agentId,
-                    userId,
-                    roomId,
-                    messageId,
-                    status: "sent",
-                });
-
-                // Update state after response
-                state = await this.runtime.updateRecentMessageState(state);
-
-                // Handle any resulting actions
-                await this.runtime.processActions(
-                    memory,
-                    responseMessages,
-                    state,
-                    callback,
-                    {
-                        tags: ["telegram", "telegram-message"],
-                    }
-                );
-            }
-
-            await this.runtime.evaluate(memory, state, shouldRespond, callback);
-        } catch (error) {
-            elizaLogger.error("❌ Error handling message:", error);
-            InteractionLogger.logAgentResponse({
-                client: "telegram",
-                agentId,
-                userId,
-                roomId,
-                messageId,
-                status: "error",
-            });
-        }
-    }
-
-    private isOutOfScope(ctx) {
-        let shouldSkip = false;
-        if (
-            this.runtime.character.clientConfig?.telegram
-                ?.shouldIgnoreBotMessages &&
-            ctx.from.is_bot
-        ) {
-            shouldSkip = true;
-        }
-        if (
-            this.runtime.character.clientConfig?.telegram
-                ?.shouldIgnoreDirectMessages &&
-            ctx.chat?.type === "private"
-        ) {
-            shouldSkip = true;
-        }
-        return shouldSkip;
+        return notForMe || emptyMessageOrFrom || isIgnoringBot || isIgnoringDM;
     }
 
     private initializeCommands(): void {

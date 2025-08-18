@@ -59,7 +59,7 @@ export class MessageManager {
     }
 
     async handleMessage(message: DiscordMessage) {
-        const userId = message.author.id as UUID;
+        const userId = message.author.id;
         const userDiscordTag = `<@${userId}>`;
         const userName = message.author.username;
         const name = message.author.displayName;
@@ -89,7 +89,7 @@ export class MessageManager {
             const { memory, state } = await msgProcessor.preprocess({
                 rawMessageId: message.id,
                 text: processedContent,
-                attachments: [],
+                attachments,
                 rawUserId: userId,
                 rawRoomId: channelId + "-" + this.runtime.agentId,
                 userName,
@@ -139,10 +139,6 @@ export class MessageManager {
                 memory
             );
 
-            elizaLogger.debug("shouldRespond", {
-                shouldRespond,
-            });
-
             if (shouldRespond) {
                 const callback: HandlerCallback = async (
                     content: Content,
@@ -191,7 +187,7 @@ export class MessageManager {
         } catch (error) {
             elizaLogger.error("Error handling message:", error);
             if (message.channel.type === ChannelType.GuildVoice) {
-                await this.handleErrorInVoiceChannel(userId);
+                await this.handleErrorInVoiceChannel(userIdUUID);
             }
         }
     }
