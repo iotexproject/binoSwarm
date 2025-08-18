@@ -139,10 +139,6 @@ export class MessageManager {
                 memory
             );
 
-            elizaLogger.debug("shouldRespond", {
-                shouldRespond,
-            });
-
             if (shouldRespond) {
                 const callback: HandlerCallback = async (
                     content: Content,
