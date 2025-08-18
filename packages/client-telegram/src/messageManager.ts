@@ -66,30 +66,30 @@ export class MessageManager {
         if (shouldSkip) {
             return;
         }
-        const userId = stringToUuid(ctx.from.id.toString()) as UUID;
-        const userName =
-            ctx.from.username || ctx.from.first_name || "Unknown User";
-        const agentId = this.runtime.agentId;
-        const chatIdUUID = stringToUuid(
-            ctx.chat?.id.toString() + "-" + this.runtime.agentId
-        ) as UUID;
-        const roomId = chatIdUUID;
+        const userId = ctx.from.id.toString();
+        const userIdUUID = stringToUuid(userId);
+
+        const { username, first_name } = ctx.from;
+        const userName = username || first_name || "Unknown User";
+
+        const chatId = ctx.chat?.id.toString();
+        const roomId = stringToUuid(chatId + "-" + this.runtime.agentId);
+
         const message = ctx.message;
-        const messageId = stringToUuid(
-            message.message_id.toString() + "-" + roomId.toString()
-        ) as UUID;
+        const msgRawId = message.message_id.toString();
+        const messageId = stringToUuid(msgRawId + "-" + roomId);
 
         InteractionLogger.logMessageReceived({
             client: "telegram",
-            agentId,
-            userId,
+            agentId: this.runtime.agentId,
+            userId: userIdUUID,
             roomId,
             messageId,
         });
 
         try {
             await this.runtime.ensureConnection(
-                userId,
+                userIdUUID,
                 roomId,
                 userName,
                 userName,
@@ -131,8 +131,8 @@ export class MessageManager {
             // Create memory for the message
             const memory: Memory = {
                 id: messageId,
-                agentId,
-                userId,
+                agentId: this.runtime.agentId,
+                userId: userIdUUID,
                 roomId,
                 content,
                 createdAt: message.date * 1000,
@@ -157,8 +157,8 @@ export class MessageManager {
             if (!shouldRespond) {
                 InteractionLogger.logAgentResponse({
                     client: "telegram",
-                    agentId,
-                    userId,
+                    agentId: this.runtime.agentId,
+                    userId: userIdUUID,
                     roomId,
                     messageId,
                     status: "ignored",
@@ -186,8 +186,8 @@ export class MessageManager {
                                     "-" +
                                     roomId.toString()
                             ),
-                            agentId,
-                            userId: agentId,
+                            agentId: this.runtime.agentId,
+                            userId: this.runtime.agentId,
                             roomId,
                             content: {
                                 ...content,
@@ -239,8 +239,8 @@ export class MessageManager {
 
                 InteractionLogger.logAgentResponse({
                     client: "telegram",
-                    agentId,
-                    userId,
+                    agentId: this.runtime.agentId,
+                    userId: userIdUUID,
                     roomId,
                     messageId,
                     status: "sent",
@@ -266,8 +266,8 @@ export class MessageManager {
             elizaLogger.error("❌ Error handling message:", error);
             InteractionLogger.logAgentResponse({
                 client: "telegram",
-                agentId,
-                userId,
+                agentId: this.runtime.agentId,
+                userId: userIdUUID,
                 roomId,
                 messageId,
                 status: "error",
