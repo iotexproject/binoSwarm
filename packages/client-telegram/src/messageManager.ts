@@ -130,24 +130,29 @@ export class MessageManager {
             }
 
             const callback: HandlerCallback = async (content: Content) => {
-                // TODO: try catch
-                // TODO: add inReplyTo in content
-                const sentMessages = await this.sendMessageInChunks(
-                    ctx,
-                    content,
-                    message.message_id
-                );
-                if (sentMessages) {
-                    const memories: Memory[] = [];
-                    await this.populateMemories(
-                        sentMessages,
-                        roomId,
+                try {
+                    if (!content.inReplyTo && message.message_id) {
+                        content.inReplyTo = messageId;
+                    }
+                    const sentMessages = await this.sendMessageInChunks(
+                        ctx,
                         content,
-                        messageId,
-                        memories
+                        message.message_id
                     );
-
+                    const memories: Memory[] = [];
+                    if (sentMessages && sentMessages.length > 0) {
+                        await this.populateMemories(
+                            sentMessages,
+                            roomId,
+                            content,
+                            messageId,
+                            memories
+                        );
+                    }
                     return memories;
+                } catch (error) {
+                    elizaLogger.error("❌ Error in Telegram callback:", error);
+                    return [];
                 }
             };
 
@@ -445,6 +450,7 @@ export class MessageManager {
                     );
                 }
             });
+            return [];
         } else {
             const chunks = splitMessage(content.text, MAX_MESSAGE_LENGTH);
             const sentMessages: Message.TextMessage[] = [];
