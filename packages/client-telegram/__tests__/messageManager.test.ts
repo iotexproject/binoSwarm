@@ -299,12 +299,12 @@ describe("MessageManager", () => {
             vi.spyOn(messageManager as any, "_isMessageForMe").mockReturnValue(
                 true
             );
-            const message = { chat: { type: "group" }, text: "x" } as any;
-            const res = await (messageManager as any).isOutOfScope(
-                message,
-                baseState,
-                baseMemory
-            );
+            const message = {
+                chat: { type: "group" },
+                text: "x",
+                photo: [{ file_id: "p" }],
+            } as any;
+            const res = await (messageManager as any).isOutOfScope({ message });
             expect(res).toBe(true);
         });
 
@@ -334,26 +334,22 @@ describe("MessageManager", () => {
 
         it("returns false for images in group chats", async () => {
             const photoMsg = {
-                chat: { type: "group" },
+                chat: { type: "group", id: 1 },
                 photo: [{ file_id: "p" }],
             } as any;
-            const res1 = await (messageManager as any)._shouldRespond(
-                photoMsg,
-                baseState,
-                baseMemory
-            );
-            expect(res1).toBe(false);
+            const res1 = await (messageManager as any).isOutOfScope({
+                message: photoMsg,
+            });
+            expect(res1).toBe(true);
 
             const docMsg = {
-                chat: { type: "group" },
+                chat: { type: "group", id: 1 },
                 document: { mime_type: "image/jpeg" },
             } as any;
-            const res2 = await (messageManager as any)._shouldRespond(
-                docMsg,
-                baseState,
-                baseMemory
-            );
-            expect(res2).toBe(false);
+            const res2 = await (messageManager as any).isOutOfScope({
+                message: docMsg,
+            });
+            expect(res2).toBe(true);
         });
 
         it("checks chatState currentHandler context and returns false when context says no", async () => {
@@ -482,6 +478,7 @@ describe("MessageManager", () => {
             const ctx = {
                 chat: { type: "private" },
                 from: { is_bot: false },
+                message: { chat: { type: "private" } },
             } as any;
             const res = (messageManager as any).isOutOfScope(ctx);
             expect(res).toBe(true);

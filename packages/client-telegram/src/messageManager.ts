@@ -407,27 +407,11 @@ export class MessageManager {
         state: State,
         memory: Memory
     ): Promise<boolean> {
-        // Respond if bot is mentioned
-        if (
-            "text" in message &&
-            message.text?.includes(`@${this.bot.botInfo?.username}`)
-        ) {
-            elizaLogger.info(`Bot mentioned`);
-            return true;
-        }
+        const isMentioned = this.checkIfMentioned(message);
+        const isDM = this.checkIfDM(message);
 
-        // Respond to private chats
-        if (message.chat.type === "private") {
+        if (isMentioned || isDM) {
             return true;
-        }
-
-        // Don't respond to images in group chats
-        if (
-            "photo" in message ||
-            ("document" in message &&
-                message.document?.mime_type?.startsWith("image/"))
-        ) {
-            return false;
         }
 
         const chatId = message.chat.id.toString();
@@ -465,6 +449,17 @@ export class MessageManager {
         }
 
         return false;
+    }
+
+    private checkIfDM(message: Message) {
+        return message.chat.type === "private";
+    }
+
+    private checkIfMentioned(message: Message) {
+        return (
+            "text" in message &&
+            message.text?.includes(`@${this.bot.botInfo?.username}`)
+        );
     }
 
     private async sendMessageInChunks(
