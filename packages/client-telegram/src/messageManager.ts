@@ -99,8 +99,7 @@ export class MessageManager {
                 messageText = message.caption;
             }
 
-            let state;
-            const { memory, state: state1 } = await msgProcessor.preprocess({
+            const { memory, state } = await msgProcessor.preprocess({
                 rawMessageId: msgRawId,
                 text: messageText,
                 attachments,
@@ -112,7 +111,6 @@ export class MessageManager {
                 inReplyTo,
                 createdAt: message.date * 1000,
             });
-            state = state1;
             // Decide whether to respond
             const shouldRespond = await this._shouldRespond(
                 message,
@@ -131,8 +129,9 @@ export class MessageManager {
                 });
             }
 
-            // Send response in chunks
             const callback: HandlerCallback = async (content: Content) => {
+                // TODO: try catch
+                // TODO: add inReplyTo in content
                 const sentMessages = await this.sendMessageInChunks(
                     ctx,
                     content,
@@ -140,105 +139,70 @@ export class MessageManager {
                 );
                 if (sentMessages) {
                     const memories: Memory[] = [];
-
-                    // Create memories for each sent message
-                    for (let i = 0; i < sentMessages.length; i++) {
-                        const sentMessage = sentMessages[i];
-                        const isLastMessage = i === sentMessages.length - 1;
-
-                        const memory: Memory = {
-                            id: stringToUuid(
-                                sentMessage.message_id.toString() +
-                                    "-" +
-                                    roomId.toString()
-                            ),
-                            agentId: this.runtime.agentId,
-                            userId: this.runtime.agentId,
-                            roomId,
-                            content: {
-                                ...content,
-                                text: sentMessage.text,
-                                inReplyTo: messageId,
-                            },
-                            createdAt: sentMessage.date * 1000,
-                        };
-
-                        memory.content.action = !isLastMessage
-                            ? "CONTINUE"
-                            : content.action;
-
-                        await this.runtime.messageManager.createMemory({
-                            memory,
-                            isUnique: true,
-                        });
-                        memories.push(memory);
-                    }
+                    await this.populateMemories(
+                        sentMessages,
+                        roomId,
+                        content,
+                        messageId,
+                        memories
+                    );
 
                     return memories;
                 }
             };
 
             if (shouldRespond) {
-                // Generate response
-                const context = composeContext({
-                    state,
-                    template:
-                        this.runtime.character.templates
-                            ?.telegramMessageHandlerTemplate ||
-                        this.runtime.character?.templates
-                            ?.messageHandlerTemplate ||
-                        telegramMessageHandlerTemplate,
-                });
-
-                const responseContent = await this._generateResponse(
-                    memory,
-                    state,
-                    context
-                );
-
-                if (!responseContent || !responseContent.text) {
-                    return;
-                }
-
-                // Execute callback to send messages and log memories
-                const responseMessages = await callback(responseContent);
-
-                InteractionLogger.logAgentResponse({
-                    client: "telegram",
-                    agentId: this.runtime.agentId,
-                    userId: userIdUUID,
-                    roomId,
-                    messageId,
-                    status: "sent",
-                });
-
-                // Update state after response
-                state = await this.runtime.updateRecentMessageState(state);
-
-                // Handle any resulting actions
-                await this.runtime.processActions(
-                    memory,
-                    responseMessages,
-                    state,
-                    callback,
-                    {
-                        tags: ["telegram", "telegram-message"],
-                    }
-                );
+                const template =
+                    this.runtime.character.templates
+                        ?.telegramMessageHandlerTemplate ||
+                    this.runtime.character?.templates?.messageHandlerTemplate ||
+                    telegramMessageHandlerTemplate;
+                const tags = ["telegram", "telegram-response"];
+                await msgProcessor.respond(template, tags, callback);
             }
-
-            await this.runtime.evaluate(memory, state, shouldRespond, callback);
         } catch (error) {
             elizaLogger.error("❌ Error handling message:", error);
-            InteractionLogger.logAgentResponse({
-                client: "telegram",
-                agentId: this.runtime.agentId,
-                userId: userIdUUID,
-                roomId,
-                messageId,
-                status: "error",
-            });
         }
+    }
+
+    private async populateMemories(
+        sentMessages: Message.TextMessage[],
+        roomId: UUID,
+        content: Content,
+        messageId: UUID,
+        memories: Memory[]
+    ) {
+        // Create memories for each sent message
+        for (let i = 0; i < sentMessages.length; i++) {
+            const sentMessage = sentMessages[i];
+            const isLastMessage = i === sentMessages.length - 1;
+
+            const memory: Memory = {
+                id: stringToUuid(
+                    sentMessage.message_id.toString() + "-" + roomId.toString()
+                ),
+                agentId: this.runtime.agentId,
+                userId: this.runtime.agentId,
+                roomId,
+                content: {
+                    ...content,
+                    text: sentMessage.text,
+                    inReplyTo: messageId,
+                },
+                createdAt: sentMessage.date * 1000,
+            };
+
+            memory.content.action = !isLastMessage
+                ? "CONTINUE"
+                : content.action;
+
+            await this.runtime.messageManager.createMemory({
+                memory,
+                isUnique: true,
+            });
+            memories.push(memory);
+        }
+        return memories;
     }
 
     private async _analyzeContextSimilarity(
@@ -456,10 +420,7 @@ export class MessageManager {
     }
 
     private checkIfMentioned(message: Message) {
-        return (
-            "text" in message &&
-            message.text?.includes(`@${this.bot.botInfo?.username}`)
-        );
+        return message["text"]?.includes(`@${this.bot.botInfo?.username}`);
     }
 
     private async sendMessageInChunks(
