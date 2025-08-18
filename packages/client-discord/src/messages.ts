@@ -89,7 +89,7 @@ export class MessageManager {
             const { memory, state } = await msgProcessor.preprocess({
                 rawMessageId: message.id,
                 text: processedContent,
-                attachments: [],
+                attachments,
                 rawUserId: userId,
                 rawRoomId: channelId + "-" + this.runtime.agentId,
                 userName,
