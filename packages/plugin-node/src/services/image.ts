@@ -392,13 +392,65 @@ export class ImageDescriptionService
                     );
                 }
 
-                const contentType = response.headers.get("content-type");
-                if (!contentType?.startsWith("image/")) {
-                    throw new Error(`Invalid content type: ${contentType}`);
-                }
-
+                const contentType =
+                    response.headers.get("content-type") || undefined;
                 imageData = Buffer.from(await response.arrayBuffer());
-                mimeType = contentType || "image/jpeg";
+
+                // Determine mime type robustly. Telegram often serves images as application/octet-stream.
+                if (contentType && contentType.startsWith("image/")) {
+                    mimeType = contentType;
+                } else {
+                    // 1) Try to infer from URL extension
+                    let inferredMime: string | undefined;
+                    try {
+                        const url = new URL(imageUrlOrPath);
+                        const ext = path
+                            .extname(url.pathname)
+                            .toLowerCase()
+                            .replace(".", "");
+                        const extToMime: Record<string, string> = {
+                            jpg: "image/jpeg",
+                            jpeg: "image/jpeg",
+                            png: "image/png",
+                            webp: "image/webp",
+                            gif: "image/gif",
+                            bmp: "image/bmp",
+                            svg: "image/svg+xml",
+                            heic: "image/heic",
+                            heif: "image/heif",
+                            avif: "image/avif",
+                            tif: "image/tiff",
+                            tiff: "image/tiff",
+                        };
+                        inferredMime = extToMime[ext];
+                    } catch {
+                        // ignore URL parsing issues
+                    }
+
+                    // 2) Try to infer from buffer via sharp metadata
+                    if (!inferredMime) {
+                        try {
+                            const meta = await sharp(imageData).metadata();
+                            if (meta.format) {
+                                inferredMime = `image/${meta.format}`;
+                            }
+                        } catch {
+                            // ignore
+                        }
+                    }
+
+                    if (!inferredMime) {
+                        inferredMime = "image/jpeg"; // safe default for downstream consumers
+                    }
+
+                    if (contentType && !contentType.startsWith("image/")) {
+                        elizaLogger.warn(
+                            `Non-image content-type '${contentType}' for ${imageUrlOrPath}; proceeding with '${inferredMime}'.`
+                        );
+                    }
+
+                    mimeType = inferredMime;
+                }
             }
 
             return { imageData, mimeType };
