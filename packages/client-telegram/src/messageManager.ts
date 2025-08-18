@@ -407,13 +407,6 @@ export class MessageManager {
         state: State,
         memory: Memory
     ): Promise<boolean> {
-        if (
-            this.runtime.character.clientConfig?.telegram
-                ?.shouldRespondOnlyToMentions
-        ) {
-            return this._isMessageForMe(message);
-        }
-
         // Respond if bot is mentioned
         if (
             "text" in message &&
@@ -610,25 +603,16 @@ export class MessageManager {
     }
 
     private isOutOfScope(ctx: Context): boolean {
-        let shouldSkip = false;
-        if (!ctx.message || !ctx.from) {
-            return true;
-        }
-        if (
-            this.runtime.character.clientConfig?.telegram
-                ?.shouldIgnoreBotMessages &&
-            ctx.from.is_bot
-        ) {
-            shouldSkip = true;
-        }
-        if (
-            this.runtime.character.clientConfig?.telegram
-                ?.shouldIgnoreDirectMessages &&
-            ctx.chat?.type === "private"
-        ) {
-            shouldSkip = true;
-        }
-        return shouldSkip;
+        const config = this.runtime.character.clientConfig?.telegram;
+        const emptyMessageOrFrom = !ctx.message || !ctx.from;
+        const shouldIgnoreBots = config?.shouldIgnoreBotMessages;
+        const isIgnoringBot = shouldIgnoreBots && ctx.from.is_bot;
+        const shouldIgnoreDM = config?.shouldIgnoreDirectMessages;
+        const isIgnoringDM = shouldIgnoreDM && ctx.chat?.type === "private";
+        const onlyMentions = config?.shouldRespondOnlyToMentions;
+        const notForMe = onlyMentions && !this._isMessageForMe(ctx.message);
+
+        return notForMe || emptyMessageOrFrom || isIgnoringBot || isIgnoringDM;
     }
 
     private initializeCommands(): void {

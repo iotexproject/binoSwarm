@@ -300,7 +300,7 @@ describe("MessageManager", () => {
                 true
             );
             const message = { chat: { type: "group" }, text: "x" } as any;
-            const res = await (messageManager as any)._shouldRespond(
+            const res = await (messageManager as any).isOutOfScope(
                 message,
                 baseState,
                 baseMemory
@@ -658,6 +658,10 @@ describe("MessageManager", () => {
             (mockRuntime as any).evaluate = vi.fn();
             (mockRuntime as any).messageManager = {
                 createMemory: vi.fn(),
+            };
+            (mockRuntime as any).character = {
+                clientConfig: { telegram: {} },
+                templates: {},
             };
 
             // Missing message
