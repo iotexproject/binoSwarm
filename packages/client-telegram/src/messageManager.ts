@@ -5,6 +5,7 @@ import {
     elizaLogger,
     ServiceType,
     composeRandomUser,
+    MessageProcessor,
 } from "@elizaos/core";
 import {
     Content,
@@ -79,25 +80,18 @@ export class MessageManager {
         const msgRawId = message.message_id.toString();
         const messageId = stringToUuid(msgRawId + "-" + roomId);
 
-        InteractionLogger.logMessageReceived({
-            client: "telegram",
-            agentId: this.runtime.agentId,
-            userId: userIdUUID,
-            roomId,
-            messageId,
-        });
+        const msgProcessor = new MessageProcessor(this.runtime);
 
         try {
-            await this.runtime.ensureConnection(
-                userIdUUID,
-                roomId,
-                userName,
-                userName,
-                "telegram"
-            );
-
-            const imageInfo = await this.processImage(message);
-
+            const attachments = await this.processImage(message);
+            const inReplyTo =
+                "reply_to_message" in message && message.reply_to_message
+                    ? stringToUuid(
+                          message.reply_to_message.message_id.toString() +
+                              "-" +
+                              roomId.toString()
+                      )
+                    : undefined;
             let messageText = "";
             if ("text" in message) {
                 messageText = message.text;
@@ -105,48 +99,20 @@ export class MessageManager {
                 messageText = message.caption;
             }
 
-            // Combine text and image description
-            const fullText = imageInfo
-                ? `${messageText} ${imageInfo.description}`
-                : messageText;
-
-            if (!fullText) {
-                return;
-            }
-
-            // Create content
-            const content: Content = {
-                text: fullText,
+            let state;
+            const { memory, state: state1 } = await msgProcessor.preprocess({
+                rawMessageId: msgRawId,
+                text: messageText,
+                attachments,
+                rawUserId: userId,
+                rawRoomId: chatId + "-" + this.runtime.agentId,
+                userName,
+                userScreenName: first_name,
                 source: "telegram",
-                inReplyTo:
-                    "reply_to_message" in message && message.reply_to_message
-                        ? stringToUuid(
-                              message.reply_to_message.message_id.toString() +
-                                  "-" +
-                                  roomId.toString()
-                          )
-                        : undefined,
-            };
-
-            // Create memory for the message
-            const memory: Memory = {
-                id: messageId,
-                agentId: this.runtime.agentId,
-                userId: userIdUUID,
-                roomId,
-                content,
+                inReplyTo,
                 createdAt: message.date * 1000,
-            };
-
-            await this.runtime.messageManager.createMemory({
-                memory,
-                isUnique: true,
             });
-
-            // Update state with the new memory
-            let state = await this.runtime.composeState(memory);
-            state = await this.runtime.updateRecentMessageState(state);
-
+            state = state1;
             // Decide whether to respond
             const shouldRespond = await this._shouldRespond(
                 message,
@@ -388,27 +354,11 @@ export class MessageManager {
         );
     }
 
-    private async processImage(
-        message: Message
-    ): Promise<{ description: string } | null> {
-        try {
-            let imageUrl: string | null = null;
+    private async processImage(message: Message): Promise<Media[]> {
+        const attachments: Media[] = [];
 
-            if ("photo" in message && message.photo?.length > 0) {
-                const photo = message.photo[message.photo.length - 1];
-                const fileLink = await this.bot.telegram.getFileLink(
-                    photo.file_id
-                );
-                imageUrl = fileLink.toString();
-            } else if (
-                "document" in message &&
-                message.document?.mime_type?.startsWith("image/")
-            ) {
-                const fileLink = await this.bot.telegram.getFileLink(
-                    message.document.file_id
-                );
-                imageUrl = fileLink.toString();
-            }
+        try {
+            const imageUrl = await this.extractImgUrl(message);
 
             if (imageUrl) {
                 const imageDescriptionService =
@@ -417,13 +367,39 @@ export class MessageManager {
                     );
                 const { title, description } =
                     await imageDescriptionService.describeImage(imageUrl);
-                return { description: `[Image: ${title}\n${description}]` };
+                attachments.push({
+                    id: `image-${Date.now()}`,
+                    url: imageUrl,
+                    title: title || "Image",
+                    source: "Telegram",
+                    description: description || "Image description",
+                    text: description || "Image content not available",
+                });
             }
         } catch (error) {
             elizaLogger.error("❌ Error processing image:", error);
         }
 
-        return null;
+        return attachments;
+    }
+
+    private async extractImgUrl(message: Message): Promise<string | null> {
+        let imageUrl: string | null = null;
+
+        if ("photo" in message && message.photo?.length > 0) {
+            const photo = message.photo[message.photo.length - 1];
+            const fileLink = await this.bot.telegram.getFileLink(photo.file_id);
+            imageUrl = fileLink.toString();
+        } else if (
+            "document" in message &&
+            message.document?.mime_type?.startsWith("image/")
+        ) {
+            const fileLink = await this.bot.telegram.getFileLink(
+                message.document.file_id
+            );
+            imageUrl = fileLink.toString();
+        }
+        return imageUrl;
     }
 
     private async _shouldRespond(
