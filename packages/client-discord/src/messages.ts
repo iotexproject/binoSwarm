@@ -59,7 +59,7 @@ export class MessageManager {
     }
 
     async handleMessage(message: DiscordMessage) {
-        const userId = message.author.id as UUID;
+        const userId = message.author.id;
         const userDiscordTag = `<@${userId}>`;
         const userName = message.author.username;
         const name = message.author.displayName;
@@ -191,7 +191,7 @@ export class MessageManager {
         } catch (error) {
             elizaLogger.error("Error handling message:", error);
             if (message.channel.type === ChannelType.GuildVoice) {
-                await this.handleErrorInVoiceChannel(userId);
+                await this.handleErrorInVoiceChannel(userIdUUID);
             }
         }
     }
