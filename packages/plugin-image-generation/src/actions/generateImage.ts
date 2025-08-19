@@ -11,7 +11,7 @@ import {
     generateObject,
     InteractionLogger,
     AgentClient,
-    type Character,
+    Media,
 } from "@elizaos/core";
 import { z } from "zod";
 
@@ -87,80 +87,15 @@ export const imageGeneration: Action = {
 
         const imagePrompt = await generateImagePrompt(runtime, state, message);
         const imgOptions = buildImgOptions(imagePrompt, runtime);
-
-        const res: { image: string; caption: string }[] = [];
         const images = await generateImage(imgOptions, runtime);
 
         if (images.success && images.data && images.data.length > 0) {
-            elizaLogger.log(
+            elizaLogger.debug(
                 "Image generation successful, number of images:",
                 images.data.length
             );
-            for (let i = 0; i < images.data.length; i++) {
-                const image = images.data[i];
 
-                // Save the image and get filepath
-                const filename = `generated_${Date.now()}_${i}`;
-
-                // Choose save function based on image data format
-                const filepath = image.startsWith("http")
-                    ? await saveHeuristImage(image, filename)
-                    : saveBase64Image(image, filename);
-
-                elizaLogger.log(`Processing image ${i + 1}:`, filename);
-
-                //just dont even add a caption or a description just have it generate & send
-                /*
-                try {
-                    const imageService = runtime.getService(ServiceType.IMAGE_DESCRIPTION);
-                    if (imageService && typeof imageService.describeImage === 'function') {
-                        const caption = await imageService.describeImage({ imageUrl: filepath });
-                        captionText = caption.description;
-                        captionTitle = caption.title;
-                    }
-                } catch (error) {
-                    elizaLogger.error("Caption generation failed, using default caption:", error);
-                }*/
-
-                const _caption = "...";
-                /*= await generateCaption(
-                    {
-                        imageUrl: image,
-                    },
-                    runtime
-                );*/
-
-                res.push({ image: filepath, caption: "..." }); //caption.title });
-
-                elizaLogger.log(
-                    `Generated caption for image ${i + 1}:`,
-                    "..." //caption.title
-                );
-                //res.push({ image: image, caption: caption.title });
-
-                callback(
-                    {
-                        text: "...", //caption.description,
-                        attachments: [
-                            {
-                                id: crypto.randomUUID(),
-                                url: filepath,
-                                title: "Generated image",
-                                source: "imageGeneration",
-                                description: "...", //caption.title,
-                                text: "...", //caption.description,
-                                contentType: "image/png",
-                            },
-                        ],
-                    },
-                    [
-                        {
-                            attachment: filepath,
-                            name: `${filename}.png`,
-                        },
-                    ]
-                );
-            }
+            await processAndSendImages(images, callback);
         } else {
             elizaLogger.error("Image generation failed or returned no data.");
         }
@@ -233,6 +168,51 @@ export const imageGeneration: Action = {
         ],
     ],
 } as Action;
+
+async function processAndSendImages(
+    images: { success: boolean; data?: string[]; error?: any },
+    callback: HandlerCallback
+) {
+    const attachments: Media[] = [];
+    const files: { attachment: string; name: string }[] = [];
+
+    for (let i = 0; i < images.data.length; i++) {
+        const image = images.data[i];
+        const filename = `generated_${Date.now()}_${i}`;
+        const filepath = image.startsWith("http")
+            ? await saveHeuristImage(image, filename)
+            : saveBase64Image(image, filename);
+
+        elizaLogger.debug(`Processing image ${i + 1}:`, filename);
+
+        attachments.push({
+            id: crypto.randomUUID(),
+            url: filepath,
+            title: "Generated image",
+            source: "imageGeneration",
+            description: "...",
+            text: "...",
+            contentType: "image/png",
+        });
+        files.push({
+            attachment: filepath,
+            name: `${filename}.png`,
+        });
+
+        elizaLogger.log(
+            `Generated caption for image ${i + 1}:`,
+            "..." //caption.title
+        );
+    }
+
+    callback(
+        {
+            text: "...", //caption.description,
+            attachments,
+        },
+        files
+    );
+}
 
 async function generateImagePrompt(
     runtime: IAgentRuntime,
