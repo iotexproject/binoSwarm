@@ -12,6 +12,8 @@ import {
     InteractionLogger,
     AgentClient,
     Media,
+    IImageDescriptionService,
+    ServiceType,
 } from "@elizaos/core";
 import { z } from "zod";
 
@@ -95,7 +97,7 @@ export const imageGeneration: Action = {
                 images.data.length
             );
 
-            await processAndSendImages(images, callback);
+            await processAndSendImages(images, callback, runtime);
         } else {
             elizaLogger.error("Image generation failed or returned no data.");
         }
@@ -171,7 +173,8 @@ export const imageGeneration: Action = {
 
 async function processAndSendImages(
     images: { success: boolean; data?: string[]; error?: any },
-    callback: HandlerCallback
+    callback: HandlerCallback,
+    runtime: IAgentRuntime
 ) {
     const attachments: Media[] = [];
     const files: { attachment: string; name: string }[] = [];
@@ -185,33 +188,45 @@ async function processAndSendImages(
 
         elizaLogger.debug(`Processing image ${i + 1}:`, filename);
 
+        const { title, description } = await generateCaption(runtime, filepath);
+
         attachments.push({
             id: crypto.randomUUID(),
             url: filepath,
-            title: "Generated image",
+            title: title,
             source: "imageGeneration",
-            description: "...",
-            text: "...",
+            description: description,
+            text: description,
             contentType: "image/png",
         });
         files.push({
             attachment: filepath,
             name: `${filename}.png`,
         });
-
-        elizaLogger.log(
-            `Generated caption for image ${i + 1}:`,
-            "..." //caption.title
-        );
     }
 
     callback(
         {
-            text: "...", //caption.description,
+            text: attachments[0].description || "Generated image",
             attachments,
         },
         files
     );
+}
+
+async function generateCaption(runtime: IAgentRuntime, filepath: string) {
+    let title = "Generated image";
+    let description = "Generated image";
+    try {
+        const { description: _description, title: _title } = await runtime
+            .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
+            .describeImage(filepath);
+        title = _title || "Generated image";
+        description = _description || "Generated image";
+    } catch (error) {
+        elizaLogger.error("Error describing image:", error);
+    }
+    return { title, description };
 }
 
 async function generateImagePrompt(
