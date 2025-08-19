@@ -11,6 +11,7 @@ import {
     generateObject,
     InteractionLogger,
     AgentClient,
+    type Character,
 } from "@elizaos/core";
 import { z } from "zod";
 
@@ -64,17 +65,6 @@ export const imageGeneration: Action = {
         message: Memory,
         state: State,
         options: {
-            width?: number;
-            height?: number;
-            count?: number;
-            negativePrompt?: string;
-            numIterations?: number;
-            guidanceScale?: number;
-            seed?: number;
-            modelId?: string;
-            jobId?: string;
-            stylePreset?: string;
-            hideWatermark?: boolean;
             tags?: string[];
         },
         callback: HandlerCallback
@@ -138,65 +128,8 @@ export const imageGeneration: Action = {
 
         const res: { image: string; caption: string }[] = [];
 
-        const images = await generateImage(
-            {
-                prompt: imagePrompt,
-                width: options.width || imageSettings.width || 1024,
-                height: options.height || imageSettings.height || 1024,
-                ...(options.count != null || imageSettings.count != null
-                    ? { count: options.count || imageSettings.count || 1 }
-                    : {}),
-                ...(options.negativePrompt != null ||
-                imageSettings.negativePrompt != null
-                    ? {
-                          negativePrompt:
-                              options.negativePrompt ||
-                              imageSettings.negativePrompt,
-                      }
-                    : {}),
-                ...(options.numIterations != null ||
-                imageSettings.numIterations != null
-                    ? {
-                          numIterations:
-                              options.numIterations ||
-                              imageSettings.numIterations,
-                      }
-                    : {}),
-                ...(options.guidanceScale != null ||
-                imageSettings.guidanceScale != null
-                    ? {
-                          guidanceScale:
-                              options.guidanceScale ||
-                              imageSettings.guidanceScale,
-                      }
-                    : {}),
-                ...(options.seed != null || imageSettings.seed != null
-                    ? { seed: options.seed || imageSettings.seed }
-                    : {}),
-                ...(options.modelId != null || imageSettings.modelId != null
-                    ? { modelId: options.modelId || imageSettings.modelId }
-                    : {}),
-                ...(options.jobId != null || imageSettings.jobId != null
-                    ? { jobId: options.jobId || imageSettings.jobId }
-                    : {}),
-                ...(options.stylePreset != null ||
-                imageSettings.stylePreset != null
-                    ? {
-                          stylePreset:
-                              options.stylePreset || imageSettings.stylePreset,
-                      }
-                    : {}),
-                ...(options.hideWatermark != null ||
-                imageSettings.hideWatermark != null
-                    ? {
-                          hideWatermark:
-                              options.hideWatermark ||
-                              imageSettings.hideWatermark,
-                      }
-                    : {}),
-            },
-            runtime
-        );
+        const imgOptions = buildImgOptions(imagePrompt, imageSettings);
+        const images = await generateImage(imgOptions, runtime);
 
         if (images.success && images.data && images.data.length > 0) {
             elizaLogger.log(
@@ -340,3 +273,37 @@ export const imageGeneration: Action = {
         ],
     ],
 } as Action;
+
+function buildImgOptions(
+    imagePrompt: string,
+    imageSettings: Character["settings"]["imageSettings"]
+) {
+    const {
+        width,
+        height,
+        count,
+        negativePrompt,
+        numIterations,
+        guidanceScale,
+        seed,
+        modelId,
+        jobId,
+        stylePreset,
+        hideWatermark,
+    } = imageSettings;
+
+    return {
+        prompt: imagePrompt,
+        width: width ?? 1024,
+        height: height ?? 1024,
+        count: count ?? 1,
+        ...(negativePrompt !== undefined && { negativePrompt }),
+        ...(numIterations !== undefined && { numIterations }),
+        ...(guidanceScale !== undefined && { guidanceScale }),
+        ...(seed !== undefined && { seed }),
+        ...(modelId !== undefined && { modelId }),
+        ...(jobId !== undefined && { jobId }),
+        ...(stylePreset !== undefined && { stylePreset }),
+        ...(hideWatermark !== undefined && { hideWatermark }),
+    };
+}
