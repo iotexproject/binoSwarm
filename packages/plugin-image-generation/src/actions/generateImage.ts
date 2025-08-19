@@ -21,6 +21,17 @@ import { validateImageGenConfig } from "../environment";
 import { imagePromptTemplate, imageSystemPrompt } from "../templates";
 import { saveBase64Image, saveHeuristImage } from "../utils";
 
+const IMAGE_PROMPT_SCHEMA = z.object({
+    analysis: z
+        .string()
+        .describe("Analysis, reasoning and steps taken to generate the prompt"),
+    prompt: z
+        .string()
+        .describe("The generated image prompt without any additional text"),
+});
+
+type ImagePrompt = z.infer<typeof IMAGE_PROMPT_SCHEMA>;
+
 export const imageGeneration: Action = {
     name: "GENERATE_IMAGE",
     similes: [
@@ -241,24 +252,11 @@ async function generateImagePrompt(
         state,
     });
 
-    const imagePromptSchema = z.object({
-        analysis: z
-            .string()
-            .describe(
-                "Analysis, reasoning and steps taken to generate the prompt"
-            ),
-        prompt: z
-            .string()
-            .describe("The generated image prompt without any additional text"),
-    });
-
-    type ImagePrompt = z.infer<typeof imagePromptSchema>;
-
     const imagePromptRes = await generateObject<ImagePrompt>({
         runtime,
         context,
         modelClass: ModelClass.LARGE,
-        schema: imagePromptSchema,
+        schema: IMAGE_PROMPT_SCHEMA,
         schemaName: "ImagePrompt",
         schemaDescription: "Image prompt and analysis",
         customSystemPrompt:
