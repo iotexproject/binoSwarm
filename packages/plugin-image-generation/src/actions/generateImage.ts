@@ -216,9 +216,12 @@ async function processAndSendImages(
         });
     }
 
+    const text =
+        attachments[0]?.description?.split(".")[0] || "Generated image";
+
     callback(
         {
-            text: attachments[0].description || "Generated image",
+            text,
             attachments,
         },
         files

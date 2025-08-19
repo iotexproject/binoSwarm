@@ -341,7 +341,7 @@ export const memeGeneration: Action = {
 
             callback(
                 {
-                    text: "Here's your meme!",
+                    text: "👀",
                     attachments: [
                         {
                             id: crypto.randomUUID(),
