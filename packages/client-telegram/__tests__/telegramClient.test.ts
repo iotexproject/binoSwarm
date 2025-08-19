@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TelegramClient } from "../src/telegramClient";
-import { IAgentRuntime } from "@elizaos/core";
+import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 
 // Mock Telegraf to capture handler registrations
 vi.mock("telegraf", () => {
@@ -18,6 +18,20 @@ vi.mock("telegraf", () => {
 
     return {
         Telegraf: vi.fn(() => mockBot),
+    };
+});
+
+vi.mock("@elizaos/core", async () => {
+    const actual = await vi.importActual("@elizaos/core");
+    return {
+    ...actual,
+    elizaLogger: {
+        log: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        success: vi.fn(),
+        info: vi.fn(),
+        },
     };
 });
 
@@ -351,7 +365,7 @@ describe("TelegramClient", () => {
             await documentHandler(ctx);
         });
 
-        it("bot.catch global handler replies", async () => {
+        it("bot.catch global on generic errors", async () => {
             await client.start();
 
             const mockBot = client["bot"] as any;
@@ -363,8 +377,32 @@ describe("TelegramClient", () => {
 
             const ctx: any = { updateType: "message", reply: vi.fn() };
             await globalCatch(new Error("x"), ctx);
-            expect(ctx.reply).toHaveBeenCalledWith(
-                "An unexpected error occurred. Please try again later."
+            expect(elizaLogger.error).toHaveBeenCalledWith(
+                "❌ Telegram Error for message:",
+                new Error("x")
+            );
+        });
+
+        it("bot.catch global handler suppresses TimeoutError without reply", async () => {
+            await client.start();
+
+            const mockBot = client["bot"] as any;
+            const catchCalls = (mockBot.catch as any).mock.calls as Array<
+                any[]
+            >;
+            expect(catchCalls.length).toBeGreaterThan(0);
+            const globalCatch = catchCalls[0][0] as Function;
+
+            const timeoutError = new Error(
+                "Promise timed out after 90000 milliseconds"
+            ) as any;
+            timeoutError.name = "TimeoutError";
+
+            const ctx: any = { updateType: "message", reply: vi.fn() };
+            await globalCatch(timeoutError, ctx);
+            expect(elizaLogger.warn).toHaveBeenCalledWith(
+                "⏱️ Telegram handler exceeded timeout for message;",
+                timeoutError
             );
         });
 

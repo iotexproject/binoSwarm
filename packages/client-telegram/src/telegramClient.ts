@@ -139,8 +139,15 @@ export class TelegramClient {
         });
 
         this.bot.catch((err, ctx) => {
+            if (err["name"] && err["name"] === "TimeoutError") {
+                elizaLogger.warn(
+                    `⏱️ Telegram handler exceeded timeout for ${ctx.updateType};`,
+                    err
+                );
+                return;
+            }
+
             elizaLogger.error(`❌ Telegram Error for ${ctx.updateType}:`, err);
-            ctx.reply("An unexpected error occurred. Please try again later.");
         });
     }
 
