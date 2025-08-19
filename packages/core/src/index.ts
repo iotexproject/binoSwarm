@@ -34,3 +34,4 @@ export * from "./interactionLogger.ts";
 export * from "./clientHelpers/index.ts";
 export * from "./messageProcessor.ts";
 export * from "./messageWall.ts";
+export * from "./PII.ts";
