@@ -85,50 +85,10 @@ export const imageGeneration: Action = {
             tags: options.tags || ["image-generation", "generate-image"],
         });
 
-        const context = composeContext({
-            template:
-                runtime.character?.templates?.imagePromptTemplate ||
-                imagePromptTemplate,
-            state,
-        });
-
-        const imagePromptSchema = z.object({
-            analysis: z
-                .string()
-                .describe(
-                    "Analysis, reasoning and steps taken to generate the prompt"
-                ),
-            prompt: z
-                .string()
-                .describe(
-                    "The generated image prompt without any additional text"
-                ),
-        });
-
-        type ImagePrompt = z.infer<typeof imagePromptSchema>;
-
-        const imagePromptRes = await generateObject<ImagePrompt>({
-            runtime,
-            context,
-            modelClass: ModelClass.LARGE,
-            schema: imagePromptSchema,
-            schemaName: "ImagePrompt",
-            schemaDescription: "Image prompt and analysis",
-            customSystemPrompt:
-                runtime.character?.templates?.imageSystemPrompt ||
-                imageSystemPrompt,
-            message,
-            functionId: "GENERATE_IMAGE_PROMPT",
-            tags: ["image-generation", "generate-image-prompt"],
-        });
-
-        const imagePrompt = imagePromptRes.object?.prompt;
-        const imageSettings = runtime.character?.settings?.imageSettings || {};
-        elizaLogger.log("Image settings:", imageSettings);
+        const imagePrompt = await generateImagePrompt(runtime, state, message);
+        const imgOptions = buildImgOptions(imagePrompt, runtime);
 
         const res: { image: string; caption: string }[] = [];
-
-        const imgOptions = buildImgOptions(imagePrompt, imageSettings);
         const images = await generateImage(imgOptions, runtime);
 
         if (images.success && images.data && images.data.length > 0) {
@@ -274,10 +234,52 @@ export const imageGeneration: Action = {
     ],
 } as Action;
 
-function buildImgOptions(
-    imagePrompt: string,
-    imageSettings: Character["settings"]["imageSettings"]
-) {
+async function generateImagePrompt(
+    runtime: IAgentRuntime,
+    state: State,
+    message: Memory
+): Promise<string> {
+    const context = composeContext({
+        template:
+            runtime.character?.templates?.imagePromptTemplate ||
+            imagePromptTemplate,
+        state,
+    });
+
+    const imagePromptSchema = z.object({
+        analysis: z
+            .string()
+            .describe(
+                "Analysis, reasoning and steps taken to generate the prompt"
+            ),
+        prompt: z
+            .string()
+            .describe("The generated image prompt without any additional text"),
+    });
+
+    type ImagePrompt = z.infer<typeof imagePromptSchema>;
+
+    const imagePromptRes = await generateObject<ImagePrompt>({
+        runtime,
+        context,
+        modelClass: ModelClass.LARGE,
+        schema: imagePromptSchema,
+        schemaName: "ImagePrompt",
+        schemaDescription: "Image prompt and analysis",
+        customSystemPrompt:
+            runtime.character?.templates?.imageSystemPrompt ||
+            imageSystemPrompt,
+        message,
+        functionId: "GENERATE_IMAGE_PROMPT",
+        tags: ["image-generation", "generate-image-prompt"],
+    });
+    return imagePromptRes.object?.prompt;
+}
+
+function buildImgOptions(imagePrompt: string, runtime: IAgentRuntime) {
+    const imageSettings = runtime.character?.settings?.imageSettings || {};
+    elizaLogger.debug("Image settings:", imageSettings);
+
     const {
         width,
         height,
