@@ -38,11 +38,189 @@ export class PII {
         }
     }
 
+    private getAggregationStrategy():
+        | "none"
+        | "first"
+        | "average"
+        | "max"
+        | "simple" {
+        const strategy =
+            (process.env.PII_AGGREGATION_STRATEGY as
+                | "none"
+                | "first"
+                | "average"
+                | "max"
+                | "simple") || "simple";
+        this.debug("using aggregation strategy", strategy);
+        return strategy;
+    }
+
+    private getConfidenceThreshold(): number {
+        return process.env.PII_CONFIDENCE_THRESHOLD
+            ? Number(process.env.PII_CONFIDENCE_THRESHOLD)
+            : 0.8;
+    }
+
     private isValidEntity(span: Span, text: string): boolean {
         const entityText = text.slice(span.start, span.end);
 
         // Simple validation - just check if it's meaningful text
         return entityText.trim().length > 1 && !/^[^\w\d]+$/.test(entityText);
+    }
+
+    private async classify(text: string): Promise<Array<ClassifierResult>> {
+        if (!this.classifier) return [];
+        const strategy = this.getAggregationStrategy();
+        const results: Array<ClassifierResult | Array<ClassifierResult>> =
+            await this.classifier(text, {
+                aggregation_strategy: strategy,
+            });
+
+        const flat = Array.isArray(results[0])
+            ? (results as Array<Array<ClassifierResult>>).flat()
+            : (results as Array<ClassifierResult>);
+
+        this.debug("classifier raw results", {
+            count: Array.isArray(flat) ? flat.length : 0,
+            preview: Array.isArray(flat) ? flat.slice(0, 5) : flat,
+            keys:
+                Array.isArray(flat) && flat.length > 0
+                    ? Object.keys(flat[0])
+                    : [],
+        });
+        return flat;
+    }
+
+    private extractSpansFromResults(
+        text: string,
+        flat: Array<ClassifierResult>
+    ): Span[] {
+        const spans: Span[] = [];
+        const CONFIDENCE_THRESHOLD = this.getConfidenceThreshold();
+        for (const r of flat) {
+            const score = r?.score || 0;
+            if (score < CONFIDENCE_THRESHOLD) {
+                continue;
+            }
+
+            if (typeof r?.start === "number" && typeof r?.end === "number") {
+                const label = (r.entity_group || r.entity || "").replace(
+                    /^B-|^I-/,
+                    ""
+                );
+                if (label) {
+                    spans.push({
+                        type: label,
+                        start: r.start,
+                        end: r.end,
+                        score,
+                    });
+                }
+            } else if (
+                typeof r?.entity === "string" &&
+                typeof r?.word === "string"
+            ) {
+                // Fallback: if aggregator failed (no start/end), attempt naive substring match
+                const clean = r.word;
+                const idx = text.indexOf(clean.trim());
+                if (idx >= 0) {
+                    const label = r.entity.replace(/^B-|^I-/, "");
+                    spans.push({
+                        type: label,
+                        start: idx,
+                        end: idx + clean.trim().length,
+                        score,
+                    });
+                }
+            }
+        }
+        return spans;
+    }
+
+    private buildGroupedTokenSpans(
+        text: string,
+        flat: Array<ClassifierResult>
+    ): Span[] {
+        const spans: Span[] = [];
+        type TokenRec = { entity: string; word: string };
+        const tokens: TokenRec[] = (flat as ClassifierResult[])
+            .filter(
+                (t) =>
+                    typeof t?.entity === "string" && typeof t?.word === "string"
+            )
+            .map((t) => ({
+                entity: t.entity as string,
+                word: String(t.word),
+            }));
+
+        if (tokens.length === 0) return spans;
+
+        const groups: { type: string; text: string }[] = [];
+        let currentType = "";
+        let buffer = "";
+        for (const t of tokens) {
+            const label = t.entity.replace(/^I-/, "B-");
+            const dash = label.indexOf("-");
+            const prefix = dash > 0 ? label.slice(0, dash) : label;
+            const entity = dash > 0 ? label.slice(dash + 1) : label;
+            if (prefix === "B" && entity !== currentType && buffer) {
+                groups.push({ type: currentType, text: buffer });
+                buffer = "";
+            }
+            currentType = entity;
+            buffer += t.word;
+        }
+        if (buffer && currentType)
+            groups.push({ type: currentType, text: buffer });
+
+        let searchFrom = 0;
+        for (const g of groups) {
+            const candidate = g.text.replace(/\s+/g, " ").trim();
+            if (!candidate) continue;
+            const idx = text.indexOf(candidate, searchFrom);
+            if (idx >= 0) {
+                spans.push({
+                    type: g.type,
+                    start: idx,
+                    end: idx + candidate.length,
+                });
+                searchFrom = idx + candidate.length;
+            }
+        }
+        this.debug("constructed spans from groups", {
+            count: spans.length,
+            preview: spans.slice(0, 5),
+        });
+        return spans;
+    }
+
+    private mergeSpans(spans: Span[]): Span[] {
+        spans.sort((a, b) => a.start - b.start);
+        const merged: Span[] = [];
+        for (const s of spans) {
+            const last = merged[merged.length - 1];
+            if (last && last.type === s.type && s.start <= last.end) {
+                last.end = Math.max(last.end, s.end);
+            } else {
+                merged.push({ ...s });
+            }
+        }
+        this.debug("merged spans", {
+            count: merged.length,
+            preview: merged.slice(0, 5),
+        });
+        return merged;
+    }
+
+    private validateSpans(spans: Span[], text: string): Span[] {
+        const validated = spans.filter((span) =>
+            this.isValidEntity(span, text)
+        );
+        this.debug("validated spans", {
+            count: validated.length,
+            preview: validated.slice(0, 5),
+        });
+        return validated;
     }
 
     private performWordLevelRedaction(
@@ -185,170 +363,22 @@ export class PII {
                 length: text.length,
                 sample: text.slice(0, 200),
             });
-            const strategy =
-                (process.env.PII_AGGREGATION_STRATEGY as
-                    | "none"
-                    | "first"
-                    | "average"
-                    | "max"
-                    | "simple") || "simple";
-            this.debug("using aggregation strategy", strategy);
+            const flat = await this.classify(text);
 
-            const results: Array<ClassifierResult | Array<ClassifierResult>> =
-                await this.classifier(text, {
-                    aggregation_strategy: strategy,
-                });
+            let spans = this.extractSpansFromResults(text, flat);
 
-            // Flatten potential nested outputs (batch mode compatibility)
-            const flat = Array.isArray(results[0])
-                ? (results as Array<Array<ClassifierResult>>).flat()
-                : (results as Array<ClassifierResult>);
-
-            this.debug("classifier raw results", {
-                count: Array.isArray(flat) ? flat.length : 0,
-                preview: Array.isArray(flat) ? flat.slice(0, 5) : flat,
-                keys:
-                    Array.isArray(flat) && flat.length > 0
-                        ? Object.keys(flat[0])
-                        : [],
-            });
-
-            const spans: Span[] = [];
-            const CONFIDENCE_THRESHOLD = process.env.PII_CONFIDENCE_THRESHOLD
-                ? Number(process.env.PII_CONFIDENCE_THRESHOLD)
-                : 0.8;
-            for (const r of flat) {
-                // Apply confidence filtering - skip low confidence detections
-                const score = r?.score || 0;
-                if (score < CONFIDENCE_THRESHOLD) {
-                    continue;
-                }
-
-                if (
-                    typeof r?.start === "number" &&
-                    typeof r?.end === "number"
-                ) {
-                    const label = (r.entity_group || r.entity || "").replace(
-                        /^B-|^I-/,
-                        ""
-                    );
-                    if (label) {
-                        spans.push({
-                            type: label,
-                            start: r.start,
-                            end: r.end,
-                            score,
-                        });
-                    }
-                } else if (
-                    typeof r?.entity === "string" &&
-                    typeof r?.word === "string"
-                ) {
-                    // Fallback: if aggregator failed (no start/end), attempt naive substring match
-                    const clean = r.word;
-                    const idx = text.indexOf(clean.trim());
-                    if (idx >= 0) {
-                        const label = r.entity.replace(/^B-|^I-/, "");
-                        spans.push({
-                            type: label,
-                            start: idx,
-                            end: idx + clean.trim().length,
-                            score,
-                        });
-                    }
-                }
-            }
-
-            // If spans are still empty, try grouping B-/I- sequences and match the concatenated phrase
             if (spans.length === 0 && Array.isArray(flat) && flat.length > 0) {
-                type TokenRec = { entity: string; word: string };
-                const tokens: TokenRec[] = (flat as ClassifierResult[])
-                    .filter(
-                        (t) =>
-                            typeof t?.entity === "string" &&
-                            typeof t?.word === "string"
-                    )
-                    .map((t) => ({
-                        entity: t.entity as string,
-                        word: String(t.word),
-                    }));
-                if (tokens.length > 0) {
-                    const groups: { type: string; text: string }[] = [];
-                    let currentType = "";
-                    let buffer = "";
-                    for (const t of tokens) {
-                        const label = t.entity.replace(/^I-/, "B-");
-                        const dash = label.indexOf("-");
-                        const prefix = dash > 0 ? label.slice(0, dash) : label;
-                        const entity = dash > 0 ? label.slice(dash + 1) : label;
-                        if (
-                            prefix === "B" &&
-                            entity !== currentType &&
-                            buffer
-                        ) {
-                            groups.push({ type: currentType, text: buffer });
-                            buffer = "";
-                        }
-                        currentType = entity;
-                        buffer += t.word;
-                    }
-                    if (buffer && currentType)
-                        groups.push({ type: currentType, text: buffer });
-
-                    let searchFrom = 0;
-                    for (const g of groups) {
-                        const candidate = g.text.replace(/\s+/g, " ").trim();
-                        if (!candidate) continue;
-                        const idx = text.indexOf(candidate, searchFrom);
-                        if (idx >= 0) {
-                            spans.push({
-                                type: g.type,
-                                start: idx,
-                                end: idx + candidate.length,
-                            });
-                            searchFrom = idx + candidate.length;
-                        }
-                    }
-                    this.debug("constructed spans from groups", {
-                        count: spans.length,
-                        preview: spans.slice(0, 5),
-                    });
-                }
+                spans = this.buildGroupedTokenSpans(text, flat);
             }
+
             this.debug("extracted spans", {
                 count: spans.length,
                 preview: spans.slice(0, 5),
             });
 
-            // Simple span merging - overlapping/adjacent spans only
-            spans.sort((a, b) => a.start - b.start);
-            const merged: Span[] = [];
+            const merged = this.mergeSpans(spans);
+            const validated = this.validateSpans(merged, text);
 
-            for (const s of spans) {
-                const last = merged[merged.length - 1];
-
-                if (last && last.type === s.type && s.start <= last.end) {
-                    // Merge overlapping spans of the same type
-                    last.end = Math.max(last.end, s.end);
-                } else {
-                    merged.push({ ...s });
-                }
-            }
-            this.debug("merged spans", {
-                count: merged.length,
-                preview: merged.slice(0, 5),
-            });
-
-            // Simple validation to filter out invalid detections
-            const validated = merged.filter((span) =>
-                this.isValidEntity(span, text)
-            );
-            this.debug("validated spans", {
-                count: validated.length,
-                preview: validated.slice(0, 5),
-            });
-
-            // Use word-level redaction
             if (validated.length > 0) {
                 return this.performWordLevelRedaction(
                     text,
@@ -357,7 +387,6 @@ export class PII {
                 );
             }
 
-            // No PII detected
             return { redactedText: text, entities: [] };
         } catch (error) {
             console.error(`PII redaction failed: ${error}`);
