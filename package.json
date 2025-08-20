@@ -2,8 +2,8 @@
     "name": "eliza",
     "scripts": {
         "preinstall": "npx only-allow pnpm",
-        "build": "turbo run build",
-        "build-docker": "turbo run build",
+        "build": "turbo run build --concurrency=5",
+        "build-docker": "turbo run build --concurrency=5",
         "cleanstart": "if [ -f agent/data/db.sqlite ]; then rm agent/data/db.sqlite; fi && pnpm --filter \"@elizaos/agent\" start --isRoot",
         "cleanstart:debug": "if [ -f agent/data/db.sqlite ]; then rm agent/data/db.sqlite; fi && cross-env NODE_ENV=development VERBOSE=true DEBUG=eliza:* pnpm --filter \"@elizaos/agent\" start --isRoot",
         "start": "pnpm --filter \"@elizaos/agent\" start --isRoot",

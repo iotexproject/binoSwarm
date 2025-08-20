@@ -4,7 +4,6 @@
     "globalEnv": ["NODE_ENV"],
     "globalPassThroughEnv": ["CI"],
     "ui": "tui",
-    "concurrency": 5,
     "tasks": {
         "check-types": {
             "dependsOn": ["build"]
