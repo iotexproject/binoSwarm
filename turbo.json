@@ -1,5 +1,10 @@
 {
     "$schema": "https://turbo.build/schema.json",
+    "globalDependencies": ["package.json"],
+    "globalEnv": ["NODE_ENV"],
+    "globalPassThroughEnv": ["CI"],
+    "ui": "tui",
+    "concurrency": 5,
     "tasks": {
         "check-types": {
             "dependsOn": ["build"]
@@ -9,7 +14,8 @@
         },
         "build": {
             "outputs": ["dist/**"],
-            "dependsOn": ["^@elizaos/core#build"]
+            "dependsOn": ["^@elizaos/core#build"],
+            "outputLogs": "hash-only"
         },
         "@elizaos/client-direct#build": {
             "outputs": ["dist/**"],
