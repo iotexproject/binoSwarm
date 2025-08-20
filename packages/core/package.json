@@ -67,6 +67,7 @@
         "@ai-sdk/deepseek": "^0.1.15",
         "@ai-sdk/openai": "^1.3.21",
         "@ai-sdk/xai": "^1.2.13",
+        "@huggingface/transformers": "3.0.2",
         "@openrouter/ai-sdk-provider": "^0.4.5",
         "@opentelemetry/auto-instrumentations-node": "^0.62.0",
         "@opentelemetry/sdk-node": "^0.203.0",

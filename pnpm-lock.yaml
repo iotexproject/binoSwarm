@@ -362,6 +362,9 @@ importers:
       '@ai-sdk/xai':
         specifier: ^1.2.13
         version: 1.2.18(zod@3.23.8)
+      '@huggingface/transformers':
+        specifier: 3.0.2
+        version: 3.0.2
       '@openrouter/ai-sdk-provider':
         specifier: ^0.4.5
         version: 0.4.6(zod@3.23.8)
@@ -18331,7 +18334,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 22.8.4
+      '@types/node': 20.19.9
       long: 5.3.2
 
   protocols@2.0.2: {}
