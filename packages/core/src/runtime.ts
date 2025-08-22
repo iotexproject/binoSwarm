@@ -1367,12 +1367,21 @@ function buildExample(example: MessagesExample, agentName: string): string {
 
     return example
         .map((message) => {
-            let messageString = `${message.user}: ${message.content.text}`;
+            let messageString = `${message.user}: ${message.content.text ?? ""}`;
             exampleNames.forEach((name, index) => {
                 const placeholder = `{{user${index + 1}}}`;
                 messageString = messageString.replaceAll(placeholder, name);
             });
             messageString = messageString.replaceAll("{{agent}}", agentName);
+            const action = message.content?.action;
+            const isAgentLine =
+                messageString.startsWith(`${agentName}: `) ||
+                message.user === "{{agent}}" ||
+                (typeof message.user === "string" &&
+                    message.user.toLowerCase() === agentName.toLowerCase());
+            if (isAgentLine && action && action !== "null") {
+                messageString = `${messageString} (action: ${action})`;
+            }
             return messageString;
         })
         .join("\n");
