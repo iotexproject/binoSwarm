@@ -1,4 +1,5 @@
 import { pipeline } from "@huggingface/transformers";
+import elizaLogger from "./logger";
 
 type RedactionEntity = {
     type: string;
@@ -392,5 +393,40 @@ export class PII {
             console.error(`PII redaction failed: ${error}`);
             return null;
         }
+    }
+}
+
+let piiInstance: PII | null = null;
+let piiInitPromise: Promise<void> | null = null;
+
+async function ensurePIIInitialized(): Promise<PII | null> {
+    if (piiInstance) return Promise.resolve(piiInstance);
+    if (!piiInitPromise) {
+        piiInitPromise = PII.create()
+            .then((pii) => {
+                piiInstance = pii;
+            })
+            .catch((error) => {
+                elizaLogger.error(
+                    "Failed to initialize PII for message redaction:",
+                    error
+                );
+                piiInstance = null;
+            });
+    }
+    return piiInitPromise.then(() => piiInstance);
+}
+
+export async function redactTextUsingPII(text: string): Promise<string> {
+    if (process.env.PII_REDACTION !== "true") return text;
+    if (typeof text !== "string" || text.length === 0) return text;
+    const pii = await ensurePIIInitialized();
+    if (!pii) return text;
+    try {
+        const result = await pii.redact(text);
+        return result?.redactedText ?? text;
+    } catch (error) {
+        elizaLogger.error("PII redaction failed in message processor:", error);
+        return text;
     }
 }
