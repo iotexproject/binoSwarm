@@ -1087,7 +1087,7 @@ export class AgentRuntime implements IAgentRuntime {
     private buildBio() {
         let bio = this.character.bio || "";
         if (Array.isArray(bio)) {
-            bio = shuffleAndSlice<string>(bio);
+            bio = shuffleAndSlice<string>(bio).join("\n");
         }
         return bio;
     }
