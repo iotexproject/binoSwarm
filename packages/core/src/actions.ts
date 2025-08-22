@@ -18,20 +18,22 @@ export const composeActionExamples = (
     );
 
     const formattedExamples = actionExamples.map((example) => {
-        example.forEach((message) => {
-            message.content.text = message.content.text.replaceAll(
-                `{{agentName}}`,
-                agentName
-            );
-        });
-
         const exampleNames = Array.from({ length: 5 }, () =>
             uniqueNamesGenerator({ dictionaries: [names] })
         );
 
         return `\n${example
             .map((message) => {
-                let messageString = `${message.user}: ${message.content.text}${message.content.action ? ` (${message.content.action})` : ""}`;
+                const replacedUser = message.user.replaceAll(
+                    `{{agentName}}`,
+                    agentName
+                );
+                const replacedText = message.content.text.replaceAll(
+                    `{{agentName}}`,
+                    agentName
+                );
+
+                let messageString = `${replacedUser}: ${replacedText}${message.content.action ? ` (${message.content.action})` : ""}`;
                 for (let i = 0; i < exampleNames.length; i++) {
                     messageString = messageString.replaceAll(
                         `{{user${i + 1}}}`,
