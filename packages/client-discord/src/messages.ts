@@ -54,6 +54,7 @@ export class MessageManager {
             this.runtime,
             this.interestChannels,
             this.client.user?.username.toLowerCase(),
+            // TODO: Is this correct? Logs show the bot's mention as <@123...>
             `<@!?${this.client.user?.id}>`
         );
     }
@@ -99,6 +100,8 @@ export class MessageManager {
                 messageUrl: message.url,
                 createdAt: message.createdTimestamp,
             });
+
+            state.agentDiscordId = this.client.user?.id;
 
             if (memory.content.text) {
                 this.updateInterest(
