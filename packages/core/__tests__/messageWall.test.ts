@@ -19,12 +19,7 @@ describe("MessageWall", () => {
             } as Character,
         } as unknown as IAgentRuntime;
         mockInterestChannels = {};
-        messageWall = new MessageWall(
-            mockRuntime,
-            mockInterestChannels,
-            BOT_USERNAME,
-            BOT_MENTION
-        );
+        messageWall = new MessageWall(mockRuntime, mockInterestChannels);
     });
 
     it("should return true and delete channel for short message with lose interest words", () => {
@@ -37,7 +32,9 @@ describe("MessageWall", () => {
             lastMessageSent: Date.now(),
             messages: [],
         };
-        expect(messageWall.isDismissive(message)).toBe(true);
+        expect(
+            messageWall.isDismissive(message, BOT_USERNAME, BOT_MENTION)
+        ).toBe(true);
         expect(mockInterestChannels).not.toHaveProperty("channel1");
     });
 
@@ -51,7 +48,9 @@ describe("MessageWall", () => {
             lastMessageSent: Date.now(),
             messages: [],
         };
-        expect(messageWall.isDismissive(message)).toBe(true);
+        expect(
+            messageWall.isDismissive(message, BOT_USERNAME, BOT_MENTION)
+        ).toBe(true);
         expect(mockInterestChannels).not.toHaveProperty("channel2");
     });
 
@@ -61,7 +60,9 @@ describe("MessageWall", () => {
             channelId: "channel3",
         };
         expect(mockInterestChannels).not.toHaveProperty("channel3");
-        expect(messageWall.isDismissive(message)).toBe(true);
+        expect(
+            messageWall.isDismissive(message, BOT_USERNAME, BOT_MENTION)
+        ).toBe(true);
         expect(mockInterestChannels).not.toHaveProperty("channel3"); // No side effect
     });
 
@@ -75,9 +76,14 @@ describe("MessageWall", () => {
             lastMessageSent: Date.now(),
             messages: [],
         };
+        messageWall["botUsername"] = BOT_USERNAME;
+        messageWall["botMention"] = BOT_MENTION;
         const normalizedContent = (messageWall as any).normalizeMessageContent(
             message
         );
+        delete (messageWall as any)["botUsername"];
+        delete (messageWall as any)["botMention"];
+
         expect(
             (messageWall as any).isInterestedButShort(
                 message,
@@ -92,7 +98,9 @@ describe("MessageWall", () => {
             content: "lol",
             channelId: "channel5",
         };
-        expect(messageWall.isDismissive(message)).toBe(true);
+        expect(
+            messageWall.isDismissive(message, BOT_USERNAME, BOT_MENTION)
+        ).toBe(true);
     });
 
     it("should return false for a long, relevant message", () => {
@@ -100,7 +108,9 @@ describe("MessageWall", () => {
             content: "This is a long and very relevant message for Eliza.",
             channelId: "channel6",
         };
-        expect(messageWall.isDismissive(message)).toBe(false);
+        expect(
+            messageWall.isDismissive(message, BOT_USERNAME, BOT_MENTION)
+        ).toBe(false);
     });
 
     it("should return false for a message with interest and not short or ignore words", () => {
@@ -113,7 +123,9 @@ describe("MessageWall", () => {
             lastMessageSent: Date.now(),
             messages: [],
         };
-        expect(messageWall.isDismissive(message)).toBe(false);
+        expect(
+            messageWall.isDismissive(message, BOT_USERNAME, BOT_MENTION)
+        ).toBe(false);
         expect(mockInterestChannels).toHaveProperty("channel7");
     });
 });

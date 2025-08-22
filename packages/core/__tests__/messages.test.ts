@@ -294,9 +294,9 @@ describe("Messages", () => {
                 actors: mockActors,
             });
             const lines = formatted.split("\n");
-            expect(lines[1]).toContain("Alice");
-            expect(lines[1]).toContain("(wave)");
-            expect(lines[1]).toContain("(just now)");
+            expect(lines[2]).toContain("Alice");
+            expect(lines[2]).toContain("(wave)");
+            expect(lines[2]).toContain("(just now)");
         });
 
         it("should handle messages from unknown users", () => {

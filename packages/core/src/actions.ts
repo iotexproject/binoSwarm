@@ -8,28 +8,14 @@ import { Action, ActionExample } from "./types.ts";
  * @param count - The number of examples to generate.
  * @returns A string containing formatted examples of conversations.
  */
-export const composeActionExamples = (actionsData: Action[], count: number) => {
-    const data: ActionExample[][][] = actionsData.map((action: Action) => [
-        ...action.examples,
-    ]);
-
-    const actionExamples: ActionExample[][] = [];
-    let length = data.length;
-    for (let i = 0; i < count && length; i++) {
-        const actionId = i % length;
-        const examples = data[actionId];
-        if (examples.length) {
-            const rand = ~~(Math.random() * examples.length);
-            actionExamples[i] = examples.splice(rand, 1)[0];
-        } else {
-            i--;
-        }
-
-        if (examples.length == 0) {
-            data.splice(actionId, 1);
-            length--;
-        }
-    }
+export const composeActionExamples = (
+    actionsData: Action[],
+    agentName: string
+) => {
+    // Flatten all examples from all actions; preserve original order
+    const actionExamples: ActionExample[][] = actionsData.flatMap(
+        (action: Action) => action.examples
+    );
 
     const formattedExamples = actionExamples.map((example) => {
         const exampleNames = Array.from({ length: 5 }, () =>
@@ -38,7 +24,16 @@ export const composeActionExamples = (actionsData: Action[], count: number) => {
 
         return `\n${example
             .map((message) => {
-                let messageString = `${message.user}: ${message.content.text}${message.content.action ? ` (${message.content.action})` : ""}`;
+                const replacedUser = message.user.replaceAll(
+                    `{{agentName}}`,
+                    agentName
+                );
+                const replacedText = message.content.text.replaceAll(
+                    `{{agentName}}`,
+                    agentName
+                );
+
+                let messageString = `${replacedUser}: ${replacedText}${message.content.action ? ` (${message.content.action})` : ""}`;
                 for (let i = 0; i < exampleNames.length; i++) {
                     messageString = messageString.replaceAll(
                         `{{user${i + 1}}}`,
@@ -74,5 +69,5 @@ export function formatActions(actions: Action[]) {
     return actions
         .sort(() => 0.5 - Math.random())
         .map((action: Action) => `${action.name}: ${action.description}`)
-        .join(",\n");
+        .join(",\n\n");
 }

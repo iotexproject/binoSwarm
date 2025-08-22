@@ -50,12 +50,7 @@ export class MessageManager {
         this.voiceManager = voiceManager;
         this.runtime = discordClient.runtime;
         this.attachmentManager = new AttachmentManager(this.runtime);
-        this.messageWall = new MessageWall(
-            this.runtime,
-            this.interestChannels,
-            this.client.user?.username.toLowerCase(),
-            `<@!?${this.client.user?.id}>`
-        );
+        this.messageWall = new MessageWall(this.runtime, this.interestChannels);
     }
 
     async handleMessage(message: DiscordMessage) {
@@ -100,6 +95,11 @@ export class MessageManager {
                 createdAt: message.createdTimestamp,
             });
 
+            state.agentDiscordId = this.client.user?.id;
+            state.discordModsRoleId = this.runtime.getSetting(
+                "DISCORD_MODS_ROLE_ID"
+            );
+
             if (memory.content.text) {
                 this.updateInterest(
                     message,
@@ -114,7 +114,19 @@ export class MessageManager {
                 return;
             }
 
-            const shouldIgnore = this.messageWall.isDismissive(message);
+            elizaLogger.debug(
+                "Interest channels before dismissive check",
+                this.interestChannels
+            );
+            const shouldIgnore = this.messageWall.isDismissive(
+                message,
+                this.client.user?.username.toLowerCase(),
+                `<@${this.client.user?.id}>`
+            );
+            elizaLogger.debug(
+                "Interest channels after dismissive check",
+                this.interestChannels
+            );
             if (shouldIgnore) {
                 return;
             }

@@ -92,7 +92,7 @@ export const formatMessages = ({
 
             return `(${timestamp}) [${shortId}] ${formattedName}: ${messageContent}${attachmentString}${messageAction && messageAction !== "null" ? ` (${messageAction})` : ""}`;
         })
-        .join("\n");
+        .join("\n\n");
     return messageStrings;
 };
 

@@ -13,19 +13,26 @@ describe("Actions", () => {
             description: "Greet someone",
             examples: [
                 [
-                    { user: "user1", content: { text: "Hello {{user2}}!" } },
+                    { user: "{{user1}}", content: { text: "Hello {{user2}}!" } },
                     {
-                        user: "user2",
+                        user: "{{user2}}",
                         content: { text: "Hi {{user1}}!", action: "wave" },
+                    },
+                    {
+                        user: "{{agentName}}",
+                        content: {
+                            text: "Hello {{user1}}!",
+                            action: "GENERATE_MEME",
+                        },
                     },
                 ],
                 [
                     {
-                        user: "user1",
+                        user: "{{user1}}",
                         content: { text: "Hey {{user2}}, how are you?" },
                     },
                     {
-                        user: "user2",
+                        user: "{{user2}}",
                         content: { text: "I'm good {{user1}}, thanks!" },
                     },
                 ],
@@ -43,8 +50,8 @@ describe("Actions", () => {
             description: "Say goodbye",
             examples: [
                 [
-                    { user: "user1", content: { text: "Goodbye {{user2}}!" } },
-                    { user: "user2", content: { text: "Bye {{user1}}!" } },
+                    { user: "{{user1}}", content: { text: "Goodbye {{user2}}!" } },
+                    { user: "{{user2}}", content: { text: "Bye {{user1}}!" } },
                 ],
             ],
             similes: ["say bye", "leave"],
@@ -61,11 +68,11 @@ describe("Actions", () => {
             examples: [
                 [
                     {
-                        user: "user1",
+                        user: "{{user1}}",
                         content: { text: "Can you help me {{user2}}?" },
                     },
                     {
-                        user: "user2",
+                        user: "{{user2}}",
                         content: {
                             text: "Of course {{user1}}, what do you need?",
                             action: "assist",
@@ -84,27 +91,24 @@ describe("Actions", () => {
     ];
 
     describe("composeActionExamples", () => {
-        it("should generate examples with correct format", () => {
-            const examples = composeActionExamples(mockActions, 1);
-            const lines = examples.trim().split("\n");
-            expect(lines.length).toBeGreaterThan(0);
-            expect(lines[0]).toMatch(/^user\d: .+/);
-        });
-
         it("should replace user placeholders with generated names", () => {
-            const examples = composeActionExamples(mockActions, 1);
+            const examples = composeActionExamples(mockActions, "binotest");
             expect(examples).not.toContain("{{user1}}");
             expect(examples).not.toContain("{{user2}}");
+            expect(examples).not.toContain("{{agentName}}");
         });
 
         it("should handle empty actions array", () => {
-            const examples = composeActionExamples([], 5);
+            const examples = composeActionExamples([], "binotest");
             expect(examples).toBe("");
         });
 
         it("should handle count larger than available examples", () => {
-            const examples = composeActionExamples(mockActions, 10);
+            const examples = composeActionExamples(mockActions, "binotest");
             expect(examples.length).toBeGreaterThan(0);
+            expect(examples).toContain("binotest");
+            expect(examples).toContain("GENERATE_MEME");
+
         });
     });
 
@@ -138,7 +142,7 @@ describe("Actions", () => {
 
         it("should include commas and newlines between multiple actions", () => {
             const formatted = formatActions([mockActions[0], mockActions[1]]);
-            const parts = formatted.split(",\n");
+            const parts = formatted.split(",\n\n");
             expect(parts.length).toBe(2);
             expect(parts[0]).toMatch(/^(greet|farewell): /);
             expect(parts[1]).toMatch(/^(greet|farewell): /);

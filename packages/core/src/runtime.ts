@@ -923,7 +923,10 @@ export class AgentRuntime implements IAgentRuntime {
                 actionsData.length > 0
                     ? addHeader(
                           "# Action Examples",
-                          composeActionExamples(actionsData, 10)
+                          composeActionExamples(
+                              actionsData,
+                              this.character.name
+                          )
                       )
                     : "",
             evaluatorsData,
@@ -1026,7 +1029,7 @@ export class AgentRuntime implements IAgentRuntime {
                   (() => {
                       const all = this.character?.style?.all || [];
                       const chat = this.character?.style?.chat || [];
-                      return [...all, ...chat].join("\n");
+                      return [...all, ...chat].join("\n\n");
                   })()
               )
             : "";
@@ -1087,7 +1090,8 @@ export class AgentRuntime implements IAgentRuntime {
     private buildBio() {
         let bio = this.character.bio || "";
         if (Array.isArray(bio)) {
-            bio = shuffleAndSlice<string>(bio);
+            const shuffledBio = shuffleAndSlice<string>(bio);
+            bio = joinLines(shuffledBio, "\n\n");
         }
         return bio;
     }
@@ -1100,7 +1104,7 @@ export class AgentRuntime implements IAgentRuntime {
                 this.character.lore,
                 Number(count)
             );
-            lore = joinLines(shuffledLore);
+            lore = joinLines(shuffledLore, "\n\n");
         }
         return lore;
     }
@@ -1232,7 +1236,7 @@ export class AgentRuntime implements IAgentRuntime {
             return `${sender}: ${message.content.text}`;
         });
 
-        return formattedInteractions.join("\n");
+        return formattedInteractions.join("\n\n");
     }
 
     private getRecentPostInteractions(
@@ -1290,7 +1294,7 @@ const formatPostExamples = (runtime: AgentRuntime, postExamples: string[]) => {
     const count =
         runtime.getSetting("POST_EXAMPLES_COUNT") || POST_EXAMPLES_COUNT;
     const examples = shuffleAndSlice<string>(postExamples, Number(count));
-    const formattedExamples = joinLines(examples);
+    const formattedExamples = joinLines(examples, "\n\n");
 
     if (formattedExamples.length > 0) {
         return addHeader(
@@ -1319,7 +1323,9 @@ export const formatMessageExamples = (
         messageExamples,
         Number(count)
     );
-    const withNames = examples.map((example) => buildExample(example));
+    const withNames = examples.map((example) =>
+        buildExample(example, runtime.character.name)
+    );
     const formattedExamples = joinLines(withNames, "\n\n");
 
     if (formattedExamples.length > 0) {
@@ -1342,12 +1348,12 @@ Description: ${attachment.description}
 Text: ${attachment.text}
 `
     );
-    return joinLines(formattedAttachments);
+    return joinLines(formattedAttachments, "\n\n");
 };
 
 const formatPostDirections = (postDirections: string[], count: number) => {
     const shuffled = shuffleAndSlice(postDirections, count);
-    return joinLines(shuffled);
+    return joinLines(shuffled, "\n\n");
 };
 
 function getTopics(runtime: AgentRuntime, topics: string[]): string {
@@ -1356,16 +1362,26 @@ function getTopics(runtime: AgentRuntime, topics: string[]): string {
     return joinLines(shuffled, ", ");
 }
 
-function buildExample(example: MessagesExample): string {
+function buildExample(example: MessagesExample, agentName: string): string {
     const exampleNames = genNames(MESSAGE_EXAMPLES_COUNT);
 
     return example
         .map((message) => {
-            let messageString = `${message.user}: ${message.content.text}`;
+            let messageString = `${message.user}: ${message.content.text ?? ""}`;
             exampleNames.forEach((name, index) => {
                 const placeholder = `{{user${index + 1}}}`;
                 messageString = messageString.replaceAll(placeholder, name);
             });
+            messageString = messageString.replaceAll("{{agent}}", agentName);
+            const action = message.content?.action;
+            const isAgentLine =
+                messageString.startsWith(`${agentName}: `) ||
+                message.user === "{{agent}}" ||
+                (typeof message.user === "string" &&
+                    message.user.toLowerCase() === agentName.toLowerCase());
+            if (isAgentLine && action && action !== "null") {
+                messageString = `${messageString} (action: ${action})`;
+            }
             return messageString;
         })
         .join("\n");
