@@ -14,6 +14,7 @@ import {
 import { composeContext } from "./context";
 import { generateMessageResponse } from "./generation";
 import { InteractionLogger, AgentClient } from "./interactionLogger";
+import { redactTextUsingPII } from "./PII";
 
 export interface ReceivedMessage {
     rawMessageId: string;
@@ -54,7 +55,7 @@ export class MessageProcessor {
             message.source
         );
 
-        this.messageToProcess = this.buildMemory(message);
+        this.messageToProcess = await this.buildMemory(message);
         await this.saveMemory(this.messageToProcess);
         this.state = await this.runtime.composeState(this.messageToProcess);
 
@@ -73,7 +74,7 @@ export class MessageProcessor {
 
             const callbackWithMemorySaving = async (
                 content: Content,
-                files: any[]
+                files: Array<{ attachment: string; name: string }>
             ) => {
                 const memories = await callback(content, files);
                 await this.saveMemories(memories);
@@ -157,9 +158,11 @@ export class MessageProcessor {
         });
     }
 
-    private buildMemory(message: ReceivedMessage): Memory {
+    private async buildMemory(message: ReceivedMessage): Promise<Memory> {
+        const redactedText = await redactTextUsingPII(message.text);
+
         const content: Content = {
-            text: message.text,
+            text: redactedText,
             attachments: message.attachments,
             source: message.source,
             inReplyTo: message.inReplyTo,
