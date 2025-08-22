@@ -1323,7 +1323,9 @@ export const formatMessageExamples = (
         messageExamples,
         Number(count)
     );
-    const withNames = examples.map((example) => buildExample(example));
+    const withNames = examples.map((example) =>
+        buildExample(example, runtime.character.name)
+    );
     const formattedExamples = joinLines(withNames, "\n\n");
 
     if (formattedExamples.length > 0) {
@@ -1360,7 +1362,7 @@ function getTopics(runtime: AgentRuntime, topics: string[]): string {
     return joinLines(shuffled, ", ");
 }
 
-function buildExample(example: MessagesExample): string {
+function buildExample(example: MessagesExample, agentName: string): string {
     const exampleNames = genNames(MESSAGE_EXAMPLES_COUNT);
 
     return example
@@ -1370,6 +1372,7 @@ function buildExample(example: MessagesExample): string {
                 const placeholder = `{{user${index + 1}}}`;
                 messageString = messageString.replaceAll(placeholder, name);
             });
+            messageString = messageString.replaceAll("{{agent}}", agentName);
             return messageString;
         })
         .join("\n");
