@@ -21,19 +21,13 @@ async function generateSummary(
   Text: """
   ${text}
   """
-
-  Respond with a JSON object in the following format:
-  <response>
-  {
-    "title": "Generated Title",
-    "summary": "Generated summary and/or description of the text"
-  }
-  </response>
   `;
 
     const summarySchema = z.object({
         title: z.string().describe("The title of the page"),
-        summary: z.string().describe("The summary of the page"),
+        summary: z
+            .string()
+            .describe("The summary of the page and/or description of the text"),
     });
 
     type Summary = z.infer<typeof summarySchema>;
