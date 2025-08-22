@@ -1029,7 +1029,7 @@ export class AgentRuntime implements IAgentRuntime {
                   (() => {
                       const all = this.character?.style?.all || [];
                       const chat = this.character?.style?.chat || [];
-                      return [...all, ...chat].join("\n");
+                      return [...all, ...chat].join("\n\n");
                   })()
               )
             : "";
@@ -1236,7 +1236,7 @@ export class AgentRuntime implements IAgentRuntime {
             return `${sender}: ${message.content.text}`;
         });
 
-        return formattedInteractions.join("\n");
+        return formattedInteractions.join("\n\n");
     }
 
     private getRecentPostInteractions(

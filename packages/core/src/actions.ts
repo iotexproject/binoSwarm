@@ -67,5 +67,5 @@ export function formatActions(actions: Action[]) {
     return actions
         .sort(() => 0.5 - Math.random())
         .map((action: Action) => `${action.name}: ${action.description}`)
-        .join(",\n");
+        .join(",\n\n");
 }
