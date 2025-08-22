@@ -1091,7 +1091,7 @@ export class AgentRuntime implements IAgentRuntime {
         let bio = this.character.bio || "";
         if (Array.isArray(bio)) {
             const shuffledBio = shuffleAndSlice<string>(bio);
-            bio = joinLines(shuffledBio);
+            bio = joinLines(shuffledBio, "\n\n");
         }
         return bio;
     }
@@ -1104,7 +1104,7 @@ export class AgentRuntime implements IAgentRuntime {
                 this.character.lore,
                 Number(count)
             );
-            lore = joinLines(shuffledLore);
+            lore = joinLines(shuffledLore, "\n\n");
         }
         return lore;
     }
@@ -1294,7 +1294,7 @@ const formatPostExamples = (runtime: AgentRuntime, postExamples: string[]) => {
     const count =
         runtime.getSetting("POST_EXAMPLES_COUNT") || POST_EXAMPLES_COUNT;
     const examples = shuffleAndSlice<string>(postExamples, Number(count));
-    const formattedExamples = joinLines(examples);
+    const formattedExamples = joinLines(examples, "\n\n");
 
     if (formattedExamples.length > 0) {
         return addHeader(
@@ -1346,12 +1346,12 @@ Description: ${attachment.description}
 Text: ${attachment.text}
 `
     );
-    return joinLines(formattedAttachments);
+    return joinLines(formattedAttachments, "\n\n");
 };
 
 const formatPostDirections = (postDirections: string[], count: number) => {
     const shuffled = shuffleAndSlice(postDirections, count);
-    return joinLines(shuffled);
+    return joinLines(shuffled, "\n\n");
 };
 
 function getTopics(runtime: AgentRuntime, topics: string[]): string {
