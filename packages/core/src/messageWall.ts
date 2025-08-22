@@ -71,19 +71,19 @@ export class MessageWall {
     private botUsername: string;
     private botMention: string;
 
-    constructor(
-        runtime: IAgentRuntime,
-        interestChannels: InterestChannels,
-        botUsername: string,
-        botMention: string
-    ) {
+    constructor(runtime: IAgentRuntime, interestChannels: InterestChannels) {
         this.runtime = runtime;
         this.interestChannels = interestChannels;
-        this.botUsername = botUsername;
-        this.botMention = botMention;
     }
 
-    isDismissive(message: Message): boolean {
+    isDismissive(
+        message: Message,
+        botUsername: string,
+        botMention: string
+    ): boolean {
+        this.botUsername = botUsername;
+        this.botMention = botMention;
+
         const messageContent = this.normalizeMessageContent(message);
 
         const isShort = this.isShortWithLoseInterestWords(messageContent);

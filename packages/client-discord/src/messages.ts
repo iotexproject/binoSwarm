@@ -50,13 +50,7 @@ export class MessageManager {
         this.voiceManager = voiceManager;
         this.runtime = discordClient.runtime;
         this.attachmentManager = new AttachmentManager(this.runtime);
-        this.messageWall = new MessageWall(
-            this.runtime,
-            this.interestChannels,
-            this.client.user?.username.toLowerCase(),
-            // TODO: Is this correct? Logs show the bot's mention as <@123...>
-            `<@!?${this.client.user?.id}>`
-        );
+        this.messageWall = new MessageWall(this.runtime, this.interestChannels);
     }
 
     async handleMessage(message: DiscordMessage) {
@@ -120,7 +114,19 @@ export class MessageManager {
                 return;
             }
 
-            const shouldIgnore = this.messageWall.isDismissive(message);
+            elizaLogger.debug(
+                "Interest channels before dismissive check",
+                this.interestChannels
+            );
+            const shouldIgnore = this.messageWall.isDismissive(
+                message,
+                this.client.user?.username.toLowerCase(),
+                `<@${this.client.user?.id}>`
+            );
+            elizaLogger.debug(
+                "Interest channels after dismissive check",
+                this.interestChannels
+            );
             if (shouldIgnore) {
                 return;
             }
