@@ -102,6 +102,9 @@ export class MessageManager {
             });
 
             state.agentDiscordId = this.client.user?.id;
+            state.discordModsRoleId = this.runtime.getSetting(
+                "DISCORD_MODS_ROLE_ID"
+            );
 
             if (memory.content.text) {
                 this.updateInterest(
