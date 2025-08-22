@@ -923,7 +923,10 @@ export class AgentRuntime implements IAgentRuntime {
                 actionsData.length > 0
                     ? addHeader(
                           "# Action Examples",
-                          composeActionExamples(actionsData, 10)
+                          composeActionExamples(
+                              actionsData,
+                              this.character.name
+                          )
                       )
                     : "",
             evaluatorsData,
