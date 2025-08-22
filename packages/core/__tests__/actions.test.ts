@@ -138,7 +138,7 @@ describe("Actions", () => {
 
         it("should include commas and newlines between multiple actions", () => {
             const formatted = formatActions([mockActions[0], mockActions[1]]);
-            const parts = formatted.split(",\n");
+            const parts = formatted.split(",\n\n");
             expect(parts.length).toBe(2);
             expect(parts[0]).toMatch(/^(greet|farewell): /);
             expect(parts[1]).toMatch(/^(greet|farewell): /);
