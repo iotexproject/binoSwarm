@@ -8,26 +8,14 @@ import { Action, ActionExample } from "./types.ts";
  * @param count - The number of examples to generate.
  * @returns A string containing formatted examples of conversations.
  */
-export const composeActionExamples = (actionsData: Action[], agentName: string) => {
-    const data: ActionExample[][][] = actionsData.map((action: Action) => [
-        ...action.examples,
-    ]);
-
-    const actionExamples: ActionExample[][] = [];
-    for (let i = 0; i < data.length; i++) {
-        const actionId = i % data.length;
-        const examples = data[actionId];
-        if (examples.length) {
-            const rand = ~~(Math.random() * examples.length);
-            actionExamples[i] = examples.splice(rand, 1)[0];
-        } else {
-            i--;
-        }
-
-        if (examples.length == 0) {
-            data.splice(actionId, 1);
-        }
-    }
+export const composeActionExamples = (
+    actionsData: Action[],
+    agentName: string
+) => {
+    // Flatten all examples from all actions; preserve original order
+    const actionExamples: ActionExample[][] = actionsData.flatMap(
+        (action: Action) => action.examples
+    );
 
     const formattedExamples = actionExamples.map((example) => {
         example.forEach((message) => {
