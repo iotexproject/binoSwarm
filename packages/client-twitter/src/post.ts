@@ -178,9 +178,11 @@ export class TwitterPostClient {
             await TwitterHelpers.postTweet(
                 this.runtime,
                 this.client,
-                responseMemory.content.text,
+                {
+                    text: responseMemory.content.text,
+                    attachments: response.attachments,
+                },
                 roomId,
-                responseMemory.content.text,
                 this.twitterUsername
             );
 
@@ -191,9 +193,8 @@ export class TwitterPostClient {
             await TwitterHelpers.postTweet(
                 this.runtime,
                 this.client,
-                responseMemory.content.text,
+                responseMemory.content,
                 roomId,
-                responseMemory.content.text,
                 this.twitterUsername
             );
             return;
@@ -219,7 +220,7 @@ export class TwitterPostClient {
             agentId: this.runtime.agentId,
             roomId,
             content: {
-                text: Date.now().toLocaleString(),
+                text: new Date().toISOString(),
             },
         };
 
