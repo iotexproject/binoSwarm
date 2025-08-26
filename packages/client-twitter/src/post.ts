@@ -119,11 +119,6 @@ export class TwitterPostClient {
             const username = this.client.profile.username;
             const roomId = stringToUuid("twitter_generate_room-" + username);
 
-            // Generate a unique ID for this scheduled post attempt
-            const scheduledPostId = stringToUuid(
-                `scheduled_post_${Date.now()}_${Math.random()}`
-            );
-
             await this.runtime.ensureUserExists(
                 this.runtime.agentId,
                 username,
@@ -131,69 +126,85 @@ export class TwitterPostClient {
                 "twitter"
             );
 
-            const callback: HandlerCallback = async (response: Content) => {
-                const memory: Memory = {
-                    id: scheduledPostId,
-                    userId: this.runtime.agentId,
-                    agentId: this.runtime.agentId,
-                    roomId,
-                    content: response,
-                };
-
-                await this.runtime.messageManager.createMemory({
-                    memory,
-                    isUnique: true,
-                });
-
-                await TwitterHelpers.postTweet(
-                    this.runtime,
-                    this.client,
-                    response.text,
-                    roomId,
-                    response.text,
-                    this.twitterUsername
-                );
-
-                return [memory];
-            };
-
-            await this.genNewTweet(roomId, callback);
+            await this.genNewTweet(roomId);
         } catch (error) {
             elizaLogger.error("Error generating new tweet:", error);
         }
     }
 
-    private async genNewTweet(
-        roomId: UUID,
-        callback: HandlerCallback
-    ): Promise<void> {
+    private async genNewTweet(roomId: UUID): Promise<void> {
         const maxTweetLength = this.client.twitterConfig.MAX_TWEET_LENGTH;
         const newTweetContent = await this.generateNewTweetContent(
             roomId,
-            maxTweetLength,
-            callback
+            maxTweetLength
         );
         elizaLogger.debug("generate new tweet content:\n" + newTweetContent);
     }
 
     private async generateNewTweetContent(
         roomId: UUID,
-        maxTweetLength: number,
-        callback: HandlerCallback
+        maxTweetLength: number
     ): Promise<void> {
         const state = await this.composeNewTweetState(roomId, maxTweetLength);
-
         const postContext = this.composeContextAndAction(state);
-
         const responseMemory = await this.prepareContextAndAction(
             postContext,
             roomId
         );
+        this.runtime.messageManager.createMemory({
+            memory: responseMemory,
+            isUnique: true,
+        });
+
+        // Generate a unique ID for this scheduled post attempt
+        const scheduledPostId = stringToUuid(
+            `scheduled_post_${Date.now()}_${Math.random()}`
+        );
+
+        const callback: HandlerCallback = async (response: Content) => {
+            const memory: Memory = {
+                id: scheduledPostId,
+                userId: this.runtime.agentId,
+                agentId: this.runtime.agentId,
+                roomId,
+                content: response,
+            };
+
+            await this.runtime.messageManager.createMemory({
+                memory,
+                isUnique: true,
+            });
+
+            await TwitterHelpers.postTweet(
+                this.runtime,
+                this.client,
+                responseMemory.content.text,
+                roomId,
+                responseMemory.content.text,
+                this.twitterUsername
+            );
+
+            return [memory];
+        };
+
+        if (responseMemory.content.action === "NONE") {
+            await TwitterHelpers.postTweet(
+                this.runtime,
+                this.client,
+                responseMemory.content.text,
+                roomId,
+                responseMemory.content.text,
+                this.twitterUsername
+            );
+            return;
+        }
+
+        const updatedState = await this.runtime.updateRecentMessageState(state);
 
         await this.runtime.processActions(
             responseMemory,
             [responseMemory],
-            state,
+            updatedState,
             callback,
             {
                 tags: ["twitter", "twitter-post"],
@@ -208,7 +219,7 @@ export class TwitterPostClient {
             agentId: this.runtime.agentId,
             roomId,
             content: {
-                text: "Placeholder",
+                text: Date.now().toLocaleString(),
             },
         };
 
