@@ -4,18 +4,17 @@ import {
     ModelClass,
     stringToUuid,
     UUID,
-    truncateToCompleteSentence,
     elizaLogger,
     generateMessageResponse,
     State,
-    generateObject,
-    InteractionLogger,
+    Memory,
+    HandlerCallback,
+    Content,
 } from "@elizaos/core";
 
 import { ClientBase } from "./base.ts";
-import { twitterPostTemplate, twitterQSPrompt } from "./templates.ts";
+import { twitterPostTemplate } from "./templates.ts";
 import { TwitterHelpers } from "./helpers.ts";
-import qsTool from "./providers.ts";
 
 export class TwitterPostClient {
     client: ClientBase;
@@ -119,7 +118,6 @@ export class TwitterPostClient {
         try {
             const username = this.client.profile.username;
             const roomId = stringToUuid("twitter_generate_room-" + username);
-            const agentId = this.runtime.agentId;
 
             // Generate a unique ID for this scheduled post attempt
             const scheduledPostId = stringToUuid(
@@ -133,125 +131,116 @@ export class TwitterPostClient {
                 "twitter"
             );
 
-            const newTweetContent = await this.genAndCleanNewTweet(roomId);
+            const callback: HandlerCallback = async (response: Content) => {
+                const memory: Memory = {
+                    id: scheduledPostId,
+                    userId: this.runtime.agentId,
+                    agentId: this.runtime.agentId,
+                    roomId,
+                    content: response,
+                };
 
-            try {
+                await this.runtime.messageManager.createMemory({
+                    memory,
+                    isUnique: true,
+                });
+
                 await TwitterHelpers.postTweet(
                     this.runtime,
                     this.client,
-                    newTweetContent,
+                    response.text,
                     roomId,
-                    newTweetContent,
+                    response.text,
                     this.twitterUsername
                 );
 
-                InteractionLogger.logAgentScheduledPost({
-                    client: "twitter",
-                    agentId: agentId,
-                    userId: agentId,
-                    roomId: roomId,
-                    messageId: scheduledPostId,
-                    status: "sent",
-                });
-            } catch (postError) {
-                elizaLogger.error("Error posting tweet directly:", postError);
-                InteractionLogger.logAgentScheduledPost({
-                    client: "twitter",
-                    agentId: agentId,
-                    userId: agentId,
-                    roomId: roomId,
-                    messageId: scheduledPostId,
-                    status: "failed",
-                });
-                throw postError;
-            }
+                return [memory];
+            };
+
+            await this.genNewTweet(roomId, callback);
         } catch (error) {
             elizaLogger.error("Error generating new tweet:", error);
         }
     }
 
-    private truncateNewTweet(maxTweetLength: number, newTweetContent: string) {
-        if (maxTweetLength) {
-            newTweetContent = truncateToCompleteSentence(
-                newTweetContent,
-                maxTweetLength
-            );
-        }
-        return newTweetContent;
-    }
-
-    private async genAndCleanNewTweet(roomId: UUID) {
+    private async genNewTweet(
+        roomId: UUID,
+        callback: HandlerCallback
+    ): Promise<void> {
         const maxTweetLength = this.client.twitterConfig.MAX_TWEET_LENGTH;
         const newTweetContent = await this.generateNewTweetContent(
             roomId,
-            maxTweetLength
+            maxTweetLength,
+            callback
         );
         elizaLogger.debug("generate new tweet content:\n" + newTweetContent);
-
-        let cleanedContent = this.truncateNewTweet(
-            maxTweetLength,
-            newTweetContent
-        );
-        cleanedContent = this.fixNewLines(cleanedContent);
-        cleanedContent = this.removeQuotes(cleanedContent);
-
-        return cleanedContent;
-    }
-
-    private removeQuotes(str: string) {
-        return str.replace(/^['"](.*)['"]$/, "$1");
-    }
-
-    private fixNewLines(str: string) {
-        return str.replaceAll(/\\n/g, "\n\n"); //ensures double spaces
     }
 
     private async generateNewTweetContent(
         roomId: UUID,
-        maxTweetLength: number
-    ) {
+        maxTweetLength: number,
+        callback: HandlerCallback
+    ): Promise<void> {
         const state = await this.composeNewTweetState(roomId, maxTweetLength);
 
-        const qsContext = this.composeAskQsContext(state);
-        const qsResponse = await this.askOracle(qsContext);
+        const qsContext = this.composeContextAndAction(state);
+        const message: Memory = {
+            id: stringToUuid(Date.now().toString()),
+            userId: this.runtime.agentId,
+            agentId: this.runtime.agentId,
+            roomId,
+            content: {
+                text: "Placeholder",
+            },
+        };
 
-        state.oracleResponse = qsResponse;
-        const context = this.composeNewTweetContext(state);
+        const responseMemory = await this.prepareContextAndAction(
+            qsContext,
+            roomId,
+            message
+        );
 
-        const { text } = await generateMessageResponse({
+        await this.runtime.processActions(
+            message,
+            [responseMemory],
+            state,
+            callback,
+            {
+                tags: ["twitter", "twitter-post"],
+            }
+        );
+    }
+
+    private async prepareContextAndAction(
+        context: string,
+        roomId: UUID,
+        message: Memory
+    ) {
+        const content = await generateMessageResponse({
             runtime: this.runtime,
             context,
             modelClass: ModelClass.LARGE,
-            tags: ["twitter", "twitter-post"],
+            tags: ["twitter", "twitter-prepare-context-and-action"],
+            message,
         });
 
-        return text;
+        const responseMemory: Memory = {
+            id: stringToUuid(Date.now().toString()),
+            userId: this.runtime.agentId,
+            agentId: this.runtime.agentId,
+            roomId,
+            content,
+        };
+
+        return responseMemory;
     }
 
-    private async askOracle(context: string) {
-        const { object } = await generateObject<{ question: string }>({
-            runtime: this.runtime,
-            context,
-            modelClass: ModelClass.LARGE,
-            schema: qsTool.parameters,
-            schemaName: qsTool.name,
-            schemaDescription: qsTool.description,
-            customSystemPrompt:
-                "You are a neutral processing agent. Wait for task-specific instructions in the user prompt.",
-            functionId: "twitter_askOracle",
-            tags: ["twitter", "twitter-ask-oracle"],
-        });
-
-        const answer = await qsTool.execute({ question: object.question });
-        return answer;
-    }
-
-    private composeAskQsContext(state: State) {
+    private composeContextAndAction(state: State) {
         const expertContext = composeContext({
             state,
             template:
-                this.runtime.character.templates?.twitterQSPrompt ||
-                twitterQSPrompt,
+                this.runtime.character.templates?.twitterPostTemplate ||
+                twitterPostTemplate,
         });
 
         return expertContext;
@@ -278,15 +267,5 @@ export class TwitterPostClient {
         );
 
         return state;
-    }
-
-    private composeNewTweetContext(state: State) {
-        return composeContext({
-            state,
-            template:
-                this.runtime.character.templates?.twitterPostWithQS ||
-                this.runtime.character.templates?.twitterPostTemplate ||
-                twitterPostTemplate,
-        });
     }
 }
