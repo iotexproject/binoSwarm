@@ -37,6 +37,10 @@ Now analyze the following content and create a prompt:
 {{topics}}
 </topics_of_interest>
 
+<current_message>
+{{currentMessage}}
+</current_message>
+
 </character_description>
 `;
 

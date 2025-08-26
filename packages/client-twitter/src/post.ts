@@ -183,7 +183,25 @@ export class TwitterPostClient {
     ): Promise<void> {
         const state = await this.composeNewTweetState(roomId, maxTweetLength);
 
-        const qsContext = this.composeContextAndAction(state);
+        const postContext = this.composeContextAndAction(state);
+
+        const responseMemory = await this.prepareContextAndAction(
+            postContext,
+            roomId
+        );
+
+        await this.runtime.processActions(
+            responseMemory,
+            [responseMemory],
+            state,
+            callback,
+            {
+                tags: ["twitter", "twitter-post"],
+            }
+        );
+    }
+
+    private async prepareContextAndAction(context: string, roomId: UUID) {
         const message: Memory = {
             id: stringToUuid(Date.now().toString()),
             userId: this.runtime.agentId,
@@ -194,28 +212,6 @@ export class TwitterPostClient {
             },
         };
 
-        const responseMemory = await this.prepareContextAndAction(
-            qsContext,
-            roomId,
-            message
-        );
-
-        await this.runtime.processActions(
-            message,
-            [responseMemory],
-            state,
-            callback,
-            {
-                tags: ["twitter", "twitter-post"],
-            }
-        );
-    }
-
-    private async prepareContextAndAction(
-        context: string,
-        roomId: UUID,
-        message: Memory
-    ) {
         const content = await generateMessageResponse({
             runtime: this.runtime,
             context,
