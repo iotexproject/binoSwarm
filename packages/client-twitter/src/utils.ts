@@ -13,6 +13,36 @@ export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     return new Promise((resolve) => setTimeout(resolve, waitTime));
 };
 
+export async function processAttachments(
+    attachments: Media[]
+): Promise<{ data: Buffer; mediaType: string }[]> {
+    return await Promise.all(
+        attachments.map(async (attachment: Media) => {
+            if (/^(http|https):\/\//.test(attachment.url)) {
+                // Handle HTTP URLs
+                const response = await fetch(attachment.url);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch file: ${attachment.url}`);
+                }
+                const mediaBuffer = Buffer.from(await response.arrayBuffer());
+                const mediaType = attachment.contentType;
+                return { data: mediaBuffer, mediaType };
+            } else if (fs.existsSync(attachment.url)) {
+                // Handle local file paths
+                const mediaBuffer = await fs.promises.readFile(
+                    path.resolve(attachment.url)
+                );
+                const mediaType = attachment.contentType;
+                return { data: mediaBuffer, mediaType };
+            } else {
+                throw new Error(
+                    `File not found: ${attachment.url}. Make sure the path is correct.`
+                );
+            }
+        })
+    );
+}
+
 export async function buildConversationThread(
     tweet: Tweet,
     client: ClientBase,
@@ -175,35 +205,7 @@ export async function sendTweet(
         let mediaData: { data: Buffer; mediaType: string }[] | undefined;
 
         if (content.attachments && content.attachments.length > 0) {
-            mediaData = await Promise.all(
-                content.attachments.map(async (attachment: Media) => {
-                    if (/^(http|https):\/\//.test(attachment.url)) {
-                        // Handle HTTP URLs
-                        const response = await fetch(attachment.url);
-                        if (!response.ok) {
-                            throw new Error(
-                                `Failed to fetch file: ${attachment.url}`
-                            );
-                        }
-                        const mediaBuffer = Buffer.from(
-                            await response.arrayBuffer()
-                        );
-                        const mediaType = attachment.contentType;
-                        return { data: mediaBuffer, mediaType };
-                    } else if (fs.existsSync(attachment.url)) {
-                        // Handle local file paths
-                        const mediaBuffer = await fs.promises.readFile(
-                            path.resolve(attachment.url)
-                        );
-                        const mediaType = attachment.contentType;
-                        return { data: mediaBuffer, mediaType };
-                    } else {
-                        throw new Error(
-                            `File not found: ${attachment.url}. Make sure the path is correct.`
-                        );
-                    }
-                })
-            );
+            mediaData = await processAttachments(content.attachments);
         }
 
         const cleanChunk = deduplicateMentions(chunk.trim());
