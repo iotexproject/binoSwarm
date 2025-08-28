@@ -106,6 +106,7 @@ describe("Twitter Post Client", () => {
             // Mock the final message response
             vi.mocked(generateMessageResponse).mockResolvedValue({
                 text: "Test tweet content",
+                action: "NONE"
             } as Content);
 
             // Mock the tweet posting
@@ -118,12 +119,6 @@ describe("Twitter Post Client", () => {
             vi.mocked(mockRuntime.composeState).mockResolvedValue(mockState);
 
             await postClient["generateNewTweet"]();
-
-            // Verify state was modified with oracle response
-            expect(mockState).toHaveProperty(
-                "oracleResponse",
-                "Quicksilver oracle response"
-            );
 
             expect(mockRuntime.ensureUserExists).toHaveBeenCalledWith(
                 mockRuntime.agentId,
@@ -145,6 +140,14 @@ describe("Twitter Post Client", () => {
                     maxTweetLength: baseClient.twitterConfig.MAX_TWEET_LENGTH,
                 })
             );
+
+            expect(mockRuntime.messageManager.createMemory).toHaveBeenCalledWith({
+                memory: expect.objectContaining({
+                    userId: mockRuntime.agentId,
+                    agentId: mockRuntime.agentId,
+                }),
+                isUnique: true,
+            });
 
             expect(elizaLogger.log).toHaveBeenCalledWith(
                 expect.stringContaining("Posting new tweet")

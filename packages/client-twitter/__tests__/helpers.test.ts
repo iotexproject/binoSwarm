@@ -72,6 +72,7 @@ describe("Tweet Generation and Posting", () => {
         await TwitterHelpers.handleStandardTweet(baseClient, tweetContent);
         expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
             tweetContent,
+            undefined,
             undefined
         );
     });
@@ -85,6 +86,7 @@ describe("Tweet Generation and Posting", () => {
 
         expect(mockTwitterClient.sendNoteTweet).toHaveBeenCalledWith(
             tweetContent,
+            undefined,
             undefined
         );
     });
@@ -121,6 +123,7 @@ describe("Tweet Generation and Posting", () => {
         // Verify sendNoteTweet was called
         expect(mockTwitterClient.sendNoteTweet).toHaveBeenCalledWith(
             longTweetContent,
+            undefined,
             undefined
         );
 
@@ -133,6 +136,7 @@ describe("Tweet Generation and Posting", () => {
         // Verify fallback to standard tweet
         expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
             truncatedContent,
+            undefined,
             undefined
         );
 

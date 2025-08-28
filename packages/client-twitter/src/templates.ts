@@ -45,54 +45,6 @@ Tweet:
 
 # Respond with qualifying action tags only. Default to NO action unless extremely confident of relevance.`;
 
-export const twitterQSPrompt = `
-You are an AI tasked with gathering information for generating Twitter posts. This is the first step in a two-step process, where the information gathered here will later be adapted into tweets by a separate system.
-
-First, let's review the character information and data sources:
-
-<character_info>
-<name>{{agentName}}</name>
-<twitter_handle>{{twitterUserName}}</twitter_handle>
-<expertise>{{knowledge}}</expertise>
-<biography>{{bio}}</biography>
-<background_lore>{{lore}}</background_lore>
-<topics_of_interest>{{topics}}</topics_of_interest>
-</character_info>
-
-<content_providers>{{providers}}</content_providers>
-
-<post_requirements>
-<adjective>{{adjective}}</adjective>
-<topic>{{topic}}</topic>
-</post_requirements>
-
-<additional_guidelines>{{postDirections}}</additional_guidelines>
-
-You have access to SENTAI, an oracle with access to specialized data across these domains.
-
-Your task is to find an answer to ask SENTAI.
-
-1. First Round: Question Proposal
-   - Propose one key question that you want SENTAI to answer.
-   - The question should be relevant to agents's domain and tailored to the agent's character and interests.
-   - Questions should follow this structure:
-     a. What do you want to get? (answer, advice, text, plan, ideas…)
-     b. About what? (specific topic)
-     c. For whom? (target audience: investors, developers, general public…)
-     d. In what style? (simple, professional, engaging…)
-
-Your output should be a string only containing the answer from SENTAI.
-
-Remember:
-- Stay domain-focused and ask high-value questions.
-- The better the question, the more useful and precise the response.
-- Avoid overly broad or vague questions.
-- Ensure that the final selected question and SENTAI's answer are relevant to the character's interests and the specified topic.
-- The answer should be {{adjective}} in tone or content, without directly mentioning the topic (unless explicitly allowed).
-
-Your final output should consist only of the SENTAI's answer, without duplicating or rehashing any of the thought process from your thinking block.
-`;
-
 export const twitterMessageHandlerTemplate = `
 # Areas of Expertise
 {{knowledge}}

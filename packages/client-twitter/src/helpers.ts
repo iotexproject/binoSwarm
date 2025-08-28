@@ -4,21 +4,28 @@ import {
     truncateToCompleteSentence,
     UUID,
     stringToUuid,
+    Content,
 } from "@elizaos/core";
 import { Tweet } from "agent-twitter-client";
 
 import { ClientBase } from "./base";
 import { DEFAULT_MAX_TWEET_LENGTH } from "./environment.ts";
+import { processAttachments } from "./utils";
 
 export class TwitterHelpers {
     static async handleNoteTweet(
         client: ClientBase,
         content: string,
-        tweetId?: string
+        tweetId?: string,
+        mediaData?: { data: Buffer; mediaType: string }[]
     ) {
         const noteTweetResult = await client.requestQueue.add(
             async () =>
-                await client.twitterClient.sendNoteTweet(content, tweetId)
+                await client.twitterClient.sendNoteTweet(
+                    content,
+                    tweetId,
+                    mediaData
+                )
         );
 
         if (noteTweetResult.errors && noteTweetResult.errors.length > 0) {
@@ -42,10 +49,16 @@ export class TwitterHelpers {
     static async handleStandardTweet(
         client: ClientBase,
         content: string,
-        tweetId?: string
+        tweetId?: string,
+        mediaData?: { data: Buffer; mediaType: string }[]
     ) {
         const standardTweetResult = await client.requestQueue.add(
-            async () => await client.twitterClient.sendTweet(content, tweetId)
+            async () =>
+                await client.twitterClient.sendTweet(
+                    content,
+                    tweetId,
+                    mediaData
+                )
         );
 
         const body = await standardTweetResult.json();
@@ -79,25 +92,43 @@ export class TwitterHelpers {
     static async postTweet(
         runtime: IAgentRuntime,
         client: ClientBase,
-        cleanedContent: string,
+        content: Content,
         roomId: UUID,
-        newTweetContent: string,
         twitterUsername: string
     ) {
         try {
-            elizaLogger.log(`Posting new tweet:\n ${newTweetContent}`);
+            if (!content || !content.text) {
+                elizaLogger.error(
+                    "Cannot send tweet: content or content.text is null"
+                );
+                return;
+            }
+
+            elizaLogger.log(`Posting new tweet:\n ${content.text}`);
+            elizaLogger.debug("Content attachments:", content.attachments);
+
+            let mediaData: { data: Buffer; mediaType: string }[] | undefined;
+
+            // Process attachments if present
+            if (content.attachments && content.attachments.length > 0) {
+                mediaData = await processAttachments(content.attachments);
+            }
 
             let result;
 
-            if (cleanedContent.length > DEFAULT_MAX_TWEET_LENGTH) {
+            if (content.text.length > DEFAULT_MAX_TWEET_LENGTH) {
                 result = await TwitterHelpers.handleNoteTweet(
                     client,
-                    cleanedContent
+                    content.text,
+                    undefined,
+                    mediaData
                 );
             } else {
                 result = await TwitterHelpers.handleStandardTweet(
                     client,
-                    cleanedContent
+                    content.text,
+                    undefined,
+                    mediaData
                 );
             }
 
@@ -112,7 +143,7 @@ export class TwitterHelpers {
                 client,
                 tweet,
                 roomId,
-                newTweetContent
+                content.text
             );
         } catch (error) {
             elizaLogger.error("Error sending tweet:", error);
@@ -164,8 +195,16 @@ export class TwitterHelpers {
     }
 
     static createTweetObject(
-        tweetResult: any,
-        client: any,
+        tweetResult: {
+            rest_id: string;
+            legacy: {
+                full_text: string;
+                conversation_id_str: string;
+                created_at: string;
+                in_reply_to_status_id_str?: string;
+            };
+        },
+        client: ClientBase,
         twitterUsername: string
     ): Tweet {
         return {

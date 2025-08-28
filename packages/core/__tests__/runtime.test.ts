@@ -320,8 +320,7 @@ describe("AgentRuntime", () => {
             // Verify memory manager was called
             expect(getMemoriesSpy).toHaveBeenCalledWith({
                 roomId: testRoomId,
-                count: runtime.getConversationLength(),
-                unique: false,
+                count: runtime.getConversationLength()
             });
 
             // Check that the state was updated
