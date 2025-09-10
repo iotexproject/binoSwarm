@@ -32,6 +32,7 @@ export const twitterEnvSchema = z.object({
     TWITTER_USERNAME: twitterUsernameSchema,
     TWITTER_PASSWORD: z.string().min(1, "X/Twitter password is required"),
     TWITTER_EMAIL: z.string().email("Valid X/Twitter email is required"),
+    TWITTER_BEARER_TOKEN: z.string().min(1, "Twitter Bearer Token is required"),
     MAX_TWEET_LENGTH: z.number().int().default(DEFAULT_MAX_TWEET_LENGTH),
     TWITTER_SEARCH_ENABLE: z.boolean().default(false),
     TWITTER_2FA_SECRET: z.string(),
@@ -101,6 +102,8 @@ export async function validateTwitterConfig(
             TWITTER_PASSWORD: runtime.getSetting("TWITTER_PASSWORD"),
 
             TWITTER_EMAIL: runtime.getSetting("TWITTER_EMAIL"),
+
+            TWITTER_BEARER_TOKEN: runtime.getSetting("TWITTER_BEARER_TOKEN"),
 
             // number as string?
             MAX_TWEET_LENGTH: safeParsePositiveInt(
