@@ -123,6 +123,7 @@ describe("TwitterActionProcessor Start Method", () => {
         baseClient = new ClientBase(mockRuntime, mockConfig);
 
         baseClient.twitterClient = mockTwitterClient;
+        baseClient.getTweet = vi.fn(); // Mock the new ClientBase.getTweet method
         baseClient.profile = null; // Set to null to test initialization
 
         // Setup mock runtime with character
@@ -234,6 +235,7 @@ describe("Tweet Actions Processing", () => {
         baseClient = new ClientBase(mockRuntime, mockConfig);
 
         baseClient.twitterClient = mockTwitterClient;
+        baseClient.getTweet = vi.fn(); // Mock the new ClientBase.getTweet method
         baseClient.profile = mockTwitterProfile;
 
         // Mock RequestQueue with just the add method since that's all we use
@@ -661,7 +663,7 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock getTweet to return the quoted tweet
-        mockTwitterClient.getTweet.mockResolvedValue(quotedTweet);
+        vi.mocked(baseClient.getTweet).mockResolvedValue(quotedTweet);
 
         // Mock successful reply tweet response
         mockTwitterClient.sendTweet.mockResolvedValue(
@@ -683,7 +685,7 @@ describe("Tweet Actions Processing", () => {
         await actionClient["processTimelineActions"]([timeline]);
 
         // Verify quoted tweet was fetched
-        expect(mockTwitterClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
+        expect(baseClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
 
         // Verify tweet was sent with the generated content
         expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
@@ -705,7 +707,7 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock getTweet to throw an error
-        mockTwitterClient.getTweet.mockRejectedValue(
+        vi.mocked(baseClient.getTweet).mockRejectedValue(
             new Error("Failed to fetch quoted tweet")
         );
 
@@ -818,7 +820,7 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock getTweet to return the quoted tweet
-        mockTwitterClient.getTweet.mockResolvedValue(quotedTweet);
+        vi.mocked(baseClient.getTweet).mockResolvedValue(quotedTweet);
 
         // Mock successful quote tweet response
         mockTwitterClient.sendQuoteTweet.mockResolvedValue(
@@ -840,7 +842,7 @@ describe("Tweet Actions Processing", () => {
         await actionClient["processTimelineActions"]([timeline]);
 
         // Verify quoted tweet was fetched
-        expect(mockTwitterClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
+        expect(baseClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
 
         // Verify quote tweet was sent with the generated content
         expect(mockTwitterClient.sendQuoteTweet).toHaveBeenCalledWith(
@@ -861,7 +863,7 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock getTweet to throw an error
-        mockTwitterClient.getTweet.mockRejectedValue(
+        vi.mocked(baseClient.getTweet).mockRejectedValue(
             new Error("Failed to fetch quoted tweet")
         );
 

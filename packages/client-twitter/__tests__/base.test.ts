@@ -19,6 +19,7 @@ describe("Twitter Client Base", () => {
                 TWITTER_ENABLE_ACTION_PROCESSING: "true",
                 TWITTER_POST_IMMEDIATELY: "false",
                 TWITTER_SEARCH_ENABLE: "false",
+                TWITTER_BEARER_TOKEN: "test-bearer-token",
             },
             getEnv: function (key: string) {
                 return this.env[key] || null;
@@ -63,6 +64,8 @@ describe("Twitter Client Base", () => {
             TWITTER_SEARCH_TERMS: [],
             MAX_ACTIONS_PROCESSING: 10,
             ACTION_TIMELINE_TYPE: ActionTimelineType.ForYou,
+            TWITTER_BEARER_TOKEN: "test-bearer-token",
+            TWITTER_POST_ENABLED: true,
         };
     });
 
@@ -223,9 +226,9 @@ describe("Twitter Client Base", () => {
             mockRuntime.cacheManager.get = vi.fn().mockResolvedValue(undefined);
             mockRuntime.cacheManager.set = vi.fn().mockResolvedValue(undefined);
 
-            // Mock twitter client getTweet
+            // Mock TwitterApiV2Client getTweet method
             const mockGetTweet = vi.fn().mockResolvedValue(mockTweet);
-            client.twitterClient.getTweet = mockGetTweet;
+            client.twitterApiV2Client.getTweet = mockGetTweet;
 
             const result = await client.getTweet("123456789");
 
