@@ -1,4 +1,4 @@
-import { TwitterApi, TwitterApiv2, TweetV2 } from "twitter-api-v2";
+import { TwitterApi, TweetV2, TwitterApiReadOnly } from "twitter-api-v2";
 import { Tweet } from "agent-twitter-client";
 import { elizaLogger } from "@elizaos/core";
 import { TwitterConfig } from "./environment.ts";
@@ -23,7 +23,7 @@ interface Mention {
 }
 
 export class TwitterApiV2Client {
-    private client: TwitterApiv2;
+    private readOnlyClient: TwitterApiReadOnly;
 
     constructor(config: TwitterConfig) {
         if (!config.TWITTER_BEARER_TOKEN) {
@@ -33,10 +33,61 @@ export class TwitterApiV2Client {
         }
 
         try {
-            this.client = new TwitterApi(config.TWITTER_BEARER_TOKEN).v2;
+            const twitterApi = new TwitterApi(config.TWITTER_BEARER_TOKEN);
+            this.readOnlyClient = twitterApi.readOnly;
             elizaLogger.log("Twitter API v2 initialized with bearer token");
         } catch (error) {
             elizaLogger.error("Failed to initialize Twitter API v2:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Fetch home timeline using Twitter API v2
+     */
+    async fetchHomeTimeline(count: number = 10): Promise<Tweet[]> {
+        try {
+            const response = await this.readOnlyClient.v2.homeTimeline({
+                max_results: Math.min(count, 100), // API v2 max is 100
+                expansions: [
+                    "author_id",
+                    "referenced_tweets.id",
+                    "referenced_tweets.id.author_id",
+                    "attachments.media_keys",
+                    "in_reply_to_user_id",
+                ],
+                "tweet.fields": [
+                    "created_at",
+                    "conversation_id",
+                    "in_reply_to_user_id",
+                    "referenced_tweets",
+                    "author_id",
+                    "public_metrics",
+                    "context_annotations",
+                    "entities",
+                    "attachments",
+                ],
+                "user.fields": ["username", "name", "id"],
+                "media.fields": [
+                    "type",
+                    "url",
+                    "preview_image_url",
+                    "alt_text",
+                ],
+            });
+
+            if (!response.tweets || response.tweets.length === 0) {
+                return [];
+            }
+
+            return response.tweets.map((tweet) =>
+                this.transformTweetV2ToTweet(tweet, response.includes)
+            );
+        } catch (error) {
+            elizaLogger.error(
+                "Error fetching home timeline with Twitter API v2:",
+                error
+            );
             throw error;
         }
     }
@@ -46,7 +97,7 @@ export class TwitterApiV2Client {
      */
     async getTweet(tweetId: string): Promise<Tweet | null> {
         try {
-            const response = await this.client.singleTweet(tweetId, {
+            const response = await this.readOnlyClient.v2.singleTweet(tweetId, {
                 expansions: [
                     "author_id",
                     "referenced_tweets.id",
