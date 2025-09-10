@@ -19,6 +19,7 @@ import { EventEmitter } from "events";
 import { TwitterConfig } from "./environment.ts";
 import { TwitterAuthManager } from "./TwitterAuthManager.ts";
 import { RequestQueue } from "./RequestQueue.ts";
+import { TwitterApiV2Client } from "./TwitterApiV2Client.ts";
 
 type TwitterProfile = {
     id: string;
@@ -31,6 +32,7 @@ type TwitterProfile = {
 export class ClientBase extends EventEmitter {
     static _twitterClients: { [accountIdentifier: string]: Scraper } = {};
     twitterClient: Scraper;
+    twitterApiV2Client: TwitterApiV2Client;
     runtime: IAgentRuntime;
     twitterConfig: TwitterConfig;
     directions: string;
@@ -58,6 +60,9 @@ export class ClientBase extends EventEmitter {
             this.twitterClient
         );
 
+        // Initialize Twitter API v2 client
+        this.twitterApiV2Client = new TwitterApiV2Client(twitterConfig);
+
         this.directions =
             "- " +
             this.runtime.character.style.all.join("\n- ") +
@@ -81,9 +86,12 @@ export class ClientBase extends EventEmitter {
             return cachedTweet;
         }
 
-        const tweet = await this.requestQueue.add(() =>
-            this.twitterClient.getTweet(tweetId)
-        );
+        elizaLogger.debug(`Fetching tweet ${tweetId} using Twitter API v2`);
+        const tweet = await this.twitterApiV2Client.getTweet(tweetId);
+
+        if (!tweet) {
+            throw new Error(`Tweet ${tweetId} not found`);
+        }
 
         await this.cacheTweet(tweet);
         return tweet;
