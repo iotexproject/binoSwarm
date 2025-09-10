@@ -143,6 +143,50 @@ export class TwitterApiV2Client {
     }
 
     /**
+     * Fetch user profile by username using Twitter API v2
+     */
+    async getProfile(username: string): Promise<{
+        userId: string;
+        name: string;
+        biography: string;
+    }> {
+        try {
+            const response = await this.readOnlyClient.v2.userByUsername(
+                username,
+                {
+                    "user.fields": [
+                        "id",
+                        "name",
+                        "username",
+                        "description",
+                        "profile_image_url",
+                        "verified",
+                        "public_metrics",
+                    ],
+                }
+            );
+
+            if (!response.data) {
+                throw new Error(`User ${username} not found`);
+            }
+
+            const user = response.data;
+
+            return {
+                userId: user.id,
+                name: user.name || "",
+                biography: user.description || "",
+            };
+        } catch (error) {
+            elizaLogger.error(
+                `Error fetching profile for ${username} with Twitter API v2:`,
+                error
+            );
+            throw error;
+        }
+    }
+
+    /**
      * Transform Twitter API v2 TweetV2 format to the expected Tweet interface
      */
     private transformTweetV2ToTweet(tweetV2: TweetV2, includes?: any): Tweet {

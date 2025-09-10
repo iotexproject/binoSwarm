@@ -384,7 +384,7 @@ describe("Twitter Client Base", () => {
             };
 
             const mockGetProfile = vi.fn().mockResolvedValue(mockProfile);
-            client.twitterClient.getProfile = mockGetProfile;
+            client.twitterApiV2Client.getProfile = mockGetProfile;
 
             const result = await client.fetchProfile("testuser");
 
@@ -407,7 +407,7 @@ describe("Twitter Client Base", () => {
             };
 
             const mockGetProfile = vi.fn().mockResolvedValue(mockProfile);
-            client.twitterClient.getProfile = mockGetProfile;
+            client.twitterApiV2Client.getProfile = mockGetProfile;
 
             const result = await client.fetchProfile("testuser");
 
@@ -425,7 +425,7 @@ describe("Twitter Client Base", () => {
             mockRuntime.character.bio = "Character bio";
 
             const mockGetProfile = vi.fn().mockResolvedValue(mockProfile);
-            client.twitterClient.getProfile = mockGetProfile;
+            client.twitterApiV2Client.getProfile = mockGetProfile;
 
             const result = await client.fetchProfile("testuser");
 
@@ -443,7 +443,7 @@ describe("Twitter Client Base", () => {
             mockRuntime.character.bio = ["First bio", "Second bio"];
 
             const mockGetProfile = vi.fn().mockResolvedValue(mockProfile);
-            client.twitterClient.getProfile = mockGetProfile;
+            client.twitterApiV2Client.getProfile = mockGetProfile;
 
             const result = await client.fetchProfile("testuser");
 
@@ -461,7 +461,7 @@ describe("Twitter Client Base", () => {
             mockRuntime.character.bio = [];
 
             const mockGetProfile = vi.fn().mockResolvedValue(mockProfile);
-            client.twitterClient.getProfile = mockGetProfile;
+            client.twitterApiV2Client.getProfile = mockGetProfile;
 
             const result = await client.fetchProfile("testuser");
 
@@ -473,7 +473,7 @@ describe("Twitter Client Base", () => {
             const error = new Error("Profile fetch failed");
 
             const mockGetProfile = vi.fn().mockRejectedValue(error);
-            client.twitterClient.getProfile = mockGetProfile;
+            client.twitterApiV2Client.getProfile = mockGetProfile;
 
             await expect(client.fetchProfile("testuser")).rejects.toThrow(
                 "Profile fetch failed"

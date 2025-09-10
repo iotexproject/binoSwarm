@@ -618,8 +618,12 @@ export class ClientBase extends EventEmitter {
 
     async fetchProfile(username: string): Promise<TwitterProfile> {
         try {
+            elizaLogger.debug(
+                `Fetching profile for ${username} using Twitter API v2`
+            );
             const profile = await this.requestQueue.add(async () => {
-                const profile = await this.twitterClient.getProfile(username);
+                const profile =
+                    await this.twitterApiV2Client.getProfile(username);
                 return {
                     id: profile.userId,
                     username,
