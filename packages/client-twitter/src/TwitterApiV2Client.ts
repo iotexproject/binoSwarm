@@ -24,6 +24,7 @@ interface Mention {
 
 export class TwitterApiV2Client {
     private readOnlyClient: TwitterApiReadOnly;
+    private userContextClient?: TwitterApiReadOnly;
 
     constructor(config: TwitterConfig) {
         if (!config.TWITTER_BEARER_TOKEN) {
@@ -33,9 +34,33 @@ export class TwitterApiV2Client {
         }
 
         try {
+            // Initialize Bearer Token client for app-only authentication
             const twitterApi = new TwitterApi(config.TWITTER_BEARER_TOKEN);
             this.readOnlyClient = twitterApi.readOnly;
             elizaLogger.log("Twitter API v2 initialized with bearer token");
+
+            // Initialize OAuth 1.0a client for user context authentication if credentials provided
+            if (
+                config.TWITTER_API_KEY &&
+                config.TWITTER_API_SECRET &&
+                config.TWITTER_ACCESS_TOKEN &&
+                config.TWITTER_ACCESS_TOKEN_SECRET
+            ) {
+                const userContextApi = new TwitterApi({
+                    appKey: config.TWITTER_API_KEY,
+                    appSecret: config.TWITTER_API_SECRET,
+                    accessToken: config.TWITTER_ACCESS_TOKEN,
+                    accessSecret: config.TWITTER_ACCESS_TOKEN_SECRET,
+                });
+                this.userContextClient = userContextApi.readOnly;
+                elizaLogger.log(
+                    "Twitter API v2 initialized with user context authentication"
+                );
+            } else {
+                elizaLogger.log(
+                    "OAuth 1.0a credentials not provided - timeline operations will be limited"
+                );
+            }
         } catch (error) {
             elizaLogger.error("Failed to initialize Twitter API v2:", error);
             throw error;
@@ -43,11 +68,17 @@ export class TwitterApiV2Client {
     }
 
     /**
-     * Fetch home timeline using Twitter API v2
+     * Fetch home timeline using Twitter API v2 with user context authentication
      */
     async fetchHomeTimeline(count: number = 10): Promise<Tweet[]> {
+        if (!this.userContextClient) {
+            throw new Error(
+                "OAuth 1.0a credentials required for home timeline access. Please provide TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, and TWITTER_ACCESS_TOKEN_SECRET."
+            );
+        }
+
         try {
-            const response = await this.readOnlyClient.v2.homeTimeline({
+            const response = await this.userContextClient.v2.homeTimeline({
                 max_results: Math.min(count, 100), // API v2 max is 100
                 expansions: [
                     "author_id",
@@ -86,6 +117,64 @@ export class TwitterApiV2Client {
         } catch (error) {
             elizaLogger.error(
                 "Error fetching home timeline with Twitter API v2:",
+                error
+            );
+            throw error;
+        }
+    }
+
+    /**
+     * Fetch following timeline using Twitter API v2 with user context authentication
+     */
+    async fetchFollowingTimeline(count: number = 10): Promise<Tweet[]> {
+        if (!this.userContextClient) {
+            throw new Error(
+                "OAuth 1.0a credentials required for following timeline access. Please provide TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, and TWITTER_ACCESS_TOKEN_SECRET."
+            );
+        }
+
+        try {
+            // Note: Twitter API v2 doesn't have a separate "following timeline" endpoint
+            // The home timeline (reverse chronological) is equivalent to the following timeline
+            const response = await this.userContextClient.v2.homeTimeline({
+                max_results: Math.min(count, 100), // API v2 max is 100
+                expansions: [
+                    "author_id",
+                    "referenced_tweets.id",
+                    "referenced_tweets.id.author_id",
+                    "attachments.media_keys",
+                    "in_reply_to_user_id",
+                ],
+                "tweet.fields": [
+                    "created_at",
+                    "conversation_id",
+                    "in_reply_to_user_id",
+                    "referenced_tweets",
+                    "author_id",
+                    "public_metrics",
+                    "context_annotations",
+                    "entities",
+                    "attachments",
+                ],
+                "user.fields": ["username", "name", "id"],
+                "media.fields": [
+                    "type",
+                    "url",
+                    "preview_image_url",
+                    "alt_text",
+                ],
+            });
+
+            if (!response.tweets || response.tweets.length === 0) {
+                return [];
+            }
+
+            return response.tweets.map((tweet) =>
+                this.transformTweetV2ToTweet(tweet, response.includes)
+            );
+        } catch (error) {
+            elizaLogger.error(
+                "Error fetching following timeline with Twitter API v2:",
                 error
             );
             throw error;
