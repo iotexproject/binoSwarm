@@ -8,12 +8,7 @@ import {
     stringToUuid,
     ActionTimelineType,
 } from "@elizaos/core";
-import {
-    QueryTweetsResponse,
-    Scraper,
-    SearchMode,
-    Tweet,
-} from "agent-twitter-client";
+import { QueryTweetsResponse, Scraper, Tweet } from "agent-twitter-client";
 import { EventEmitter } from "events";
 
 import { TwitterConfig } from "./environment.ts";
@@ -87,7 +82,22 @@ export class ClientBase extends EventEmitter {
         }
 
         elizaLogger.debug(`Fetching tweet ${tweetId} using Twitter API v2`);
-        const tweet = await this.twitterApiV2Client.getTweet(tweetId);
+
+        // Use request queue with rate limit awareness for API v2
+        const tweet = await this.requestQueue.add(async () => {
+            try {
+                return await this.twitterApiV2Client.getTweet(tweetId);
+            } catch (error: any) {
+                // Handle rate limiting gracefully
+                if (error.code === 429) {
+                    elizaLogger.warn(
+                        `Rate limit hit for tweet fetch. Reset time: ${error.rateLimit?.reset || "unknown"}`
+                    );
+                    throw new Error(`Rate limit exceeded for tweet ${tweetId}`);
+                }
+                throw error;
+            }
+        });
 
         if (!tweet) {
             throw new Error(`Tweet ${tweetId} not found`);
@@ -264,34 +274,44 @@ export class ClientBase extends EventEmitter {
     async fetchSearchTweets(
         query: string,
         maxTweets: number,
-        searchMode: SearchMode,
         cursor?: string
     ): Promise<QueryTweetsResponse> {
         try {
-            // Sometimes this fails because we are rate limited. in this case, we just need to return an empty array
-            // if we dont get a response in 5 seconds, something is wrong
-            const timeoutPromise = new Promise((resolve) =>
-                setTimeout(() => resolve({ tweets: [] }), 15000)
+            elizaLogger.debug(
+                `Searching tweets for query "${query}" using Twitter API v2`
             );
 
-            try {
-                const result = await this.requestQueue.add(
-                    async () =>
-                        await Promise.race([
-                            this.twitterClient.fetchSearchTweets(
-                                query,
-                                maxTweets,
-                                searchMode,
-                                cursor
-                            ),
-                            timeoutPromise,
-                        ])
-                );
-                return (result ?? { tweets: [] }) as QueryTweetsResponse;
-            } catch (error) {
-                elizaLogger.error("Error fetching search tweets:", error);
-                return { tweets: [] };
-            }
+            // Use request queue with rate limit awareness for API v2
+            const searchResult = await this.requestQueue.add(async () => {
+                try {
+                    return await this.twitterApiV2Client.searchTweets(
+                        query,
+                        maxTweets,
+                        cursor
+                    );
+                } catch (error: any) {
+                    // Handle rate limiting gracefully
+                    if (error.code === 429) {
+                        elizaLogger.warn(
+                            `Rate limit hit for search tweets. Reset time: ${error.rateLimit?.reset || "unknown"}`
+                        );
+                        // Return empty result instead of throwing
+                        return { tweets: [] };
+                    }
+                    throw error;
+                }
+            });
+
+            elizaLogger.log(
+                "Twitter API v2 search for query",
+                query,
+                "returned number of tweets",
+                searchResult.tweets.length
+            );
+
+            return {
+                tweets: searchResult.tweets,
+            } as QueryTweetsResponse;
         } catch (error) {
             elizaLogger.error("Error fetching search tweets:", error);
             return { tweets: [] };
@@ -435,8 +455,7 @@ export class ClientBase extends EventEmitter {
         // Get the most recent 20 mentions and interactions
         const mentionsAndInteractions = await this.fetchSearchTweets(
             `@${username}`,
-            20,
-            SearchMode.Latest
+            20
         );
 
         // Combine the timeline tweets and mentions/interactions
@@ -621,26 +640,39 @@ export class ClientBase extends EventEmitter {
             elizaLogger.debug(
                 `Fetching profile for ${username} using Twitter API v2`
             );
+
+            // Use request queue with rate limit awareness for API v2
             const profile = await this.requestQueue.add(async () => {
-                const profile =
-                    await this.twitterApiV2Client.getProfile(username);
-                return {
-                    id: profile.userId,
-                    username,
-                    screenName: profile.name || this.runtime.character.name,
-                    bio:
-                        profile.biography ||
-                        typeof this.runtime.character.bio === "string"
-                            ? (this.runtime.character.bio as string)
-                            : this.runtime.character.bio.length > 0
-                              ? this.runtime.character.bio[0]
-                              : "",
-                    nicknames:
-                        this.runtime.character.twitterProfile?.nicknames || [],
-                } satisfies TwitterProfile;
+                try {
+                    return await this.twitterApiV2Client.getProfile(username);
+                } catch (error: any) {
+                    // Handle rate limiting gracefully
+                    if (error.code === 429) {
+                        elizaLogger.warn(
+                            `Rate limit hit for profile fetch. Reset time: ${error.rateLimit?.reset || "unknown"}`
+                        );
+                        throw new Error(
+                            `Rate limit exceeded for profile fetch of ${username}`
+                        );
+                    }
+                    throw error;
+                }
             });
 
-            return profile;
+            return {
+                id: profile.userId,
+                username,
+                screenName: profile.name || this.runtime.character.name,
+                bio:
+                    profile.biography ||
+                    typeof this.runtime.character.bio === "string"
+                        ? (this.runtime.character.bio as string)
+                        : this.runtime.character.bio.length > 0
+                          ? this.runtime.character.bio[0]
+                          : "",
+                nicknames:
+                    this.runtime.character.twitterProfile?.nicknames || [],
+            } satisfies TwitterProfile;
         } catch (error) {
             elizaLogger.error("Error fetching Twitter profile:", error);
             throw error;

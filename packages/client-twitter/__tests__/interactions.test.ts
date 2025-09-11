@@ -8,7 +8,7 @@ import {
     type Mocked,
 } from "vitest";
 import { IAgentRuntime, Memory, ServiceType } from "@elizaos/core";
-import { SearchMode, Tweet } from "agent-twitter-client";
+import { Tweet } from "agent-twitter-client";
 import * as core from "@elizaos/core";
 import * as utils from "../src/utils";
 import { ClientBase } from "../src/base";
@@ -183,8 +183,7 @@ describe("TwitterInteractionClient", () => {
 
             expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
                 "@testuser",
-                20,
-                SearchMode.Latest
+                20
             );
             expect(mockKnowledgeProcessor.processKnowledge).toHaveBeenCalled();
             expect(mockClient.cacheLatestCheckedTweetId).toHaveBeenCalled();
@@ -203,9 +202,7 @@ describe("TwitterInteractionClient", () => {
 
             // First call for mentions, second for target user
             mockClient.fetchSearchTweets.mockResolvedValue({ tweets: [] });
-            vi.mocked(
-                mockClient.twitterClient.fetchSearchTweets
-            ).mockResolvedValue({
+            vi.mocked(mockClient.fetchSearchTweets).mockResolvedValue({
                 tweets: [targetUserTweet],
             });
 
@@ -223,12 +220,12 @@ describe("TwitterInteractionClient", () => {
 
             expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
                 "@testuser",
-                20,
-                SearchMode.Latest
+                20
             );
-            expect(
-                mockClient.twitterClient.fetchSearchTweets
-            ).toHaveBeenCalledWith("from:targetuser", 3, SearchMode.Latest);
+            expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
+                "from:targetuser",
+                3
+            );
             expect(mockKnowledgeProcessor.processKnowledge).toHaveBeenCalled();
             expect(mockClient.cacheLatestCheckedTweetId).toHaveBeenCalled();
             expect(mockClient.lastCheckedTweetId).toBe(

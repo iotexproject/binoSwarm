@@ -3,7 +3,6 @@ import { ClientBase } from "../src/base";
 import { ActionTimelineType, IAgentRuntime, stringToUuid } from "@elizaos/core";
 import { TwitterConfig } from "../src/environment";
 import { createMockTweet } from "./mocks";
-import { SearchMode } from "agent-twitter-client";
 
 describe("Twitter Client Base", () => {
     let mockRuntime: IAgentRuntime;
@@ -794,21 +793,16 @@ describe("Twitter Client Base", () => {
                 tweets: [createMockTweet({ id: "1" })],
             };
 
-            const mockFetchSearchTweets = vi
+            const mockSearchTweets = vi
                 .fn()
                 .mockResolvedValue(mockSearchResult);
-            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+            client.twitterApiV2Client.searchTweets = mockSearchTweets;
 
-            const result = await client.fetchSearchTweets(
+            const result = await client.fetchSearchTweets("test query", 10);
+
+            expect(mockSearchTweets).toHaveBeenCalledWith(
                 "test query",
                 10,
-                SearchMode.Latest
-            );
-
-            expect(mockFetchSearchTweets).toHaveBeenCalledWith(
-                "test query",
-                10,
-                SearchMode.Latest,
                 undefined
             );
             expect(result).toEqual(mockSearchResult);
@@ -817,67 +811,41 @@ describe("Twitter Client Base", () => {
         it("should handle search tweets with cursor", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
 
-            const mockFetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({ tweets: [] });
-            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+            const mockSearchTweets = vi.fn().mockResolvedValue({ tweets: [] });
+            client.twitterApiV2Client.searchTweets = mockSearchTweets;
 
-            await client.fetchSearchTweets(
+            await client.fetchSearchTweets("test query", 10, "cursor123");
+
+            expect(mockSearchTweets).toHaveBeenCalledWith(
                 "test query",
                 10,
-                SearchMode.Latest,
-                "cursor123"
-            );
-
-            expect(mockFetchSearchTweets).toHaveBeenCalledWith(
-                "test query",
-                10,
-                SearchMode.Latest,
                 "cursor123"
             );
         });
 
         it("should handle search tweets timeout", async () => {
-            vi.useFakeTimers();
-
             const client = new ClientBase(mockRuntime, mockConfig);
 
-            // Mock a request that doesn't resolve quickly
-            const mockFetchSearchTweets = vi.fn().mockImplementation(
-                () => new Promise(() => {}) // Never resolves
-            );
-            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+            // Mock a timeout error from the API client
+            const mockSearchTweets = vi
+                .fn()
+                .mockRejectedValue(new Error("Request timeout"));
+            client.twitterApiV2Client.searchTweets = mockSearchTweets;
 
-            // Start the async operation
-            const resultPromise = client.fetchSearchTweets(
-                "test query",
-                10,
-                SearchMode.Latest
-            );
-
-            // Fast-forward time past the 15 second timeout
-            vi.advanceTimersByTime(15001);
-
-            const result = await resultPromise;
+            const result = await client.fetchSearchTweets("test query", 10);
 
             expect(result).toEqual({ tweets: [] });
-
-            vi.useRealTimers();
         });
 
         it("should handle search tweets error", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
 
-            const mockFetchSearchTweets = vi
+            const mockSearchTweets = vi
                 .fn()
                 .mockRejectedValue(new Error("Search failed"));
-            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+            client.twitterApiV2Client.searchTweets = mockSearchTweets;
 
-            const result = await client.fetchSearchTweets(
-                "test query",
-                10,
-                SearchMode.Latest
-            );
+            const result = await client.fetchSearchTweets("test query", 10);
 
             expect(result).toEqual({ tweets: [] });
         });
@@ -885,14 +853,10 @@ describe("Twitter Client Base", () => {
         it("should handle null search result", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
 
-            const mockFetchSearchTweets = vi.fn().mockResolvedValue(null);
-            client.twitterClient.fetchSearchTweets = mockFetchSearchTweets;
+            const mockSearchTweets = vi.fn().mockResolvedValue({ tweets: [] });
+            client.twitterApiV2Client.searchTweets = mockSearchTweets;
 
-            const result = await client.fetchSearchTweets(
-                "test query",
-                10,
-                SearchMode.Latest
-            );
+            const result = await client.fetchSearchTweets("test query", 10);
 
             expect(result).toEqual({ tweets: [] });
         });
@@ -1309,8 +1273,7 @@ describe("Twitter Client Base", () => {
             expect(client.fetchHomeTimeline).toHaveBeenCalledWith(50); // No cache, so 50
             expect(client.fetchSearchTweets).toHaveBeenCalledWith(
                 "@testuser",
-                20,
-                SearchMode.Latest
+                20
             );
             expect(client.cacheTimeline).toHaveBeenCalledWith([]);
             expect(client.cacheMentions).toHaveBeenCalledWith([]);
@@ -1539,8 +1502,7 @@ describe("Twitter Client Base", () => {
             expect(client.fetchHomeTimeline).toHaveBeenCalledWith(50);
             expect(client.fetchSearchTweets).toHaveBeenCalledWith(
                 "@testuser",
-                20,
-                SearchMode.Latest
+                20
             );
             expect(mockRuntime.ensureUserExists).toHaveBeenCalledWith(
                 mockRuntime.agentId,

@@ -1,5 +1,5 @@
 import { twitterKnowledgeProcessorTemplate } from "./templates";
-import { SearchMode, Tweet } from "agent-twitter-client";
+import { Tweet } from "agent-twitter-client";
 import {
     IAgentRuntime,
     ModelClass,
@@ -391,10 +391,9 @@ export class KnowledgeProcessor {
     }
 
     private async fetchUserTweets(username: string) {
-        const tweetsRes = await this.client.twitterClient.fetchSearchTweets(
+        const tweetsRes = await this.client.fetchSearchTweets(
             `from:${username}`,
-            10,
-            SearchMode.Latest
+            10
         );
         return tweetsRes.tweets;
     }

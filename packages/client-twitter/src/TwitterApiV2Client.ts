@@ -187,6 +187,63 @@ export class TwitterApiV2Client {
     }
 
     /**
+     * Search for tweets using Twitter API v2
+     */
+    async searchTweets(
+        query: string,
+        maxResults: number = 10,
+        nextToken?: string
+    ): Promise<{ tweets: Tweet[]; nextToken?: string }> {
+        try {
+            const response = await this.readOnlyClient.v2.search(query, {
+                max_results: Math.min(maxResults, 100), // API v2 max is 100
+                next_token: nextToken,
+                expansions: [
+                    "author_id",
+                    "referenced_tweets.id",
+                    "referenced_tweets.id.author_id",
+                    "attachments.media_keys",
+                    "in_reply_to_user_id",
+                ],
+                "tweet.fields": [
+                    "created_at",
+                    "conversation_id",
+                    "in_reply_to_user_id",
+                    "referenced_tweets",
+                    "author_id",
+                    "public_metrics",
+                    "context_annotations",
+                    "entities",
+                    "attachments",
+                ],
+                "user.fields": ["username", "name", "id"],
+                "media.fields": [
+                    "type",
+                    "url",
+                    "preview_image_url",
+                    "alt_text",
+                ],
+            });
+
+            const tweets =
+                response.tweets?.map((tweet) =>
+                    this.transformTweetV2ToTweet(tweet, response.includes)
+                ) || [];
+
+            return {
+                tweets,
+                nextToken: response.meta?.next_token,
+            };
+        } catch (error) {
+            elizaLogger.error(
+                "Error searching tweets with Twitter API v2:",
+                error
+            );
+            throw error;
+        }
+    }
+
+    /**
      * Transform Twitter API v2 TweetV2 format to the expected Tweet interface
      */
     private transformTweetV2ToTweet(tweetV2: TweetV2, includes?: any): Tweet {
