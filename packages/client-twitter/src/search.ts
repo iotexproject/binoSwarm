@@ -224,9 +224,7 @@ export class TwitterSearchClient {
             return "";
         }
 
-        const originalTweet = await this.client.requestQueue.add(() =>
-            this.client.twitterClient.getTweet(selectedTweet.id)
-        );
+        const originalTweet = await this.client.getTweet(selectedTweet.id);
         return `Retweeting @${originalTweet.username}: ${originalTweet.text}`;
     }
 

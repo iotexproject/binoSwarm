@@ -612,9 +612,7 @@ describe("TwitterSearchClient", () => {
                 name: "Original Author",
             });
 
-            baseClient.twitterClient.getTweet = vi
-                .fn()
-                .mockResolvedValue(originalTweetMock);
+            baseClient.getTweet = vi.fn().mockResolvedValue(originalTweetMock);
             baseClient.requestQueue.add = vi.fn((fn) => fn());
 
             // Setup mock for composeState

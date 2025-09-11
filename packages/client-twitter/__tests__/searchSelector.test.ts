@@ -77,11 +77,9 @@ describe("SearchTweetSelector", () => {
             ];
 
             // Mock necessary methods
-            mockClient.twitterClient.fetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({
-                    tweets: mockTweets,
-                });
+            mockClient.fetchSearchTweets = vi.fn().mockResolvedValue({
+                tweets: mockTweets,
+            });
 
             // Mock generateObject to return a valid tweetId
             vi.mocked(generateObject).mockResolvedValueOnce({
@@ -95,9 +93,7 @@ describe("SearchTweetSelector", () => {
             expect(result).toBeDefined();
             expect(result.id).toBe("123456789");
             expect(result.text).toBe("Tweet about javascript");
-            expect(
-                mockClient.twitterClient.fetchSearchTweets
-            ).toHaveBeenCalled();
+            expect(mockClient.fetchSearchTweets).toHaveBeenCalled();
             expect(generateObject).toHaveBeenCalled();
         });
 
@@ -123,11 +119,9 @@ describe("SearchTweetSelector", () => {
             ];
 
             // Mock necessary methods
-            mockClient.twitterClient.fetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({
-                    tweets: mockTweets,
-                });
+            mockClient.fetchSearchTweets = vi.fn().mockResolvedValue({
+                tweets: mockTweets,
+            });
 
             // Mock generateObject
             vi.mocked(generateObject).mockResolvedValueOnce({
@@ -139,11 +133,8 @@ describe("SearchTweetSelector", () => {
                 await selector.selectTweet();
 
                 // Verify the search term from environment was used
-                expect(
-                    mockClient.twitterClient.fetchSearchTweets
-                ).toHaveBeenCalledWith(
+                expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
                     searchTerms[0],
-                    expect.any(Number),
                     expect.any(Number)
                 );
 
@@ -157,11 +148,9 @@ describe("SearchTweetSelector", () => {
 
         it("should throw error when no tweets are found", async () => {
             // Mock empty tweets result
-            mockClient.twitterClient.fetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({
-                    tweets: [],
-                });
+            mockClient.fetchSearchTweets = vi.fn().mockResolvedValue({
+                tweets: [],
+            });
 
             // Execute and assert
             await expect(selector.selectTweet()).rejects.toThrow(
@@ -188,11 +177,9 @@ describe("SearchTweetSelector", () => {
             ];
 
             // Mock setup
-            mockClient.twitterClient.fetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({
-                    tweets: mockTweets,
-                });
+            mockClient.fetchSearchTweets = vi.fn().mockResolvedValue({
+                tweets: mockTweets,
+            });
 
             vi.mocked(generateObject).mockResolvedValueOnce({
                 object: { tweetId: "123456789" },
@@ -216,11 +203,9 @@ describe("SearchTweetSelector", () => {
             ];
 
             // Mock setup
-            mockClient.twitterClient.fetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({
-                    tweets: mockTweets,
-                });
+            mockClient.fetchSearchTweets = vi.fn().mockResolvedValue({
+                tweets: mockTweets,
+            });
 
             // Return a non-existent tweet ID
             vi.mocked(generateObject).mockResolvedValueOnce({
@@ -249,11 +234,9 @@ describe("SearchTweetSelector", () => {
             ];
 
             // Mock setup
-            mockClient.twitterClient.fetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({
-                    tweets: mockTweets,
-                });
+            mockClient.fetchSearchTweets = vi.fn().mockResolvedValue({
+                tweets: mockTweets,
+            });
 
             // Return an empty result from generateObject
             vi.mocked(generateObject).mockResolvedValueOnce({
@@ -296,11 +279,9 @@ describe("SearchTweetSelector", () => {
             ];
 
             // Mock necessary methods
-            mockClient.twitterClient.fetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({
-                    tweets: mockTweets,
-                });
+            mockClient.fetchSearchTweets = vi.fn().mockResolvedValue({
+                tweets: mockTweets,
+            });
 
             // Mock generateObject
             vi.mocked(generateObject).mockResolvedValueOnce({
@@ -312,11 +293,8 @@ describe("SearchTweetSelector", () => {
                 await selector.selectTweet();
 
                 // Verify the search term from character topics was used
-                expect(
-                    mockClient.twitterClient.fetchSearchTweets
-                ).toHaveBeenCalledWith(
+                expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
                     topics[0],
-                    expect.any(Number),
                     expect.any(Number)
                 );
 
@@ -353,11 +331,9 @@ describe("SearchTweetSelector", () => {
             ];
 
             // Mock setup
-            mockClient.twitterClient.fetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({
-                    tweets: mockTweets,
-                });
+            mockClient.fetchSearchTweets = vi.fn().mockResolvedValue({
+                tweets: mockTweets,
+            });
 
             // Return the second tweet ID (the clean one)
             vi.mocked(generateObject).mockResolvedValueOnce({
@@ -526,11 +502,9 @@ describe("SearchTweetSelector", () => {
             ];
 
             // Mock setup
-            mockClient.twitterClient.fetchSearchTweets = vi
-                .fn()
-                .mockResolvedValue({
-                    tweets: mockTweets,
-                });
+            mockClient.fetchSearchTweets = vi.fn().mockResolvedValue({
+                tweets: mockTweets,
+            });
 
             vi.mocked(generateObject).mockResolvedValueOnce({
                 object: { tweetId: "123456789" },

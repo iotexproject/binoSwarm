@@ -138,7 +138,7 @@ export async function buildConversationThread(
                     currentTweet.inReplyToStatusId
                 );
                 try {
-                    const parentTweet = await client.twitterClient.getTweet(
+                    const parentTweet = await client.getTweet(
                         currentTweet.inReplyToStatusId
                     );
 

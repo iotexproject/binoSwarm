@@ -31,6 +31,11 @@ describe("Twitter Environment Configuration", () => {
             MAX_ACTIONS_PROCESSING: "1",
             MAX_TWEET_LENGTH: "280",
             TWITTER_POST_ENABLED: "",
+            TWITTER_BEARER_TOKEN: "test-bearer-token",
+            TWITTER_API_KEY: "test-api-key",
+            TWITTER_API_SECRET: "test-api-secret",
+            TWITTER_ACCESS_TOKEN: "test-access-token",
+            TWITTER_ACCESS_TOKEN_SECRET: "test-access-token-secret",
         },
         getEnv: function (key: string) {
             return this.env[key] || null;
@@ -223,6 +228,11 @@ describe("Twitter Environment Configuration", () => {
                 TWITTER_PASSWORD: "hashedpassword",
                 TWITTER_2FA_SECRET: "",
                 MAX_TWEET_LENGTH: "280",
+                TWITTER_BEARER_TOKEN: "test-bearer-token",
+                TWITTER_API_KEY: "test-api-key",
+                TWITTER_API_SECRET: "test-api-secret",
+                TWITTER_ACCESS_TOKEN: "test-access-token",
+                TWITTER_ACCESS_TOKEN_SECRET: "test-access-token-secret",
             },
             getEnv: function (key: string) {
                 return this.env[key] || null;

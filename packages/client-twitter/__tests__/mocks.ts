@@ -29,6 +29,8 @@ export function buildConfigMock() {
         ENABLE_ACTION_PROCESSING: true,
         POST_IMMEDIATELY: false,
         MAX_TWEET_LENGTH: 280,
+        TWITTER_BEARER_TOKEN: "test-bearer-token",
+        TWITTER_POST_ENABLED: true,
     };
 }
 
@@ -52,6 +54,7 @@ export function buildRuntimeMock() {
             MAX_TWEET_LENGTH: "280",
             TWITTER_APPROVAL_DISCORD_BOT_TOKEN: "test-token",
             TWITTER_APPROVAL_DISCORD_CHANNEL_ID: "test-channel-id",
+            TWITTER_BEARER_TOKEN: "test-bearer-token",
         },
         getEnv: function (key: string) {
             return this.env[key] || null;

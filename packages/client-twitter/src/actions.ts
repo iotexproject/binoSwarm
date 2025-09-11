@@ -529,7 +529,7 @@ export class TwitterActionProcessor {
         }
 
         try {
-            const quotedTweet = await this.client.twitterClient.getTweet(
+            const quotedTweet = await this.client.getTweet(
                 tweet.quotedStatusId
             );
             if (quotedTweet) {

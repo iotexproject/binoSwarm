@@ -1,4 +1,4 @@
-import { SearchMode, Tweet } from "agent-twitter-client";
+import { Tweet } from "agent-twitter-client";
 import {
     composeContext,
     generateMessageResponse,
@@ -168,8 +168,7 @@ export class TwitterInteractionClient {
         const twitterUsername = this.client.profile.username;
         const response = await this.client.fetchSearchTweets(
             `@${twitterUsername}`,
-            MENTIONS_TO_FETCH,
-            SearchMode.Latest
+            MENTIONS_TO_FETCH
         );
         const candidates = response.tweets;
         elizaLogger.log(
@@ -193,10 +192,9 @@ export class TwitterInteractionClient {
                 for (const username of TARGET_USERS) {
                     try {
                         const userTweets = (
-                            await this.client.twitterClient.fetchSearchTweets(
+                            await this.client.fetchSearchTweets(
                                 `from:${username}`,
-                                3,
-                                SearchMode.Latest
+                                3
                             )
                         ).tweets;
 
