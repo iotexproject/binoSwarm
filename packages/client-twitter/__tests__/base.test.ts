@@ -19,6 +19,10 @@ describe("Twitter Client Base", () => {
                 TWITTER_POST_IMMEDIATELY: "false",
                 TWITTER_SEARCH_ENABLE: "false",
                 TWITTER_BEARER_TOKEN: "test-bearer-token",
+                TWITTER_API_KEY: "test-api-key",
+                TWITTER_API_SECRET: "test-api-secret",
+                TWITTER_ACCESS_TOKEN: "test-access-token",
+                TWITTER_ACCESS_TOKEN_SECRET: "test-access-token-secret",
             },
             getEnv: function (key: string) {
                 return this.env[key] || null;
@@ -64,6 +68,10 @@ describe("Twitter Client Base", () => {
             MAX_ACTIONS_PROCESSING: 10,
             ACTION_TIMELINE_TYPE: ActionTimelineType.ForYou,
             TWITTER_BEARER_TOKEN: "test-bearer-token",
+            TWITTER_API_KEY: "test-api-key",
+            TWITTER_API_SECRET: "test-api-secret",
+            TWITTER_ACCESS_TOKEN: "test-access-token",
+            TWITTER_ACCESS_TOKEN_SECRET: "test-access-token-secret",
             TWITTER_POST_ENABLED: true,
         };
     });
@@ -481,289 +489,211 @@ describe("Twitter Client Base", () => {
     });
 
     describe("fetchHomeTimeline", () => {
-        it("should fetch home timeline when not following", async () => {
+        it("should fetch home timeline using API v2 when OAuth credentials are available", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
 
-            const mockRawTweets = [
-                {
+            const mockApiTweets = [
+                createMockTweet({
                     id: "123",
-                    __typename: "Tweet",
-                    name: "Test User",
-                    username: "testuser",
                     text: "Test tweet",
-                    legacy: {
-                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
-                        user_id_str: "456",
-                        conversation_id_str: "789",
-                        full_text: "Test tweet",
-                        entities: {
-                            hashtags: [],
-                            user_mentions: [],
-                            urls: [],
-                            media: [],
-                        },
-                    },
-                    core: {
-                        user_results: {
-                            result: {
-                                legacy: {
-                                    screen_name: "testuser",
-                                },
-                            },
-                        },
-                    },
-                    rest_id: "123",
-                    thread: [],
-                },
+                    username: "testuser",
+                    name: "Test User",
+                    timestamp: Date.now() / 1000,
+                }),
             ];
 
             const mockFetchHomeTimeline = vi
                 .fn()
-                .mockResolvedValue(mockRawTweets);
-            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+                .mockResolvedValue(mockApiTweets);
+            client.twitterApiV2Client.fetchHomeTimeline = mockFetchHomeTimeline;
 
             const result = await client.fetchHomeTimeline(10, false);
 
-            expect(mockFetchHomeTimeline).toHaveBeenCalledWith(10, []);
-            expect(result).toHaveLength(1);
-            expect(result[0]).toMatchObject({
-                id: "123",
-                username: "testuser",
-                text: "Test tweet",
-                permanentUrl: expect.stringContaining("status/123"),
-            });
+            expect(mockFetchHomeTimeline).toHaveBeenCalledWith(10);
+            expect(result).toEqual(mockApiTweets);
         });
 
-        it("should fetch following timeline when following is true", async () => {
+        it("should fetch following timeline using API v2 when OAuth credentials are available", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
 
-            const mockFetchFollowingTimeline = vi.fn().mockResolvedValue([]);
-            client.twitterClient.fetchFollowingTimeline =
+            const mockApiTweets = [
+                createMockTweet({
+                    id: "456",
+                    text: "Following tweet",
+                    username: "followeduser",
+                    name: "Followed User",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            const mockFetchFollowingTimeline = vi
+                .fn()
+                .mockResolvedValue(mockApiTweets);
+            client.twitterApiV2Client.fetchFollowingTimeline =
                 mockFetchFollowingTimeline;
 
-            await client.fetchHomeTimeline(10, true);
+            const result = await client.fetchHomeTimeline(10, true);
 
-            expect(mockFetchFollowingTimeline).toHaveBeenCalledWith(10, []);
+            expect(mockFetchFollowingTimeline).toHaveBeenCalledWith(10);
+            expect(result).toEqual(mockApiTweets);
         });
 
-        it("should filter out TweetWithVisibilityResults", async () => {
-            const client = new ClientBase(mockRuntime, mockConfig);
-
-            const mockRawTweets = [
-                {
-                    __typename: "TweetWithVisibilityResults",
-                    id: "filtered",
-                },
-                {
-                    id: "kept",
-                    __typename: "Tweet",
-                    legacy: {
-                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
-                        entities: {},
-                    },
-                    core: {},
-                    rest_id: "kept",
-                },
-            ];
-
-            const mockFetchHomeTimeline = vi
-                .fn()
-                .mockResolvedValue(mockRawTweets);
-            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+        it("should return empty array when OAuth credentials are missing", async () => {
+            const configWithoutOAuth = {
+                ...mockConfig,
+                TWITTER_API_KEY: undefined,
+                TWITTER_API_SECRET: undefined,
+                TWITTER_ACCESS_TOKEN: undefined,
+                TWITTER_ACCESS_TOKEN_SECRET: undefined,
+            };
+            const client = new ClientBase(mockRuntime, configWithoutOAuth);
 
             const result = await client.fetchHomeTimeline(10, false);
 
-            expect(result).toHaveLength(1);
-            expect(result[0].id).toBe("kept");
+            expect(result).toHaveLength(0);
         });
 
-        it("should handle media processing correctly", async () => {
+        it("should handle API v2 errors gracefully", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
-
-            const mockRawTweets = [
-                {
-                    id: "123",
-                    __typename: "Tweet",
-                    legacy: {
-                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
-                        entities: {
-                            media: [
-                                {
-                                    type: "photo",
-                                    id_str: "photo1",
-                                    media_url_https:
-                                        "https://example.com/photo1.jpg",
-                                    alt_text: "Photo description",
-                                },
-                                {
-                                    type: "video",
-                                    id_str: "video1",
-                                },
-                            ],
-                        },
-                    },
-                    core: {},
-                    rest_id: "123",
-                },
-            ];
 
             const mockFetchHomeTimeline = vi
                 .fn()
-                .mockResolvedValue(mockRawTweets);
-            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+                .mockRejectedValue(
+                    new Error(
+                        "OAuth 1.0a credentials required for home timeline access"
+                    )
+                );
+            client.twitterApiV2Client.fetchHomeTimeline = mockFetchHomeTimeline;
 
             const result = await client.fetchHomeTimeline(10, false);
 
-            expect(result[0].photos).toEqual([
-                {
-                    id: "photo1",
-                    url: "https://example.com/photo1.jpg",
-                    alt_text: "Photo description",
-                },
-            ]);
-            expect(result[0].videos).toHaveLength(1);
+            expect(result).toHaveLength(0);
         });
     });
 
     describe("fetchTimelineForActions", () => {
-        it("should fetch home timeline for actions with ForYou type", async () => {
+        it("should fetch home timeline for actions using API v2 when OAuth available", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
             mockConfig.ACTION_TIMELINE_TYPE = ActionTimelineType.ForYou;
-
-            const mockRawTweets = [
-                {
-                    rest_id: "123",
-                    core: {
-                        user_results: {
-                            result: {
-                                legacy: {
-                                    name: "Test User",
-                                    screen_name: "differentuser",
-                                },
-                            },
-                        },
-                    },
-                    legacy: {
-                        full_text: "Test tweet",
-                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
-                        user_id_str: "456",
-                        conversation_id_str: "789",
-                        entities: {
-                            hashtags: [],
-                            user_mentions: [],
-                            urls: [],
-                        },
-                    },
-                },
-            ];
-
-            const mockFetchHomeTimeline = vi
-                .fn()
-                .mockResolvedValue(mockRawTweets);
-            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
-
-            const result = await client.fetchTimelineForActions(10);
-
-            expect(mockFetchHomeTimeline).toHaveBeenCalledWith(10, []);
-            expect(result).toHaveLength(1);
-            expect(result[0]).toMatchObject({
-                id: "123",
-                username: "differentuser",
-                text: "Test tweet",
-            });
-        });
-
-        it("should fetch following timeline for actions with Following type", async () => {
-            const client = new ClientBase(mockRuntime, mockConfig);
-            mockConfig.ACTION_TIMELINE_TYPE = ActionTimelineType.Following;
-
-            const mockFetchFollowingTimeline = vi.fn().mockResolvedValue([]);
-            client.twitterClient.fetchFollowingTimeline =
-                mockFetchFollowingTimeline;
-
-            await client.fetchTimelineForActions(10);
-
-            expect(mockFetchFollowingTimeline).toHaveBeenCalledWith(10, []);
-        });
-
-        it("should filter out agent's own tweets", async () => {
-            const client = new ClientBase(mockRuntime, mockConfig);
             mockConfig.TWITTER_USERNAME = "agentuser";
 
-            const mockRawTweets = [
-                {
-                    rest_id: "123",
-                    core: {
-                        user_results: {
-                            result: {
-                                legacy: {
-                                    screen_name: "agentuser", // This should be filtered
-                                },
-                            },
-                        },
-                    },
-                    legacy: {
-                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
-                        entities: {},
-                    },
-                },
-                {
-                    rest_id: "456",
-                    core: {
-                        user_results: {
-                            result: {
-                                legacy: {
-                                    screen_name: "otheruser", // This should be kept
-                                },
-                            },
-                        },
-                    },
-                    legacy: {
-                        created_at: "Mon Jan 01 00:00:00 +0000 2024",
-                        entities: {},
-                    },
-                },
+            const mockApiTweets = [
+                createMockTweet({
+                    id: "123",
+                    text: "Action tweet 1",
+                    username: "user1",
+                    name: "User One",
+                    timestamp: Date.now() / 1000,
+                }),
+                createMockTweet({
+                    id: "124",
+                    text: "Action tweet 2",
+                    username: "agentuser", // This will be filtered out
+                    name: "Agent User",
+                    timestamp: Date.now() / 1000,
+                }),
+                createMockTweet({
+                    id: "125",
+                    text: "Action tweet 3",
+                    username: "user2",
+                    name: "User Two",
+                    timestamp: Date.now() / 1000,
+                }),
             ];
 
             const mockFetchHomeTimeline = vi
                 .fn()
-                .mockResolvedValue(mockRawTweets);
-            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+                .mockResolvedValue(mockApiTweets);
+            client.twitterApiV2Client.fetchHomeTimeline = mockFetchHomeTimeline;
 
             const result = await client.fetchTimelineForActions(10);
 
-            expect(result).toHaveLength(1);
-            expect(result[0].username).toBe("otheruser");
+            expect(mockFetchHomeTimeline).toHaveBeenCalledWith(10);
+            // Should filter out agent's own tweets
+            expect(result).toHaveLength(2);
+            expect(result[0].username).toBe("user1");
+            expect(result[1].username).toBe("user2");
+        });
+
+        it("should fetch following timeline for actions using API v2 when OAuth available", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+            mockConfig.ACTION_TIMELINE_TYPE = ActionTimelineType.Following;
+            mockConfig.TWITTER_USERNAME = "agentuser";
+
+            const mockApiTweets = [
+                createMockTweet({
+                    id: "456",
+                    text: "Following action tweet",
+                    username: "followeduser",
+                    name: "Followed User",
+                    timestamp: Date.now() / 1000,
+                }),
+            ];
+
+            const mockFetchFollowingTimeline = vi
+                .fn()
+                .mockResolvedValue(mockApiTweets);
+            client.twitterApiV2Client.fetchFollowingTimeline =
+                mockFetchFollowingTimeline;
+
+            const result = await client.fetchTimelineForActions(10);
+
+            expect(mockFetchFollowingTimeline).toHaveBeenCalledWith(10);
+            expect(result).toEqual(mockApiTweets);
+        });
+
+        it("should return empty array when OAuth credentials not provided", async () => {
+            const configWithoutOAuth = {
+                ...mockConfig,
+                TWITTER_API_KEY: undefined,
+                TWITTER_API_SECRET: undefined,
+                TWITTER_ACCESS_TOKEN: undefined,
+                TWITTER_ACCESS_TOKEN_SECRET: undefined,
+            };
+            const client = new ClientBase(mockRuntime, configWithoutOAuth);
+
+            const result = await client.fetchTimelineForActions(10);
+
+            expect(result).toHaveLength(0);
         });
 
         it("should limit results to requested count", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
+            mockConfig.TWITTER_USERNAME = "agentuser";
 
-            const mockRawTweets = Array.from({ length: 20 }, (_, i) => ({
-                rest_id: `${i}`,
-                core: {
-                    user_results: {
-                        result: {
-                            legacy: {
-                                screen_name: `user${i}`,
-                            },
-                        },
-                    },
-                },
-                legacy: {
-                    created_at: "Mon Jan 01 00:00:00 +0000 2024",
-                    entities: {},
-                },
-            }));
+            const mockApiTweets = Array.from({ length: 20 }, (_, i) =>
+                createMockTweet({
+                    id: `${i}`,
+                    text: `Tweet ${i}`,
+                    username: `user${i}`,
+                    name: `User ${i}`,
+                    timestamp: Date.now() / 1000,
+                })
+            );
 
             const mockFetchHomeTimeline = vi
                 .fn()
-                .mockResolvedValue(mockRawTweets);
-            client.twitterClient.fetchHomeTimeline = mockFetchHomeTimeline;
+                .mockResolvedValue(mockApiTweets);
+            client.twitterApiV2Client.fetchHomeTimeline = mockFetchHomeTimeline;
 
             const result = await client.fetchTimelineForActions(5);
 
             expect(result).toHaveLength(5);
+        });
+
+        it("should handle API v2 errors gracefully", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockFetchHomeTimeline = vi
+                .fn()
+                .mockRejectedValue(
+                    new Error("OAuth 1.0a credentials required")
+                );
+            client.twitterApiV2Client.fetchHomeTimeline = mockFetchHomeTimeline;
+
+            const result = await client.fetchTimelineForActions(10);
+
+            expect(result).toHaveLength(0);
         });
     });
 
