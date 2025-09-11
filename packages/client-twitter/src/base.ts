@@ -149,15 +149,6 @@ export class ClientBase extends EventEmitter {
         await this.populateTimeline();
     }
 
-    async fetchOwnPosts(count: number): Promise<Tweet[]> {
-        elizaLogger.debug("fetching own posts");
-        const homeTimeline = await this.twitterClient.getUserTweets(
-            this.profile.id,
-            count
-        );
-        return homeTimeline.tweets;
-    }
-
     /**
      * Fetch timeline for twitter account, optionally only from followed accounts
      */

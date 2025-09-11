@@ -480,24 +480,6 @@ describe("Twitter Client Base", () => {
         });
     });
 
-    describe("fetchOwnPosts", () => {
-        it("should fetch own posts successfully", async () => {
-            const client = new ClientBase(mockRuntime, mockConfig);
-            client.profile = { id: "123", username: "testuser" } as any;
-
-            const mockTweets = [createMockTweet({ id: "1" })];
-            const mockUserTweets = vi
-                .fn()
-                .mockResolvedValue({ tweets: mockTweets });
-            client.twitterClient.getUserTweets = mockUserTweets;
-
-            const result = await client.fetchOwnPosts(10);
-
-            expect(mockUserTweets).toHaveBeenCalledWith("123", 10);
-            expect(result).toEqual(mockTweets);
-        });
-    });
-
     describe("fetchHomeTimeline", () => {
         it("should fetch home timeline when not following", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
