@@ -344,11 +344,16 @@ export class ClientBase extends EventEmitter {
     async fetchSearchTweets(
         query: string,
         maxTweets: number,
-        cursor?: string
+        cursor?: string,
+        sinceId?: string
     ): Promise<QueryTweetsResponse> {
         try {
+            // Use since_id if available, otherwise use start_time (7 days ago)
+            // Twitter API v2 doesn't allow both parameters together
+            const startTime = sinceId ? undefined : this.calculateStartTime();
+
             elizaLogger.debug(
-                `Searching tweets for query "${query}" using Twitter API v2`
+                `Searching tweets for query "${query}" using Twitter API v2${startTime ? ` with start_time: ${startTime}` : ""}${sinceId ? ` with since_id: ${sinceId}` : ""}`
             );
 
             // Use request queue with rate limit awareness for API v2
@@ -357,7 +362,9 @@ export class ClientBase extends EventEmitter {
                     return await this.twitterApiV2Client.searchTweets(
                         query,
                         maxTweets,
-                        cursor
+                        cursor,
+                        sinceId,
+                        startTime
                     );
                 } catch (error: any) {
                     // Handle rate limiting gracefully
@@ -368,6 +375,40 @@ export class ClientBase extends EventEmitter {
                         // Return empty result instead of throwing
                         return { tweets: [] };
                     }
+
+                    // Handle invalid since_id error - retry with start_time
+                    if (
+                        error.code === 400 &&
+                        (error.data?.errors?.[0]?.parameters?.since_id ||
+                            error.data?.errors?.[0]?.message?.includes(
+                                "since_id"
+                            )) &&
+                        sinceId
+                    ) {
+                        elizaLogger.warn(
+                            `Invalid since_id ${sinceId}, retrying with start_time and clearing cached IDs`
+                        );
+
+                        // Clear the invalid cached since_id to prevent future errors
+                        this.lastCheckedTweetId = null;
+                        await this.runtime.cacheManager.delete(
+                            `twitter/${this.profile.username}/latest_checked_tweet_id`
+                        );
+                        await this.runtime.cacheManager.delete(
+                            `twitter/${this.profile.username}/latest_knowledge_checked_tweet_id`
+                        );
+
+                        // Retry with start_time (no since_id)
+                        const fallbackStartTime = this.calculateStartTime();
+                        return await this.twitterApiV2Client.searchTweets(
+                            query,
+                            maxTweets,
+                            cursor,
+                            undefined,
+                            fallbackStartTime
+                        );
+                    }
+
                     throw error;
                 }
             });
@@ -681,6 +722,36 @@ export class ClientBase extends EventEmitter {
                 this.lastCheckedTweetId.toString()
             );
         }
+    }
+
+    async loadLatestKnowledgeCheckedTweetId(): Promise<bigint | null> {
+        const latestKnowledgeCheckedTweetId =
+            await this.runtime.cacheManager.get<string>(
+                `twitter/${this.profile.username}/latest_knowledge_checked_tweet_id`
+            );
+
+        return latestKnowledgeCheckedTweetId
+            ? BigInt(latestKnowledgeCheckedTweetId)
+            : null;
+    }
+
+    async cacheLatestKnowledgeCheckedTweetId(tweetId: bigint) {
+        await this.runtime.cacheManager.set(
+            `twitter/${this.profile.username}/latest_knowledge_checked_tweet_id`,
+            tweetId.toString()
+        );
+    }
+
+    /**
+     * Calculate start_time for Twitter API v2 search (7 days ago)
+     * Returns ISO 8601 formatted timestamp: YYYY-MM-DDTHH:mm:ssZ
+     */
+    private calculateStartTime(): string {
+        // Twitter API v2 search has a 7-day limitation
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        // Return ISO 8601 formatted timestamp
+        return sevenDaysAgo.toISOString();
     }
 
     async getCachedTimeline(): Promise<Tweet[] | undefined> {

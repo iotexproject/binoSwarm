@@ -288,10 +288,12 @@ export class TwitterApiV2Client {
     async searchTweets(
         query: string,
         maxResults: number = 10,
-        nextToken?: string
+        nextToken?: string,
+        sinceId?: string,
+        startTime?: string
     ): Promise<{ tweets: Tweet[]; nextToken?: string }> {
         try {
-            const response = await this.readOnlyClient.v2.search(query, {
+            const searchParams: any = {
                 max_results: Math.min(maxResults, 100), // API v2 max is 100
                 next_token: nextToken,
                 expansions: [
@@ -319,7 +321,20 @@ export class TwitterApiV2Client {
                     "preview_image_url",
                     "alt_text",
                 ],
-            });
+            };
+
+            // Add optional parameters - Twitter API v2 doesn't allow both since_id and start_time
+            // Prefer since_id if available, otherwise use start_time
+            if (sinceId) {
+                searchParams.since_id = sinceId;
+            } else if (startTime) {
+                searchParams.start_time = startTime;
+            }
+
+            const response = await this.readOnlyClient.v2.search(
+                query,
+                searchParams
+            );
 
             const tweets =
                 response.tweets?.map((tweet) =>

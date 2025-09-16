@@ -715,7 +715,11 @@ describe("Twitter Client Base", () => {
             expect(mockSearchTweets).toHaveBeenCalledWith(
                 "test query",
                 10,
-                undefined
+                undefined,
+                undefined,
+                expect.stringMatching(
+                    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+                )
             );
             expect(result).toEqual(mockSearchResult);
         });
@@ -731,7 +735,11 @@ describe("Twitter Client Base", () => {
             expect(mockSearchTweets).toHaveBeenCalledWith(
                 "test query",
                 10,
-                "cursor123"
+                "cursor123",
+                undefined,
+                expect.stringMatching(
+                    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+                )
             );
         });
 
@@ -771,6 +779,91 @@ describe("Twitter Client Base", () => {
             const result = await client.fetchSearchTweets("test query", 10);
 
             expect(result).toEqual({ tweets: [] });
+        });
+
+        it("should use start_time for 7-day search window", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockSearchTweets = vi.fn().mockResolvedValue({ tweets: [] });
+            client.twitterApiV2Client.searchTweets = mockSearchTweets;
+
+            await client.fetchSearchTweets("test query", 10);
+
+            // Should be called with query, maxTweets, cursor, sinceId, startTime
+            expect(mockSearchTweets).toHaveBeenCalledWith(
+                "test query",
+                10,
+                undefined,
+                undefined,
+                expect.stringMatching(
+                    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+                ) // ISO 8601 format
+            );
+        });
+
+        it("should prefer since_id over start_time when provided", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockSearchTweets = vi.fn().mockResolvedValue({ tweets: [] });
+            client.twitterApiV2Client.searchTweets = mockSearchTweets;
+
+            const sinceId = "1900000000000000000";
+            await client.fetchSearchTweets(
+                "test query",
+                10,
+                undefined,
+                sinceId
+            );
+
+            // Should be called with since_id but NO start_time (only one parameter allowed)
+            expect(mockSearchTweets).toHaveBeenCalledWith(
+                "test query",
+                10,
+                undefined,
+                sinceId,
+                undefined // start_time should be undefined when since_id is provided
+            );
+        });
+
+        it("should use start_time when since_id is not provided", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockSearchTweets = vi.fn().mockResolvedValue({ tweets: [] });
+            client.twitterApiV2Client.searchTweets = mockSearchTweets;
+
+            await client.fetchSearchTweets("test query", 10);
+
+            // Should be called with start_time but NO since_id
+            expect(mockSearchTweets).toHaveBeenCalledWith(
+                "test query",
+                10,
+                undefined,
+                undefined, // since_id should be undefined
+                expect.stringMatching(
+                    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+                ) // start_time should be provided
+            );
+        });
+
+        it("should validate start_time is approximately 7 days ago", async () => {
+            const client = new ClientBase(mockRuntime, mockConfig);
+
+            const mockSearchTweets = vi.fn().mockResolvedValue({ tweets: [] });
+            client.twitterApiV2Client.searchTweets = mockSearchTweets;
+
+            const beforeCall = Date.now();
+            await client.fetchSearchTweets("test query", 10);
+            const afterCall = Date.now();
+
+            const startTime = mockSearchTweets.mock.calls[0][4];
+            const startTimeMs = new Date(startTime).getTime();
+
+            // Should be approximately 7 days ago (within 1 second tolerance)
+            const sevenDaysAgo = beforeCall - 7 * 24 * 60 * 60 * 1000;
+            const sevenDaysAgoAfter = afterCall - 7 * 24 * 60 * 60 * 1000;
+
+            expect(startTimeMs).toBeGreaterThanOrEqual(sevenDaysAgo - 1000);
+            expect(startTimeMs).toBeLessThanOrEqual(sevenDaysAgoAfter + 1000);
         });
     });
 
