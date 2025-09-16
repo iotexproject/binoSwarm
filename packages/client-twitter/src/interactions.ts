@@ -167,18 +167,22 @@ export class TwitterInteractionClient {
 
     private async fetchMentionCandidates() {
         const twitterUsername = this.client.profile.username;
-        const sinceId = this.client.lastCheckedTweetId?.toString();
+        // Use the maximum of lastCheckedTweetId and lastKnowledgeCheckedTweetId
+        // to avoid reprocessing already handled tweets
+        const maxSinceId = await TwitterHelpers.getMaxTweetId(this.client);
         const response = await this.client.fetchSearchTweets(
             `@${twitterUsername}`,
             MENTIONS_TO_FETCH,
             undefined,
-            sinceId
+            maxSinceId
         );
         const candidates = response.tweets;
         elizaLogger.log(
             "Completed checking mentioned tweets:",
             candidates.length,
-            sinceId ? `(since ID: ${sinceId})` : "(no since_id)"
+            maxSinceId
+                ? `(since ID: ${maxSinceId})`
+                : "(using start_time fallback)"
         );
         return candidates;
     }
@@ -198,18 +202,23 @@ export class TwitterInteractionClient {
                     const combinedQuery =
                         TwitterHelpers.buildFromUsersQuery(TARGET_USERS);
 
+                    // Use the maximum of lastCheckedTweetId and lastKnowledgeCheckedTweetId
+                    // to avoid reprocessing already handled tweets
+                    const maxSinceId = await TwitterHelpers.getMaxTweetId(
+                        this.client
+                    );
+
                     elizaLogger.log(
-                        `Fetching tweets with combined query: ${combinedQuery}`
+                        `Fetching tweets with combined query: ${combinedQuery}${maxSinceId ? ` (since ID: ${maxSinceId})` : " (using start_time fallback)"}`
                     );
 
                     // Single API call for all users
-                    const sinceId = this.client.lastCheckedTweetId?.toString();
                     const allUserTweets = (
                         await this.client.fetchSearchTweets(
                             combinedQuery,
                             TARGET_USERS.length * 3, // 3 tweets per user max
                             undefined,
-                            sinceId
+                            maxSinceId
                         )
                     ).tweets;
 

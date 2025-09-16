@@ -85,6 +85,9 @@ describe("TwitterInteractionClient", () => {
             },
             fetchSearchTweets: vi.fn(),
             cacheLatestCheckedTweetId: vi.fn(),
+            loadLatestKnowledgeCheckedTweetId: vi
+                .fn()
+                .mockResolvedValue(undefined),
             lastCheckedTweetId: BigInt(0),
             saveRequestMessage: vi.fn(),
             twitterClient: {

@@ -92,20 +92,19 @@ export class KnowledgeProcessor {
             const combinedQuery =
                 TwitterHelpers.buildFromUsersQuery(KNOWLEDGE_USERS);
 
-            // Single API call for all users
-            const knowledgeSinceId = (
-                await this.client.loadLatestKnowledgeCheckedTweetId()
-            )?.toString();
+            // Use the maximum of lastCheckedTweetId and lastKnowledgeCheckedTweetId
+            // to avoid reprocessing already handled tweets
+            const maxSinceId = await TwitterHelpers.getMaxTweetId(this.client);
 
             elizaLogger.log(
-                `Fetching knowledge tweets with combined query: ${combinedQuery}${knowledgeSinceId ? ` (since ID: ${knowledgeSinceId})` : " (no since_id)"}`
+                `Fetching knowledge tweets with combined query: ${combinedQuery}${maxSinceId ? ` (since ID: ${maxSinceId})` : " (using start_time fallback)"}`
             );
             const allUserTweets = (
                 await this.client.fetchSearchTweets(
                     combinedQuery,
                     KNOWLEDGE_USERS.length * 10, // 10 tweets per user max
                     undefined,
-                    knowledgeSinceId
+                    maxSinceId
                 )
             ).tweets;
 

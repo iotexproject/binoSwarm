@@ -233,6 +233,26 @@ export class TwitterHelpers {
         }
         return usernames.map((username) => `from:${username}`).join(" OR ");
     }
+
+    static async getMaxTweetId(client: any): Promise<string | undefined> {
+        const lastCheckedTweetId = client.lastCheckedTweetId;
+        const lastKnowledgeCheckedTweetId =
+            await client.loadLatestKnowledgeCheckedTweetId();
+
+        // If both exist, return the maximum (most recent)
+        if (lastCheckedTweetId && lastKnowledgeCheckedTweetId) {
+            return BigInt(lastCheckedTweetId) >
+                BigInt(lastKnowledgeCheckedTweetId)
+                ? lastCheckedTweetId.toString()
+                : lastKnowledgeCheckedTweetId.toString();
+        }
+
+        // Return whichever one exists, or undefined if neither
+        return (
+            lastCheckedTweetId?.toString() ||
+            lastKnowledgeCheckedTweetId?.toString()
+        );
+    }
 }
 
 export default TwitterHelpers;
