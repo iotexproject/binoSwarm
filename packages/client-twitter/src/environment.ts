@@ -111,12 +111,13 @@ export async function validateTwitterConfig(
             TWITTER_BEARER_TOKEN: runtime.getSetting("TWITTER_BEARER_TOKEN"),
 
             // OAuth 1.0a credentials for user context authentication
-            TWITTER_API_KEY: runtime.getSetting("TWITTER_API_KEY"),
-            TWITTER_API_SECRET: runtime.getSetting("TWITTER_API_SECRET"),
-            TWITTER_ACCESS_TOKEN: runtime.getSetting("TWITTER_ACCESS_TOKEN"),
-            TWITTER_ACCESS_TOKEN_SECRET: runtime.getSetting(
-                "TWITTER_ACCESS_TOKEN_SECRET"
-            ),
+            TWITTER_API_KEY: runtime.getSetting("TWITTER_API_KEY") || undefined,
+            TWITTER_API_SECRET:
+                runtime.getSetting("TWITTER_API_SECRET") || undefined,
+            TWITTER_ACCESS_TOKEN:
+                runtime.getSetting("TWITTER_ACCESS_TOKEN") || undefined,
+            TWITTER_ACCESS_TOKEN_SECRET:
+                runtime.getSetting("TWITTER_ACCESS_TOKEN_SECRET") || undefined,
 
             // number as string?
             MAX_TWEET_LENGTH: safeParsePositiveInt(
