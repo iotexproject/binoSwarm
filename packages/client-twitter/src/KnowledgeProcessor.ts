@@ -12,6 +12,7 @@ import {
 } from "@elizaos/core";
 import { z } from "zod";
 import { ClientBase } from "./base";
+import { TwitterHelpers } from "./helpers";
 
 const RELEVANCE_THRESHOLD = 0.5;
 
@@ -86,8 +87,97 @@ export class KnowledgeProcessor {
 
         elizaLogger.log("Processing knowledge users:", KNOWLEDGE_USERS);
 
-        for (const username of KNOWLEDGE_USERS) {
-            await this.processKnowledgeUser(username);
+        try {
+            // Build single OR query for all knowledge users
+            const combinedQuery =
+                TwitterHelpers.buildFromUsersQuery(KNOWLEDGE_USERS);
+
+            // Single API call for all users
+            const knowledgeSinceId = (
+                await this.client.loadLatestKnowledgeCheckedTweetId()
+            )?.toString();
+
+            elizaLogger.log(
+                `Fetching knowledge tweets with combined query: ${combinedQuery}${knowledgeSinceId ? ` (since ID: ${knowledgeSinceId})` : " (no since_id)"}`
+            );
+            const allUserTweets = (
+                await this.client.fetchSearchTweets(
+                    combinedQuery,
+                    KNOWLEDGE_USERS.length * 10, // 10 tweets per user max
+                    undefined,
+                    knowledgeSinceId
+                )
+            ).tweets;
+
+            // Group tweets by username
+            const tweetsByUser = new Map<string, Tweet[]>();
+
+            for (const tweet of allUserTweets) {
+                const username = tweet.username;
+                if (!username || !KNOWLEDGE_USERS.includes(username)) {
+                    continue;
+                }
+
+                if (!tweetsByUser.has(username)) {
+                    tweetsByUser.set(username, []);
+                }
+                tweetsByUser.get(username)!.push(tweet);
+            }
+
+            // Process each user's tweets using existing pipeline
+            let highestTweetId: bigint | null = null;
+
+            for (const username of KNOWLEDGE_USERS) {
+                const userTweets = tweetsByUser.get(username) || [];
+                await this.processKnowledgeUserWithTweets(username, userTweets);
+
+                // Track the highest tweet ID processed
+                for (const tweet of userTweets) {
+                    const tweetId = BigInt(tweet.id);
+                    if (!highestTweetId || tweetId > highestTweetId) {
+                        highestTweetId = tweetId;
+                    }
+                }
+            }
+
+            // Update the knowledge processor's last checked tweet ID
+            if (highestTweetId) {
+                await this.client.cacheLatestKnowledgeCheckedTweetId(
+                    highestTweetId
+                );
+                elizaLogger.log(
+                    `Updated knowledge processor last checked tweet ID to: ${highestTweetId}`
+                );
+            }
+        } catch (error) {
+            elizaLogger.error("Error fetching knowledge tweets:", error);
+        }
+    }
+
+    private async processKnowledgeUserWithTweets(
+        username: string,
+        userTweets: Tweet[]
+    ) {
+        try {
+            const validTweets = await this.validateTweets(userTweets);
+
+            if (validTweets.length === 0) {
+                elizaLogger.debug(
+                    `No valid tweets found for ${username}, skipping`
+                );
+                return;
+            }
+
+            elizaLogger.log(
+                `Processing ${validTweets.length} knowledge tweets from ${username}`
+            );
+
+            await this.processUserTweets(validTweets, username);
+        } catch (error) {
+            elizaLogger.error(
+                `Error processing knowledge tweets for ${username}:`,
+                error
+            );
         }
     }
 
@@ -350,13 +440,17 @@ export class KnowledgeProcessor {
         );
     }
 
-    private async fetchAndValidateTweets(username: string) {
-        const userTweets = await this.fetchUserTweets(username);
+    private async validateTweets(userTweets: Tweet[]) {
         const unprocessedTweets = this.filterUnprocessed(userTweets);
         const recentTweets = this.filterRecent(unprocessedTweets);
         const notInKnowledge = await this.filterNotInKnowledge(recentTweets);
 
         return notInKnowledge;
+    }
+
+    private async fetchAndValidateTweets(username: string) {
+        const userTweets = await this.fetchUserTweets(username);
+        return await this.validateTweets(userTweets);
     }
 
     private filterRecent(tweets: Tweet[]) {

@@ -22,6 +22,10 @@ vi.mock("@elizaos/core", async () => {
         },
         composeContext: vi.fn().mockReturnValue(""),
         stringToUuid: vi.fn((str) => `uuid-${str}`),
+        ActionTimelineType: {
+            ForYou: "foryou",
+            Following: "following",
+        },
         generateObject: vi.fn().mockResolvedValue({
             object: {
                 analysis: [
@@ -157,19 +161,27 @@ describe("KnowledgeProcessor", () => {
             ),
         ];
 
-        // Configure our mock to only call fetchSearchTweets once for a single user to prevent multiple batches
-        mockClient.fetchSearchTweets
-            .mockResolvedValueOnce({
-                tweets: mockTweets,
-            })
-            .mockResolvedValue({ tweets: [] }); // Any subsequent calls return empty tweets
+        // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
+        mockClient.loadLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+        mockClient.cacheLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+
+        // Configure our mock to return tweets for the combined query
+        mockClient.fetchSearchTweets.mockResolvedValueOnce({
+            tweets: mockTweets,
+        });
 
         await processor.processKnowledge();
 
-        // Verify tweet fetching
+        // Verify tweet fetching with combined query (since we have ["testuser", "anotheruser"] in config)
         expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
-            "from:testuser",
-            10
+            "from:testuser OR from:anotheruser",
+            20, // 2 users * 10 tweets per user
+            undefined,
+            undefined
         );
 
         // Only the high relevance tweet (with ID 123) should result in knowledge creation
@@ -197,6 +209,14 @@ describe("KnowledgeProcessor", () => {
         // Set a lastCheckedTweetId
         mockClient.lastCheckedTweetId = 200;
 
+        // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
+        mockClient.loadLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+        mockClient.cacheLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+
         // Setup tweets - one older, one newer than lastCheckedTweetId
         const mockTweets = [
             createMockTweet(123, "testuser", "This is an old tweet"), // ID < lastCheckedTweetId
@@ -222,6 +242,14 @@ describe("KnowledgeProcessor", () => {
     });
 
     it("should process image descriptions for tweets with photos", async () => {
+        // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
+        mockClient.loadLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+        mockClient.cacheLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+
         // Setup tweets with photos
         const mockTweets = [
             createMockTweet(123, "testuser", "Tweet with photo", true),
@@ -250,6 +278,14 @@ describe("KnowledgeProcessor", () => {
     });
 
     it("should process tweets in batches of 5", async () => {
+        // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
+        mockClient.loadLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+        mockClient.cacheLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+
         // Create 7 tweets to test batch processing (5 + 2)
         const mockTweets: MockTweet[] = [];
         for (let i = 1; i <= 7; i++) {

@@ -183,7 +183,9 @@ describe("TwitterInteractionClient", () => {
 
             expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
                 "@testuser",
-                20
+                20,
+                undefined,
+                "0"
             );
             expect(mockKnowledgeProcessor.processKnowledge).toHaveBeenCalled();
             expect(mockClient.cacheLatestCheckedTweetId).toHaveBeenCalled();
@@ -220,11 +222,15 @@ describe("TwitterInteractionClient", () => {
 
             expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
                 "@testuser",
-                20
+                20,
+                undefined,
+                "0"
             );
             expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
                 "from:targetuser",
-                3
+                3,
+                undefined,
+                "0"
             );
             expect(mockKnowledgeProcessor.processKnowledge).toHaveBeenCalled();
             expect(mockClient.cacheLatestCheckedTweetId).toHaveBeenCalled();

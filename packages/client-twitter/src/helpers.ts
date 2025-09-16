@@ -226,6 +226,13 @@ export class TwitterHelpers {
             videos: [],
         } as Tweet;
     }
+
+    static buildFromUsersQuery(usernames: string[]): string {
+        if (usernames.length === 0) {
+            throw new Error("Cannot build query for empty usernames array");
+        }
+        return usernames.map((username) => `from:${username}`).join(" OR ");
+    }
 }
 
 export default TwitterHelpers;
