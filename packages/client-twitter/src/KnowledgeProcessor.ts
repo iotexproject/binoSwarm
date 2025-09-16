@@ -181,30 +181,6 @@ export class KnowledgeProcessor {
         }
     }
 
-    private async processKnowledgeUser(username: string) {
-        try {
-            const validTweets = await this.fetchAndValidateTweets(username);
-
-            if (validTweets.length === 0) {
-                elizaLogger.debug(
-                    `No valid tweets found for ${username}, skipping`
-                );
-                return;
-            }
-
-            elizaLogger.log(
-                `Processing ${validTweets.length} knowledge tweets from ${username}`
-            );
-
-            await this.processUserTweets(validTweets, username);
-        } catch (error) {
-            elizaLogger.error(
-                `Error processing knowledge tweets for ${username}:`,
-                error
-            );
-        }
-    }
-
     private async processUserTweets(validTweets: Tweet[], username: string) {
         const batchSize = 5;
 
