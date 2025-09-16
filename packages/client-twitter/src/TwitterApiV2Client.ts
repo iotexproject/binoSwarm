@@ -68,6 +68,13 @@ export class TwitterApiV2Client {
     }
 
     /**
+     * Check if user context authentication is available
+     */
+    hasUserContext(): boolean {
+        return !!this.userContextClient;
+    }
+
+    /**
      * Fetch home timeline using Twitter API v2 with user context authentication
      */
     async fetchHomeTimeline(count: number = 10): Promise<Tweet[]> {
