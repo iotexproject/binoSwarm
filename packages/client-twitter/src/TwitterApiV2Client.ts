@@ -84,6 +84,12 @@ export class TwitterApiV2Client {
             );
         }
 
+        elizaLogger.log("TWITTER_API_CALL_STARTED", {
+            method: "fetchHomeTimeline",
+            endpoint: "v2.homeTimeline",
+            maxResults: Math.min(count, 100),
+        });
+
         try {
             const response = await this.userContextClient.v2.homeTimeline({
                 max_results: Math.min(count, 100), // API v2 max is 100
@@ -118,10 +124,25 @@ export class TwitterApiV2Client {
                 return [];
             }
 
-            return response.tweets.map((tweet) =>
+            const tweets = response.tweets.map((tweet) =>
                 this.transformTweetV2ToTweet(tweet, response.includes)
             );
+
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "fetchHomeTimeline",
+                endpoint: "v2.homeTimeline",
+                success: true,
+                tweetsReturned: tweets.length,
+            });
+
+            return tweets;
         } catch (error) {
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "fetchHomeTimeline",
+                endpoint: "v2.homeTimeline",
+                success: false,
+                error: error.message,
+            });
             elizaLogger.error(
                 "Error fetching home timeline with Twitter API v2:",
                 error
@@ -139,6 +160,12 @@ export class TwitterApiV2Client {
                 "OAuth 1.0a credentials required for following timeline access. Please provide TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, and TWITTER_ACCESS_TOKEN_SECRET."
             );
         }
+
+        elizaLogger.log("TWITTER_API_CALL_STARTED", {
+            method: "fetchFollowingTimeline",
+            endpoint: "v2.homeTimeline",
+            maxResults: Math.min(count, 100),
+        });
 
         try {
             // Note: Twitter API v2 doesn't have a separate "following timeline" endpoint
@@ -176,10 +203,25 @@ export class TwitterApiV2Client {
                 return [];
             }
 
-            return response.tweets.map((tweet) =>
+            const tweets = response.tweets.map((tweet) =>
                 this.transformTweetV2ToTweet(tweet, response.includes)
             );
+
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "fetchFollowingTimeline",
+                endpoint: "v2.homeTimeline",
+                success: true,
+                tweetsReturned: tweets.length,
+            });
+
+            return tweets;
         } catch (error) {
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "fetchFollowingTimeline",
+                endpoint: "v2.homeTimeline",
+                success: false,
+                error: error.message,
+            });
             elizaLogger.error(
                 "Error fetching following timeline with Twitter API v2:",
                 error
@@ -192,6 +234,12 @@ export class TwitterApiV2Client {
      * Fetch a single tweet by ID using Twitter API v2
      */
     async getTweet(tweetId: string): Promise<Tweet | null> {
+        elizaLogger.log("TWITTER_API_CALL_STARTED", {
+            method: "getTweet",
+            endpoint: "v2.singleTweet",
+            tweetId: tweetId,
+        });
+
         try {
             const response = await this.readOnlyClient.v2.singleTweet(tweetId, {
                 expansions: [
@@ -222,14 +270,38 @@ export class TwitterApiV2Client {
             });
 
             if (!response.data) {
+                elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                    method: "getTweet",
+                    endpoint: "v2.singleTweet",
+                    success: true,
+                    tweetId: tweetId,
+                    tweetFound: false,
+                });
                 return null;
             }
 
-            return this.transformTweetV2ToTweet(
+            const tweet = this.transformTweetV2ToTweet(
                 response.data,
                 response.includes
             );
+
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "getTweet",
+                endpoint: "v2.singleTweet",
+                success: true,
+                tweetId: tweetId,
+                tweetFound: true,
+            });
+
+            return tweet;
         } catch (error) {
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "getTweet",
+                endpoint: "v2.singleTweet",
+                success: false,
+                tweetId: tweetId,
+                error: error.message,
+            });
             elizaLogger.error(
                 "Error fetching tweet with Twitter API v2:",
                 error
@@ -246,6 +318,12 @@ export class TwitterApiV2Client {
         name: string;
         biography: string;
     }> {
+        elizaLogger.log("TWITTER_API_CALL_STARTED", {
+            method: "getProfile",
+            endpoint: "v2.userByUsername",
+            username: username,
+        });
+
         try {
             const response = await this.readOnlyClient.v2.userByUsername(
                 username,
@@ -268,12 +346,29 @@ export class TwitterApiV2Client {
 
             const user = response.data;
 
-            return {
+            const profile = {
                 userId: user.id,
                 name: user.name || "",
                 biography: user.description || "",
             };
+
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "getProfile",
+                endpoint: "v2.userByUsername",
+                success: true,
+                username: username,
+                userId: user.id,
+            });
+
+            return profile;
         } catch (error) {
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "getProfile",
+                endpoint: "v2.userByUsername",
+                success: false,
+                username: username,
+                error: error.message,
+            });
             elizaLogger.error(
                 `Error fetching profile for ${username} with Twitter API v2:`,
                 error
@@ -292,6 +387,16 @@ export class TwitterApiV2Client {
         sinceId?: string,
         startTime?: string
     ): Promise<{ tweets: Tweet[]; nextToken?: string }> {
+        elizaLogger.log("TWITTER_API_CALL_STARTED", {
+            method: "searchTweets",
+            endpoint: "v2.search",
+            query: query,
+            maxResults: Math.min(maxResults, 100),
+            nextToken: nextToken,
+            sinceId: sinceId,
+            startTime: startTime,
+        });
+
         try {
             const searchParams: any = {
                 max_results: Math.min(maxResults, 100), // API v2 max is 100
@@ -341,11 +446,29 @@ export class TwitterApiV2Client {
                     this.transformTweetV2ToTweet(tweet, response.includes)
                 ) || [];
 
-            return {
+            const result = {
                 tweets,
                 nextToken: response.meta?.next_token,
             };
+
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "searchTweets",
+                endpoint: "v2.search",
+                success: true,
+                query: query,
+                tweetsReturned: tweets.length,
+                hasNextToken: !!response.meta?.next_token,
+            });
+
+            return result;
         } catch (error) {
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "searchTweets",
+                endpoint: "v2.search",
+                success: false,
+                query: query,
+                error: error.message,
+            });
             elizaLogger.error(
                 "Error searching tweets with Twitter API v2:",
                 error
