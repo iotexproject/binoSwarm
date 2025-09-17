@@ -858,12 +858,19 @@ describe("Twitter Client Base", () => {
             const startTime = mockSearchTweets.mock.calls[0][4];
             const startTimeMs = new Date(startTime).getTime();
 
-            // Should be approximately 7 days ago (within 1 second tolerance)
-            const sevenDaysAgo = beforeCall - 7 * 24 * 60 * 60 * 1000;
-            const sevenDaysAgoAfter = afterCall - 7 * 24 * 60 * 60 * 1000;
+            // Should be approximately 7 days ago with 10-minute buffer (within 1 second tolerance)
+            // The calculateStartTime method adds a 10-minute buffer to prevent edge case timing issues
+            const sevenDaysAgoWithBuffer =
+                beforeCall - 7 * 24 * 60 * 60 * 1000 + 10 * 60 * 1000;
+            const sevenDaysAgoWithBufferAfter =
+                afterCall - 7 * 24 * 60 * 60 * 1000 + 10 * 60 * 1000;
 
-            expect(startTimeMs).toBeGreaterThanOrEqual(sevenDaysAgo - 1000);
-            expect(startTimeMs).toBeLessThanOrEqual(sevenDaysAgoAfter + 1000);
+            expect(startTimeMs).toBeGreaterThanOrEqual(
+                sevenDaysAgoWithBuffer - 1000
+            );
+            expect(startTimeMs).toBeLessThanOrEqual(
+                sevenDaysAgoWithBufferAfter + 1000
+            );
         });
     });
 

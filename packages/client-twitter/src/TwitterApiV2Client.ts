@@ -387,6 +387,10 @@ export class TwitterApiV2Client {
         sinceId?: string,
         startTime?: string
     ): Promise<{ tweets: Tweet[]; nextToken?: string }> {
+        if (!query || query.trim().length === 0) {
+            throw new Error("Search query cannot be empty");
+        }
+
         elizaLogger.log("TWITTER_API_CALL_STARTED", {
             method: "searchTweets",
             endpoint: "v2.search",
@@ -397,10 +401,11 @@ export class TwitterApiV2Client {
             startTime: startTime,
         });
 
+        let searchParams: any = {};
+
         try {
-            const searchParams: any = {
+            searchParams = {
                 max_results: Math.min(maxResults, 100), // API v2 max is 100
-                next_token: nextToken,
                 expansions: [
                     "author_id",
                     "referenced_tweets.id",
@@ -428,12 +433,21 @@ export class TwitterApiV2Client {
                 ],
             };
 
-            // Add optional parameters - Twitter API v2 doesn't allow both since_id and start_time
-            // Prefer since_id if available, otherwise use start_time
+            if (nextToken) {
+                searchParams.next_token = nextToken;
+            }
+
             if (sinceId) {
                 searchParams.since_id = sinceId;
             } else if (startTime) {
-                searchParams.start_time = startTime;
+                const validatedStartTime = this.validateStartTime(startTime);
+                if (validatedStartTime) {
+                    searchParams.start_time = validatedStartTime;
+                } else {
+                    elizaLogger.warn(
+                        `Invalid start_time format: ${startTime}, skipping time constraint`
+                    );
+                }
             }
 
             // Add timeout to prevent hanging requests
@@ -490,6 +504,49 @@ export class TwitterApiV2Client {
                 error
             );
             throw error;
+        }
+    }
+
+    private validateStartTime(startTime: string): string | null {
+        try {
+            const date = new Date(startTime);
+
+            // Check if the date is valid
+            if (isNaN(date.getTime())) {
+                elizaLogger.error(`Invalid date format: ${startTime}`);
+                return null;
+            }
+
+            // Check if the date is not too far in the past (Twitter has 7-day limit)
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            if (date < sevenDaysAgo) {
+                elizaLogger.warn(
+                    `start_time ${startTime} is older than 7 days, using 7 days ago instead`
+                );
+                // Return a timestamp that's exactly 7 days ago minus 1 hour for safety
+                const safeDate = new Date(
+                    Date.now() - 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000
+                );
+                return safeDate.toISOString();
+            }
+
+            // Check if the date is in the future
+            const now = new Date();
+            if (date > now) {
+                elizaLogger.warn(
+                    `start_time ${startTime} is in the future, using current time instead`
+                );
+                return now.toISOString();
+            }
+
+            // Return the original timestamp if it's valid
+            return date.toISOString();
+        } catch (error) {
+            elizaLogger.error(
+                `Error validating start_time ${startTime}:`,
+                error
+            );
+            return null;
         }
     }
 
