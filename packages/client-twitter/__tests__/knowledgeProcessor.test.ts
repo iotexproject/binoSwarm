@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { KnowledgeProcessor } from "../src/KnowledgeProcessor";
-import { SearchMode } from "agent-twitter-client";
 import { IAgentRuntime, ServiceType } from "@elizaos/core";
 
 // Define the tweet interface for proper typing
@@ -23,6 +22,10 @@ vi.mock("@elizaos/core", async () => {
         },
         composeContext: vi.fn().mockReturnValue(""),
         stringToUuid: vi.fn((str) => `uuid-${str}`),
+        ActionTimelineType: {
+            ForYou: "foryou",
+            Following: "following",
+        },
         generateObject: vi.fn().mockResolvedValue({
             object: {
                 analysis: [
@@ -118,7 +121,7 @@ describe("KnowledgeProcessor", () => {
         // Mock Twitter client
         mockTwitterClient = {
             fetchSearchTweets: vi.fn(),
-        };
+        } as any;
 
         // Mock client
         mockClient = {
@@ -127,6 +130,7 @@ describe("KnowledgeProcessor", () => {
             },
             twitterClient: mockTwitterClient,
             lastCheckedTweetId: null,
+            fetchSearchTweets: vi.fn(),
         };
 
         // Create processor instance
@@ -143,7 +147,7 @@ describe("KnowledgeProcessor", () => {
         await processor.processKnowledge();
 
         // Verify that fetchSearchTweets was not called
-        expect(mockTwitterClient.fetchSearchTweets).not.toHaveBeenCalled();
+        expect(mockClient.fetchSearchTweets).not.toHaveBeenCalled();
     });
 
     it("should process knowledge tweets from configured users", async () => {
@@ -157,20 +161,27 @@ describe("KnowledgeProcessor", () => {
             ),
         ];
 
-        // Configure our mock to only call fetchSearchTweets once for a single user to prevent multiple batches
-        mockTwitterClient.fetchSearchTweets
-            .mockResolvedValueOnce({
-                tweets: mockTweets,
-            })
-            .mockResolvedValue({ tweets: [] }); // Any subsequent calls return empty tweets
+        // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
+        mockClient.loadLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+        mockClient.cacheLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+
+        // Configure our mock to return tweets for the combined query
+        mockClient.fetchSearchTweets.mockResolvedValueOnce({
+            tweets: mockTweets,
+        });
 
         await processor.processKnowledge();
 
-        // Verify tweet fetching
-        expect(mockTwitterClient.fetchSearchTweets).toHaveBeenCalledWith(
-            "from:testuser",
-            10,
-            SearchMode.Latest
+        // Verify tweet fetching with combined query (since we have ["testuser", "anotheruser"] in config)
+        expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
+            "from:testuser OR from:anotheruser",
+            20, // 2 users * 10 tweets per user
+            undefined,
+            undefined
         );
 
         // Only the high relevance tweet (with ID 123) should result in knowledge creation
@@ -198,6 +209,14 @@ describe("KnowledgeProcessor", () => {
         // Set a lastCheckedTweetId
         mockClient.lastCheckedTweetId = 200;
 
+        // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
+        mockClient.loadLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+        mockClient.cacheLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+
         // Setup tweets - one older, one newer than lastCheckedTweetId
         const mockTweets = [
             createMockTweet(123, "testuser", "This is an old tweet"), // ID < lastCheckedTweetId
@@ -209,7 +228,7 @@ describe("KnowledgeProcessor", () => {
             ), // ID > lastCheckedTweetId
         ];
 
-        mockTwitterClient.fetchSearchTweets.mockResolvedValue({
+        mockClient.fetchSearchTweets.mockResolvedValue({
             tweets: mockTweets,
         });
 
@@ -223,12 +242,20 @@ describe("KnowledgeProcessor", () => {
     });
 
     it("should process image descriptions for tweets with photos", async () => {
+        // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
+        mockClient.loadLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+        mockClient.cacheLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+
         // Setup tweets with photos
         const mockTweets = [
             createMockTweet(123, "testuser", "Tweet with photo", true),
         ];
 
-        mockTwitterClient.fetchSearchTweets.mockResolvedValue({
+        mockClient.fetchSearchTweets.mockResolvedValue({
             tweets: mockTweets,
         });
 
@@ -242,7 +269,7 @@ describe("KnowledgeProcessor", () => {
 
     it("should handle errors during tweet processing", async () => {
         // Setup error when fetching tweets
-        mockTwitterClient.fetchSearchTweets.mockRejectedValueOnce(
+        mockClient.fetchSearchTweets.mockRejectedValueOnce(
             new Error("API error")
         );
 
@@ -251,6 +278,14 @@ describe("KnowledgeProcessor", () => {
     });
 
     it("should process tweets in batches of 5", async () => {
+        // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
+        mockClient.loadLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+        mockClient.cacheLatestKnowledgeCheckedTweetId = vi
+            .fn()
+            .mockResolvedValue(undefined);
+
         // Create 7 tweets to test batch processing (5 + 2)
         const mockTweets: MockTweet[] = [];
         for (let i = 1; i <= 7; i++) {
@@ -263,7 +298,7 @@ describe("KnowledgeProcessor", () => {
             mockTweets.push(tweet);
         }
 
-        mockTwitterClient.fetchSearchTweets.mockResolvedValue({
+        mockClient.fetchSearchTweets.mockResolvedValue({
             tweets: mockTweets,
         });
 
@@ -286,7 +321,7 @@ describe("KnowledgeProcessor", () => {
             ),
         ];
 
-        mockTwitterClient.fetchSearchTweets.mockResolvedValue({
+        mockClient.fetchSearchTweets.mockResolvedValue({
             tweets: mockTweets,
         });
 
@@ -304,7 +339,7 @@ describe("KnowledgeProcessor", () => {
         const oldTweet = createMockTweet(123, "testuser", "Old tweet");
         oldTweet.timestamp = Math.floor(Date.now() / 1000) - 4 * 24 * 60 * 60; // 4 days old
 
-        mockTwitterClient.fetchSearchTweets.mockResolvedValue({
+        mockClient.fetchSearchTweets.mockResolvedValue({
             tweets: [oldTweet],
         });
 

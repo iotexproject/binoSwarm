@@ -1,4 +1,4 @@
-import { SearchMode, Tweet } from "agent-twitter-client";
+import { Tweet } from "agent-twitter-client";
 import {
     composeContext,
     elizaLogger,
@@ -193,10 +193,9 @@ export class SearchTweetSelector {
         elizaLogger.log("Fetching search tweets");
 
         const recentTweets = await this.client.requestQueue.add(() =>
-            this.client.twitterClient.fetchSearchTweets(
+            this.client.fetchSearchTweets(
                 searchTerm,
-                TWEETS_TO_FETCH,
-                SearchMode.Latest
+                TWEETS_TO_FETCH
             )
         );
 

@@ -123,6 +123,8 @@ describe("TwitterActionProcessor Start Method", () => {
         baseClient = new ClientBase(mockRuntime, mockConfig);
 
         baseClient.twitterClient = mockTwitterClient;
+        baseClient.getTweet = vi.fn(); // Mock the new ClientBase.getTweet method
+        baseClient.fetchTimelineForActions = vi.fn().mockResolvedValue([]); // Mock timeline method
         baseClient.profile = null; // Set to null to test initialization
 
         // Setup mock runtime with character
@@ -234,6 +236,7 @@ describe("Tweet Actions Processing", () => {
         baseClient = new ClientBase(mockRuntime, mockConfig);
 
         baseClient.twitterClient = mockTwitterClient;
+        baseClient.getTweet = vi.fn(); // Mock the new ClientBase.getTweet method
         baseClient.profile = mockTwitterProfile;
 
         // Mock RequestQueue with just the add method since that's all we use
@@ -661,7 +664,7 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock getTweet to return the quoted tweet
-        mockTwitterClient.getTweet.mockResolvedValue(quotedTweet);
+        vi.mocked(baseClient.getTweet).mockResolvedValue(quotedTweet);
 
         // Mock successful reply tweet response
         mockTwitterClient.sendTweet.mockResolvedValue(
@@ -683,7 +686,7 @@ describe("Tweet Actions Processing", () => {
         await actionClient["processTimelineActions"]([timeline]);
 
         // Verify quoted tweet was fetched
-        expect(mockTwitterClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
+        expect(baseClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
 
         // Verify tweet was sent with the generated content
         expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
@@ -705,7 +708,7 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock getTweet to throw an error
-        mockTwitterClient.getTweet.mockRejectedValue(
+        vi.mocked(baseClient.getTweet).mockRejectedValue(
             new Error("Failed to fetch quoted tweet")
         );
 
@@ -818,7 +821,7 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock getTweet to return the quoted tweet
-        mockTwitterClient.getTweet.mockResolvedValue(quotedTweet);
+        vi.mocked(baseClient.getTweet).mockResolvedValue(quotedTweet);
 
         // Mock successful quote tweet response
         mockTwitterClient.sendQuoteTweet.mockResolvedValue(
@@ -840,7 +843,7 @@ describe("Tweet Actions Processing", () => {
         await actionClient["processTimelineActions"]([timeline]);
 
         // Verify quoted tweet was fetched
-        expect(mockTwitterClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
+        expect(baseClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
 
         // Verify quote tweet was sent with the generated content
         expect(mockTwitterClient.sendQuoteTweet).toHaveBeenCalledWith(
@@ -861,7 +864,7 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock getTweet to throw an error
-        mockTwitterClient.getTweet.mockRejectedValue(
+        vi.mocked(baseClient.getTweet).mockRejectedValue(
             new Error("Failed to fetch quoted tweet")
         );
 
@@ -955,21 +958,9 @@ describe("Tweet Actions Processing", () => {
         const mockTweet = createMockTweet();
         const roomId = stringToUuid(mockTweet.id + "-" + mockRuntime.agentId);
 
-        // Mock fetchHomeTimeline to return raw tweet format
-        mockTwitterClient.fetchHomeTimeline.mockResolvedValue([
-            {
-                rest_id: mockTweet.id,
-                core: {
-                    user_results: {
-                        result: {
-                            legacy: {
-                                name: mockTweet.name,
-                                screen_name: mockTweet.username + "2",
-                            },
-                        },
-                    },
-                },
-            },
+        // Mock fetchTimelineForActions to return the tweet
+        vi.spyOn(baseClient, "fetchTimelineForActions").mockResolvedValue([
+            mockTweet,
         ]);
 
         // Mock getMemoryById to return existing memory
@@ -995,21 +986,9 @@ describe("Tweet Actions Processing", () => {
     it("should handle error in tweet processing", async () => {
         const mockTweet = createMockTweet();
 
-        // Mock fetchHomeTimeline to return raw tweet format
-        mockTwitterClient.fetchHomeTimeline.mockResolvedValue([
-            {
-                rest_id: mockTweet.id,
-                core: {
-                    user_results: {
-                        result: {
-                            legacy: {
-                                name: mockTweet.name,
-                                screen_name: mockTweet.username + "2",
-                            },
-                        },
-                    },
-                },
-            },
+        // Mock fetchTimelineForActions to return the tweet
+        vi.spyOn(baseClient, "fetchTimelineForActions").mockResolvedValue([
+            mockTweet,
         ]);
 
         // Clear all mocks after initialization
@@ -1035,6 +1014,11 @@ describe("Tweet Actions Processing", () => {
 
     it("should handle error in processTweetActions", async () => {
         vi.clearAllMocks();
+
+        // Mock fetchTimelineForActions to return undefined to cause the error
+        vi.spyOn(baseClient, "fetchTimelineForActions").mockResolvedValue(
+            undefined as any
+        );
 
         await expect(actionClient["processTweetActions"]()).rejects.toThrow(
             "Cannot read properties of undefined (reading 'map')"

@@ -138,7 +138,7 @@ export async function buildConversationThread(
                     currentTweet.inReplyToStatusId
                 );
                 try {
-                    const parentTweet = await client.twitterClient.getTweet(
+                    const parentTweet = await client.getTweet(
                         currentTweet.inReplyToStatusId
                     );
 
@@ -181,7 +181,7 @@ export async function buildConversationThread(
 
     return thread;
 }
-
+// TODO: remove export
 export async function sendTweet(
     client: ClientBase,
     content: Content,
@@ -283,6 +283,7 @@ export async function sendTweet(
     return memories;
 }
 
+// TODO: remove export
 export function splitTweetContent(
     content: string,
     maxLength: number
@@ -326,6 +327,7 @@ export function splitTweetContent(
     return tweets;
 }
 
+// TODO: remove export
 export function extractUrls(paragraph: string): {
     textWithPlaceholders: string;
     placeholderMap: Map<string, string>;
@@ -356,6 +358,7 @@ export function extractUrls(paragraph: string): {
     return { textWithPlaceholders, placeholderMap };
 }
 
+// TODO: remove export
 export function splitSentencesAndWords(
     text: string,
     maxLength: number
@@ -419,6 +422,7 @@ export function splitSentencesAndWords(
     return chunks;
 }
 
+// TODO: remove export
 export function deduplicateMentions(paragraph: string) {
     // Regex to match mentions at the beginning of the string
     const mentionRegex = /^@(\w+)(?:\s+@(\w+))*(\s+|$)/;
@@ -450,6 +454,7 @@ export function deduplicateMentions(paragraph: string) {
     return uniqueMentionsString;
 }
 
+// TODO: remove export
 export function restoreUrls(
     chunks: string[],
     placeholderMap: Map<string, string>
@@ -463,6 +468,7 @@ export function restoreUrls(
     });
 }
 
+// TODO: remove export
 export function splitParagraph(paragraph: string, maxLength: number): string[] {
     // 1) Extract URLs and replace with placeholders
     const { textWithPlaceholders, placeholderMap } = extractUrls(paragraph);

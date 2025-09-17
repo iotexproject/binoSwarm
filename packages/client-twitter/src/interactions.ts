@@ -1,4 +1,4 @@
-import { SearchMode, Tweet } from "agent-twitter-client";
+import { Tweet } from "agent-twitter-client";
 import {
     composeContext,
     generateMessageResponse,
@@ -26,6 +26,7 @@ import {
     twitterMessageHandlerTemplate,
 } from "./templates";
 import { KnowledgeProcessor } from "./KnowledgeProcessor";
+import { TwitterHelpers } from "./helpers";
 
 const MENTIONS_TO_FETCH = 20;
 
@@ -166,15 +167,22 @@ export class TwitterInteractionClient {
 
     private async fetchMentionCandidates() {
         const twitterUsername = this.client.profile.username;
+        // Use the maximum of lastCheckedTweetId and lastKnowledgeCheckedTweetId
+        // to avoid reprocessing already handled tweets
+        const maxSinceId = await TwitterHelpers.getMaxTweetId(this.client);
         const response = await this.client.fetchSearchTweets(
             `@${twitterUsername}`,
             MENTIONS_TO_FETCH,
-            SearchMode.Latest
+            undefined,
+            maxSinceId
         );
         const candidates = response.tweets;
         elizaLogger.log(
             "Completed checking mentioned tweets:",
-            candidates.length
+            candidates.length,
+            maxSinceId
+                ? `(since ID: ${maxSinceId})`
+                : "(using start_time fallback)"
         );
         return candidates;
     }
@@ -189,48 +197,72 @@ export class TwitterInteractionClient {
                 // Create a map to store tweets by user
                 const tweetsByUser = new Map<string, Tweet[]>();
 
-                // Fetch tweets from all target users
-                for (const username of TARGET_USERS) {
-                    try {
-                        const userTweets = (
-                            await this.client.twitterClient.fetchSearchTweets(
-                                `from:${username}`,
-                                3,
-                                SearchMode.Latest
-                            )
-                        ).tweets;
+                try {
+                    // Build single OR query for all target users
+                    const combinedQuery =
+                        TwitterHelpers.buildFromUsersQuery(TARGET_USERS);
+
+                    // Use the maximum of lastCheckedTweetId and lastKnowledgeCheckedTweetId
+                    // to avoid reprocessing already handled tweets
+                    const maxSinceId = await TwitterHelpers.getMaxTweetId(
+                        this.client
+                    );
+
+                    elizaLogger.log(
+                        `Fetching tweets with combined query: ${combinedQuery}${maxSinceId ? ` (since ID: ${maxSinceId})` : " (using start_time fallback)"}`
+                    );
+
+                    // Single API call for all users
+                    const allUserTweets = (
+                        await this.client.fetchSearchTweets(
+                            combinedQuery,
+                            TARGET_USERS.length * 3, // 3 tweets per user max
+                            undefined,
+                            maxSinceId
+                        )
+                    ).tweets;
+
+                    // Group tweets by user and filter
+                    for (const tweet of allUserTweets) {
+                        const username = tweet.username;
+                        if (!username || !TARGET_USERS.includes(username)) {
+                            continue;
+                        }
 
                         // Filter for unprocessed, non-reply, recent tweets
-                        const validTweets = userTweets.filter((tweet) => {
-                            const isUnprocessed =
-                                !this.client.lastCheckedTweetId ||
-                                parseInt(tweet.id) >
-                                    this.client.lastCheckedTweetId;
-                            const isRecent =
-                                Date.now() - tweet.timestamp * 1000 <
-                                2 * 60 * 60 * 1000;
+                        const isUnprocessed =
+                            !this.client.lastCheckedTweetId ||
+                            parseInt(tweet.id) > this.client.lastCheckedTweetId;
+                        const isRecent =
+                            Date.now() - tweet.timestamp * 1000 <
+                            2 * 60 * 60 * 1000;
 
-                            return (
-                                isUnprocessed &&
-                                !tweet.isReply &&
-                                !tweet.isRetweet &&
-                                isRecent
-                            );
-                        });
+                        if (
+                            isUnprocessed &&
+                            !tweet.isReply &&
+                            !tweet.isRetweet &&
+                            isRecent
+                        ) {
+                            if (!tweetsByUser.has(username)) {
+                                tweetsByUser.set(username, []);
+                            }
+                            tweetsByUser.get(username)!.push(tweet);
+                        }
+                    }
 
-                        if (validTweets.length > 0) {
-                            tweetsByUser.set(username, validTweets);
+                    // Log found tweets per user
+                    for (const [username, tweets] of tweetsByUser) {
+                        if (tweets.length > 0) {
                             elizaLogger.log(
-                                `Found ${validTweets.length} valid tweets from ${username}`
+                                `Found ${tweets.length} valid tweets from ${username}`
                             );
                         }
-                    } catch (error) {
-                        elizaLogger.error(
-                            `Error fetching tweets for ${username}:`,
-                            error
-                        );
-                        continue;
                     }
+                } catch (error) {
+                    elizaLogger.error(
+                        `Error fetching tweets from target users:`,
+                        error
+                    );
                 }
 
                 // Select one tweet from each user that has tweets
