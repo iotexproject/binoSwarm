@@ -755,10 +755,19 @@ export class ClientBase extends EventEmitter {
      */
     private calculateStartTime(): string {
         // Twitter API v2 search has a 7-day limitation
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        // Add 10 minutes buffer to ensure we're well within the 7-day limit
+        const sevenDaysAgoWithBuffer = new Date(
+            Date.now() - 7 * 24 * 60 * 60 * 1000 + 10 * 60 * 1000
+        );
 
         // Return ISO 8601 formatted timestamp
-        return sevenDaysAgo.toISOString();
+        const timestamp = sevenDaysAgoWithBuffer.toISOString();
+
+        elizaLogger.debug(
+            `Calculated start_time: ${timestamp} (${sevenDaysAgoWithBuffer.toString()})`
+        );
+
+        return timestamp;
     }
 
     async getCachedTimeline(): Promise<Tweet[] | undefined> {
