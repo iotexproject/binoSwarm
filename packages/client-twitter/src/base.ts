@@ -347,6 +347,7 @@ export class ClientBase extends EventEmitter {
         cursor?: string,
         sinceId?: string
     ): Promise<QueryTweetsResponse> {
+        const requestStartTime = Date.now();
         try {
             // Use since_id if available, otherwise use start_time (7 days ago)
             // Twitter API v2 doesn't allow both parameters together
@@ -413,18 +414,24 @@ export class ClientBase extends EventEmitter {
                 }
             });
 
+            const requestDuration = Date.now() - requestStartTime;
             elizaLogger.log(
                 "Twitter API v2 search for query",
                 query,
                 "returned number of tweets",
-                searchResult.tweets.length
+                searchResult.tweets.length,
+                `(completed in ${requestDuration}ms)`
             );
 
             return {
                 tweets: searchResult.tweets,
             } as QueryTweetsResponse;
         } catch (error) {
-            elizaLogger.error("Error fetching search tweets:", error);
+            const requestDuration = Date.now() - requestStartTime;
+            elizaLogger.error(
+                `Error fetching search tweets after ${requestDuration}ms:`,
+                error
+            );
             return { tweets: [] };
         }
     }
