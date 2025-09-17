@@ -10,14 +10,32 @@ export class RequestQueue {
 
     async add<T>(request: () => Promise<T>): Promise<T> {
         return new Promise((resolve, reject) => {
-            this.queue.push(async () => {
+            const wrappedRequest = async () => {
                 try {
-                    const result = await request();
+                    // Add timeout wrapper to all requests
+                    const timeoutPromise = new Promise<never>(
+                        (_, timeoutReject) => {
+                            setTimeout(() => {
+                                timeoutReject(
+                                    new Error(
+                                        "Request timed out after 45 seconds"
+                                    )
+                                );
+                            }, 45000);
+                        }
+                    );
+
+                    const result = await Promise.race([
+                        request(),
+                        timeoutPromise,
+                    ]);
                     resolve(result);
                 } catch (error) {
                     reject(error);
                 }
-            });
+            };
+
+            this.queue.push(wrappedRequest);
             this.processQueue();
         });
     }
@@ -34,8 +52,22 @@ export class RequestQueue {
                 await request();
             } catch (error) {
                 elizaLogger.error("Error processing request:", error);
-                this.queue.unshift(request);
-                await this.exponentialBackoff(this.queue.length);
+
+                // Don't requeue timeout errors to prevent infinite loops
+                if (
+                    !(
+                        error instanceof Error &&
+                        error.message.includes("timed out")
+                    )
+                ) {
+                    elizaLogger.warn("Requeuing failed request for retry");
+                    this.queue.unshift(request);
+                    await this.exponentialBackoff(this.queue.length);
+                } else {
+                    elizaLogger.error(
+                        "Request timed out - not retrying to prevent infinite loop"
+                    );
+                }
             }
             await this.randomDelay();
         }

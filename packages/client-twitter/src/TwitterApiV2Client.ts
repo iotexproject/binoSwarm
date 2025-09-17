@@ -436,10 +436,26 @@ export class TwitterApiV2Client {
                 searchParams.start_time = startTime;
             }
 
-            const response = await this.readOnlyClient.v2.search(
+            // Add timeout to prevent hanging requests
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => {
+                    reject(
+                        new Error(
+                            "Twitter API search request timed out after 30 seconds"
+                        )
+                    );
+                }, 30000);
+            });
+
+            const searchPromise = this.readOnlyClient.v2.search(
                 query,
                 searchParams
             );
+
+            const response = await Promise.race([
+                searchPromise,
+                timeoutPromise,
+            ]);
 
             const tweets =
                 response.tweets?.map((tweet) =>
