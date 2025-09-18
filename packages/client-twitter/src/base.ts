@@ -348,83 +348,119 @@ export class ClientBase extends EventEmitter {
         sinceId?: string
     ): Promise<QueryTweetsResponse> {
         const requestStartTime = Date.now();
+        const allTweets: Tweet[] = [];
+        let nextToken = cursor;
+        let totalFetched = 0;
+
         try {
             // Use since_id if available, otherwise use start_time (7 days ago)
             // Twitter API v2 doesn't allow both parameters together
             const startTime = sinceId ? undefined : this.calculateStartTime();
 
             elizaLogger.debug(
-                `Searching tweets for query "${query}" using Twitter API v2${startTime ? ` with start_time: ${startTime}` : ""}${sinceId ? ` with since_id: ${sinceId}` : ""}`
+                `Searching tweets for query "${query}" using Twitter API v2 with pagination${startTime ? ` with start_time: ${startTime}` : ""}${sinceId ? ` with since_id: ${sinceId}` : ""}`
             );
 
-            // Use request queue with rate limit awareness for API v2
-            const searchResult = await this.requestQueue.add(async () => {
-                try {
-                    return await this.twitterApiV2Client.searchTweets(
-                        query,
-                        maxTweets,
-                        cursor,
-                        sinceId,
-                        startTime
-                    );
-                } catch (error: any) {
-                    // Handle rate limiting gracefully
-                    if (error.code === 429) {
-                        elizaLogger.warn(
-                            `Rate limit hit for search tweets. Reset time: ${error.rateLimit?.reset || "unknown"}`
-                        );
-                        // Return empty result instead of throwing
-                        return { tweets: [] };
-                    }
+            // Continue fetching while we have more pages and haven't reached maxTweets
+            while (totalFetched < maxTweets) {
+                const remainingTweets = maxTweets - totalFetched;
+                const batchSize = Math.min(remainingTweets, 100); // API max is 100 per request
 
-                    // Handle invalid since_id error - retry with start_time
-                    if (
-                        error.code === 400 &&
-                        (error.data?.errors?.[0]?.parameters?.since_id ||
-                            error.data?.errors?.[0]?.message?.includes(
-                                "since_id"
-                            )) &&
-                        sinceId
-                    ) {
-                        elizaLogger.warn(
-                            `Invalid since_id ${sinceId}, retrying with start_time and clearing cached IDs`
-                        );
+                elizaLogger.debug(
+                    `Fetching batch: ${totalFetched + 1}-${totalFetched + batchSize} of ${maxTweets} tweets${nextToken ? ` (page ${Math.floor(totalFetched / 100) + 1})` : ""}`
+                );
 
-                        // Clear the invalid cached since_id to prevent future errors
-                        this.lastCheckedTweetId = null;
-                        await this.runtime.cacheManager.delete(
-                            `twitter/${this.profile.username}/latest_checked_tweet_id`
-                        );
-                        await this.runtime.cacheManager.delete(
-                            `twitter/${this.profile.username}/latest_knowledge_checked_tweet_id`
-                        );
-
-                        // Retry with start_time (no since_id)
-                        const fallbackStartTime = this.calculateStartTime();
+                // Use request queue with rate limit awareness for API v2
+                const searchResult = await this.requestQueue.add(async () => {
+                    try {
                         return await this.twitterApiV2Client.searchTweets(
                             query,
-                            maxTweets,
-                            cursor,
-                            undefined,
-                            fallbackStartTime
+                            batchSize,
+                            nextToken,
+                            sinceId,
+                            startTime
                         );
-                    }
+                    } catch (error: any) {
+                        // Handle rate limiting gracefully
+                        if (error.code === 429) {
+                            elizaLogger.warn(
+                                `Rate limit hit for search tweets. Reset time: ${error.rateLimit?.reset || "unknown"}`
+                            );
+                            // Return empty result instead of throwing
+                            return { tweets: [], nextToken: undefined };
+                        }
 
-                    throw error;
+                        // Handle invalid since_id error - retry with start_time
+                        if (
+                            error.code === 400 &&
+                            (error.data?.errors?.[0]?.parameters?.since_id ||
+                                error.data?.errors?.[0]?.message?.includes(
+                                    "since_id"
+                                )) &&
+                            sinceId
+                        ) {
+                            elizaLogger.warn(
+                                `Invalid since_id ${sinceId}, retrying with start_time and clearing cached IDs`
+                            );
+
+                            // Clear the invalid cached since_id to prevent future errors
+                            this.lastCheckedTweetId = null;
+                            await this.runtime.cacheManager.delete(
+                                `twitter/${this.profile.username}/latest_checked_tweet_id`
+                            );
+                            await this.runtime.cacheManager.delete(
+                                `twitter/${this.profile.username}/latest_knowledge_checked_tweet_id`
+                            );
+
+                            // Retry with start_time (no since_id)
+                            const fallbackStartTime = this.calculateStartTime();
+                            return await this.twitterApiV2Client.searchTweets(
+                                query,
+                                batchSize,
+                                nextToken,
+                                undefined,
+                                fallbackStartTime
+                            );
+                        }
+
+                        throw error;
+                    }
+                });
+
+                // Add tweets from this batch, but respect maxTweets limit
+                const tweetsToAdd = searchResult.tweets.slice(
+                    0,
+                    maxTweets - totalFetched
+                );
+                allTweets.push(...tweetsToAdd);
+                totalFetched += tweetsToAdd.length;
+                nextToken = searchResult.nextToken;
+
+                elizaLogger.debug(
+                    `Batch completed: fetched ${searchResult.tweets.length} tweets, total: ${totalFetched}/${maxTweets}${nextToken ? ", more pages available" : ", no more pages"}`
+                );
+
+                // Break if no more pages or no tweets in this batch
+                if (!nextToken || searchResult.tweets.length === 0) {
+                    elizaLogger.debug(
+                        "No more pages available or empty batch, stopping pagination"
+                    );
+                    break;
                 }
-            });
+            }
 
             const requestDuration = Date.now() - requestStartTime;
             elizaLogger.log(
-                "Twitter API v2 search for query",
+                "Twitter API v2 paginated search for query",
                 query,
-                "returned number of tweets",
-                searchResult.tweets.length,
-                `(completed in ${requestDuration}ms)`
+                "returned total tweets:",
+                allTweets.length,
+                `(completed in ${requestDuration}ms across ${Math.ceil(totalFetched / 100)} API calls)`
             );
 
             return {
-                tweets: searchResult.tweets,
+                tweets: allTweets,
+                next: nextToken, // Include pagination token for potential future requests
             } as QueryTweetsResponse;
         } catch (error) {
             const requestDuration = Date.now() - requestStartTime;
@@ -432,7 +468,7 @@ export class ClientBase extends EventEmitter {
                 `Error fetching search tweets after ${requestDuration}ms:`,
                 error
             );
-            return { tweets: [] };
+            return { tweets: allTweets }; // Return partial results if any were fetched
         }
     }
 
