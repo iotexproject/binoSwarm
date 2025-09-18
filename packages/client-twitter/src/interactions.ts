@@ -66,8 +66,10 @@ export class TwitterInteractionClient {
 
         try {
             const mentions = await this.fetchMentionCandidates();
-            const uniqueTweetCandidates = await this.addTargetUsersTo(mentions);
-            await this.knowledgeProcessor.processKnowledge();
+            const result = await this.addTargetUsersTo(mentions);
+            const uniqueTweetCandidates: Tweet[] = result.uniqueTweetCandidates;
+            const targetUserTweets: Tweet[] = result.targetUserTweets;
+            await this.knowledgeProcessor.processKnowledge(targetUserTweets);
 
             this.sortCandidates(uniqueTweetCandidates);
 
@@ -165,7 +167,7 @@ export class TwitterInteractionClient {
             .filter((tweet) => tweet.userId !== this.client.profile.id);
     }
 
-    private async fetchMentionCandidates() {
+    private async fetchMentionCandidates(): Promise<Tweet[]> {
         const twitterUsername = this.client.profile.username;
         // Use the maximum of lastCheckedTweetId and lastKnowledgeCheckedTweetId
         // to avoid reprocessing already handled tweets
@@ -187,7 +189,9 @@ export class TwitterInteractionClient {
         return candidates;
     }
 
-    private async addTargetUsersTo(candidates: Tweet[]): Promise<Tweet[]> {
+    private async addTargetUsersTo(
+        candidates: Tweet[]
+    ): Promise<{ uniqueTweetCandidates: Tweet[]; targetUserTweets: Tweet[] }> {
         if (this.client.twitterConfig.TWITTER_TARGET_USERS.length) {
             const TARGET_USERS = this.client.twitterConfig.TWITTER_TARGET_USERS;
 
@@ -196,6 +200,7 @@ export class TwitterInteractionClient {
             if (TARGET_USERS.length > 0) {
                 // Create a map to store tweets by user
                 const tweetsByUser = new Map<string, Tweet[]>();
+                let allUserTweets: Tweet[] = [];
 
                 try {
                     // Build single OR query for all target users
@@ -212,15 +217,13 @@ export class TwitterInteractionClient {
                         `Fetching tweets with combined query: ${combinedQuery}${maxSinceId ? ` (since ID: ${maxSinceId})` : " (using start_time fallback)"}`
                     );
 
-                    // Single API call for all users
-                    const allUserTweets = (
-                        await this.client.fetchSearchTweets(
-                            combinedQuery,
-                            TARGET_USERS.length * 3, // 3 tweets per user max
-                            undefined,
-                            maxSinceId
-                        )
-                    ).tweets;
+                    const fetchResult = await this.client.fetchSearchTweets(
+                        combinedQuery,
+                        TARGET_USERS.length * 3, // 3 tweets per user max
+                        undefined,
+                        maxSinceId
+                    );
+                    allUserTweets = fetchResult.tweets as Tweet[];
 
                     // Group tweets by user and filter
                     for (const tweet of allUserTweets) {
@@ -280,14 +283,26 @@ export class TwitterInteractionClient {
                 }
 
                 // Add selected tweets to candidates
-                return [...candidates, ...selectedTweets];
+                const result: {
+                    uniqueTweetCandidates: Tweet[];
+                    targetUserTweets: Tweet[];
+                } = {
+                    uniqueTweetCandidates: [...candidates, ...selectedTweets],
+                    targetUserTweets: allUserTweets,
+                };
+                return result;
             }
-        } else {
-            elizaLogger.log(
-                "No target users configured, processing only mentions"
-            );
-            return candidates;
         }
+
+        elizaLogger.log("No target users configured, processing only mentions");
+        const result: {
+            uniqueTweetCandidates: Tweet[];
+            targetUserTweets: Tweet[];
+        } = {
+            uniqueTweetCandidates: candidates,
+            targetUserTweets: [],
+        };
+        return result;
     }
 
     private async handleTweet(props: {
