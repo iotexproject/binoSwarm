@@ -231,7 +231,7 @@ describe("TwitterInteractionClient", () => {
             );
             expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
                 "from:targetuser",
-                3,
+                10,
                 undefined,
                 "0"
             );

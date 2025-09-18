@@ -1,11 +1,8 @@
 import {
-    Content,
     IAgentRuntime,
     Memory,
     State,
-    UUID,
     elizaLogger,
-    stringToUuid,
     ActionTimelineType,
 } from "@elizaos/core";
 import { QueryTweetsResponse, Scraper, Tweet } from "agent-twitter-client";
@@ -146,7 +143,6 @@ export class ClientBase extends EventEmitter {
         }
 
         await this.loadLatestCheckedTweetId();
-        await this.populateTimeline();
     }
 
     /**
@@ -348,83 +344,119 @@ export class ClientBase extends EventEmitter {
         sinceId?: string
     ): Promise<QueryTweetsResponse> {
         const requestStartTime = Date.now();
+        const allTweets: Tweet[] = [];
+        let nextToken = cursor;
+        let totalFetched = 0;
+
         try {
             // Use since_id if available, otherwise use start_time (7 days ago)
             // Twitter API v2 doesn't allow both parameters together
             const startTime = sinceId ? undefined : this.calculateStartTime();
 
             elizaLogger.debug(
-                `Searching tweets for query "${query}" using Twitter API v2${startTime ? ` with start_time: ${startTime}` : ""}${sinceId ? ` with since_id: ${sinceId}` : ""}`
+                `Searching tweets for query "${query}" using Twitter API v2 with pagination${startTime ? ` with start_time: ${startTime}` : ""}${sinceId ? ` with since_id: ${sinceId}` : ""}`
             );
 
-            // Use request queue with rate limit awareness for API v2
-            const searchResult = await this.requestQueue.add(async () => {
-                try {
-                    return await this.twitterApiV2Client.searchTweets(
-                        query,
-                        maxTweets,
-                        cursor,
-                        sinceId,
-                        startTime
-                    );
-                } catch (error: any) {
-                    // Handle rate limiting gracefully
-                    if (error.code === 429) {
-                        elizaLogger.warn(
-                            `Rate limit hit for search tweets. Reset time: ${error.rateLimit?.reset || "unknown"}`
-                        );
-                        // Return empty result instead of throwing
-                        return { tweets: [] };
-                    }
+            // Continue fetching while we have more pages and haven't reached maxTweets
+            while (totalFetched < maxTweets) {
+                const remainingTweets = maxTweets - totalFetched;
+                const batchSize = Math.min(remainingTweets, 100); // API max is 100 per request
 
-                    // Handle invalid since_id error - retry with start_time
-                    if (
-                        error.code === 400 &&
-                        (error.data?.errors?.[0]?.parameters?.since_id ||
-                            error.data?.errors?.[0]?.message?.includes(
-                                "since_id"
-                            )) &&
-                        sinceId
-                    ) {
-                        elizaLogger.warn(
-                            `Invalid since_id ${sinceId}, retrying with start_time and clearing cached IDs`
-                        );
+                elizaLogger.debug(
+                    `Fetching batch: ${totalFetched + 1}-${totalFetched + batchSize} of ${maxTweets} tweets${nextToken ? ` (page ${Math.floor(totalFetched / 100) + 1})` : ""}`
+                );
 
-                        // Clear the invalid cached since_id to prevent future errors
-                        this.lastCheckedTweetId = null;
-                        await this.runtime.cacheManager.delete(
-                            `twitter/${this.profile.username}/latest_checked_tweet_id`
-                        );
-                        await this.runtime.cacheManager.delete(
-                            `twitter/${this.profile.username}/latest_knowledge_checked_tweet_id`
-                        );
-
-                        // Retry with start_time (no since_id)
-                        const fallbackStartTime = this.calculateStartTime();
+                // Use request queue with rate limit awareness for API v2
+                const searchResult = await this.requestQueue.add(async () => {
+                    try {
                         return await this.twitterApiV2Client.searchTweets(
                             query,
-                            maxTweets,
-                            cursor,
-                            undefined,
-                            fallbackStartTime
+                            batchSize,
+                            nextToken,
+                            sinceId,
+                            startTime
                         );
-                    }
+                    } catch (error: any) {
+                        // Handle rate limiting gracefully
+                        if (error.code === 429) {
+                            elizaLogger.warn(
+                                `Rate limit hit for search tweets. Reset time: ${error.rateLimit?.reset || "unknown"}`
+                            );
+                            // Return empty result instead of throwing
+                            return { tweets: [], nextToken: undefined };
+                        }
 
-                    throw error;
+                        // Handle invalid since_id error - retry with start_time
+                        if (
+                            error.code === 400 &&
+                            (error.data?.errors?.[0]?.parameters?.since_id ||
+                                error.data?.errors?.[0]?.message?.includes(
+                                    "since_id"
+                                )) &&
+                            sinceId
+                        ) {
+                            elizaLogger.warn(
+                                `Invalid since_id ${sinceId}, retrying with start_time and clearing cached IDs`
+                            );
+
+                            // Clear the invalid cached since_id to prevent future errors
+                            this.lastCheckedTweetId = null;
+                            await this.runtime.cacheManager.delete(
+                                `twitter/${this.profile.username}/latest_checked_tweet_id`
+                            );
+                            await this.runtime.cacheManager.delete(
+                                `twitter/${this.profile.username}/latest_knowledge_checked_tweet_id`
+                            );
+
+                            // Retry with start_time (no since_id)
+                            const fallbackStartTime = this.calculateStartTime();
+                            return await this.twitterApiV2Client.searchTweets(
+                                query,
+                                batchSize,
+                                nextToken,
+                                undefined,
+                                fallbackStartTime
+                            );
+                        }
+
+                        throw error;
+                    }
+                });
+
+                // Add tweets from this batch, but respect maxTweets limit
+                const tweetsToAdd = searchResult.tweets.slice(
+                    0,
+                    maxTweets - totalFetched
+                );
+                allTweets.push(...tweetsToAdd);
+                totalFetched += tweetsToAdd.length;
+                nextToken = searchResult.nextToken;
+
+                elizaLogger.debug(
+                    `Batch completed: fetched ${searchResult.tweets.length} tweets, total: ${totalFetched}/${maxTweets}${nextToken ? ", more pages available" : ", no more pages"}`
+                );
+
+                // Break if no more pages or no tweets in this batch
+                if (!nextToken || searchResult.tweets.length === 0) {
+                    elizaLogger.debug(
+                        "No more pages available or empty batch, stopping pagination"
+                    );
+                    break;
                 }
-            });
+            }
 
             const requestDuration = Date.now() - requestStartTime;
             elizaLogger.log(
-                "Twitter API v2 search for query",
+                "Twitter API v2 paginated search for query",
                 query,
-                "returned number of tweets",
-                searchResult.tweets.length,
-                `(completed in ${requestDuration}ms)`
+                "returned total tweets:",
+                allTweets.length,
+                `(completed in ${requestDuration}ms across ${Math.ceil(totalFetched / 100)} API calls)`
             );
 
             return {
-                tweets: searchResult.tweets,
+                tweets: allTweets,
+                next: nextToken, // Include pagination token for potential future requests
             } as QueryTweetsResponse;
         } catch (error) {
             const requestDuration = Date.now() - requestStartTime;
@@ -432,252 +464,8 @@ export class ClientBase extends EventEmitter {
                 `Error fetching search tweets after ${requestDuration}ms:`,
                 error
             );
-            return { tweets: [] };
+            return { tweets: allTweets }; // Return partial results if any were fetched
         }
-    }
-
-    private async populateTimeline() {
-        elizaLogger.debug("populating timeline...");
-
-        const cachedTimeline = await this.getCachedTimeline();
-
-        // Check if the cache file exists
-        if (cachedTimeline) {
-            // Read the cached search results from the file
-
-            // Get the existing memories from the database
-            const existingMemories =
-                await this.runtime.messageManager.getMemoriesByRoomIds({
-                    roomIds: cachedTimeline.map((tweet) =>
-                        stringToUuid(
-                            tweet.conversationId + "-" + this.runtime.agentId
-                        )
-                    ),
-                });
-
-            //TODO: load tweets not in cache?
-
-            // Create a Set to store the IDs of existing memories
-            const existingMemoryIds = new Set(
-                existingMemories.map((memory) => memory.id.toString())
-            );
-
-            // Check if any of the cached tweets exist in the existing memories
-            const someCachedTweetsExist = cachedTimeline.some((tweet) =>
-                existingMemoryIds.has(
-                    stringToUuid(tweet.id + "-" + this.runtime.agentId)
-                )
-            );
-
-            if (someCachedTweetsExist) {
-                // Filter out the cached tweets that already exist in the database
-                const tweetsToSave = cachedTimeline.filter(
-                    (tweet) =>
-                        !existingMemoryIds.has(
-                            stringToUuid(tweet.id + "-" + this.runtime.agentId)
-                        )
-                );
-
-                elizaLogger.log({
-                    processingTweets: tweetsToSave
-                        .map((tweet) => tweet.id)
-                        .join(","),
-                });
-
-                // Save the missing tweets as memories
-                for (const tweet of tweetsToSave) {
-                    elizaLogger.log("Saving Tweet", tweet.id);
-
-                    const roomId = stringToUuid(
-                        tweet.conversationId + "-" + this.runtime.agentId
-                    );
-
-                    const userId =
-                        tweet.userId === this.profile.id
-                            ? this.runtime.agentId
-                            : stringToUuid(tweet.userId);
-
-                    if (tweet.userId === this.profile.id) {
-                        await this.runtime.ensureConnection(
-                            this.runtime.agentId,
-                            roomId,
-                            this.profile.username,
-                            this.profile.screenName,
-                            "twitter"
-                        );
-                    } else {
-                        await this.runtime.ensureConnection(
-                            userId,
-                            roomId,
-                            tweet.username,
-                            tweet.name,
-                            "twitter"
-                        );
-                    }
-
-                    const content = {
-                        text: tweet.text,
-                        url: tweet.permanentUrl,
-                        source: "twitter",
-                        inReplyTo: tweet.inReplyToStatusId
-                            ? stringToUuid(
-                                  tweet.inReplyToStatusId +
-                                      "-" +
-                                      this.runtime.agentId
-                              )
-                            : undefined,
-                    } as Content;
-
-                    elizaLogger.log("Creating memory for tweet", tweet.id);
-
-                    // check if it already exists
-                    const memory =
-                        await this.runtime.messageManager.getMemoryById(
-                            stringToUuid(tweet.id + "-" + this.runtime.agentId)
-                        );
-
-                    if (memory) {
-                        elizaLogger.log(
-                            "Memory already exists, skipping timeline population"
-                        );
-                        break;
-                    }
-
-                    await this.runtime.messageManager.createMemory({
-                        memory: {
-                            id: stringToUuid(
-                                tweet.id + "-" + this.runtime.agentId
-                            ),
-                            userId,
-                            content: content,
-                            agentId: this.runtime.agentId,
-                            roomId,
-                            createdAt: tweet.timestamp * 1000,
-                        },
-                        isUnique: true,
-                    });
-
-                    await this.cacheTweet(tweet);
-                }
-
-                elizaLogger.log(
-                    `Populated ${tweetsToSave.length} missing tweets from the cache.`
-                );
-                return;
-            }
-        }
-
-        const timeline = await this.fetchHomeTimeline(cachedTimeline ? 10 : 50);
-        const username = this.twitterConfig.TWITTER_USERNAME;
-
-        // Get the most recent 20 mentions and interactions
-        const mentionsAndInteractions = await this.fetchSearchTweets(
-            `@${username}`,
-            20
-        );
-
-        // Combine the timeline tweets and mentions/interactions
-        const allTweets = [...timeline, ...mentionsAndInteractions.tweets];
-
-        // Create a Set to store unique tweet IDs
-        const tweetIdsToCheck = new Set<string>();
-        const roomIds = new Set<UUID>();
-
-        // Add tweet IDs to the Set
-        for (const tweet of allTweets) {
-            tweetIdsToCheck.add(tweet.id);
-            roomIds.add(
-                stringToUuid(tweet.conversationId + "-" + this.runtime.agentId)
-            );
-        }
-
-        // Check the existing memories in the database
-        const existingMemories =
-            await this.runtime.messageManager.getMemoriesByRoomIds({
-                roomIds: Array.from(roomIds),
-            });
-
-        // Create a Set to store the existing memory IDs
-        const existingMemoryIds = new Set<UUID>(
-            existingMemories.map((memory) => memory.id)
-        );
-
-        // Filter out the tweets that already exist in the database
-        const tweetsToSave = allTweets.filter(
-            (tweet) =>
-                !existingMemoryIds.has(
-                    stringToUuid(tweet.id + "-" + this.runtime.agentId)
-                )
-        );
-
-        elizaLogger.debug({
-            processingTweets: tweetsToSave.map((tweet) => tweet.id).join(","),
-        });
-
-        await this.runtime.ensureUserExists(
-            this.runtime.agentId,
-            this.profile.username,
-            this.runtime.character.name,
-            "twitter"
-        );
-
-        // Save the new tweets as memories
-        for (const tweet of tweetsToSave) {
-            elizaLogger.log("Saving Tweet", tweet.id);
-
-            const roomId = stringToUuid(
-                tweet.conversationId + "-" + this.runtime.agentId
-            );
-            const userId =
-                tweet.userId === this.profile.id
-                    ? this.runtime.agentId
-                    : stringToUuid(tweet.userId);
-
-            if (tweet.userId === this.profile.id) {
-                await this.runtime.ensureConnection(
-                    this.runtime.agentId,
-                    roomId,
-                    this.profile.username,
-                    this.profile.screenName,
-                    "twitter"
-                );
-            } else {
-                await this.runtime.ensureConnection(
-                    userId,
-                    roomId,
-                    tweet.username,
-                    tweet.name,
-                    "twitter"
-                );
-            }
-
-            const content = {
-                text: tweet.text,
-                url: tweet.permanentUrl,
-                source: "twitter",
-                inReplyTo: tweet.inReplyToStatusId
-                    ? stringToUuid(tweet.inReplyToStatusId)
-                    : undefined,
-            } as Content;
-
-            await this.runtime.messageManager.createMemory({
-                memory: {
-                    id: stringToUuid(tweet.id + "-" + this.runtime.agentId),
-                    userId,
-                    content: content,
-                    agentId: this.runtime.agentId,
-                    roomId,
-                    createdAt: tweet.timestamp * 1000,
-                },
-                isUnique: true,
-            });
-
-            await this.cacheTweet(tweet);
-        }
-
-        // Cache
-        await this.cacheTimeline(timeline);
-        await this.cacheMentions(mentionsAndInteractions.tweets);
     }
 
     async saveRequestMessage(message: Memory, state: State) {
