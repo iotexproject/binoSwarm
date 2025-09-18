@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ClientBase } from "../src/base";
 import { IAgentRuntime } from "@elizaos/core";
 import { Tweet } from "agent-twitter-client";
+import { TwitterConfig } from "../src/environment";
 
 // Mock the TwitterApiV2Client
 const mockTwitterApiV2Client = {
@@ -67,7 +68,7 @@ describe("Twitter API Pagination", () => {
             POST_INTERVAL_MIN: 5,
             POST_INTERVAL_MAX: 10,
             ENABLE_ACTION_PROCESSING: false,
-        });
+        } as unknown as TwitterConfig);
 
         // Mock the internal client
         (client as any).twitterApiV2Client = mockTwitterApiV2Client;
