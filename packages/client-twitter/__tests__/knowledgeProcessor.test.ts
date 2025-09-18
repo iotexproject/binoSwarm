@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { KnowledgeProcessor } from "../src/KnowledgeProcessor";
 import { IAgentRuntime, ServiceType } from "@elizaos/core";
+import { Tweet } from "agent-twitter-client";
 
 // Define the tweet interface for proper typing
 interface MockTweet {
@@ -144,7 +145,7 @@ describe("KnowledgeProcessor", () => {
         // Override the twitterConfig to have empty knowledge users
         mockClient.twitterConfig.TWITTER_KNOWLEDGE_USERS = [];
 
-        await processor.processKnowledge();
+        await processor.processKnowledge([]);
 
         // Verify that fetchSearchTweets was not called
         expect(mockClient.fetchSearchTweets).not.toHaveBeenCalled();
@@ -159,7 +160,7 @@ describe("KnowledgeProcessor", () => {
                 "This is a test tweet with high relevance",
                 true
             ),
-        ];
+        ] as Tweet[];
 
         // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
         mockClient.loadLatestKnowledgeCheckedTweetId = vi
@@ -169,20 +170,11 @@ describe("KnowledgeProcessor", () => {
             .fn()
             .mockResolvedValue(undefined);
 
-        // Configure our mock to return tweets for the combined query
-        mockClient.fetchSearchTweets.mockResolvedValueOnce({
-            tweets: mockTweets,
-        });
+        // Pass pre-fetched tweets directly to processKnowledge
+        await processor.processKnowledge(mockTweets);
 
-        await processor.processKnowledge();
-
-        // Verify tweet fetching with combined query (since we have ["testuser", "anotheruser"] in config)
-        expect(mockClient.fetchSearchTweets).toHaveBeenCalledWith(
-            "from:testuser OR from:anotheruser",
-            20, // 2 users * 10 tweets per user
-            undefined,
-            undefined
-        );
+        // Verify that fetchSearchTweets was NOT called (since we pass pre-fetched tweets)
+        expect(mockClient.fetchSearchTweets).not.toHaveBeenCalled();
 
         // Only the high relevance tweet (with ID 123) should result in knowledge creation
         // Exactly one call should be made
@@ -226,13 +218,10 @@ describe("KnowledgeProcessor", () => {
                 "This is a new tweet with photo",
                 true
             ), // ID > lastCheckedTweetId
-        ];
+        ] as Tweet[];
 
-        mockClient.fetchSearchTweets.mockResolvedValue({
-            tweets: mockTweets,
-        });
-
-        await processor.processKnowledge();
+        // Pass pre-fetched tweets directly to processKnowledge
+        await processor.processKnowledge(mockTweets);
 
         // Verify that the image service was called for the newer tweet
         // The newer tweet has a photo, so image description service should be called
@@ -253,28 +242,15 @@ describe("KnowledgeProcessor", () => {
         // Setup tweets with photos
         const mockTweets = [
             createMockTweet(123, "testuser", "Tweet with photo", true),
-        ];
+        ] as Tweet[];
 
-        mockClient.fetchSearchTweets.mockResolvedValue({
-            tweets: mockTweets,
-        });
-
-        await processor.processKnowledge();
+        // Pass pre-fetched tweets directly to processKnowledge
+        await processor.processKnowledge(mockTweets);
 
         // Verify image description was requested
         expect(mockImageDescription.describeImage).toHaveBeenCalledWith(
             "https://example.com/image123.jpg"
         );
-    });
-
-    it("should handle errors during tweet processing", async () => {
-        // Setup error when fetching tweets
-        mockClient.fetchSearchTweets.mockRejectedValueOnce(
-            new Error("API error")
-        );
-
-        // Process should complete without throwing
-        await expect(processor.processKnowledge()).resolves.not.toThrow();
     });
 
     it("should process tweets in batches of 5", async () => {
@@ -287,7 +263,7 @@ describe("KnowledgeProcessor", () => {
             .mockResolvedValue(undefined);
 
         // Create 7 tweets to test batch processing (5 + 2)
-        const mockTweets: MockTweet[] = [];
+        const mockTweets: Tweet[] = [];
         for (let i = 1; i <= 7; i++) {
             // Create tweets with different IDs
             const tweet = createMockTweet(100 + i, "testuser", `Tweet ${i}`);
@@ -298,11 +274,8 @@ describe("KnowledgeProcessor", () => {
             mockTweets.push(tweet);
         }
 
-        mockClient.fetchSearchTweets.mockResolvedValue({
-            tweets: mockTweets,
-        });
-
-        await processor.processKnowledge();
+        // Pass pre-fetched tweets directly to processKnowledge
+        await processor.processKnowledge(mockTweets);
 
         // With a relevant tweet in the batch, knowledge creation should be called
         expect(
@@ -319,31 +292,27 @@ describe("KnowledgeProcessor", () => {
                 "Tweet with photo that fails processing",
                 true
             ),
-        ];
+        ] as Tweet[];
 
-        mockClient.fetchSearchTweets.mockResolvedValue({
-            tweets: mockTweets,
-        });
-
+        // Pass pre-fetched tweets directly to processKnowledge
         // Make image description throw an error
         mockImageDescription.describeImage.mockRejectedValueOnce(
             new Error("Image processing error")
         );
 
         // Process should complete without throwing
-        await expect(processor.processKnowledge()).resolves.not.toThrow();
+        await expect(
+            processor.processKnowledge(mockTweets)
+        ).resolves.not.toThrow();
     });
 
     it("should skip old tweets", async () => {
         // Create an old tweet (more than 3 days old)
-        const oldTweet = createMockTweet(123, "testuser", "Old tweet");
+        const oldTweet = createMockTweet(123, "testuser", "Old tweet") as Tweet;
         oldTweet.timestamp = Math.floor(Date.now() / 1000) - 4 * 24 * 60 * 60; // 4 days old
 
-        mockClient.fetchSearchTweets.mockResolvedValue({
-            tweets: [oldTweet],
-        });
-
-        await processor.processKnowledge();
+        // Pass pre-fetched tweets directly to processKnowledge
+        await processor.processKnowledge([oldTweet]);
 
         // Expect no knowledge creation
         expect(

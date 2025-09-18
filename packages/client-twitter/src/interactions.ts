@@ -66,10 +66,13 @@ export class TwitterInteractionClient {
 
         try {
             const mentions = await this.fetchMentionCandidates();
-            const result = await this.addTargetUsersTo(mentions);
-            const uniqueTweetCandidates: Tweet[] = result.uniqueTweetCandidates;
-            const targetUserTweets: Tweet[] = result.targetUserTweets;
-            await this.knowledgeProcessor.processKnowledge(targetUserTweets);
+            const { uniqueTweetCandidates, allUserTweets } =
+                await this.fetchAllUserTweets(mentions);
+
+            // Filter tweets for knowledge processing (all users in KNOWLEDGE_USERS)
+            const knowledgeUserTweets =
+                this.filterTweetsForKnowledge(allUserTweets);
+            await this.knowledgeProcessor.processKnowledge(knowledgeUserTweets);
 
             this.sortCandidates(uniqueTweetCandidates);
 
@@ -189,120 +192,127 @@ export class TwitterInteractionClient {
         return candidates;
     }
 
-    private async addTargetUsersTo(
-        candidates: Tweet[]
-    ): Promise<{ uniqueTweetCandidates: Tweet[]; targetUserTweets: Tweet[] }> {
-        if (this.client.twitterConfig.TWITTER_TARGET_USERS.length) {
-            const TARGET_USERS = this.client.twitterConfig.TWITTER_TARGET_USERS;
+    private async fetchAllUserTweets(
+        mentions: Tweet[]
+    ): Promise<{ uniqueTweetCandidates: Tweet[]; allUserTweets: Tweet[] }> {
+        const TARGET_USERS =
+            this.client.twitterConfig.TWITTER_TARGET_USERS || [];
+        const KNOWLEDGE_USERS =
+            this.client.twitterConfig.TWITTER_KNOWLEDGE_USERS || [];
 
-            elizaLogger.log("Processing target users:", TARGET_USERS);
+        // Merge and deduplicate all users
+        const allUsers = [...new Set([...TARGET_USERS, ...KNOWLEDGE_USERS])];
 
-            if (TARGET_USERS.length > 0) {
-                // Create a map to store tweets by user
-                const tweetsByUser = new Map<string, Tweet[]>();
-                let allUserTweets: Tweet[] = [];
+        if (allUsers.length === 0) {
+            elizaLogger.log(
+                "No target or knowledge users configured, processing only mentions"
+            );
+            return {
+                uniqueTweetCandidates: mentions,
+                allUserTweets: [],
+            };
+        }
 
-                try {
-                    // Build single OR query for all target users
-                    const combinedQuery =
-                        TwitterHelpers.buildFromUsersQuery(TARGET_USERS);
+        elizaLogger.log("Processing unified user list:", allUsers);
+        elizaLogger.log(`Target users: [${TARGET_USERS.join(", ")}]`);
+        elizaLogger.log(`Knowledge users: [${KNOWLEDGE_USERS.join(", ")}]`);
 
-                    // Use the maximum of lastCheckedTweetId and lastKnowledgeCheckedTweetId
-                    // to avoid reprocessing already handled tweets
-                    const maxSinceId = await TwitterHelpers.getMaxTweetId(
-                        this.client
-                    );
+        let allUserTweets: Tweet[] = [];
+        const targetTweetsByUser = new Map<string, Tweet[]>();
 
+        try {
+            // Single API call for all users (target + knowledge)
+            const combinedQuery = TwitterHelpers.buildFromUsersQuery(allUsers);
+            const maxSinceId = await TwitterHelpers.getMaxTweetId(this.client);
+
+            elizaLogger.log(
+                `Fetching tweets with unified query: ${combinedQuery}${maxSinceId ? ` (since ID: ${maxSinceId})` : " (using start_time fallback)"}`
+            );
+
+            const fetchResult = await this.client.fetchSearchTweets(
+                combinedQuery,
+                allUsers.length * 10, // More tweets per user to cover both target and knowledge needs
+                undefined,
+                maxSinceId
+            );
+            allUserTweets = fetchResult.tweets as Tweet[];
+
+            // Process target user tweets for interaction candidates
+            for (const tweet of allUserTweets) {
+                const username = tweet.username;
+                if (!username || !TARGET_USERS.includes(username)) {
+                    continue;
+                }
+
+                // Filter for unprocessed, non-reply, recent tweets
+                const isUnprocessed =
+                    !this.client.lastCheckedTweetId ||
+                    parseInt(tweet.id) > this.client.lastCheckedTweetId;
+                const isRecent =
+                    Date.now() - tweet.timestamp * 1000 < 2 * 60 * 60 * 1000;
+
+                if (
+                    isUnprocessed &&
+                    !tweet.isReply &&
+                    !tweet.isRetweet &&
+                    isRecent
+                ) {
+                    if (!targetTweetsByUser.has(username)) {
+                        targetTweetsByUser.set(username, []);
+                    }
+                    targetTweetsByUser.get(username)!.push(tweet);
+                }
+            }
+
+            // Log found tweets per target user
+            for (const [username, tweets] of targetTweetsByUser) {
+                if (tweets.length > 0) {
                     elizaLogger.log(
-                        `Fetching tweets with combined query: ${combinedQuery}${maxSinceId ? ` (since ID: ${maxSinceId})` : " (using start_time fallback)"}`
-                    );
-
-                    const fetchResult = await this.client.fetchSearchTweets(
-                        combinedQuery,
-                        TARGET_USERS.length * 3, // 3 tweets per user max
-                        undefined,
-                        maxSinceId
-                    );
-                    allUserTweets = fetchResult.tweets as Tweet[];
-
-                    // Group tweets by user and filter
-                    for (const tweet of allUserTweets) {
-                        const username = tweet.username;
-                        if (!username || !TARGET_USERS.includes(username)) {
-                            continue;
-                        }
-
-                        // Filter for unprocessed, non-reply, recent tweets
-                        const isUnprocessed =
-                            !this.client.lastCheckedTweetId ||
-                            parseInt(tweet.id) > this.client.lastCheckedTweetId;
-                        const isRecent =
-                            Date.now() - tweet.timestamp * 1000 <
-                            2 * 60 * 60 * 1000;
-
-                        if (
-                            isUnprocessed &&
-                            !tweet.isReply &&
-                            !tweet.isRetweet &&
-                            isRecent
-                        ) {
-                            if (!tweetsByUser.has(username)) {
-                                tweetsByUser.set(username, []);
-                            }
-                            tweetsByUser.get(username)!.push(tweet);
-                        }
-                    }
-
-                    // Log found tweets per user
-                    for (const [username, tweets] of tweetsByUser) {
-                        if (tweets.length > 0) {
-                            elizaLogger.log(
-                                `Found ${tweets.length} valid tweets from ${username}`
-                            );
-                        }
-                    }
-                } catch (error) {
-                    elizaLogger.error(
-                        `Error fetching tweets from target users:`,
-                        error
+                        `Found ${tweets.length} valid target tweets from ${username}`
                     );
                 }
+            }
+        } catch (error) {
+            elizaLogger.error("Error fetching tweets from users:", error);
+        }
 
-                // Select one tweet from each user that has tweets
-                const selectedTweets: Tweet[] = [];
-                for (const [username, tweets] of tweetsByUser) {
-                    if (tweets.length > 0) {
-                        // Randomly select one tweet from this user
-                        const randomTweet =
-                            tweets[Math.floor(Math.random() * tweets.length)];
-                        selectedTweets.push(randomTweet);
-                        elizaLogger.log(
-                            `Selected tweet from ${username}: ${randomTweet.text?.substring(0, 100)}`
-                        );
-                    }
-                }
-
-                // Add selected tweets to candidates
-                const result: {
-                    uniqueTweetCandidates: Tweet[];
-                    targetUserTweets: Tweet[];
-                } = {
-                    uniqueTweetCandidates: [...candidates, ...selectedTweets],
-                    targetUserTweets: allUserTweets,
-                };
-                return result;
+        // Select one tweet from each target user for interactions
+        const selectedTargetTweets: Tweet[] = [];
+        for (const [username, tweets] of targetTweetsByUser) {
+            if (tweets.length > 0) {
+                const randomTweet =
+                    tweets[Math.floor(Math.random() * tweets.length)];
+                selectedTargetTweets.push(randomTweet);
+                elizaLogger.log(
+                    `Selected interaction tweet from ${username}: ${randomTweet.text?.substring(0, 100)}`
+                );
             }
         }
 
-        elizaLogger.log("No target users configured, processing only mentions");
-        const result: {
-            uniqueTweetCandidates: Tweet[];
-            targetUserTweets: Tweet[];
-        } = {
-            uniqueTweetCandidates: candidates,
-            targetUserTweets: [],
+        return {
+            uniqueTweetCandidates: [...mentions, ...selectedTargetTweets],
+            allUserTweets,
         };
-        return result;
+    }
+
+    private filterTweetsForKnowledge(allUserTweets: Tweet[]): Tweet[] {
+        const KNOWLEDGE_USERS =
+            this.client.twitterConfig.TWITTER_KNOWLEDGE_USERS || [];
+
+        if (KNOWLEDGE_USERS.length === 0) {
+            return [];
+        }
+
+        const knowledgeTweets = allUserTweets.filter(
+            (tweet) =>
+                tweet.username && KNOWLEDGE_USERS.includes(tweet.username)
+        );
+
+        elizaLogger.log(
+            `Filtered ${knowledgeTweets.length} tweets for knowledge processing from ${KNOWLEDGE_USERS.length} users`
+        );
+
+        return knowledgeTweets;
     }
 
     private async handleTweet(props: {

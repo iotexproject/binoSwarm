@@ -12,7 +12,6 @@ import {
 } from "@elizaos/core";
 import { z } from "zod";
 import { ClientBase } from "./base";
-import { TwitterHelpers } from "./helpers";
 
 const RELEVANCE_THRESHOLD = 0.5;
 
@@ -76,7 +75,7 @@ export class KnowledgeProcessor {
         this.client = client;
     }
 
-    async processKnowledge(preFetchedTweets?: Tweet[]) {
+    async processKnowledge(preFetchedTweets: Tweet[] = []) {
         const KNOWLEDGE_USERS =
             this.client.twitterConfig.TWITTER_KNOWLEDGE_USERS;
 
@@ -85,60 +84,27 @@ export class KnowledgeProcessor {
             return;
         }
 
+        if (preFetchedTweets.length === 0) {
+            elizaLogger.log(
+                "No pre-fetched tweets provided for knowledge processing"
+            );
+            return;
+        }
+
         elizaLogger.log("Processing knowledge users:", KNOWLEDGE_USERS);
+        elizaLogger.log(
+            `Processing ${preFetchedTweets.length} pre-fetched tweets for knowledge`
+        );
 
         try {
-            // Reuse pre-fetched tweets and identify which users we still need to fetch for
-            const preFetchedUsernames = new Set(
-                (preFetchedTweets || [])
-                    .map((tweet) => tweet.username)
-                    .filter(Boolean)
-            );
+            const allUserTweets = preFetchedTweets;
 
-            const usersToFetch = KNOWLEDGE_USERS.filter(
-                (username) => !preFetchedUsernames.has(username)
-            );
-
-            let allUserTweets = preFetchedTweets || [];
-
-            // Only fetch tweets for users not already covered
-            if (usersToFetch.length > 0) {
-                elizaLogger.log(
-                    `Fetching additional tweets for users not in target list: ${usersToFetch.join(", ")}`
-                );
-
-                const combinedQuery =
-                    TwitterHelpers.buildFromUsersQuery(usersToFetch);
-                const maxSinceId = await TwitterHelpers.getMaxTweetId(
-                    this.client
-                );
-
-                elizaLogger.log(
-                    `Fetching knowledge tweets with combined query: ${combinedQuery}${maxSinceId ? ` (since ID: ${maxSinceId})` : " (using start_time fallback)"}`
-                );
-
-                const additionalTweets = (
-                    await this.client.fetchSearchTweets(
-                        combinedQuery,
-                        usersToFetch.length * 10, // 10 tweets per user max
-                        undefined,
-                        maxSinceId
-                    )
-                ).tweets;
-
-                allUserTweets = [...allUserTweets, ...additionalTweets];
-            } else {
-                elizaLogger.log(
-                    "All knowledge users already covered by target users - reusing fetched tweets"
-                );
-            }
-
-            // Group tweets by username
+            // Group tweets by username (tweets are already filtered for knowledge users)
             const tweetsByUser = new Map<string, Tweet[]>();
 
             for (const tweet of allUserTweets) {
                 const username = tweet.username;
-                if (!username || !KNOWLEDGE_USERS.includes(username)) {
+                if (!username) {
                     continue;
                 }
 
