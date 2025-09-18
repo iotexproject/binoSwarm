@@ -276,21 +276,18 @@ export class TwitterInteractionClient {
             elizaLogger.error("Error fetching tweets from users:", error);
         }
 
-        // Select one tweet from each target user for interactions
-        const selectedTargetTweets: Tweet[] = [];
+        const allTargetTweets: Tweet[] = [];
         for (const [username, tweets] of targetTweetsByUser) {
             if (tweets.length > 0) {
-                const randomTweet =
-                    tweets[Math.floor(Math.random() * tweets.length)];
-                selectedTargetTweets.push(randomTweet);
+                allTargetTweets.push(...tweets);
                 elizaLogger.log(
-                    `Selected interaction tweet from ${username}: ${randomTweet.text?.substring(0, 100)}`
+                    `Added ${tweets.length} interaction candidates from ${username}`
                 );
             }
         }
 
         return {
-            uniqueTweetCandidates: [...mentions, ...selectedTargetTweets],
+            uniqueTweetCandidates: [...mentions, ...allTargetTweets],
             allUserTweets,
         };
     }
