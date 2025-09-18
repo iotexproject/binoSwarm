@@ -414,11 +414,6 @@ export class KnowledgeProcessor {
         return notInKnowledge;
     }
 
-    private async fetchAndValidateTweets(username: string) {
-        const userTweets = await this.fetchUserTweets(username);
-        return await this.validateTweets(userTweets);
-    }
-
     private filterRecent(tweets: Tweet[]) {
         const threeDays = 24 * 60 * 60 * 1000 * 3;
         return tweets.filter(
@@ -448,13 +443,5 @@ export class KnowledgeProcessor {
         return tweets.filter(
             (_, index) => !knowledgeChecks[index].existingKnowledge
         );
-    }
-
-    private async fetchUserTweets(username: string) {
-        const tweetsRes = await this.client.fetchSearchTweets(
-            `from:${username}`,
-            10
-        );
-        return tweetsRes.tweets;
     }
 }
