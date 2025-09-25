@@ -1,11 +1,4 @@
-import {
-    IAgentRuntime,
-    ModelClass,
-    elizaLogger,
-    trimTokens,
-    generateObject,
-    splitMessage,
-} from "@elizaos/core";
+import { elizaLogger, splitMessage } from "@elizaos/core";
 import {
     ChannelType,
     Message as DiscordMessage,
@@ -13,7 +6,6 @@ import {
     TextChannel,
     ThreadChannel,
 } from "discord.js";
-import { z } from "zod";
 
 export function getWavHeader(
     audioLength: number,
@@ -42,55 +34,6 @@ export function getWavHeader(
 }
 
 const MAX_MESSAGE_LENGTH = 1900;
-
-export async function generateSummary(
-    runtime: IAgentRuntime,
-    text: string
-): Promise<{ title: string; description: string }> {
-    // make sure text is under 128k characters
-    text = await trimTokens(text, 100000, runtime);
-
-    const prompt = `Please generate a concise summary for the following text:
-
-  Text: """
-  ${text}
-  """
-  `;
-
-    const summarySchema = z.object({
-        title: z.string().describe("Generated Title"),
-        summary: z
-            .string()
-            .describe("Generated summary and/or description of the text"),
-    });
-
-    type Summary = z.infer<typeof summarySchema>;
-
-    const response = await generateObject<Summary>({
-        runtime,
-        context: prompt,
-        modelClass: ModelClass.SMALL,
-        schema: summarySchema,
-        schemaName: "summary",
-        schemaDescription: "A summary of the text",
-        functionId: "discord_generateSummary",
-        tags: ["discord", "discord-generate-summary"],
-    });
-
-    const parsedResponse = summarySchema.parse(response.object);
-
-    if (parsedResponse) {
-        return {
-            title: parsedResponse.title,
-            description: parsedResponse.summary,
-        };
-    }
-
-    return {
-        title: "",
-        description: "",
-    };
-}
 
 export async function sendMessageInChunks(
     channel: TextChannel,
