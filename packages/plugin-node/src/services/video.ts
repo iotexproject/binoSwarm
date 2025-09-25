@@ -199,10 +199,8 @@ export class VideoService extends Service implements IVideoService {
             const result = await youtubeDl(url, {
                 dumpJson: true,
                 verbose: true,
-                callHome: false,
                 noCheckCertificates: true,
                 preferFreeFormats: true,
-                youtubeSkipDashManifest: true,
                 writeSub: true,
                 writeAutoSub: true,
                 subLang: "en",
