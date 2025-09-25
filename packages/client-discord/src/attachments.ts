@@ -84,9 +84,17 @@ export class AttachmentManager {
                 : new Collection(attachments.map((att) => [att.id, att]));
 
         for (const [, attachment] of attachmentCollection) {
-            const media = await this.processAttachment(attachment);
-            if (media) {
-                processedAttachments.push(media);
+            try {
+                const media = await this.processAttachment(attachment);
+                if (media) {
+                    processedAttachments.push(media);
+                }
+            } catch (error) {
+                elizaLogger.error(
+                    `Failed to process attachment ${attachment.id}: ${error.message}`
+                );
+                // Continue processing other attachments even if one fails
+                continue;
             }
         }
 
