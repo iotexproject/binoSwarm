@@ -1,5 +1,7 @@
-import { generateObject, trimTokens, elizaLogger } from "@elizaos/core";
 import {
+    generateObject,
+    trimTokens,
+    elizaLogger,
     IAgentRuntime,
     IImageDescriptionService,
     IPdfService,
@@ -82,9 +84,17 @@ export class AttachmentManager {
                 : new Collection(attachments.map((att) => [att.id, att]));
 
         for (const [, attachment] of attachmentCollection) {
-            const media = await this.processAttachment(attachment);
-            if (media) {
-                processedAttachments.push(media);
+            try {
+                const media = await this.processAttachment(attachment);
+                if (media) {
+                    processedAttachments.push(media);
+                }
+            } catch (error) {
+                elizaLogger.error(
+                    `Failed to process attachment ${attachment.id}: ${error.message}`
+                );
+                // Continue processing other attachments even if one fails
+                continue;
             }
         }
 
@@ -96,33 +106,48 @@ export class AttachmentManager {
             return this.attachmentCache.get(attachment.url)!;
         }
 
-        let media: Media | null = null;
-        if (attachment.contentType?.startsWith("application/pdf")) {
-            media = await this.processPdfAttachment(attachment);
-        } else if (attachment.contentType?.startsWith("text/plain")) {
-            media = await this.processPlaintextAttachment(attachment);
-        } else if (
-            attachment.contentType?.startsWith("audio/") ||
-            attachment.contentType?.startsWith("video/mp4")
-        ) {
-            media = await this.processAudioVideoAttachment(attachment);
-        } else if (attachment.contentType?.startsWith("image/")) {
-            media = await this.processImageAttachment(attachment);
-        } else if (
-            attachment.contentType?.startsWith("video/") ||
-            this.runtime
-                .getService<IVideoService>(ServiceType.VIDEO)
-                .isVideoUrl(attachment.url)
-        ) {
-            media = await this.processVideoAttachment(attachment);
-        } else {
-            media = await this.processGenericAttachment(attachment);
-        }
+        try {
+            let media: Media | null = null;
+            if (attachment.contentType?.startsWith("application/pdf")) {
+                media = await this.processPdfAttachment(attachment);
+            } else if (attachment.contentType?.startsWith("text/plain")) {
+                media = await this.processPlaintextAttachment(attachment);
+            } else if (
+                attachment.contentType?.startsWith("audio/") ||
+                attachment.contentType?.startsWith("video/mp4")
+            ) {
+                media = await this.processAudioVideoAttachment(attachment);
+            } else if (attachment.contentType?.startsWith("image/")) {
+                media = await this.processImageAttachment(attachment);
+            } else if (
+                attachment.contentType?.startsWith("video/") ||
+                this.runtime
+                    .getService<IVideoService>(ServiceType.VIDEO)
+                    .isVideoUrl(attachment.url)
+            ) {
+                media = await this.processVideoAttachment(attachment);
+            } else {
+                media = await this.processGenericAttachment(attachment);
+            }
 
-        if (media) {
-            this.attachmentCache.set(attachment.url, media);
+            if (media) {
+                this.attachmentCache.set(attachment.url, media);
+            }
+            return media;
+        } catch (error) {
+            elizaLogger.error(
+                `Error in attachment processing dispatch for ${attachment.id}: ${error.message}`
+            );
+            // Return a fallback media object for unexpected errors
+            return {
+                id: attachment.id,
+                url: attachment.url,
+                title: "Attachment (processing failed)",
+                source: "Unknown",
+                description: "An attachment that could not be processed",
+                text: `This attachment could not be processed. File name: ${attachment.name}, Size: ${attachment.size} bytes, Content type: ${attachment.contentType}`,
+            };
         }
-        return media;
     }
 
     private async processAudioVideoAttachment(
@@ -339,35 +364,49 @@ export class AttachmentManager {
     private async processVideoAttachment(
         attachment: Attachment
     ): Promise<Media> {
-        const videoService = this.runtime.getService<IVideoService>(
-            ServiceType.VIDEO
-        );
+        try {
+            const videoService = this.runtime.getService<IVideoService>(
+                ServiceType.VIDEO
+            );
 
-        if (!videoService) {
-            throw new Error("Video service not found");
-        }
+            if (!videoService) {
+                throw new Error("Video service not found");
+            }
 
-        if (videoService.isVideoUrl(attachment.url)) {
-            const videoInfo = await videoService.processVideo(
-                attachment.url,
-                this.runtime
+            if (videoService.isVideoUrl(attachment.url)) {
+                const videoInfo = await videoService.processVideo(
+                    attachment.url,
+                    this.runtime
+                );
+                return {
+                    id: attachment.id,
+                    url: attachment.url,
+                    title: videoInfo.title,
+                    source: "YouTube",
+                    description: videoInfo.description,
+                    text: videoInfo.text,
+                };
+            } else {
+                return {
+                    id: attachment.id,
+                    url: attachment.url,
+                    title: "Video Attachment",
+                    source: "Video",
+                    description: "A video attachment",
+                    text: "Video content not available",
+                };
+            }
+        } catch (error) {
+            elizaLogger.error(
+                `Error processing video attachment: ${error.message}`
             );
             return {
                 id: attachment.id,
                 url: attachment.url,
-                title: videoInfo.title,
-                source: "YouTube",
-                description: videoInfo.description,
-                text: videoInfo.text,
-            };
-        } else {
-            return {
-                id: attachment.id,
-                url: attachment.url,
-                title: "Video Attachment",
+                title: "Video Attachment (processing failed)",
                 source: "Video",
-                description: "A video attachment",
-                text: "Video content not available",
+                description: "A video attachment that could not be processed",
+                text: `This is a video attachment. File name: ${attachment.name}, Size: ${attachment.size} bytes, Content type: ${attachment.contentType}`,
             };
         }
     }

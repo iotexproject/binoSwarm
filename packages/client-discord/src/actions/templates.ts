@@ -16,13 +16,6 @@ The "objective" is a detailed description of what the user wants to summarize ba
 The "attachmentIds" is an array of attachment IDs that the user wants to summarize. If not specified, default to including all attachments from the conversation.
 `;
 
-export const mediaUrlTemplate = `# Messages we are searching for a media URL
-{{recentMessages}}
-
-# Instructions: {{senderName}} is requesting to download a specific media file (video or audio). Your goal is to determine the URL of the media they want to download.
-The "mediaUrl" is the URL of the media file that the user wants downloaded. If not specified, return null.
-`;
-
 export const joinVoiceTemplate = `
 The user has requested to join a voice channel.
 Here is the list of channels available in the server:
