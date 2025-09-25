@@ -1,5 +1,7 @@
-import { generateObject, trimTokens, elizaLogger } from "@elizaos/core";
 import {
+    generateObject,
+    trimTokens,
+    elizaLogger,
     IAgentRuntime,
     IImageDescriptionService,
     IPdfService,
