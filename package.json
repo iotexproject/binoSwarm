@@ -42,7 +42,18 @@
         "overrides": {
             "onnxruntime-node": "1.20.1",
             "viem": "2.21.58"
-        }
+        },
+        "onlyBuiltDependencies": [
+            "@discordjs/opus",
+            "bigint-buffer",
+            "bufferutil",
+            "ffmpeg-static",
+            "onnxruntime-node",
+            "puppeteer",
+            "sharp",
+            "utf-8-validate",
+            "youtube-dl-exec"
+        ]
     },
     "engines": {
         "node": "23.3.0"
