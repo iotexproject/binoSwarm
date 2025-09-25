@@ -474,19 +474,34 @@ export class MessageManager {
                 if (!videoService) {
                     throw new Error("Video service not found");
                 }
-                const videoInfo = await videoService.processVideo(
-                    url,
-                    this.runtime
-                );
 
-                attachments.push({
-                    id: `youtube-${Date.now()}`,
-                    url: url,
-                    title: videoInfo.title,
-                    source: "YouTube",
-                    description: videoInfo.description,
-                    text: videoInfo.text,
-                });
+                try {
+                    const videoInfo = await videoService.processVideo(
+                        url,
+                        this.runtime
+                    );
+
+                    attachments.push({
+                        id: `youtube-${Date.now()}`,
+                        url: url,
+                        title: videoInfo.title,
+                        source: "YouTube",
+                        description: videoInfo.description,
+                        text: videoInfo.text,
+                    });
+                } catch (error) {
+                    elizaLogger.error(
+                        `Error processing video URL ${url}: ${error.message}`
+                    );
+                    attachments.push({
+                        id: `youtube-${Date.now()}`,
+                        url: url,
+                        title: "Video (processing failed)",
+                        source: "YouTube",
+                        description: "A video that could not be processed",
+                        text: `This is a video URL that could not be processed: ${url}`,
+                    });
+                }
             } else {
                 const browserService = this.runtime.getService<IBrowserService>(
                     ServiceType.BROWSER

@@ -19,9 +19,6 @@ export class VideoService extends Service implements IVideoService {
     private cacheKey = "content/video";
     private dataDir = "./content_cache";
 
-    private queue: string[] = [];
-    private processing: boolean = false;
-
     constructor() {
         super();
         this.ensureDataDirectoryExists();
@@ -118,43 +115,7 @@ export class VideoService extends Service implements IVideoService {
         url: string,
         runtime: IAgentRuntime
     ): Promise<Media> {
-        this.queue.push(url);
-        this.processQueue(runtime);
-
-        return new Promise((resolve, reject) => {
-            const checkQueue = async () => {
-                const index = this.queue.indexOf(url);
-                if (index !== -1) {
-                    setTimeout(checkQueue, 100);
-                } else {
-                    try {
-                        const result = await this.processVideoFromUrl(
-                            url,
-                            runtime
-                        );
-                        resolve(result);
-                    } catch (error) {
-                        reject(error);
-                    }
-                }
-            };
-            checkQueue();
-        });
-    }
-
-    private async processQueue(runtime): Promise<void> {
-        if (this.processing || this.queue.length === 0) {
-            return;
-        }
-
-        this.processing = true;
-
-        while (this.queue.length > 0) {
-            const url = this.queue.shift()!;
-            await this.processVideoFromUrl(url, runtime);
-        }
-
-        this.processing = false;
+        return await this.processVideoFromUrl(url, runtime);
     }
 
     private async processVideoFromUrl(
