@@ -43,7 +43,17 @@ export class VideoService extends Service implements IVideoService {
         return (
             url.includes("youtube.com") ||
             url.includes("youtu.be") ||
-            url.includes("vimeo.com")
+            url.includes("vimeo.com") ||
+            url.includes("dailymotion.com") ||
+            url.includes("twitch.tv") ||
+            url.includes("tiktok.com") ||
+            url.includes("rumble.com") ||
+            url.includes("odysee.com") ||
+            url.includes("bitchute.com") ||
+            url.endsWith(".mp4") ||
+            url.endsWith(".webm") ||
+            url.endsWith(".avi") ||
+            url.endsWith(".mov")
         );
     }
 
@@ -61,6 +71,12 @@ export class VideoService extends Service implements IVideoService {
                 verbose: true,
                 output: outputFile,
                 writeInfoJson: true,
+                // Add bot detection avoidance
+                userAgent:
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                ...({
+                    extractorArgs: "youtube:player_client=web,default",
+                } as any),
             });
             return outputFile;
         } catch (error) {
@@ -82,8 +98,14 @@ export class VideoService extends Service implements IVideoService {
             await youtubeDl(videoInfo.webpage_url, {
                 verbose: true,
                 output: outputFile,
-                format: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                format: "worst[height<=480]/worstvideo[height<=480]+worstaudio/worst",
                 writeInfoJson: true,
+                // Add bot detection avoidance
+                userAgent:
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                ...({
+                    extractorArgs: "youtube:player_client=web,default",
+                } as any),
             });
             return outputFile;
         } catch (error) {
@@ -205,6 +227,13 @@ export class VideoService extends Service implements IVideoService {
                 writeAutoSub: true,
                 subLang: "en",
                 skipDownload: true,
+                // Add user agent to avoid bot detection
+                userAgent:
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                // Use extractor-args to bypass YouTube bot detection
+                ...({
+                    extractorArgs: "youtube:player_client=web,default",
+                } as any),
             });
             return result;
         } catch (error) {
@@ -345,7 +374,9 @@ export class VideoService extends Service implements IVideoService {
             throw new Error("Transcription service not found");
         }
 
-        const transcript = await transcriptionService.transcribe(audioBuffer);
+        const transcript = await transcriptionService.transcribe(
+            audioBuffer.buffer as ArrayBuffer
+        );
 
         const endTime = Date.now();
         elizaLogger.log(
@@ -397,7 +428,7 @@ export class VideoService extends Service implements IVideoService {
                 );
                 const response = await fetch(url);
                 const arrayBuffer = await response.arrayBuffer();
-                const buffer = Buffer.from(arrayBuffer);
+                const buffer = Buffer.from(new Uint8Array(arrayBuffer));
                 fs.writeFileSync(tempMp4File, buffer);
 
                 await new Promise<void>((resolve, reject) => {
@@ -422,8 +453,15 @@ export class VideoService extends Service implements IVideoService {
                     verbose: true,
                     extractAudio: true,
                     audioFormat: "mp3",
+                    audioQuality: 9, // Lowest quality (0=best, 9=worst) - perfect for transcription
                     output: outputFile,
                     writeInfoJson: true,
+                    // Add same bot detection avoidance
+                    userAgent:
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    ...({
+                        extractorArgs: "youtube:player_client=web,default",
+                    } as any),
                 });
             }
             return outputFile;
