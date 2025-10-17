@@ -251,7 +251,7 @@ export class AgentRuntime implements IAgentRuntime {
         const conversationLength = this.getConversationLength();
         const recentMessagesData = await this.messageManager.getMemories({
             roomId: state.roomId,
-            count: conversationLength
+            count: conversationLength,
         });
 
         const recentMessages = formatMessages({
