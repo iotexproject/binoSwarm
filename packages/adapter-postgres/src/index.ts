@@ -1082,8 +1082,12 @@ export class PostgresDatabaseAdapter
         return this.withDatabase(async () => {
             const placeholders = userIds.map((_, i) => `$${i + 1}`).join(", ");
             const { rows } = await this.pool.query(
-                `SELECT DISTINCT "roomId" FROM participants WHERE "userId" IN (${placeholders})`,
-                userIds
+                `SELECT "roomId"
+                 FROM participants
+                 WHERE "userId" IN (${placeholders})
+                 GROUP BY "roomId"
+                 HAVING COUNT(DISTINCT "userId") = $${userIds.length + 1}`,
+                [...userIds, userIds.length]
             );
             return rows.map((row) => row.roomId);
         }, "getRoomsForParticipants");
