@@ -1,6 +1,10 @@
 import { CharacterDBTraits, elizaLogger } from "@elizaos/core";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const TRAITS_BASE_DIR = "characters/agentsTraits";
 
@@ -24,12 +28,16 @@ export function loadTraitsFromFilesystem(
     characterName: string
 ): CharacterDBTraits | null {
     const traitsDir = path.resolve(
-        process.cwd(),
+        __dirname,
+        "../..",
         TRAITS_BASE_DIR,
         characterName
     );
 
+    elizaLogger.debug(`Traits directory: ${traitsDir}`);
+
     if (!fs.existsSync(traitsDir)) {
+        elizaLogger.error(`Traits directory not found for ${characterName}`);
         return null;
     }
 
