@@ -14,6 +14,7 @@ import { initializeCache } from "./cache";
 import { initializeClients } from "./clients";
 import { buildPlugins } from "./plugins";
 import { mergeCharacterTraits } from "./merge";
+import { loadTraitsFromFilesystem } from "./traits-loader";
 
 export async function initializeStartupAgents(
     characters: Character[],
@@ -71,7 +72,10 @@ export async function createAgent(
         db
     );
     const plugins = buildPlugins(character);
-    const enrichedCharacter = await mergeCharacterWithDbTraits(character, db);
+    const enrichedCharacter = await mergeCharacterWithFilesystemTraits(
+        character,
+        db
+    );
 
     elizaLogger.log(`Creating runtime for character ${enrichedCharacter.name}`);
     return new AgentRuntime({
@@ -94,6 +98,24 @@ const logFetch = async (url: string, options: any) => {
     elizaLogger.debug(`Fetching ${url}`);
     return fetch(url, options);
 };
+
+async function mergeCharacterWithFilesystemTraits(
+    character: Character,
+    db: IDatabaseAdapter & IDatabaseCacheAdapter
+): Promise<Character> {
+    const filesystemTraits = loadTraitsFromFilesystem(character.name);
+
+    if (filesystemTraits) {
+        filesystemTraits.agent_id = character.id;
+        filesystemTraits.id = character.id;
+        return mergeCharacterTraits(character, filesystemTraits);
+    }
+
+    elizaLogger.info(
+        `Traits directory not found for ${character.name}, falling back to database`
+    );
+    return mergeCharacterWithDbTraits(character, db);
+}
 
 async function mergeCharacterWithDbTraits(
     character: Character,
