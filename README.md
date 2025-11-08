@@ -6,7 +6,7 @@ _The autonomous agent framework that doesn't mess around. Build once, deploy eve
 
 _Originally forked from [ElizaOS](https://github.com/elizaOS/eliza) — credits to the pioneering work that laid the foundation._
 
-**See it in action:** [@Bino_AI](https://x.com/Bino_AI) • [@Caila_AI](https://x.com/Caila_AI) • [@NodeyICN](https://x.com/NodeyICN)
+**See it in action:** [@Bino_AI](https://x.com/Bino_AI) • [@Caila_AI](https://x.com/Caila_AI)
 
 ## 📋 Table of Contents
 
