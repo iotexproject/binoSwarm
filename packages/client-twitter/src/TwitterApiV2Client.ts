@@ -65,6 +65,27 @@ export class TwitterApiV2Client {
         return !!this.writableClient;
     }
 
+    async verifyCredentials(): Promise<void> {
+        this.ensureWriteAccess("credential verification");
+
+        try {
+            const me = await this.writableClient!.v2.me();
+            if (!me.data?.id) {
+                throw new Error(
+                    "Failed to verify credentials: no user data returned"
+                );
+            }
+            elizaLogger.log(
+                "Credentials verified for user:",
+                me.data.username || me.data.id
+            );
+        } catch (error) {
+            const errorMessage =
+                error instanceof Error ? error.message : String(error);
+            throw new Error(`Credential verification failed: ${errorMessage}`);
+        }
+    }
+
     /**
      * Ensure write access is available, throwing an error if not
      */
