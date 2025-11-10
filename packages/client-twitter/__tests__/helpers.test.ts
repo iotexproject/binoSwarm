@@ -75,10 +75,10 @@ describe("Tweet Generation and Posting", () => {
         baseClient.profile = mockTwitterProfile;
     });
 
-    it("should handle standard tweet posting", async () => {
+    it("should handle tweet posting", async () => {
         const tweetContent = "Test tweet";
 
-        const result = await TwitterHelpers.handleStandardTweet(
+        const result = await TwitterHelpers.handleTweet(
             baseClient,
             tweetContent
         );
@@ -91,63 +91,21 @@ describe("Tweet Generation and Posting", () => {
         expect(result).toBeDefined();
     });
 
-    it("should handle note tweet posting", async () => {
+    it("should handle long tweet posting", async () => {
         const tweetContent =
             "A very long tweet that exceeds standard length...".repeat(10);
 
-        const result = await TwitterHelpers.handleNoteTweet(
+        const result = await TwitterHelpers.handleTweet(
             baseClient,
             tweetContent
         );
 
-        expect(mockTwitterApiV2Client.createNoteTweet).toHaveBeenCalledWith(
+        expect(mockTwitterApiV2Client.createTweet).toHaveBeenCalledWith(
             tweetContent,
             undefined,
             undefined
         );
         expect(result).toBeDefined();
-    });
-
-    it("should fallback to standard tweet when note tweet fails", async () => {
-        const longTweetContent =
-            "A very long tweet that exceeds standard length...".repeat(10);
-        const truncatedContent = "Truncated content";
-
-        mockTwitterApiV2Client.createNoteTweet.mockRejectedValueOnce(
-            new Error("Note tweet failed")
-        );
-
-        // Mock createTweet to succeed
-        const mockTweet = createMockTweet({ id: "123456" });
-        mockTwitterApiV2Client.createTweet.mockResolvedValueOnce(mockTweet);
-
-        const result = await TwitterHelpers.handleNoteTweet(
-            baseClient,
-            longTweetContent
-        );
-
-        // Verify createNoteTweet was called
-        expect(mockTwitterApiV2Client.createNoteTweet).toHaveBeenCalledWith(
-            longTweetContent,
-            undefined,
-            undefined
-        );
-
-        // Verify truncateToCompleteSentence was called
-        expect(truncateToCompleteSentence).toHaveBeenCalledWith(
-            longTweetContent,
-            baseClient.twitterConfig.MAX_TWEET_LENGTH
-        );
-
-        // Verify fallback to standard tweet
-        expect(mockTwitterApiV2Client.createTweet).toHaveBeenCalledWith(
-            truncatedContent,
-            undefined,
-            undefined
-        );
-
-        // Verify correct result was returned
-        expect(result).toBe(mockTweet);
     });
 
     it("should handle quote tweet posting successfully", async () => {
