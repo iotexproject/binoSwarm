@@ -9,7 +9,6 @@ import { QueryTweetsResponse, Scraper, Tweet } from "agent-twitter-client";
 import { EventEmitter } from "events";
 
 import { TwitterConfig } from "./environment.ts";
-import { TwitterAuthManager } from "./TwitterAuthManager.ts";
 import { RequestQueue } from "./RequestQueue.ts";
 import { TwitterApiV2Client } from "./TwitterApiV2Client.ts";
 import {
@@ -37,8 +36,6 @@ export class ClientBase extends EventEmitter {
     requestQueue: RequestQueue = new RequestQueue();
     profile: TwitterProfile | null;
 
-    private authManager: TwitterAuthManager;
-
     constructor(runtime: IAgentRuntime, twitterConfig: TwitterConfig) {
         super();
         this.runtime = runtime;
@@ -51,13 +48,6 @@ export class ClientBase extends EventEmitter {
             ClientBase._twitterClients[username] = this.twitterClient;
         }
 
-        this.authManager = new TwitterAuthManager(
-            runtime,
-            twitterConfig,
-            this.twitterClient
-        );
-
-        // Initialize Twitter API v2 client
         this.twitterApiV2Client = new TwitterApiV2Client(twitterConfig);
 
         this.directions =
@@ -125,7 +115,7 @@ export class ClientBase extends EventEmitter {
             throw new Error("Twitter username not configured");
         }
 
-        await this.authManager.authenticate();
+        await this.twitterApiV2Client.verifyCredentials();
 
         // Initialize Twitter profile
         this.profile = await this.fetchProfile(username);
