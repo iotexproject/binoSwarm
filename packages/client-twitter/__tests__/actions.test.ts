@@ -666,7 +666,7 @@ describe("Tweet Actions Processing", () => {
 
         const mockTweet = createMockTweet({
             text: "Original tweet with quote",
-            quotedStatusId: quotedTweet.id,
+            quotedTweetId: quotedTweet.id,
         });
 
         const timeline = createMockTimeline({
@@ -710,7 +710,7 @@ describe("Tweet Actions Processing", () => {
     it("should handle error when fetching quoted tweet", async () => {
         const mockTweet = createMockTweet({
             text: "Original tweet with quote",
-            quotedStatusId: "456",
+            quotedTweetId: "456",
         });
 
         const timeline = createMockTimeline({
@@ -823,7 +823,7 @@ describe("Tweet Actions Processing", () => {
 
         const mockTweet = createMockTweet({
             text: "Original tweet with quote",
-            quotedStatusId: quotedTweet.id,
+            quotedTweetId: quotedTweet.id,
         });
 
         const timeline = createMockTimeline({
@@ -866,7 +866,7 @@ describe("Tweet Actions Processing", () => {
     it("should handle error when fetching quoted tweet for quote action", async () => {
         const mockTweet = createMockTweet({
             text: "Original tweet with quote",
-            quotedStatusId: "456",
+            quotedTweetId: "456",
         });
 
         const timeline = createMockTimeline({

@@ -1,4 +1,4 @@
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "./types.ts";
 import {
     composeContext,
     IAgentRuntime,
@@ -524,14 +524,12 @@ export class TwitterActionProcessor {
     }
 
     private async processQuotedTweet(tweet: Tweet) {
-        if (!tweet.quotedStatusId) {
+        if (!tweet.quotedTweetId) {
             return "";
         }
 
         try {
-            const quotedTweet = await this.client.getTweet(
-                tweet.quotedStatusId
-            );
+            const quotedTweet = await this.client.getTweet(tweet.quotedTweetId);
             if (quotedTweet) {
                 return `\nQuoted Tweet from @${quotedTweet.username}:\n${quotedTweet.text}`;
             }

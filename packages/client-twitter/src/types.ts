@@ -34,6 +34,7 @@ export interface Tweet {
     text: string;
     conversationId: string;
     inReplyToStatusId?: string;
+    quotedTweetId?: string;
     name?: string;
     username?: string;
     userId?: string;

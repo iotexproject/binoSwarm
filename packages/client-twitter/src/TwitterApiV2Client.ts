@@ -640,11 +640,18 @@ export class TwitterApiV2Client {
             ? `https://twitter.com/${author.username}/status/${tweetV2.id}`
             : `https://twitter.com/i/web/status/${tweetV2.id}`;
 
+        // Extract quoted tweet ID from referenced_tweets
+        const quotedTweet = tweetV2.referenced_tweets?.find(
+            (ref: any) => ref.type === "quoted"
+        );
+        const quotedTweetId = quotedTweet?.id;
+
         const tweet: Tweet = {
             id: tweetV2.id,
             text: tweetV2.text,
             conversationId: tweetV2.conversation_id,
             inReplyToStatusId: tweetV2.in_reply_to_user_id, // Note: this is user_id, not status_id in v2 API
+            quotedTweetId,
             name: author?.name,
             username: author?.username,
             userId: authorId,
@@ -664,7 +671,7 @@ export class TwitterApiV2Client {
             // Optional fields with defaults
             bookmarkCount: tweetV2.public_metrics?.bookmark_count,
             views: tweetV2.public_metrics?.impression_count,
-            isQuoted: false,
+            isQuoted: !!quotedTweetId,
             isPin: false,
             isReply: !!tweetV2.in_reply_to_user_id,
             isRetweet: false,
