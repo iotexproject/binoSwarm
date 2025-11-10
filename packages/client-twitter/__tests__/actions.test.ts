@@ -224,6 +224,7 @@ describe("Tweet Actions Processing", () => {
     let baseClient: ClientBase;
     let mockConfig: TwitterConfig;
     let mockTwitterClient: any;
+    let mockTwitterApiV2Client: any;
     let actionClient: TwitterActionProcessor;
     let mockImageDescriptionService: IImageDescriptionService;
 
@@ -236,6 +237,15 @@ describe("Tweet Actions Processing", () => {
         baseClient = new ClientBase(mockRuntime, mockConfig);
 
         baseClient.twitterClient = mockTwitterClient;
+
+        // Mock TwitterApiV2Client
+        mockTwitterApiV2Client = {
+            likeTweet: vi.fn().mockResolvedValue(undefined),
+            retweet: vi.fn().mockResolvedValue(undefined),
+            quoteTweet: vi.fn().mockResolvedValue(createMockTweet()),
+        };
+        baseClient.twitterApiV2Client = mockTwitterApiV2Client as any;
+
         baseClient.getTweet = vi.fn(); // Mock the new ClientBase.getTweet method
         baseClient.profile = mockTwitterProfile;
 
@@ -252,8 +262,9 @@ describe("Tweet Actions Processing", () => {
 
         actionClient = new TwitterActionProcessor(baseClient, mockRuntime);
 
-        mockTwitterClient.likeTweet.mockClear();
-        mockTwitterClient.sendQuoteTweet.mockClear();
+        mockTwitterApiV2Client.likeTweet.mockClear();
+        mockTwitterApiV2Client.quoteTweet.mockClear();
+        mockTwitterApiV2Client.retweet.mockClear();
 
         // Mock image description service with all required properties
         mockImageDescriptionService = {
@@ -326,7 +337,7 @@ describe("Tweet Actions Processing", () => {
 
         await actionClient["processTimelineActions"]([timeline]);
 
-        expect(mockTwitterClient.likeTweet).toHaveBeenCalledWith(
+        expect(mockTwitterApiV2Client.likeTweet).toHaveBeenCalledWith(
             timeline.tweet.id
         );
         expect(mockRuntime.messageManager.createMemory).toHaveBeenCalled();
@@ -343,8 +354,8 @@ describe("Tweet Actions Processing", () => {
             actionResponse: { quote: true },
         });
 
-        mockTwitterClient.sendQuoteTweet.mockResolvedValue(
-            createSuccessfulTweetResponse("Quote tweet content", "456")
+        mockTwitterApiV2Client.quoteTweet.mockResolvedValue(
+            createMockTweet({ id: "456" })
         );
 
         // Mock the composeState to return enriched state
@@ -372,7 +383,7 @@ describe("Tweet Actions Processing", () => {
 
         expect(actionClient["generateTweetContent"]).toHaveBeenCalled();
 
-        expect(mockTwitterClient.sendQuoteTweet).toHaveBeenCalledWith(
+        expect(mockTwitterApiV2Client.quoteTweet).toHaveBeenCalledWith(
             "This is a generated quote tweet response",
             mockTweet.id
         );
@@ -391,7 +402,9 @@ describe("Tweet Actions Processing", () => {
             actionResponse: { like: true },
         });
 
-        mockTwitterClient.likeTweet.mockRejectedValue(new Error("API Error"));
+        mockTwitterApiV2Client.likeTweet.mockRejectedValue(
+            new Error("API Error")
+        );
 
         await actionClient["processTimelineActions"]([timeline]);
 
@@ -403,7 +416,7 @@ describe("Tweet Actions Processing", () => {
             actionResponse: { quote: true },
         });
 
-        mockTwitterClient.sendQuoteTweet.mockRejectedValue(
+        mockTwitterApiV2Client.quoteTweet.mockRejectedValue(
             new Error("Quote tweet failed")
         );
 
@@ -428,11 +441,9 @@ describe("Tweet Actions Processing", () => {
             actionResponse: { quote: true },
         });
 
-        mockTwitterClient.sendQuoteTweet.mockResolvedValue({
-            json: () => ({
-                data: {}, // Missing create_tweet field
-            }),
-        });
+        mockTwitterApiV2Client.quoteTweet.mockRejectedValue(
+            new Error("Quote tweet creation failed")
+        );
 
         vi.mocked(mockRuntime.composeState).mockResolvedValue({
             ...timeline.tweetState,
@@ -445,8 +456,8 @@ describe("Tweet Actions Processing", () => {
         await actionClient["processTimelineActions"]([timeline]);
 
         expect(elizaLogger.error).toHaveBeenCalledWith(
-            "Quote tweet creation failed:",
-            expect.any(Object)
+            "Error in quote tweet generation:",
+            expect.any(Error)
         );
     });
 
@@ -800,7 +811,7 @@ describe("Tweet Actions Processing", () => {
         );
 
         // Verify no quote tweet was sent
-        expect(mockTwitterClient.sendQuoteTweet).not.toHaveBeenCalled();
+        expect(mockTwitterApiV2Client.quoteTweet).not.toHaveBeenCalled();
     });
 
     it("should process quote with quoted tweet content", async () => {
@@ -824,8 +835,8 @@ describe("Tweet Actions Processing", () => {
         vi.mocked(baseClient.getTweet).mockResolvedValue(quotedTweet);
 
         // Mock successful quote tweet response
-        mockTwitterClient.sendQuoteTweet.mockResolvedValue(
-            createSuccessfulTweetResponse("Quote tweet content", "456")
+        mockTwitterApiV2Client.quoteTweet.mockResolvedValue(
+            createMockTweet({ id: "456" })
         );
 
         // Mock the composeState to return enriched state
@@ -846,7 +857,7 @@ describe("Tweet Actions Processing", () => {
         expect(baseClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
 
         // Verify quote tweet was sent with the generated content
-        expect(mockTwitterClient.sendQuoteTweet).toHaveBeenCalledWith(
+        expect(mockTwitterApiV2Client.quoteTweet).toHaveBeenCalledWith(
             "This is a generated quote tweet response",
             mockTweet.id
         );
@@ -869,8 +880,8 @@ describe("Tweet Actions Processing", () => {
         );
 
         // Mock successful quote tweet response
-        mockTwitterClient.sendQuoteTweet.mockResolvedValue(
-            createSuccessfulTweetResponse("Quote tweet content", "456")
+        mockTwitterApiV2Client.quoteTweet.mockResolvedValue(
+            createMockTweet({ id: "456" })
         );
 
         // Mock the composeState to return enriched state
@@ -894,7 +905,7 @@ describe("Tweet Actions Processing", () => {
         );
 
         // Verify quote tweet was still sent despite quoted tweet error
-        expect(mockTwitterClient.sendQuoteTweet).toHaveBeenCalledWith(
+        expect(mockTwitterApiV2Client.quoteTweet).toHaveBeenCalledWith(
             "This is a generated quote tweet response",
             mockTweet.id
         );
@@ -911,12 +922,14 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock successful retweet
-        mockTwitterClient.retweet.mockResolvedValue(undefined);
+        mockTwitterApiV2Client.retweet.mockResolvedValue(undefined);
 
         await actionClient["processTimelineActions"]([timeline]);
 
         // Verify retweet was called
-        expect(mockTwitterClient.retweet).toHaveBeenCalledWith(mockTweet.id);
+        expect(mockTwitterApiV2Client.retweet).toHaveBeenCalledWith(
+            mockTweet.id
+        );
 
         // Verify success was logged
         expect(elizaLogger.log).toHaveBeenCalledWith(
@@ -938,14 +951,16 @@ describe("Tweet Actions Processing", () => {
         });
 
         // Mock retweet to throw error
-        mockTwitterClient.retweet.mockRejectedValue(
+        mockTwitterApiV2Client.retweet.mockRejectedValue(
             new Error("Retweet failed")
         );
 
         await actionClient["processTimelineActions"]([timeline]);
 
         // Verify retweet was attempted
-        expect(mockTwitterClient.retweet).toHaveBeenCalledWith(mockTweet.id);
+        expect(mockTwitterApiV2Client.retweet).toHaveBeenCalledWith(
+            mockTweet.id
+        );
 
         // Verify error was logged
         expect(elizaLogger.error).toHaveBeenCalledWith(
