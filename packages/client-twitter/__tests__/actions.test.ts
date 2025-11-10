@@ -16,7 +16,6 @@ import {
     buildTwitterClientMock,
     buildConfigMock,
     buildRuntimeMock,
-    createSuccessfulTweetResponse,
     mockTwitterProfile,
     mockCharacter,
     createMockTweet,
@@ -51,7 +50,7 @@ vi.mock("../src/utils", async () => {
             .fn()
             .mockImplementation(
                 async (
-                    client,
+                    _client,
                     response,
                     roomId,
                     runtime,
@@ -76,25 +75,6 @@ vi.mock("../src/utils", async () => {
                         createdAt: Date.now(),
                     };
 
-                    // Check if we should use long tweet based on config
-                    const isLongTweet =
-                        client.twitterConfig.MAX_TWEET_LENGTH > 280;
-
-                    // Still call the Twitter client methods to verify they're called with correct params
-                    if (isLongTweet && client.twitterClient.sendLongTweet) {
-                        await client.twitterClient.sendLongTweet(
-                            response.text,
-                            inReplyToTweetId,
-                            undefined
-                        );
-                    } else if (client.twitterClient.sendTweet) {
-                        await client.twitterClient.sendTweet(
-                            response.text,
-                            inReplyToTweetId,
-                            undefined
-                        );
-                    }
-
                     return [mockMemory];
                 }
             ),
@@ -111,18 +91,15 @@ describe("TwitterActionProcessor Start Method", () => {
     let mockRuntime: IAgentRuntime;
     let baseClient: ClientBase;
     let mockConfig: TwitterConfig;
-    let mockTwitterClient: any;
     let actionClient: TwitterActionProcessor;
 
     beforeEach(() => {
         vi.clearAllMocks();
 
-        mockTwitterClient = buildTwitterClientMock();
         mockRuntime = buildRuntimeMock();
         mockConfig = buildConfigMock();
         baseClient = new ClientBase(mockRuntime, mockConfig);
 
-        baseClient.twitterClient = mockTwitterClient;
         baseClient.getTweet = vi.fn(); // Mock the new ClientBase.getTweet method
         baseClient.fetchTimelineForActions = vi.fn().mockResolvedValue([]); // Mock timeline method
         baseClient.profile = null; // Set to null to test initialization
@@ -235,8 +212,6 @@ describe("Tweet Actions Processing", () => {
         mockRuntime = buildRuntimeMock();
         mockConfig = buildConfigMock();
         baseClient = new ClientBase(mockRuntime, mockConfig);
-
-        baseClient.twitterClient = mockTwitterClient;
 
         // Mock TwitterApiV2Client
         mockTwitterApiV2Client = {
@@ -472,11 +447,6 @@ describe("Tweet Actions Processing", () => {
             actionResponse: { reply: true },
         });
 
-        // Mock successful reply tweet response
-        mockTwitterClient.sendTweet.mockResolvedValue(
-            createSuccessfulTweetResponse("Reply tweet content", "456")
-        );
-
         // Mock the composeState to return enriched state
         vi.mocked(mockRuntime.composeState)
             .mockResolvedValueOnce(timeline.tweetState)
@@ -505,11 +475,16 @@ describe("Tweet Actions Processing", () => {
         // Verify generateTweetContent was called
         expect(actionClient["generateTweetActionResponse"]).toHaveBeenCalled();
 
-        // Verify tweet was sent with the generated content and in reply to the original tweet
-        expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
-            "This is a generated quote tweet response",
-            mockTweet.id,
-            undefined
+        // Verify twitterHandlerCallback was called (which handles tweet sending via API v2)
+        expect(utils.twitterHandlerCallback).toHaveBeenCalledWith(
+            baseClient,
+            expect.objectContaining({
+                text: "This is a generated quote tweet response",
+            }),
+            expect.any(String),
+            mockRuntime,
+            "testuser",
+            mockTweet.id
         );
 
         expect(mockRuntime.cacheManager.set).toHaveBeenCalledWith(
@@ -572,24 +547,6 @@ describe("Tweet Actions Processing", () => {
             context: "mocked context",
         });
 
-        // Mock successful note tweet response
-        mockTwitterClient.sendLongTweet.mockResolvedValue({
-            data: {
-                notetweet_create: {
-                    tweet_results: {
-                        result: {
-                            rest_id: "456",
-                            legacy: {
-                                full_text: "Long reply content",
-                                created_at: new Date().toISOString(),
-                                conversation_id_str: "456",
-                            },
-                        },
-                    },
-                },
-            },
-        });
-
         vi.mocked(mockRuntime.composeState).mockResolvedValue({
             ...timeline.tweetState,
             currentPost: `From @${timeline.tweet.username}: ${timeline.tweet.text}`,
@@ -602,11 +559,16 @@ describe("Tweet Actions Processing", () => {
         try {
             await actionClient["processTimelineActions"]([timeline]);
 
-            // Verify long tweet was used for the long reply
-            expect(mockTwitterClient.sendLongTweet).toHaveBeenCalledWith(
-                expect.stringContaining("A very long reply"),
-                mockTweet.id,
-                undefined
+            // Verify twitterHandlerCallback was called (handles long tweets via API v2)
+            expect(utils.twitterHandlerCallback).toHaveBeenCalledWith(
+                baseClient,
+                expect.objectContaining({
+                    text: expect.stringContaining("A very long reply"),
+                }),
+                expect.any(String),
+                mockRuntime,
+                "testuser",
+                mockTweet.id
             );
         } finally {
             // Restore original config
@@ -677,11 +639,6 @@ describe("Tweet Actions Processing", () => {
         // Mock getTweet to return the quoted tweet
         vi.mocked(baseClient.getTweet).mockResolvedValue(quotedTweet);
 
-        // Mock successful reply tweet response
-        mockTwitterClient.sendTweet.mockResolvedValue(
-            createSuccessfulTweetResponse("Reply tweet content", "456")
-        );
-
         // Mock the composeState to return enriched state
         vi.mocked(mockRuntime.composeState)
             .mockResolvedValueOnce(timeline.tweetState)
@@ -699,11 +656,16 @@ describe("Tweet Actions Processing", () => {
         // Verify quoted tweet was fetched
         expect(baseClient.getTweet).toHaveBeenCalledWith(quotedTweet.id);
 
-        // Verify tweet was sent with the generated content
-        expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
-            "This is a generated quote tweet response",
-            mockTweet.id,
-            undefined
+        // Verify twitterHandlerCallback was called (which handles tweet sending via API v2)
+        expect(utils.twitterHandlerCallback).toHaveBeenCalledWith(
+            baseClient,
+            expect.objectContaining({
+                text: "This is a generated quote tweet response",
+            }),
+            expect.any(String),
+            mockRuntime,
+            "testuser",
+            mockTweet.id
         );
     });
 
@@ -721,11 +683,6 @@ describe("Tweet Actions Processing", () => {
         // Mock getTweet to throw an error
         vi.mocked(baseClient.getTweet).mockRejectedValue(
             new Error("Failed to fetch quoted tweet")
-        );
-
-        // Mock successful reply tweet response
-        mockTwitterClient.sendTweet.mockResolvedValue(
-            createSuccessfulTweetResponse("Reply tweet content", "456")
         );
 
         // Mock the composeState to return enriched state
@@ -748,11 +705,16 @@ describe("Tweet Actions Processing", () => {
             expect.any(Error)
         );
 
-        // Verify tweet was still sent despite quoted tweet error
-        expect(mockTwitterClient.sendTweet).toHaveBeenCalledWith(
-            "This is a generated quote tweet response",
-            mockTweet.id,
-            undefined
+        // Verify twitterHandlerCallback was still called despite quoted tweet error
+        expect(utils.twitterHandlerCallback).toHaveBeenCalledWith(
+            baseClient,
+            expect.objectContaining({
+                text: "This is a generated quote tweet response",
+            }),
+            expect.any(String),
+            mockRuntime,
+            "testuser",
+            mockTweet.id
         );
     });
 
