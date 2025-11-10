@@ -150,20 +150,12 @@ describe("Tweet Generation and Posting", () => {
         const quoteContent = "This is a quote tweet";
         const tweetId = "123456789";
 
-        // Mock successful quote tweet response
-        const successResponse = {
-            data: {
-                create_tweet: {
-                    tweet_results: {
-                        result: { id: "987654321" },
-                    },
-                },
-            },
+        const mockTwitterApiV2Client = {
+            quoteTweet: vi
+                .fn()
+                .mockResolvedValue(createMockTweet({ id: "987654321" })),
         };
-
-        mockTwitterClient.sendQuoteTweet.mockResolvedValue({
-            json: async () => successResponse,
-        });
+        baseClient.twitterApiV2Client = mockTwitterApiV2Client as any;
 
         await TwitterHelpers.handleQuoteTweet(
             baseClient,
@@ -171,13 +163,11 @@ describe("Tweet Generation and Posting", () => {
             tweetId
         );
 
-        // Verify sendQuoteTweet was called with correct parameters
-        expect(mockTwitterClient.sendQuoteTweet).toHaveBeenCalledWith(
+        expect(mockTwitterApiV2Client.quoteTweet).toHaveBeenCalledWith(
             quoteContent,
             tweetId
         );
 
-        // Verify success was logged
         expect(elizaLogger.log).toHaveBeenCalledWith(
             "Successfully posted quote tweet"
         );
@@ -187,30 +177,20 @@ describe("Tweet Generation and Posting", () => {
         const quoteContent = "This is a failed quote tweet";
         const tweetId = "123456789";
 
-        // Mock failed quote tweet response
-        const failedResponse = {
-            errors: [{ message: "Failed to create quote tweet" }],
+        const mockTwitterApiV2Client = {
+            quoteTweet: vi
+                .fn()
+                .mockRejectedValue(new Error("Failed to create quote tweet")),
         };
+        baseClient.twitterApiV2Client = mockTwitterApiV2Client as any;
 
-        mockTwitterClient.sendQuoteTweet.mockResolvedValue({
-            json: async () => failedResponse,
-        });
-
-        // Expect error to be thrown
         await expect(
             TwitterHelpers.handleQuoteTweet(baseClient, quoteContent, tweetId)
-        ).rejects.toThrow("Quote tweet creation failed");
+        ).rejects.toThrow("Failed to create quote tweet");
 
-        // Verify sendQuoteTweet was called
-        expect(mockTwitterClient.sendQuoteTweet).toHaveBeenCalledWith(
+        expect(mockTwitterApiV2Client.quoteTweet).toHaveBeenCalledWith(
             quoteContent,
             tweetId
-        );
-
-        // Verify error was logged
-        expect(elizaLogger.error).toHaveBeenCalledWith(
-            "Quote tweet creation failed:",
-            failedResponse
         );
     });
 

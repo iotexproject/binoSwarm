@@ -74,19 +74,17 @@ export class TwitterHelpers {
         content: string,
         tweetId?: string
     ) {
+        if (!tweetId) {
+            throw new Error("Quote tweet requires a tweet ID to quote");
+        }
+
         const result = await client.requestQueue.add(
             async () =>
-                await client.twitterClient.sendQuoteTweet(content, tweetId)
+                await client.twitterApiV2Client.quoteTweet(content, tweetId)
         );
 
-        const body = await result.json();
-
-        if (body?.data?.create_tweet?.tweet_results?.result) {
-            elizaLogger.log("Successfully posted quote tweet");
-        } else {
-            elizaLogger.error("Quote tweet creation failed:", body);
-            throw new Error("Quote tweet creation failed");
-        }
+        elizaLogger.log("Successfully posted quote tweet");
+        return result;
     }
 
     static async postTweet(
