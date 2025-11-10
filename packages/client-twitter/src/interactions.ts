@@ -1,4 +1,4 @@
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "./types.ts";
 import {
     composeContext,
     generateMessageResponse,
