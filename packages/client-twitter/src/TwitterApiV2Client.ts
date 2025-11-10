@@ -164,16 +164,12 @@ export class TwitterApiV2Client {
                     `Twitter API rate limit triggered during fetchHomeTimeline${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                 );
             }
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "fetchHomeTimeline",
                 endpoint: "v2.homeTimeline",
                 success: false,
                 error: error.message,
             });
-            elizaLogger.error(
-                "Error fetching home timeline with Twitter API v2:",
-                error
-            );
             throw error;
         }
     }
@@ -249,16 +245,12 @@ export class TwitterApiV2Client {
                     `Twitter API rate limit triggered during fetchFollowingTimeline${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                 );
             }
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "fetchFollowingTimeline",
                 endpoint: "v2.homeTimeline",
                 success: false,
                 error: error.message,
             });
-            elizaLogger.error(
-                "Error fetching following timeline with Twitter API v2:",
-                error
-            );
             throw error;
         }
     }
@@ -334,17 +326,13 @@ export class TwitterApiV2Client {
                     `Twitter API rate limit triggered during getTweet${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                 );
             }
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "getTweet",
                 endpoint: "v2.singleTweet",
                 success: false,
                 tweetId: tweetId,
                 error: error.message,
             });
-            elizaLogger.error(
-                "Error fetching tweet with Twitter API v2:",
-                error
-            );
             throw error;
         }
     }
@@ -407,17 +395,13 @@ export class TwitterApiV2Client {
                     `Twitter API rate limit triggered during getProfile${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                 );
             }
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "getProfile",
                 endpoint: "v2.userByUsername",
                 success: false,
                 username: username,
                 error: error.message,
             });
-            elizaLogger.error(
-                `Error fetching profile for ${username} with Twitter API v2:`,
-                error
-            );
             throw error;
         }
     }
@@ -543,17 +527,13 @@ export class TwitterApiV2Client {
                     `Twitter API rate limit triggered during searchTweets${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                 );
             }
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "searchTweets",
                 endpoint: "v2.search",
                 success: false,
                 query: query,
                 error: error.message,
             });
-            elizaLogger.error(
-                "Error searching tweets with Twitter API v2:",
-                error
-            );
             throw error;
         }
     }
@@ -759,16 +739,12 @@ export class TwitterApiV2Client {
                     `Twitter API rate limit triggered during ${methodName}${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                 );
             }
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: methodName,
                 endpoint: "v2.tweet",
                 success: false,
                 error: error.message,
             });
-            elizaLogger.error(
-                `Error creating tweet with Twitter API v2:`,
-                error
-            );
             throw error;
         }
     }
@@ -839,14 +815,13 @@ export class TwitterApiV2Client {
                     `Twitter API rate limit triggered during likeTweet${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                 );
             }
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "likeTweet",
                 endpoint: "v2.like",
                 success: false,
                 tweetId: tweetId,
                 error: error.message,
             });
-            elizaLogger.error("Error liking tweet with Twitter API v2:", error);
             throw error;
         }
     }
@@ -886,14 +861,13 @@ export class TwitterApiV2Client {
                     `Twitter API rate limit triggered during retweet${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                 );
             }
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "retweet",
                 endpoint: "v2.retweet",
                 success: false,
                 tweetId: tweetId,
                 error: error.message,
             });
-            elizaLogger.error("Error retweeting with Twitter API v2:", error);
             throw error;
         }
     }
@@ -960,16 +934,12 @@ export class TwitterApiV2Client {
                     `Twitter API rate limit triggered during uploadMedia${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                 );
             }
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "uploadMedia",
                 endpoint: "v1.uploadMedia",
                 success: false,
                 error: error.message,
             });
-            elizaLogger.error(
-                "Error uploading media with Twitter API v2:",
-                error
-            );
             throw error;
         }
     }
