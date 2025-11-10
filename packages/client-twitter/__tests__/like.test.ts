@@ -7,7 +7,6 @@ import { TwitterLikeClient } from "../src/like";
 import {
     buildRuntimeMock,
     buildConfigMock,
-    buildTwitterClientMock,
     mockTwitterProfile,
     mockCharacter,
 } from "./mocks";
@@ -15,18 +14,21 @@ import {
 describe("TwitterLikeClient", () => {
     let mockConfig: TwitterConfig;
     let baseClient: ClientBase;
-    let mockTwitterClient: any;
+    let mockTwitterApiV2Client: any;
     let tweetId: string;
 
     beforeEach(() => {
         vi.clearAllMocks();
 
-        mockTwitterClient = buildTwitterClientMock();
         const mockRuntime = buildRuntimeMock();
         mockConfig = buildConfigMock();
         baseClient = new ClientBase(mockRuntime, mockConfig);
 
-        baseClient.twitterClient = mockTwitterClient;
+        // Mock TwitterApiV2Client
+        mockTwitterApiV2Client = {
+            likeTweet: vi.fn().mockResolvedValue(undefined),
+        };
+        baseClient.twitterApiV2Client = mockTwitterApiV2Client as any;
         baseClient.profile = mockTwitterProfile;
 
         // Setup mock runtime with character
@@ -34,9 +36,6 @@ describe("TwitterLikeClient", () => {
 
         // Mock tweetId
         tweetId = "123456789";
-
-        // Mock Twitter client likeTweet method
-        mockTwitterClient.likeTweet = vi.fn().mockResolvedValue(undefined);
 
         // Spy on logger
         vi.spyOn(elizaLogger, "log").mockImplementation(() => {});
@@ -47,7 +46,7 @@ describe("TwitterLikeClient", () => {
         await TwitterLikeClient.process(baseClient, tweetId);
 
         // Verify likeTweet was called with correct tweetId
-        expect(mockTwitterClient.likeTweet).toHaveBeenCalledWith(tweetId);
+        expect(mockTwitterApiV2Client.likeTweet).toHaveBeenCalledWith(tweetId);
 
         // Verify success was logged
         expect(elizaLogger.log).toHaveBeenCalledWith(`Liked tweet ${tweetId}`);
@@ -56,12 +55,12 @@ describe("TwitterLikeClient", () => {
 
     it("should handle errors when liking a tweet fails", async () => {
         const testError = new Error("API Error");
-        mockTwitterClient.likeTweet.mockRejectedValueOnce(testError);
+        mockTwitterApiV2Client.likeTweet.mockRejectedValueOnce(testError);
 
         await TwitterLikeClient.process(baseClient, tweetId);
 
         // Verify likeTweet was called with correct tweetId
-        expect(mockTwitterClient.likeTweet).toHaveBeenCalledWith(tweetId);
+        expect(mockTwitterApiV2Client.likeTweet).toHaveBeenCalledWith(tweetId);
 
         // Verify error was logged
         expect(elizaLogger.error).toHaveBeenCalledWith(
