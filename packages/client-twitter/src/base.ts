@@ -12,6 +12,11 @@ import { TwitterConfig } from "./environment.ts";
 import { TwitterAuthManager } from "./TwitterAuthManager.ts";
 import { RequestQueue } from "./RequestQueue.ts";
 import { TwitterApiV2Client } from "./TwitterApiV2Client.ts";
+import {
+    formatRateLimitInfo,
+    getErrorCode,
+    hasInvalidSinceId,
+} from "./twitterApiErrors.ts";
 
 type TwitterProfile = {
     id: string;
@@ -20,62 +25,6 @@ type TwitterProfile = {
     bio: string;
     nicknames: string[];
 };
-
-type RateLimitDetails = {
-    reset?: string | number;
-};
-
-type TwitterApiErrorDetail = {
-    parameters?: {
-        since_id?: unknown;
-    };
-    message?: string;
-};
-
-type TwitterApiErrorData = {
-    errors?: TwitterApiErrorDetail[];
-};
-
-function getErrorCode(error: unknown): number | undefined {
-    if (typeof error !== "object" || error === null) {
-        return undefined;
-    }
-
-    const candidate = (error as { code?: unknown }).code;
-    return typeof candidate === "number" ? candidate : undefined;
-}
-
-function getRateLimitReset(error: unknown): string | number | undefined {
-    if (typeof error !== "object" || error === null) {
-        return undefined;
-    }
-
-    const rateLimit = (error as { rateLimit?: RateLimitDetails }).rateLimit;
-    return rateLimit?.reset;
-}
-
-function hasInvalidSinceId(error: unknown): boolean {
-    if (typeof error !== "object" || error === null) {
-        return false;
-    }
-
-    const data = (error as { data?: TwitterApiErrorData }).data;
-    if (!data?.errors || !Array.isArray(data.errors)) {
-        return false;
-    }
-
-    return data.errors.some((detail) => {
-        if (detail.parameters && Object.hasOwn(detail.parameters, "since_id")) {
-            return true;
-        }
-
-        if (detail.message && detail.message.includes("since_id")) {
-            return true;
-        }
-
-        return false;
-    });
-}
 
 export class ClientBase extends EventEmitter {
     static _twitterClients: { [accountIdentifier: string]: Scraper } = {};
@@ -143,9 +92,9 @@ export class ClientBase extends EventEmitter {
             } catch (error: unknown) {
                 const code = getErrorCode(error);
                 if (code === 429) {
-                    const reset = getRateLimitReset(error) ?? "unknown";
+                    const rateLimitInfo = formatRateLimitInfo(error);
                     elizaLogger.warn(
-                        `Rate limit hit for tweet fetch. Reset time: ${reset}`
+                        `Rate limit hit for tweet fetch${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                     );
                     throw new Error(`Rate limit exceeded for tweet ${tweetId}`);
                 }
@@ -232,9 +181,9 @@ export class ClientBase extends EventEmitter {
                           );
                 } catch (error: unknown) {
                     if (getErrorCode(error) === 429) {
-                        const reset = getRateLimitReset(error) ?? "unknown";
+                        const rateLimitInfo = formatRateLimitInfo(error);
                         elizaLogger.warn(
-                            `Rate limit hit for timeline fetch. Reset time: ${reset}`
+                            `Rate limit hit for timeline fetch${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                         );
                     }
                     throw error;
@@ -281,9 +230,9 @@ export class ClientBase extends EventEmitter {
                           );
                 } catch (error: unknown) {
                     if (getErrorCode(error) === 429) {
-                        const reset = getRateLimitReset(error) ?? "unknown";
+                        const rateLimitInfo = formatRateLimitInfo(error);
                         elizaLogger.warn(
-                            `Rate limit hit for action timeline fetch. Reset time: ${reset}`
+                            `Rate limit hit for action timeline fetch${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                         );
                     }
                     throw error;
@@ -344,9 +293,9 @@ export class ClientBase extends EventEmitter {
                     } catch (error: unknown) {
                         const code = getErrorCode(error);
                         if (code === 429) {
-                            const reset = getRateLimitReset(error) ?? "unknown";
+                            const rateLimitInfo = formatRateLimitInfo(error);
                             elizaLogger.warn(
-                                `Rate limit hit for search tweets. Reset time: ${reset}`
+                                `Rate limit hit for search tweets${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                             );
                             // Return empty result instead of throwing
                             return { tweets: [], nextToken: undefined };
@@ -555,9 +504,9 @@ export class ClientBase extends EventEmitter {
                     return await this.twitterApiV2Client.getProfile(username);
                 } catch (error: unknown) {
                     if (getErrorCode(error) === 429) {
-                        const reset = getRateLimitReset(error) ?? "unknown";
+                        const rateLimitInfo = formatRateLimitInfo(error);
                         elizaLogger.warn(
-                            `Rate limit hit for profile fetch. Reset time: ${reset}`
+                            `Rate limit hit for profile fetch${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
                         );
                         throw new Error(
                             `Rate limit exceeded for profile fetch of ${username}`

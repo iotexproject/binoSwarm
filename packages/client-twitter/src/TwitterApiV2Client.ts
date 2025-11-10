@@ -2,6 +2,7 @@ import { TwitterApi, TweetV2, TwitterApiReadOnly } from "twitter-api-v2";
 import { Tweet } from "agent-twitter-client";
 import { elizaLogger } from "@elizaos/core";
 import { TwitterConfig } from "./environment.ts";
+import { formatRateLimitInfo, getErrorCode } from "./twitterApiErrors.ts";
 
 // Local type definitions (not exported from agent-twitter-client)
 interface Photo {
@@ -137,6 +138,12 @@ export class TwitterApiV2Client {
 
             return tweets;
         } catch (error) {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during fetchHomeTimeline${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
             elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
                 method: "fetchHomeTimeline",
                 endpoint: "v2.homeTimeline",
@@ -216,6 +223,12 @@ export class TwitterApiV2Client {
 
             return tweets;
         } catch (error) {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during fetchFollowingTimeline${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
             elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
                 method: "fetchFollowingTimeline",
                 endpoint: "v2.homeTimeline",
@@ -295,6 +308,12 @@ export class TwitterApiV2Client {
 
             return tweet;
         } catch (error) {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during getTweet${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
             elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
                 method: "getTweet",
                 endpoint: "v2.singleTweet",
@@ -362,6 +381,12 @@ export class TwitterApiV2Client {
 
             return profile;
         } catch (error) {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during getProfile${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
             elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
                 method: "getProfile",
                 endpoint: "v2.userByUsername",
@@ -492,6 +517,12 @@ export class TwitterApiV2Client {
 
             return result;
         } catch (error) {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during searchTweets${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
             elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
                 method: "searchTweets",
                 endpoint: "v2.search",
