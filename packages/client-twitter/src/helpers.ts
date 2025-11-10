@@ -5,7 +5,7 @@ import {
     stringToUuid,
     Content,
 } from "@elizaos/core";
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "./types.ts";
 
 import { ClientBase } from "./base";
 import { processAttachments } from "./utils";

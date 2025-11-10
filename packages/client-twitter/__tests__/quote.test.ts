@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { IAgentRuntime, State } from "@elizaos/core";
-import type { Tweet } from "agent-twitter-client";
+import type { Tweet } from "../src/types";
 
 import { ClientBase } from "../src/base";
 import { TwitterConfig } from "../src/environment";

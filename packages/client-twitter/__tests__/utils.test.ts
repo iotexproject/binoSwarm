@@ -18,7 +18,7 @@ import {
     buildConversationThread,
     twitterHandlerCallback,
 } from "../src/utils";
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "../src/types";
 import { ClientBase } from "../src/base";
 import { stringToUuid, elizaLogger, Content, Media, UUID } from "@elizaos/core";
 import fs from "fs";

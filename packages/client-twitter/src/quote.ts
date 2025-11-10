@@ -1,4 +1,4 @@
-import type { Tweet } from "agent-twitter-client";
+import type { Tweet } from "./types.ts";
 import { type IAgentRuntime, type State } from "@elizaos/core";
 
 import type { ClientBase } from "./base.ts";

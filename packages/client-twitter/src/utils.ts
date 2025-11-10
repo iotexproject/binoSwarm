@@ -1,4 +1,4 @@
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "./types.ts";
 import { Content, IAgentRuntime, Memory, UUID } from "@elizaos/core";
 import { stringToUuid } from "@elizaos/core";
 import { ClientBase } from "./base";

@@ -7,7 +7,7 @@ import {
     ActionResponse,
     UUID,
 } from "@elizaos/core";
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "../src/types";
 
 export function buildConfigMock() {
     return {
