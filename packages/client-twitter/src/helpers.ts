@@ -19,17 +19,32 @@ export class TwitterHelpers {
         tweetId?: string,
         mediaData?: { data: Buffer; mediaType: string }[]
     ) {
-        const noteTweetResult = await client.requestQueue.add(
-            async () =>
-                await client.twitterClient.sendNoteTweet(
-                    content,
-                    tweetId,
-                    mediaData
-                )
-        );
+        try {
+            // Upload media first if provided
+            let mediaIds: string[] | undefined;
+            if (mediaData && mediaData.length > 0) {
+                mediaIds = await Promise.all(
+                    mediaData.map((media) =>
+                        client.twitterApiV2Client.uploadMedia(
+                            media.data,
+                            media.mediaType
+                        )
+                    )
+                );
+            }
 
-        if (noteTweetResult.errors && noteTweetResult.errors.length > 0) {
-            // Note Tweet failed due to authorization. Falling back to standard Tweet.
+            const result = await client.requestQueue.add(
+                async () =>
+                    await client.twitterApiV2Client.createNoteTweet(
+                        content,
+                        tweetId,
+                        mediaIds
+                    )
+            );
+
+            return result;
+        } catch {
+            // Note Tweet failed. Falling back to standard Tweet.
             const truncateContent = truncateToCompleteSentence(
                 content,
                 client.twitterConfig.MAX_TWEET_LENGTH
@@ -37,13 +52,10 @@ export class TwitterHelpers {
             return await TwitterHelpers.handleStandardTweet(
                 client,
                 truncateContent,
-                tweetId
+                tweetId,
+                mediaData
             );
-        } else if (!noteTweetResult.data?.notetweet_create?.tweet_results) {
-            throw new Error(`Note Tweet failed`);
         }
-
-        return noteTweetResult.data.notetweet_create.tweet_results.result;
     }
 
     static async handleStandardTweet(
@@ -52,21 +64,29 @@ export class TwitterHelpers {
         tweetId?: string,
         mediaData?: { data: Buffer; mediaType: string }[]
     ) {
-        const standardTweetResult = await client.requestQueue.add(
+        // Upload media first if provided
+        let mediaIds: string[] | undefined;
+        if (mediaData && mediaData.length > 0) {
+            mediaIds = await Promise.all(
+                mediaData.map((media) =>
+                    client.twitterApiV2Client.uploadMedia(
+                        media.data,
+                        media.mediaType
+                    )
+                )
+            );
+        }
+
+        const result = await client.requestQueue.add(
             async () =>
-                await client.twitterClient.sendTweet(
+                await client.twitterApiV2Client.createTweet(
                     content,
                     tweetId,
-                    mediaData
+                    mediaIds
                 )
         );
 
-        const body = await standardTweetResult.json();
-        if (!body?.data?.create_tweet?.tweet_results?.result) {
-            throw new Error("Error sending tweet; Bad response");
-        }
-
-        return body.data.create_tweet.tweet_results.result;
+        return result;
     }
 
     static async handleQuoteTweet(
@@ -92,7 +112,7 @@ export class TwitterHelpers {
         client: ClientBase,
         content: Content,
         roomId: UUID,
-        twitterUsername: string
+        _twitterUsername: string
     ) {
         try {
             if (!content || !content.text) {
@@ -130,16 +150,10 @@ export class TwitterHelpers {
                 );
             }
 
-            const tweet = TwitterHelpers.createTweetObject(
-                result,
-                client,
-                twitterUsername
-            );
-
             await TwitterHelpers.processAndCacheTweet(
                 runtime,
                 client,
-                tweet,
+                result,
                 roomId,
                 content.text
             );
@@ -232,7 +246,9 @@ export class TwitterHelpers {
         return usernames.map((username) => `from:${username}`).join(" OR ");
     }
 
-    static async getMaxTweetId(client: any): Promise<string | undefined> {
+    static async getMaxTweetId(
+        client: ClientBase
+    ): Promise<string | undefined> {
         const lastCheckedTweetId = client.lastCheckedTweetId;
         const lastKnowledgeCheckedTweetId =
             await client.loadLatestKnowledgeCheckedTweetId();
