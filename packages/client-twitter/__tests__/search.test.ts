@@ -50,7 +50,7 @@ vi.mock("../src/utils.ts", () => ({
 }));
 
 // Import the mocked utils directly
-import { buildConversationThread, sendTweet, wait } from "../src/utils.ts";
+import { buildConversationThread } from "../src/utils.ts";
 import {
     generateMessageResponse,
     composeContext,

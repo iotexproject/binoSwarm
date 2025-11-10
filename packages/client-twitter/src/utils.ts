@@ -181,79 +181,56 @@ export async function buildConversationThread(
 
     return thread;
 }
-// TODO: remove export
-export async function sendTweet(
+
+async function sendTweet(
     client: ClientBase,
     content: Content,
     roomId: UUID,
-    twitterUsername: string,
     inReplyTo: string
 ): Promise<Memory[]> {
-    const maxTweetLength = client.twitterConfig.MAX_TWEET_LENGTH;
-    const isLongTweet = maxTweetLength > 280;
-
     if (!content || !content.text) {
         elizaLogger.error("Cannot send tweet: content or content.text is null");
         return [];
     }
 
+    // Upload media once if present (will be reused for all chunks)
+    let mediaIds: string[] | undefined;
+    if (content.attachments && content.attachments.length > 0) {
+        const mediaData = await processAttachments(content.attachments);
+        mediaIds = await Promise.all(
+            mediaData.map((media) =>
+                client.twitterApiV2Client.uploadMedia(
+                    media.data,
+                    media.mediaType
+                )
+            )
+        );
+    }
+
+    const maxTweetLength = client.twitterConfig.MAX_TWEET_LENGTH;
     const tweetChunks = splitTweetContent(content.text, maxTweetLength);
     const sentTweets: Tweet[] = [];
     let previousTweetId = inReplyTo;
 
     for (const chunk of tweetChunks) {
-        let mediaData: { data: Buffer; mediaType: string }[] | undefined;
-
-        if (content.attachments && content.attachments.length > 0) {
-            mediaData = await processAttachments(content.attachments);
-        }
-
         const cleanChunk = deduplicateMentions(chunk.trim());
 
-        const result = await client.requestQueue.add(async () =>
-            isLongTweet
-                ? client.twitterClient.sendLongTweet(
-                      cleanChunk,
-                      previousTweetId,
-                      mediaData
-                  )
-                : client.twitterClient.sendTweet(
-                      cleanChunk,
-                      previousTweetId,
-                      mediaData
-                  )
-        );
+        const tweet = await client.requestQueue.add(async () => {
+            return await client.twitterApiV2Client.createTweet(
+                cleanChunk,
+                previousTweetId,
+                mediaIds
+            );
+        });
 
-        const body = await result.json();
-        const tweetResult = isLongTweet
-            ? body?.data?.notetweet_create?.tweet_results?.result
-            : body?.data?.create_tweet?.tweet_results?.result;
-
-        // if we have a response
-        if (tweetResult) {
-            // Parse the response
-            const finalTweet: Tweet = {
-                id: tweetResult.rest_id,
-                text: tweetResult.legacy.full_text,
-                conversationId: tweetResult.legacy.conversation_id_str,
-                timestamp:
-                    new Date(tweetResult.legacy.created_at).getTime() / 1000,
-                userId: tweetResult.legacy.user_id_str,
-                inReplyToStatusId: tweetResult.legacy.in_reply_to_status_id_str,
-                permanentUrl: `https://twitter.com/${twitterUsername}/status/${tweetResult.rest_id}`,
-                hashtags: [],
-                mentions: [],
-                photos: [],
-                thread: [],
-                urls: [],
-                videos: [],
-            };
-            sentTweets.push(finalTweet);
-            previousTweetId = finalTweet.id;
+        if (tweet) {
+            sentTweets.push(tweet);
+            previousTweetId = tweet.id;
+            // Only include media in the first tweet
+            mediaIds = undefined;
         } else {
             elizaLogger.error("Error sending tweet chunk:", {
                 chunk,
-                response: body,
             });
         }
 
@@ -277,7 +254,7 @@ export async function sendTweet(
                 : undefined,
         },
         roomId,
-        createdAt: tweet.timestamp * 1000,
+        createdAt: tweet.timestamp ? tweet.timestamp * 1000 : Date.now(),
     }));
 
     return memories;
@@ -497,7 +474,6 @@ export async function twitterHandlerCallback(
         client,
         response,
         roomId,
-        username,
         inReplyToTweetId
     );
     for (const memory of memories) {

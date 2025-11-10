@@ -16,7 +16,7 @@ import {
     splitParagraph,
     splitTweetContent,
     buildConversationThread,
-    sendTweet,
+    twitterHandlerCallback,
 } from "../src/utils";
 import { Tweet } from "agent-twitter-client";
 import { ClientBase } from "../src/base";
@@ -598,20 +598,30 @@ describe("buildConversationThread", () => {
     });
 });
 
-describe("sendTweet", () => {
-    const mockClient: any = {
-        runtime: {
-            agentId: "agent-123",
+describe("twitterHandlerCallback (sendTweet)", () => {
+    const mockRuntime: any = {
+        agentId: "agent-123",
+        messageManager: {
+            createMemory: vi.fn(),
         },
+    };
+    const mockClient: any = {
+        runtime: mockRuntime,
         twitterConfig: {
             MAX_TWEET_LENGTH: 280,
         },
         requestQueue: {
             add: vi.fn((fn) => fn()),
         },
-        twitterClient: {
-            sendTweet: vi.fn(),
-            sendLongTweet: vi.fn(),
+        twitterApiV2Client: {
+            createTweet: vi.fn().mockResolvedValue({
+                id: "tweet-123",
+                text: "Test tweet",
+                permanentUrl: "https://twitter.com/test/status/tweet-123",
+                timestamp: Date.now() / 1000,
+                inReplyToStatusId: undefined,
+            }),
+            uploadMedia: vi.fn().mockResolvedValue("media-id-123"),
         },
     };
 
@@ -632,10 +642,11 @@ describe("sendTweet", () => {
     });
 
     it("should return an empty array if content or content.text is null", async () => {
-        let memories = await sendTweet(
+        let memories = await twitterHandlerCallback(
             mockClient,
             { text: null } as any,
             mockRoomId,
+            mockRuntime,
             mockTwitterUsername,
             mockInReplyTo
         );
@@ -646,10 +657,11 @@ describe("sendTweet", () => {
 
         (elizaLogger.error as Mock).mockClear();
 
-        memories = await sendTweet(
+        memories = await twitterHandlerCallback(
             mockClient,
             null as any,
             mockRoomId,
+            mockRuntime,
             mockTwitterUsername,
             mockInReplyTo
         );
@@ -677,10 +689,11 @@ describe("sendTweet", () => {
         (global.fetch as Mock).mockResolvedValue({ ok: false });
 
         await expect(
-            sendTweet(
+            twitterHandlerCallback(
                 mockClient,
                 contentWithAttachment,
                 mockRoomId,
+                mockRuntime,
                 mockTwitterUsername,
                 mockInReplyTo
             )
@@ -705,10 +718,11 @@ describe("sendTweet", () => {
         (fs.existsSync as Mock).mockReturnValue(false);
 
         await expect(
-            sendTweet(
+            twitterHandlerCallback(
                 mockClient,
                 contentWithAttachment,
                 mockRoomId,
+                mockRuntime,
                 mockTwitterUsername,
                 mockInReplyTo
             )
