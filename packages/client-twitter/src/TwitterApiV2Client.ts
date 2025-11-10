@@ -896,6 +896,7 @@ export class TwitterApiV2Client {
 
     /**
      * Upload media file using Twitter API v1 (required for media attachments)
+     * Videos and animated GIFs require chunked upload with specific parameters
      */
     async uploadMedia(mediaData: Buffer, mediaType: string): Promise<string> {
         this.ensureWriteAccess("media upload");
@@ -904,20 +905,33 @@ export class TwitterApiV2Client {
             throw new Error("Media data cannot be empty");
         }
 
+        const isVideoOrAnimatedGif =
+            mediaType.startsWith("video/") || mediaType === "image/gif";
+
         elizaLogger.log("TWITTER_API_CALL_STARTED", {
             method: "uploadMedia",
             endpoint: "v1.uploadMedia",
             mediaType: mediaType,
             size: mediaData.length,
+            isChunked: isVideoOrAnimatedGif,
         });
 
         try {
-            const mediaId = await this.writableClient.v1.uploadMedia(
-                mediaData,
-                {
+            let mediaId: string;
+
+            if (isVideoOrAnimatedGif) {
+                // Videos and animated GIFs require chunked upload
+                mediaId = await this.writableClient.v1.uploadMedia(mediaData, {
                     mimeType: mediaType,
-                }
-            );
+                    target: "tweet",
+                    chunkLength: 5 * 1024 * 1024, // 5MB chunks
+                });
+            } else {
+                // Images and other media use simple upload
+                mediaId = await this.writableClient.v1.uploadMedia(mediaData, {
+                    mimeType: mediaType,
+                });
+            }
 
             elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
                 method: "uploadMedia",
