@@ -5,7 +5,6 @@ import {
     elizaLogger,
     ActionTimelineType,
 } from "@elizaos/core";
-import { QueryTweetsResponse, Scraper, Tweet } from "agent-twitter-client";
 import { EventEmitter } from "events";
 
 import { TwitterConfig } from "./environment.ts";
@@ -16,6 +15,7 @@ import {
     getErrorCode,
     hasInvalidSinceId,
 } from "./twitterApiErrors.ts";
+import { Tweet, QueryTweetsResponse } from "./types.ts";
 
 type TwitterProfile = {
     id: string;
@@ -26,8 +26,6 @@ type TwitterProfile = {
 };
 
 export class ClientBase extends EventEmitter {
-    static _twitterClients: { [accountIdentifier: string]: Scraper } = {};
-    twitterClient: Scraper;
     twitterApiV2Client: TwitterApiV2Client;
     runtime: IAgentRuntime;
     twitterConfig: TwitterConfig;
@@ -40,13 +38,6 @@ export class ClientBase extends EventEmitter {
         super();
         this.runtime = runtime;
         this.twitterConfig = twitterConfig;
-        const username = twitterConfig.TWITTER_USERNAME;
-        if (ClientBase._twitterClients[username]) {
-            this.twitterClient = ClientBase._twitterClients[username];
-        } else {
-            this.twitterClient = new Scraper();
-            ClientBase._twitterClients[username] = this.twitterClient;
-        }
 
         this.twitterApiV2Client = new TwitterApiV2Client(twitterConfig);
 
