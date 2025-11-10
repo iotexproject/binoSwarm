@@ -56,7 +56,6 @@ describe("Tweet Generation and Posting", () => {
         // Mock TwitterApiV2Client
         mockTwitterApiV2Client = {
             createTweet: vi.fn().mockResolvedValue(createMockTweet()),
-            createNoteTweet: vi.fn().mockResolvedValue(createMockTweet()),
             uploadMedia: vi.fn().mockResolvedValue("media-id-123"),
         };
         baseClient.twitterApiV2Client = mockTwitterApiV2Client as any;

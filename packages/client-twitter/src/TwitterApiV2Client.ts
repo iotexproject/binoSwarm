@@ -757,6 +757,10 @@ export class TwitterApiV2Client {
         }
     }
 
+    /**
+     * Create a tweet using Twitter API v2.
+     * Twitter automatically handles both standard and note tweets based on text length.
+     */
     async createTweet(
         text: string,
         replyToTweetId?: string,
@@ -765,24 +769,6 @@ export class TwitterApiV2Client {
         return this.createTweetInternal(
             text,
             "createTweet",
-            replyToTweetId,
-            mediaIds
-        );
-    }
-
-    /**
-     * Create a note tweet (long-form tweet) using Twitter API v2
-     * Note: Twitter API v2 doesn't have a separate endpoint for note tweets.
-     * Long tweets are automatically handled as note tweets when text exceeds 280 characters.
-     */
-    async createNoteTweet(
-        text: string,
-        replyToTweetId?: string,
-        mediaIds?: string[]
-    ): Promise<Tweet> {
-        return this.createTweetInternal(
-            text,
-            "createNoteTweet",
             replyToTweetId,
             mediaIds
         );

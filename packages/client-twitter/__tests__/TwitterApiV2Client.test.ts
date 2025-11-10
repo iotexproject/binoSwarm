@@ -235,13 +235,11 @@ describe("TwitterApiV2Client Write Operations", () => {
         });
     });
 
-    describe("createNoteTweet", () => {
-        it("creates a note tweet successfully", async () => {
+    describe("createTweet with long text", () => {
+        it("creates a tweet with long text successfully (Twitter handles as note tweet)", async () => {
             const client = new TwitterApiV2Client(mockConfig);
             const tweetText =
-                "This is a long note tweet that exceeds 280 characters. ".repeat(
-                    5
-                );
+                "This is a long tweet that exceeds 280 characters. ".repeat(5);
             const tweetId = "123456789";
 
             mockWritableClient.v2.tweet.mockResolvedValue({
@@ -267,28 +265,13 @@ describe("TwitterApiV2Client Write Operations", () => {
                 },
             });
 
-            const result = await client.createNoteTweet(tweetText);
+            const result = await client.createTweet(tweetText);
 
             expect(mockWritableClient.v2.tweet).toHaveBeenCalledWith({
                 text: tweetText.trim(),
             });
             expect(result).toBeDefined();
             expect(result.id).toBe(tweetId);
-        });
-
-        it("throws error when OAuth credentials are missing", async () => {
-            const configWithoutOAuth = {
-                ...mockConfig,
-                TWITTER_API_KEY: undefined,
-                TWITTER_API_SECRET: undefined,
-                TWITTER_ACCESS_TOKEN: undefined,
-                TWITTER_ACCESS_TOKEN_SECRET: undefined,
-            };
-            const client = new TwitterApiV2Client(configWithoutOAuth);
-
-            await expect(client.createNoteTweet("Test")).rejects.toThrow(
-                "OAuth 1.0a credentials required"
-            );
         });
     });
 
