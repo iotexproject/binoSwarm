@@ -1,27 +1,8 @@
 import { TwitterApi, TweetV2, TwitterApiReadOnly } from "twitter-api-v2";
-import { Tweet } from "agent-twitter-client";
 import { elizaLogger } from "@elizaos/core";
 import { TwitterConfig } from "./environment.ts";
 import { formatRateLimitInfo, getErrorCode } from "./twitterApiErrors.ts";
-
-// Local type definitions (not exported from agent-twitter-client)
-interface Photo {
-    id: string;
-    url: string;
-    alt_text: string | undefined;
-}
-
-interface Video {
-    id: string;
-    preview: string;
-    url?: string;
-}
-
-interface Mention {
-    id: string;
-    username?: string;
-    name?: string;
-}
+import { Tweet, Photo, Video, Mention } from "./types.ts";
 
 export class TwitterApiV2Client {
     private readOnlyClient: TwitterApiReadOnly;
