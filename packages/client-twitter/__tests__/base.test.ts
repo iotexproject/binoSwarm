@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ClientBase } from "../src/base";
 import { ActionTimelineType, IAgentRuntime } from "@elizaos/core";
 import { TwitterConfig } from "../src/environment";
@@ -492,6 +492,11 @@ describe("Twitter Client Base", () => {
         it("should fetch home timeline using API v2 when OAuth credentials are available", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
 
+            vi.spyOn(
+                client.twitterApiV2Client,
+                "hasUserContext"
+            ).mockReturnValue(true);
+
             const mockApiTweets = [
                 createMockTweet({
                     id: "123",
@@ -515,6 +520,11 @@ describe("Twitter Client Base", () => {
 
         it("should fetch following timeline using API v2 when OAuth credentials are available", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
+
+            vi.spyOn(
+                client.twitterApiV2Client,
+                "hasUserContext"
+            ).mockReturnValue(true);
 
             const mockApiTweets = [
                 createMockTweet({
@@ -556,6 +566,11 @@ describe("Twitter Client Base", () => {
         it("should handle API v2 errors gracefully", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
 
+            vi.spyOn(
+                client.twitterApiV2Client,
+                "hasUserContext"
+            ).mockReturnValue(true);
+
             const mockFetchHomeTimeline = vi
                 .fn()
                 .mockRejectedValue(
@@ -576,6 +591,11 @@ describe("Twitter Client Base", () => {
             const client = new ClientBase(mockRuntime, mockConfig);
             mockConfig.ACTION_TIMELINE_TYPE = ActionTimelineType.ForYou;
             mockConfig.TWITTER_USERNAME = "agentuser";
+
+            vi.spyOn(
+                client.twitterApiV2Client,
+                "hasUserContext"
+            ).mockReturnValue(true);
 
             const mockApiTweets = [
                 createMockTweet({
@@ -620,6 +640,11 @@ describe("Twitter Client Base", () => {
             mockConfig.ACTION_TIMELINE_TYPE = ActionTimelineType.Following;
             mockConfig.TWITTER_USERNAME = "agentuser";
 
+            vi.spyOn(
+                client.twitterApiV2Client,
+                "hasUserContext"
+            ).mockReturnValue(true);
+
             const mockApiTweets = [
                 createMockTweet({
                     id: "456",
@@ -661,6 +686,11 @@ describe("Twitter Client Base", () => {
             const client = new ClientBase(mockRuntime, mockConfig);
             mockConfig.TWITTER_USERNAME = "agentuser";
 
+            vi.spyOn(
+                client.twitterApiV2Client,
+                "hasUserContext"
+            ).mockReturnValue(true);
+
             const mockApiTweets = Array.from({ length: 20 }, (_, i) =>
                 createMockTweet({
                     id: `${i}`,
@@ -683,6 +713,11 @@ describe("Twitter Client Base", () => {
 
         it("should handle API v2 errors gracefully", async () => {
             const client = new ClientBase(mockRuntime, mockConfig);
+
+            vi.spyOn(
+                client.twitterApiV2Client,
+                "hasUserContext"
+            ).mockReturnValue(true);
 
             const mockFetchHomeTimeline = vi
                 .fn()
