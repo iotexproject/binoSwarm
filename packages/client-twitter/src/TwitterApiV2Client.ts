@@ -707,8 +707,16 @@ export class TwitterApiV2Client {
             }
 
             if (mediaIds && mediaIds.length > 0) {
+                // Twitter API allows maximum 4 media items per tweet
+                const finalMediaIds =
+                    mediaIds.length > 4 ? mediaIds.slice(0, 4) : mediaIds;
+                if (mediaIds.length > 4) {
+                    elizaLogger.warn(
+                        `Twitter API allows maximum 4 media items per tweet. Limiting ${mediaIds.length} items to 4.`
+                    );
+                }
                 tweetParams.media = {
-                    media_ids: mediaIds,
+                    media_ids: finalMediaIds,
                 };
             }
 
