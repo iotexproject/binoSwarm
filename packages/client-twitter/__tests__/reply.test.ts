@@ -44,12 +44,9 @@ describe("TwitterReplyClient", () => {
         mockState = { key: "value" } as unknown as State;
         tweetId = "123456789";
 
-        // Spy on TwitterHelpers methods
-        vi.spyOn(TwitterHelpers, "handleStandardTweet").mockResolvedValue(
-            undefined
-        );
-        vi.spyOn(TwitterHelpers, "handleNoteTweet").mockResolvedValue(
-            undefined
+        // Spy on TwitterHelpers method
+        vi.spyOn(TwitterHelpers, "handleTweet").mockResolvedValue(
+            undefined as any
         );
     });
 
