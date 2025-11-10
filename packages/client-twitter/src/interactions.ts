@@ -338,7 +338,6 @@ export class TwitterInteractionClient {
         const imageDescriptions = this.stringifyImgDescriptions(descriptions);
 
         let state = await this.runtime.composeState(message, {
-            twitterClient: this.client.twitterClient,
             twitterUserName: this.client.twitterConfig.TWITTER_USERNAME,
             currentPost,
             formattedConversation,

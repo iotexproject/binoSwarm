@@ -948,10 +948,10 @@ describe("Twitter Client Base", () => {
                 isUnique: true,
             });
 
-            expect(mockRuntime.evaluate).toHaveBeenCalledWith(mockMessage, {
-                ...mockState,
-                twitterClient: client.twitterClient,
-            });
+            expect(mockRuntime.evaluate).toHaveBeenCalledWith(
+                mockMessage,
+                mockState
+            );
         });
 
         it("should skip saving when recent message with same content exists", async () => {

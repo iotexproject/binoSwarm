@@ -184,7 +184,6 @@ export class TwitterSearchClient {
         );
 
         return await this.runtime.composeState(message, {
-            twitterClient: this.client.twitterClient,
             twitterUserName: this.twitterUsername,
             tweetContext,
         });

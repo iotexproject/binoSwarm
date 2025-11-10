@@ -404,10 +404,7 @@ export class ClientBase extends EventEmitter {
                 });
             }
 
-            await this.runtime.evaluate(message, {
-                ...state,
-                twitterClient: this.twitterClient,
-            });
+            await this.runtime.evaluate(message, state);
         }
     }
 
