@@ -1,18 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { KnowledgeProcessor } from "../src/KnowledgeProcessor";
 import { IAgentRuntime, ServiceType } from "@elizaos/core";
-import { Tweet } from "agent-twitter-client";
-
-// Define the tweet interface for proper typing
-interface MockTweet {
-    id: string;
-    username: string;
-    name: string;
-    text: string;
-    timestamp: number;
-    permanentUrl: string;
-    photos: Array<{ url: string }>;
-}
+import { Tweet } from "../src/types";
 
 // Mock core dependencies
 vi.mock("@elizaos/core", async () => {
@@ -81,17 +70,29 @@ describe("KnowledgeProcessor", () => {
         username: string,
         text: string,
         hasPhotos = false
-    ): MockTweet {
+    ): Tweet {
         return {
             id: id.toString(),
+            text,
+            conversationId: id.toString(),
             username,
             name: `${username}_fullname`,
-            text,
             timestamp: Math.floor(Date.now() / 1000) - 60 * 60, // 1 hour ago
             permanentUrl: `https://twitter.com/${username}/status/${id}`,
             photos: hasPhotos
-                ? [{ url: `https://example.com/image${id}.jpg` }]
+                ? [
+                      {
+                          id: `photo-${id}`,
+                          url: `https://example.com/image${id}.jpg`,
+                          alt_text: undefined,
+                      },
+                  ]
                 : [],
+            hashtags: [],
+            mentions: [],
+            videos: [],
+            urls: [],
+            thread: [],
         };
     }
 
@@ -160,7 +161,7 @@ describe("KnowledgeProcessor", () => {
                 "This is a test tweet with high relevance",
                 true
             ),
-        ] as Tweet[];
+        ];
 
         // Mock the loadLatestKnowledgeCheckedTweetId to return undefined (no cached ID)
         mockClient.loadLatestKnowledgeCheckedTweetId = vi
@@ -218,7 +219,7 @@ describe("KnowledgeProcessor", () => {
                 "This is a new tweet with photo",
                 true
             ), // ID > lastCheckedTweetId
-        ] as Tweet[];
+        ];
 
         // Pass pre-fetched tweets directly to processKnowledge
         await processor.processKnowledge(mockTweets);
@@ -242,7 +243,7 @@ describe("KnowledgeProcessor", () => {
         // Setup tweets with photos
         const mockTweets = [
             createMockTweet(123, "testuser", "Tweet with photo", true),
-        ] as Tweet[];
+        ];
 
         // Pass pre-fetched tweets directly to processKnowledge
         await processor.processKnowledge(mockTweets);
@@ -292,7 +293,7 @@ describe("KnowledgeProcessor", () => {
                 "Tweet with photo that fails processing",
                 true
             ),
-        ] as Tweet[];
+        ];
 
         // Pass pre-fetched tweets directly to processKnowledge
         // Make image description throw an error
@@ -308,7 +309,7 @@ describe("KnowledgeProcessor", () => {
 
     it("should skip old tweets", async () => {
         // Create an old tweet (more than 3 days old)
-        const oldTweet = createMockTweet(123, "testuser", "Old tweet") as Tweet;
+        const oldTweet = createMockTweet(123, "testuser", "Old tweet");
         oldTweet.timestamp = Math.floor(Date.now() / 1000) - 4 * 24 * 60 * 60; // 4 days old
 
         // Pass pre-fetched tweets directly to processKnowledge

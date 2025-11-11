@@ -7,7 +7,6 @@ import { TwitterRetweetClient } from "../src/retweet";
 import {
     buildRuntimeMock,
     buildConfigMock,
-    buildTwitterClientMock,
     mockTwitterProfile,
     mockCharacter,
 } from "./mocks";
@@ -15,18 +14,21 @@ import {
 describe("TwitterRetweetClient", () => {
     let mockConfig: TwitterConfig;
     let baseClient: ClientBase;
-    let mockTwitterClient: any;
+    let mockTwitterApiV2Client: any;
     let tweetId: string;
 
     beforeEach(() => {
         vi.clearAllMocks();
 
-        mockTwitterClient = buildTwitterClientMock();
         const mockRuntime = buildRuntimeMock();
         mockConfig = buildConfigMock();
         baseClient = new ClientBase(mockRuntime, mockConfig);
 
-        baseClient.twitterClient = mockTwitterClient;
+        // Mock TwitterApiV2Client
+        mockTwitterApiV2Client = {
+            retweet: vi.fn().mockResolvedValue(undefined),
+        };
+        baseClient.twitterApiV2Client = mockTwitterApiV2Client as any;
         baseClient.profile = mockTwitterProfile;
 
         // Setup mock runtime with character
@@ -34,9 +36,6 @@ describe("TwitterRetweetClient", () => {
 
         // Mock tweetId
         tweetId = "123456789";
-
-        // Mock Twitter client retweet method
-        mockTwitterClient.retweet = vi.fn().mockResolvedValue(undefined);
 
         // Spy on logger
         vi.spyOn(elizaLogger, "log").mockImplementation(() => {});
@@ -47,7 +46,7 @@ describe("TwitterRetweetClient", () => {
         await TwitterRetweetClient.process(baseClient, tweetId);
 
         // Verify retweet was called with correct tweetId
-        expect(mockTwitterClient.retweet).toHaveBeenCalledWith(tweetId);
+        expect(mockTwitterApiV2Client.retweet).toHaveBeenCalledWith(tweetId);
 
         // Verify success was logged
         expect(elizaLogger.log).toHaveBeenCalledWith(
@@ -58,12 +57,12 @@ describe("TwitterRetweetClient", () => {
 
     it("should handle errors when retweeting a tweet fails", async () => {
         const testError = new Error("API Error");
-        mockTwitterClient.retweet.mockRejectedValueOnce(testError);
+        mockTwitterApiV2Client.retweet.mockRejectedValueOnce(testError);
 
         await TwitterRetweetClient.process(baseClient, tweetId);
 
         // Verify retweet was called with correct tweetId
-        expect(mockTwitterClient.retweet).toHaveBeenCalledWith(tweetId);
+        expect(mockTwitterApiV2Client.retweet).toHaveBeenCalledWith(tweetId);
 
         // Verify error was logged
         expect(elizaLogger.error).toHaveBeenCalledWith(

@@ -1,4 +1,4 @@
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "./types.ts";
 import {
     composeContext,
     elizaLogger,
@@ -193,10 +193,7 @@ export class SearchTweetSelector {
         elizaLogger.log("Fetching search tweets");
 
         const recentTweets = await this.client.requestQueue.add(() =>
-            this.client.fetchSearchTweets(
-                searchTerm,
-                TWEETS_TO_FETCH
-            )
+            this.client.fetchSearchTweets(searchTerm, TWEETS_TO_FETCH)
         );
 
         elizaLogger.log("Search tweets fetched");

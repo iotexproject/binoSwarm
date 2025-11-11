@@ -182,8 +182,7 @@ export class TwitterPostClient {
                     text: responseMemory.content.text,
                     attachments: response.attachments,
                 },
-                roomId,
-                this.twitterUsername
+                roomId
             );
 
             return [memory];
@@ -194,8 +193,7 @@ export class TwitterPostClient {
                 this.runtime,
                 this.client,
                 responseMemory.content,
-                roomId,
-                this.twitterUsername
+                roomId
             );
             return;
         }

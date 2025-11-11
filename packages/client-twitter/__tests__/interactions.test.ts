@@ -8,7 +8,7 @@ import {
     type Mocked,
 } from "vitest";
 import { IAgentRuntime, Memory, ServiceType } from "@elizaos/core";
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "../src/types";
 import * as core from "@elizaos/core";
 import * as utils from "../src/utils";
 import { ClientBase } from "../src/base";
@@ -180,7 +180,7 @@ describe("TwitterInteractionClient", () => {
             vi.mocked(core.generateMessageResponse).mockResolvedValue({
                 text: "A reply",
             });
-            vi.mocked(utils.sendTweet).mockResolvedValue([]);
+            vi.mocked(utils["sendTweet"]).mockResolvedValue([]);
 
             await twitterInteractionClient.handleTwitterInteractions();
 
@@ -219,7 +219,7 @@ describe("TwitterInteractionClient", () => {
             vi.mocked(core.generateMessageResponse).mockResolvedValue({
                 text: "A reply",
             });
-            vi.mocked(utils.sendTweet).mockResolvedValue([]);
+            vi.mocked(utils["sendTweet"]).mockResolvedValue([]);
 
             await twitterInteractionClient.handleTwitterInteractions();
 
@@ -288,7 +288,7 @@ describe("TwitterInteractionClient", () => {
             await twitterInteractionClient.handleTwitterInteractions();
 
             expect(core.generateMessageResponse).not.toHaveBeenCalled();
-            expect(utils.sendTweet).not.toHaveBeenCalled();
+            expect(utils["sendTweet"]).not.toHaveBeenCalled();
             expect(mockClient.lastCheckedTweetId).toBe(BigInt(mentionTweet.id));
         });
 
@@ -316,7 +316,7 @@ describe("TwitterInteractionClient", () => {
             vi.mocked(core.generateMessageResponse).mockResolvedValue({
                 text: "A reply",
             });
-            vi.mocked(utils.sendTweet).mockResolvedValue([]);
+            vi.mocked(utils["sendTweet"]).mockResolvedValue([]);
             mockRuntime.getService.mockReturnValue(mockImageService);
 
             await twitterInteractionClient.handleTwitterInteractions();

@@ -1,36 +1,37 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { IAgentRuntime, State } from "@elizaos/core";
-import type { Tweet } from "agent-twitter-client";
+import type { Tweet } from "../src/types";
 
 import { ClientBase } from "../src/base";
 import { TwitterConfig } from "../src/environment";
-import { TwitterHelpers } from "../src/helpers";
 import { TwitterQuoteClient } from "../src/quote";
 import {
     buildRuntimeMock,
     buildConfigMock,
-    buildTwitterClientMock,
     mockTwitterProfile,
     mockCharacter,
+    createMockTweet,
 } from "./mocks";
 
 describe("TwitterQuoteClient", () => {
     let mockRuntime: IAgentRuntime;
     let mockConfig: TwitterConfig;
     let baseClient: ClientBase;
-    let mockTwitterClient: any;
+    let mockTwitterApiV2Client: any;
     let mockState: State;
     let mockTweet: Tweet;
 
     beforeEach(() => {
         vi.clearAllMocks();
 
-        mockTwitterClient = buildTwitterClientMock();
         mockRuntime = buildRuntimeMock();
         mockConfig = buildConfigMock();
         baseClient = new ClientBase(mockRuntime, mockConfig);
 
-        baseClient.twitterClient = mockTwitterClient;
+        mockTwitterApiV2Client = {
+            quoteTweet: vi.fn().mockResolvedValue(createMockTweet()),
+        };
+        baseClient.twitterApiV2Client = mockTwitterApiV2Client as any;
         baseClient.profile = mockTwitterProfile;
 
         // Mock RequestQueue
@@ -43,12 +44,10 @@ describe("TwitterQuoteClient", () => {
 
         // Mock state and tweet
         mockState = { key: "value" } as unknown as State;
-        mockTweet = { id: "123456789", text: "Original tweet" } as Tweet;
-
-        // Spy on TwitterHelpers.handleQuoteTweet
-        vi.spyOn(TwitterHelpers, "handleQuoteTweet").mockResolvedValue(
-            undefined
-        );
+        mockTweet = createMockTweet({
+            id: "123456789",
+            text: "Original tweet",
+        });
     });
 
     it("should process a quote tweet correctly", async () => {
@@ -62,14 +61,11 @@ describe("TwitterQuoteClient", () => {
             mockState
         );
 
-        // Verify TwitterHelpers.handleQuoteTweet was called with correct arguments
-        expect(TwitterHelpers.handleQuoteTweet).toHaveBeenCalledWith(
-            baseClient,
+        expect(mockTwitterApiV2Client.quoteTweet).toHaveBeenCalledWith(
             quoteText,
             mockTweet.id
         );
 
-        // Verify cache was set with correct data
         expect(mockRuntime.cacheManager.set).toHaveBeenCalledWith(
             `twitter/quote_generation_${mockTweet.id}.txt`,
             `Context:\n${mockState}\n\nGenerated Quote:\n${quoteText}`
@@ -86,7 +82,6 @@ describe("TwitterQuoteClient", () => {
             quoteContent
         );
 
-        // Verify cache was set with correct key and data
         expect(mockRuntime.cacheManager.set).toHaveBeenCalledWith(
             `twitter/quote_generation_${mockTweet.id}.txt`,
             `Context:\n${mockState}\n\nGenerated Quote:\n${quoteContent}`

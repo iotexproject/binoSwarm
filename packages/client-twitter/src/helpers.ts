@@ -1,72 +1,45 @@
 import {
     elizaLogger,
     IAgentRuntime,
-    truncateToCompleteSentence,
     UUID,
     stringToUuid,
     Content,
 } from "@elizaos/core";
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "./types.ts";
 
 import { ClientBase } from "./base";
-import { DEFAULT_MAX_TWEET_LENGTH } from "./environment.ts";
 import { processAttachments } from "./utils";
 
 export class TwitterHelpers {
-    static async handleNoteTweet(
+    static async handleTweet(
         client: ClientBase,
         content: string,
         tweetId?: string,
         mediaData?: { data: Buffer; mediaType: string }[]
-    ) {
-        const noteTweetResult = await client.requestQueue.add(
+    ): Promise<Tweet> {
+        // Upload media first if provided
+        let mediaIds: string[] | undefined;
+        if (mediaData && mediaData.length > 0) {
+            mediaIds = await Promise.all(
+                mediaData.map((media) =>
+                    client.twitterApiV2Client.uploadMedia(
+                        media.data,
+                        media.mediaType
+                    )
+                )
+            );
+        }
+
+        const result = await client.requestQueue.add(
             async () =>
-                await client.twitterClient.sendNoteTweet(
+                await client.twitterApiV2Client.createTweet(
                     content,
                     tweetId,
-                    mediaData
+                    mediaIds
                 )
         );
 
-        if (noteTweetResult.errors && noteTweetResult.errors.length > 0) {
-            // Note Tweet failed due to authorization. Falling back to standard Tweet.
-            const truncateContent = truncateToCompleteSentence(
-                content,
-                client.twitterConfig.MAX_TWEET_LENGTH
-            );
-            return await TwitterHelpers.handleStandardTweet(
-                client,
-                truncateContent,
-                tweetId
-            );
-        } else if (!noteTweetResult.data?.notetweet_create?.tweet_results) {
-            throw new Error(`Note Tweet failed`);
-        }
-
-        return noteTweetResult.data.notetweet_create.tweet_results.result;
-    }
-
-    static async handleStandardTweet(
-        client: ClientBase,
-        content: string,
-        tweetId?: string,
-        mediaData?: { data: Buffer; mediaType: string }[]
-    ) {
-        const standardTweetResult = await client.requestQueue.add(
-            async () =>
-                await client.twitterClient.sendTweet(
-                    content,
-                    tweetId,
-                    mediaData
-                )
-        );
-
-        const body = await standardTweetResult.json();
-        if (!body?.data?.create_tweet?.tweet_results?.result) {
-            throw new Error("Error sending tweet; Bad response");
-        }
-
-        return body.data.create_tweet.tweet_results.result;
+        return result;
     }
 
     static async handleQuoteTweet(
@@ -74,27 +47,24 @@ export class TwitterHelpers {
         content: string,
         tweetId?: string
     ) {
+        if (!tweetId) {
+            throw new Error("Quote tweet requires a tweet ID to quote");
+        }
+
         const result = await client.requestQueue.add(
             async () =>
-                await client.twitterClient.sendQuoteTweet(content, tweetId)
+                await client.twitterApiV2Client.quoteTweet(content, tweetId)
         );
 
-        const body = await result.json();
-
-        if (body?.data?.create_tweet?.tweet_results?.result) {
-            elizaLogger.log("Successfully posted quote tweet");
-        } else {
-            elizaLogger.error("Quote tweet creation failed:", body);
-            throw new Error("Quote tweet creation failed");
-        }
+        elizaLogger.log("Successfully posted quote tweet");
+        return result;
     }
 
     static async postTweet(
         runtime: IAgentRuntime,
         client: ClientBase,
         content: Content,
-        roomId: UUID,
-        twitterUsername: string
+        roomId: UUID
     ) {
         try {
             if (!content || !content.text) {
@@ -114,34 +84,17 @@ export class TwitterHelpers {
                 mediaData = await processAttachments(content.attachments);
             }
 
-            let result;
-
-            if (content.text.length > DEFAULT_MAX_TWEET_LENGTH) {
-                result = await TwitterHelpers.handleNoteTweet(
-                    client,
-                    content.text,
-                    undefined,
-                    mediaData
-                );
-            } else {
-                result = await TwitterHelpers.handleStandardTweet(
-                    client,
-                    content.text,
-                    undefined,
-                    mediaData
-                );
-            }
-
-            const tweet = TwitterHelpers.createTweetObject(
-                result,
+            const result = await TwitterHelpers.handleTweet(
                 client,
-                twitterUsername
+                content.text,
+                undefined,
+                mediaData
             );
 
             await TwitterHelpers.processAndCacheTweet(
                 runtime,
                 client,
-                tweet,
+                result,
                 roomId,
                 content.text
             );
@@ -234,7 +187,9 @@ export class TwitterHelpers {
         return usernames.map((username) => `from:${username}`).join(" OR ");
     }
 
-    static async getMaxTweetId(client: any): Promise<string | undefined> {
+    static async getMaxTweetId(
+        client: ClientBase
+    ): Promise<string | undefined> {
         const lastCheckedTweetId = client.lastCheckedTweetId;
         const lastKnowledgeCheckedTweetId =
             await client.loadLatestKnowledgeCheckedTweetId();

@@ -1,30 +1,13 @@
 import { TwitterApi, TweetV2, TwitterApiReadOnly } from "twitter-api-v2";
-import { Tweet } from "agent-twitter-client";
 import { elizaLogger } from "@elizaos/core";
 import { TwitterConfig } from "./environment.ts";
-
-// Local type definitions (not exported from agent-twitter-client)
-interface Photo {
-    id: string;
-    url: string;
-    alt_text: string | undefined;
-}
-
-interface Video {
-    id: string;
-    preview: string;
-    url?: string;
-}
-
-interface Mention {
-    id: string;
-    username?: string;
-    name?: string;
-}
+import { formatRateLimitInfo, getErrorCode } from "./twitterApiErrors.ts";
+import { Tweet, Photo, Video, Mention } from "./types.ts";
 
 export class TwitterApiV2Client {
     private readOnlyClient: TwitterApiReadOnly;
     private userContextClient?: TwitterApiReadOnly;
+    private writableClient?: TwitterApi;
 
     constructor(config: TwitterConfig) {
         if (!config.TWITTER_BEARER_TOKEN) {
@@ -53,6 +36,7 @@ export class TwitterApiV2Client {
                     accessSecret: config.TWITTER_ACCESS_TOKEN_SECRET,
                 });
                 this.userContextClient = userContextApi.readOnly;
+                this.writableClient = userContextApi;
                 elizaLogger.log(
                     "Twitter API v2 initialized with user context authentication"
                 );
@@ -72,6 +56,45 @@ export class TwitterApiV2Client {
      */
     hasUserContext(): boolean {
         return !!this.userContextClient;
+    }
+
+    /**
+     * Check if write operations are available (requires OAuth 1.0a credentials)
+     */
+    hasWriteAccess(): boolean {
+        return !!this.writableClient;
+    }
+
+    async verifyCredentials(): Promise<void> {
+        this.ensureWriteAccess("credential verification");
+
+        try {
+            const me = await this.writableClient!.v2.me();
+            if (!me.data?.id) {
+                throw new Error(
+                    "Failed to verify credentials: no user data returned"
+                );
+            }
+            elizaLogger.log(
+                "Credentials verified for user:",
+                me.data.username || me.data.id
+            );
+        } catch (error) {
+            const errorMessage =
+                error instanceof Error ? error.message : String(error);
+            throw new Error(`Credential verification failed: ${errorMessage}`);
+        }
+    }
+
+    /**
+     * Ensure write access is available, throwing an error if not
+     */
+    private ensureWriteAccess(operation: string): void {
+        if (!this.writableClient) {
+            throw new Error(
+                `OAuth 1.0a credentials required for ${operation}. Please provide TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, and TWITTER_ACCESS_TOKEN_SECRET.`
+            );
+        }
     }
 
     /**
@@ -137,16 +160,18 @@ export class TwitterApiV2Client {
 
             return tweets;
         } catch (error) {
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during fetchHomeTimeline${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "fetchHomeTimeline",
                 endpoint: "v2.homeTimeline",
                 success: false,
                 error: error.message,
             });
-            elizaLogger.error(
-                "Error fetching home timeline with Twitter API v2:",
-                error
-            );
             throw error;
         }
     }
@@ -216,16 +241,18 @@ export class TwitterApiV2Client {
 
             return tweets;
         } catch (error) {
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during fetchFollowingTimeline${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "fetchFollowingTimeline",
                 endpoint: "v2.homeTimeline",
                 success: false,
                 error: error.message,
             });
-            elizaLogger.error(
-                "Error fetching following timeline with Twitter API v2:",
-                error
-            );
             throw error;
         }
     }
@@ -295,17 +322,19 @@ export class TwitterApiV2Client {
 
             return tweet;
         } catch (error) {
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during getTweet${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "getTweet",
                 endpoint: "v2.singleTweet",
                 success: false,
                 tweetId: tweetId,
                 error: error.message,
             });
-            elizaLogger.error(
-                "Error fetching tweet with Twitter API v2:",
-                error
-            );
             throw error;
         }
     }
@@ -362,17 +391,19 @@ export class TwitterApiV2Client {
 
             return profile;
         } catch (error) {
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during getProfile${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "getProfile",
                 endpoint: "v2.userByUsername",
                 success: false,
                 username: username,
                 error: error.message,
             });
-            elizaLogger.error(
-                `Error fetching profile for ${username} with Twitter API v2:`,
-                error
-            );
             throw error;
         }
     }
@@ -492,17 +523,19 @@ export class TwitterApiV2Client {
 
             return result;
         } catch (error) {
-            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during searchTweets${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
                 method: "searchTweets",
                 endpoint: "v2.search",
                 success: false,
                 query: query,
                 error: error.message,
             });
-            elizaLogger.error(
-                "Error searching tweets with Twitter API v2:",
-                error
-            );
             throw error;
         }
     }
@@ -607,11 +640,18 @@ export class TwitterApiV2Client {
             ? `https://twitter.com/${author.username}/status/${tweetV2.id}`
             : `https://twitter.com/i/web/status/${tweetV2.id}`;
 
+        // Extract quoted tweet ID from referenced_tweets
+        const quotedTweet = tweetV2.referenced_tweets?.find(
+            (ref: any) => ref.type === "quoted"
+        );
+        const quotedTweetId = quotedTweet?.id;
+
         const tweet: Tweet = {
             id: tweetV2.id,
             text: tweetV2.text,
             conversationId: tweetV2.conversation_id,
             inReplyToStatusId: tweetV2.in_reply_to_user_id, // Note: this is user_id, not status_id in v2 API
+            quotedTweetId,
             name: author?.name,
             username: author?.username,
             userId: authorId,
@@ -631,7 +671,7 @@ export class TwitterApiV2Client {
             // Optional fields with defaults
             bookmarkCount: tweetV2.public_metrics?.bookmark_count,
             views: tweetV2.public_metrics?.impression_count,
-            isQuoted: false,
+            isQuoted: !!quotedTweetId,
             isPin: false,
             isReply: !!tweetV2.in_reply_to_user_id,
             isRetweet: false,
@@ -640,5 +680,284 @@ export class TwitterApiV2Client {
         };
 
         return tweet;
+    }
+
+    private async createTweetInternal(
+        text: string,
+        methodName: string,
+        replyToTweetId?: string,
+        mediaIds?: string[],
+        additionalParams?: Record<string, any>
+    ): Promise<Tweet> {
+        this.ensureWriteAccess(methodName);
+
+        if (!text || text.trim().length === 0) {
+            throw new Error("Tweet text cannot be empty");
+        }
+
+        elizaLogger.log("TWITTER_API_CALL_STARTED", {
+            method: methodName,
+            endpoint: "v2.tweet",
+            textLength: text.length,
+            replyToTweetId: replyToTweetId,
+            hasMedia: !!mediaIds && mediaIds.length > 0,
+        });
+
+        try {
+            const tweetParams: any = {
+                text: text.trim(),
+                ...additionalParams,
+            };
+
+            if (replyToTweetId) {
+                tweetParams.reply = {
+                    in_reply_to_tweet_id: replyToTweetId,
+                };
+            }
+
+            if (mediaIds && mediaIds.length > 0) {
+                // Twitter API allows maximum 4 media items per tweet
+                const finalMediaIds =
+                    mediaIds.length > 4 ? mediaIds.slice(0, 4) : mediaIds;
+                if (mediaIds.length > 4) {
+                    elizaLogger.warn(
+                        `Twitter API allows maximum 4 media items per tweet. Limiting ${mediaIds.length} items to 4.`
+                    );
+                }
+                tweetParams.media = {
+                    media_ids: finalMediaIds,
+                };
+            }
+
+            const response = await this.writableClient!.v2.tweet(tweetParams);
+
+            if (!response.data) {
+                throw new Error("Tweet creation failed: no data returned");
+            }
+
+            const createdTweet = await this.getTweet(response.data.id);
+
+            if (!createdTweet) {
+                throw new Error("Failed to fetch created tweet");
+            }
+
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: methodName,
+                endpoint: "v2.tweet",
+                success: true,
+                tweetId: response.data.id,
+            });
+
+            return createdTweet;
+        } catch (error) {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during ${methodName}${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
+                method: methodName,
+                endpoint: "v2.tweet",
+                success: false,
+                error: error.message,
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Create a tweet using Twitter API v2.
+     * Twitter automatically handles both standard and note tweets based on text length.
+     */
+    async createTweet(
+        text: string,
+        replyToTweetId?: string,
+        mediaIds?: string[]
+    ): Promise<Tweet> {
+        return this.createTweetInternal(
+            text,
+            "createTweet",
+            replyToTweetId,
+            mediaIds
+        );
+    }
+
+    async likeTweet(tweetId: string): Promise<void> {
+        this.ensureWriteAccess("liking tweets");
+
+        if (!tweetId || tweetId.trim().length === 0) {
+            throw new Error("Tweet ID cannot be empty");
+        }
+
+        elizaLogger.log("TWITTER_API_CALL_STARTED", {
+            method: "likeTweet",
+            endpoint: "v2.like",
+            tweetId: tweetId,
+        });
+
+        try {
+            // Get current user ID from the authenticated user
+            const me = await this.writableClient.v2.me();
+            if (!me.data?.id) {
+                throw new Error("Failed to get authenticated user ID");
+            }
+
+            await this.writableClient.v2.like(me.data.id, tweetId);
+
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "likeTweet",
+                endpoint: "v2.like",
+                success: true,
+                tweetId: tweetId,
+            });
+        } catch (error) {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during likeTweet${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
+                method: "likeTweet",
+                endpoint: "v2.like",
+                success: false,
+                tweetId: tweetId,
+                error: error.message,
+            });
+            throw error;
+        }
+    }
+
+    async retweet(tweetId: string): Promise<void> {
+        this.ensureWriteAccess("retweeting");
+
+        if (!tweetId || tweetId.trim().length === 0) {
+            throw new Error("Tweet ID cannot be empty");
+        }
+
+        elizaLogger.log("TWITTER_API_CALL_STARTED", {
+            method: "retweet",
+            endpoint: "v2.retweet",
+            tweetId: tweetId,
+        });
+
+        try {
+            // Get current user ID from the authenticated user
+            const me = await this.writableClient.v2.me();
+            if (!me.data?.id) {
+                throw new Error("Failed to get authenticated user ID");
+            }
+
+            await this.writableClient.v2.retweet(me.data.id, tweetId);
+
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "retweet",
+                endpoint: "v2.retweet",
+                success: true,
+                tweetId: tweetId,
+            });
+        } catch (error) {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during retweet${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
+                method: "retweet",
+                endpoint: "v2.retweet",
+                success: false,
+                tweetId: tweetId,
+                error: error.message,
+            });
+            throw error;
+        }
+    }
+
+    async quoteTweet(
+        text: string,
+        quotedTweetId: string,
+        mediaIds?: string[]
+    ): Promise<Tweet> {
+        if (!text || text.trim().length === 0) {
+            throw new Error("Quote tweet text cannot be empty");
+        }
+
+        if (!quotedTweetId || quotedTweetId.trim().length === 0) {
+            throw new Error("Quoted tweet ID cannot be empty");
+        }
+
+        return this.createTweetInternal(
+            text,
+            "quoteTweet",
+            undefined,
+            mediaIds,
+            { quote_tweet_id: quotedTweetId }
+        );
+    }
+
+    /**
+     * Upload media file using Twitter API v1 (required for media attachments)
+     * Videos and animated GIFs require chunked upload with specific parameters
+     */
+    async uploadMedia(mediaData: Buffer, mediaType: string): Promise<string> {
+        this.ensureWriteAccess("media upload");
+
+        if (!mediaData || mediaData.length === 0) {
+            throw new Error("Media data cannot be empty");
+        }
+
+        const isVideoOrAnimatedGif =
+            mediaType.startsWith("video/") || mediaType === "image/gif";
+
+        elizaLogger.log("TWITTER_API_CALL_STARTED", {
+            method: "uploadMedia",
+            endpoint: "v1.uploadMedia",
+            mediaType: mediaType,
+            size: mediaData.length,
+            isChunked: isVideoOrAnimatedGif,
+        });
+
+        try {
+            let mediaId: string;
+
+            if (isVideoOrAnimatedGif) {
+                // Videos and animated GIFs require chunked upload
+                mediaId = await this.writableClient.v1.uploadMedia(mediaData, {
+                    mimeType: mediaType,
+                    target: "tweet",
+                    chunkLength: 5 * 1024 * 1024, // 5MB chunks
+                });
+            } else {
+                // Images and other media use simple upload
+                mediaId = await this.writableClient.v1.uploadMedia(mediaData, {
+                    mimeType: mediaType,
+                });
+            }
+
+            elizaLogger.log("TWITTER_API_CALL_COMPLETED", {
+                method: "uploadMedia",
+                endpoint: "v1.uploadMedia",
+                success: true,
+                mediaId: mediaId,
+            });
+
+            return mediaId;
+        } catch (error) {
+            if (getErrorCode(error) === 429) {
+                const rateLimitInfo = formatRateLimitInfo(error);
+                elizaLogger.warn(
+                    `Twitter API rate limit triggered during uploadMedia${rateLimitInfo ? ` (${rateLimitInfo})` : ""}`
+                );
+            }
+            elizaLogger.error("TWITTER_API_CALL_COMPLETED", {
+                method: "uploadMedia",
+                endpoint: "v1.uploadMedia",
+                success: false,
+                error: error.message,
+            });
+            throw error;
+        }
     }
 }

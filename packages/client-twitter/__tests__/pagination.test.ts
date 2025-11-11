@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ClientBase } from "../src/base";
 import { IAgentRuntime } from "@elizaos/core";
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "../src/types";
 import { TwitterConfig } from "../src/environment";
 
 // Mock the TwitterApiV2Client
