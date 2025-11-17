@@ -437,10 +437,25 @@ export class AgentRuntime implements IAgentRuntime {
     }
 
     async ensureRoomExists(roomId: UUID) {
-        const room = await this.databaseAdapter.getRoom(roomId);
-        if (!room) {
-            await this.databaseAdapter.createRoom(roomId);
-            elizaLogger.log(`Room ${roomId} created successfully.`);
+        try {
+            const room = await this.databaseAdapter.getRoom(roomId);
+            if (!room) {
+                await this.databaseAdapter.createRoom(roomId);
+                elizaLogger.log(`Room ${roomId} created successfully.`);
+            }
+        } catch (error) {
+            const errorMessage =
+                error instanceof Error ? error.message : String(error);
+            if (
+                errorMessage.includes("duplicate key") ||
+                errorMessage.includes("unique constraint")
+            ) {
+                elizaLogger.warn(
+                    `Room ${roomId} already exists (concurrent creation detected)`
+                );
+                return;
+            }
+            throw error;
         }
     }
 

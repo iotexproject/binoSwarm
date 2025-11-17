@@ -498,7 +498,9 @@ export class TwitterInteractionClient {
     private saveTweet(tweet: Tweet, tweetId: UUID, state: State) {
         elizaLogger.log("tweet does not exist, saving");
         const userIdUUID = stringToUuid(tweet.userId as string);
-        const roomId = stringToUuid(tweet.conversationId);
+        const roomId = stringToUuid(
+            tweet.conversationId + "-" + this.runtime.agentId
+        );
 
         const message = {
             id: tweetId,

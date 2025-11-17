@@ -705,9 +705,10 @@ export class PostgresDatabaseAdapter
     async createRoom(roomId?: UUID): Promise<UUID> {
         return this.withDatabase(async () => {
             const newRoomId = roomId || v4();
-            await this.pool.query("INSERT INTO rooms (id) VALUES ($1)", [
-                newRoomId,
-            ]);
+            await this.pool.query(
+                "INSERT INTO rooms (id) VALUES ($1) ON CONFLICT (id) DO NOTHING",
+                [newRoomId]
+            );
             return newRoomId as UUID;
         }, "createRoom");
     }
