@@ -640,6 +640,13 @@ export class TwitterApiV2Client {
             ? `https://twitter.com/${author.username}/status/${tweetV2.id}`
             : `https://twitter.com/i/web/status/${tweetV2.id}`;
 
+        // Extract parent tweet ID from referenced_tweets
+        // In Twitter API v2, replies have a referenced_tweet with type "replied_to"
+        const parentTweetReference = tweetV2.referenced_tweets?.find(
+            (ref: any) => ref.type === "replied_to"
+        );
+        const inReplyToStatusId = parentTweetReference?.id || undefined;
+
         // Extract quoted tweet ID from referenced_tweets
         const quotedTweet = tweetV2.referenced_tweets?.find(
             (ref: any) => ref.type === "quoted"
@@ -650,7 +657,7 @@ export class TwitterApiV2Client {
             id: tweetV2.id,
             text: tweetV2.text,
             conversationId: tweetV2.conversation_id,
-            inReplyToStatusId: tweetV2.in_reply_to_user_id, // Note: this is user_id, not status_id in v2 API
+            inReplyToStatusId,
             quotedTweetId,
             name: author?.name,
             username: author?.username,
@@ -673,7 +680,7 @@ export class TwitterApiV2Client {
             views: tweetV2.public_metrics?.impression_count,
             isQuoted: !!quotedTweetId,
             isPin: false,
-            isReply: !!tweetV2.in_reply_to_user_id,
+            isReply: !!inReplyToStatusId,
             isRetweet: false,
             isSelfThread: false,
             sensitiveContent: false,
