@@ -66,8 +66,8 @@ trap 'rm -f "$OUTFILE"' EXIT
 echo "Using temporary output file: $OUTFILE"
 
 # Add timeout configuration
-TIMEOUT=300  # 30 seconds represented as 1800 tenths of a second
-INTERVAL=5   # Represent 0.5 seconds as 5 tenths of a second
+TIMEOUT=600  # 60 seconds
+INTERVAL=5   # 0.5 seconds
 TIMER=0
 
 # Start the application and capture logs in the background
