@@ -85,10 +85,34 @@ export class TwitterInteractionClient {
                 await this.prepareTweet(tweet);
             }
 
+            this.updateLastCheckedTweetId(mentions, allUserTweets);
             await this.client.cacheLatestCheckedTweetId();
             elizaLogger.log("Finished checking Twitter interactions");
         } catch (error) {
             elizaLogger.error("Error handling Twitter interactions:", error);
+        }
+    }
+
+    private updateLastCheckedTweetId(mentions: Tweet[], allUserTweets: Tweet[]) {
+        // Update lastCheckedTweetId to the maximum tweet ID from all fetched tweets
+        // This ensures we don't refetch the same tweets even if they were filtered out
+        const allFetchedTweets = [...mentions, ...allUserTweets];
+        if (allFetchedTweets.length > 0) {
+            let maxTweetId: bigint | null = null;
+            for (const tweet of allFetchedTweets) {
+                const tweetId = BigInt(tweet.id);
+                if (maxTweetId === null || tweetId > maxTweetId) {
+                    maxTweetId = tweetId;
+                }
+            }
+
+            // Only update if the max tweet ID is greater than current lastCheckedTweetId
+            if (maxTweetId !== null) {
+                if (!this.client.lastCheckedTweetId ||
+                    maxTweetId > this.client.lastCheckedTweetId) {
+                    this.client.lastCheckedTweetId = maxTweetId;
+                }
+            }
         }
     }
 
