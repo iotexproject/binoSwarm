@@ -23,7 +23,6 @@
         "ioredis": "5.4.2"
     },
     "devDependencies": {
-        "@types/ioredis": "^5.0.0",
         "tsup": "8.3.5"
     },
     "scripts": {
