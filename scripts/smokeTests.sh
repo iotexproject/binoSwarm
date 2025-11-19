@@ -97,6 +97,18 @@ while true; do
         exit 1
     fi
 
+    # Check if process is still alive
+    if ! kill -0 $APP_PID 2>/dev/null; then
+        >&2 echo "ERROR: Application process died unexpectedly after $((TIMER / 10)) seconds"
+        >&2 echo "Dumping full log output for debugging:"
+        if [ -f "$OUTFILE" ]; then
+            >&2 echo "----- FULL LOG OUTPUT -----"
+            >&2 cat "$OUTFILE"
+            >&2 echo "----- END FULL LOG OUTPUT -----"
+        fi
+        exit 1
+    fi
+
     if grep -q ".*REST API bound to 0.0.0.0.*" "$OUTFILE"; then
         >&2 echo "SUCCESS: Direct Client API is ready! Proceeding..."
         break
