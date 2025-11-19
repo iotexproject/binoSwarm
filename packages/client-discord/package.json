@@ -32,7 +32,7 @@
     },
     "devDependencies": {
         "@vitest/coverage-v8": "2.1.5",
-        "tsup": "8.3.5",
+        "tsup": "^8.5.1",
         "vitest": "2.1.5"
     },
     "scripts": {
