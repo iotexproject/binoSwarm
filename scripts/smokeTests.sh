@@ -75,12 +75,25 @@ pnpm start --character=characters/trump.character.json > "$OUTFILE" 2>&1 &
 
 APP_PID=$!  # Capture the PID of the background process
 
-(
-  # Wait for the ready message with timeout
-  while true; do
+# Function to dump current logs
+dump_logs() {
+    echo "----- CURRENT LOG OUTPUT (last 50 lines) -----"
+    tail -n 50 "$OUTFILE" 2>/dev/null || echo "No log output yet"
+    echo "----- END LOG OUTPUT -----"
+}
+
+# Wait for the ready message with timeout
+while true; do
     if (( TIMER >= TIMEOUT )); then
         >&2 echo "ERROR: Timeout waiting for application to start after $((TIMEOUT / 10)) seconds"
-        kill $APP_PID  # Terminate the pnpm process
+        >&2 echo "Dumping full log output for debugging:"
+        dump_logs
+        if [ -f "$OUTFILE" ]; then
+            >&2 echo "----- FULL LOG OUTPUT -----"
+            >&2 cat "$OUTFILE"
+            >&2 echo "----- END FULL LOG OUTPUT -----"
+        fi
+        kill $APP_PID 2>/dev/null || true
         exit 1
     fi
 
@@ -89,10 +102,15 @@ APP_PID=$!  # Capture the PID of the background process
         break
     fi
 
+    # Log progress every 10 seconds (20 iterations)
+    if (( TIMER % 100 == 0 && TIMER > 0 )); then
+        >&2 echo "Still waiting for application to start... ($((TIMER / 10)) seconds elapsed)"
+        dump_logs
+    fi
+
     sleep 0.5
     TIMER=$((TIMER + INTERVAL))
-  done
-)
+done
 
 # Gracefully terminate the application if needed
 if kill -0 $APP_PID 2>/dev/null; then
