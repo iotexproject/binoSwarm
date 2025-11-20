@@ -111,6 +111,7 @@ while true; do
 
     if grep -q ".*REST API bound to 0.0.0.0.*" "$OUTFILE"; then
         >&2 echo "SUCCESS: Direct Client API is ready! Proceeding..."
+        SUCCESS=true
         break
     fi
 
@@ -128,10 +129,8 @@ done
 if kill -0 $APP_PID 2>/dev/null; then
     kill $APP_PID
     wait $APP_PID 2>/dev/null || true
-    RESULT=$?
 else
     echo "Process $APP_PID already terminated"
-    RESULT=0  # Consider successful if process already exited
 fi
 
 # Output logs
@@ -139,17 +138,12 @@ echo "----- OUTPUT START -----"
 cat "$OUTFILE"
 echo "----- OUTPUT END -----"
 
-# Check the application exit code
-if [[ $RESULT -ne 0 ]]; then
-    echo "Error: 'pnpm start' command exited with an error (code: $RESULT)"
-    exit 1
+# If we saw the REST API bind message, consider smoke test successful
+if [[ "${SUCCESS:-false}" == "true" ]]; then
+    echo "Smoke Test completed successfully - REST API bound successfully."
+    exit 0
 fi
 
-# Final validation
-if grep -q "Server closed successfully" "$OUTFILE"; then
-    echo "Smoke Test completed successfully."
-else
-    echo "Error: The output does not contain the expected termination message but was completed."
-    echo "Smoke Test completed without completion message."
-    # Exit gracefully
-fi
+# If we got here without SUCCESS flag, something went wrong
+echo "Error: Smoke test did not complete successfully."
+exit 1
