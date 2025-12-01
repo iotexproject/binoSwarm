@@ -910,10 +910,30 @@ export class PostgresDatabaseAdapter
                 );
                 return true;
             } catch (error) {
-                elizaLogger.error("Error adding participant", error);
-                return false;
+                // Check for unique constraint violation
+                if ((error as { code?: string }).code === "23505") {
+                    elizaLogger.warn("Participant already exists:", {
+                        userId,
+                        roomId,
+                        error:
+                            error instanceof Error
+                                ? error.message
+                                : String(error),
+                    });
+                    return true;
+                } else {
+                    elizaLogger.error("Error adding participant:", {
+                        userId,
+                        roomId,
+                        error:
+                            error instanceof Error
+                                ? error.message
+                                : String(error),
+                    });
+                    return false;
+                }
             }
-        }, "addParticpant");
+        }, "addParticipant");
     }
 
     async removeParticipant(userId: UUID, roomId: UUID): Promise<boolean> {
