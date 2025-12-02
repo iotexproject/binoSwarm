@@ -37,7 +37,7 @@
         "@tavily/core": "^0.0.2",
         "@types/fluent-ffmpeg": "2.1.27",
         "@types/mocha": "10.0.10",
-        "@types/node": "22.8.4",
+        "@types/node": "^22.8.4",
         "@types/pdfjs-dist": "2.10.378",
         "@types/tar": "6.1.13",
         "@types/uuid": "10.0.0",
