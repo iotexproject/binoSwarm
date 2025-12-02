@@ -8,7 +8,6 @@ export default [
             "**/dist/*",
             "**/types/*",
             "**/scripts/concatenated-output.ts",
-            "rollup.config.js",
             "docs/",
         ],
     },
