@@ -20,7 +20,12 @@
             "extra-files": [
                 "lerna.json",
                 "agent/package.json",
-                "packages/**/package.json"
+                {
+                    "type": "json",
+                    "path": "packages/**/package.json",
+                    "glob": true,
+                    "jsonpath": "$.version"
+                }
             ]
         }
     }
