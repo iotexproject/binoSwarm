@@ -14,7 +14,8 @@
                 { "type": "docs", "section": "Documentation" },
                 { "type": "chore", "section": "Miscellaneous", "hidden": true },
                 { "type": "test", "section": "Tests", "hidden": true },
-                { "type": "style", "section": "Style", "hidden": true }
+                { "type": "style", "section": "Style", "hidden": true },
+                { "type": "ci", "section": "CI", "hidden": true }
             ],
             "extra-files": [
                 "lerna.json",
