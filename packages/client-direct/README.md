@@ -64,3 +64,152 @@ And the response body:
     "global": true
 }
 ```
+
+## Endpoints
+
+### GET `/`
+
+Health check endpoint.
+
+**Response:**
+
+```text
+Welcome to the DePIN Revolution's Command Center! This RESTful API is your gateway to the future of decentralized infrastructure. Ready to build something legendary? 🚀
+```
+
+---
+
+### GET `/hello`
+
+Alternative health check endpoint.
+
+**Response:**
+
+```text
+Hey there! You've just accessed the epicenter of the DePIN revolution's neural network! This isn't just any REST API - it's your gateway to the decentralized future! Ready to build something legendary? 🚀
+```
+
+---
+
+### GET `/agents`
+
+Retrieve list of available agents.
+
+**Response:**
+
+```json
+{
+  "agents": [
+    {
+      "id": "agent-uuid",
+      "name": "Agent Name",
+      "clients": ["direct", "discord"]
+    }
+  ]
+}
+```
+
+**Fields:**
+
+- `id`: Unique agent identifier
+- `name`: Agent's character name
+- `clients`: Active client connections
+
+---
+
+### POST `/:agentId/message-paid`
+
+**x402-powered endpoint** for sending messages to agents with micropayment support.
+
+This endpoint uses the x402 protocol for blockchain-based micropayments. Requests must be wrapped with x402 payment handling.
+
+**URL Parameters:**
+
+- `agentId`: The target agent's UUID
+
+**Request Body:**
+
+```json
+{
+  "text": "Your message here",
+  "roomId": "unique-room-identifier",
+  "userId": "user-identifier"
+}
+```
+
+**Fields:**
+
+- `text` (required): Message content
+- `roomId` (required): Conversation room identifier
+- `userId` (required): Sender identifier
+
+**Response:**
+
+Server-Sent Events (SSE) stream. Each event is prefixed with `data:`.
+
+**Usage Example:**
+
+```typescript
+import { createWalletClient, http, walletActions } from "viem";
+import { iotex } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
+import { wrapFetchWithPayment } from "x402-fetch";
+
+// Setup wallet client
+const account = privateKeyToAccount(process.env.EVM_PRIVATE_KEY);
+const walletClient = createWalletClient({
+  chain: iotex,
+  transport: http(iotex.rpcUrls.default.http[0]),
+  account,
+}).extend(walletActions);
+
+// Wrap fetch with x402 payment
+const fetchWithPayment = wrapFetchWithPayment(fetch, walletClient);
+
+// Make request
+const response = await fetchWithPayment(
+  "http://AGENT_API_URL/:agentId/message-paid",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: "Hello, agent!",
+      roomId: "unique-room-id",
+      userId: Date.now().toString(),
+    }),
+  }
+);
+
+// Process SSE stream
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+let buffer = "";
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  buffer += decoder.decode(value, { stream: true });
+  const lines = buffer.split("\n");
+  buffer = lines.pop() || "";
+
+  for (const line of lines) {
+    if (line.startsWith("data: ")) {
+      const data = line.substring(6).trim();
+      console.log(data); // Handle agent response
+    }
+  }
+}
+```
+
+**Requirements:**
+
+- EVM-compatible wallet with IoTeX chain support
+- Private key for transaction signing
+- x402-fetch library
+
+---
+
+## Rate Limits
+
+All endpoints are protected by rate limiting. Excessive requests will receive `429 Too Many Requests` responses.
