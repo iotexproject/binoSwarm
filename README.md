@@ -25,6 +25,7 @@ _Originally forked from [ElizaOS](https://github.com/elizaOS/eliza) — credits 
 - 💾 **Privacy-first memory:** Smart retention that remembers what matters, forgets what doesn't. Auto-deletes old data and wipes everything on user request
 - 🔧 **Infinitely hackable:** Built to be broken apart and rebuilt. Create custom actions, clients, whatever your heart desires
 - 📦 **MCP ready:** Connect your own servers because vendor lock-in is for the weak
+- 💸 **x402 payments (both directions):** run agents as **x402 paywalled servers** (serve paid endpoints like `/:agentId/message-paid` via the Direct Client) and as **x402 clients** (consume other paywalled endpoints via `@elizaos/plugin-swarm`). See `packages/client-direct/README.md` and `packages/plugin-swarm/README.md`.
 
 ## 🎯 What You'll Build
 
