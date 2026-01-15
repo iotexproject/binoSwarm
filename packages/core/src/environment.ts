@@ -146,6 +146,7 @@ export const CharacterSchema = z.object({
                     description: z.string(),
                     command: z.string(),
                     args: z.array(z.string()),
+                    env: z.record(z.string()).optional(),
                     url: z.undefined().optional(), // Enforce XOR: url must be undefined if command/args are present
                 }),
                 z.object({
