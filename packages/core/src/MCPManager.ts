@@ -10,12 +10,44 @@ export class MCPManager {
         // Constructor initializes an empty array for MCP clients.
     }
 
+    private resolveStdioEnv(
+        serverConfig: MCPServerConfig
+    ): Record<string, string> {
+        if (!serverConfig.env) {
+            return {};
+        }
+
+        const resolvedEnv: Record<string, string> = {};
+        for (const [envKey, processEnvVarName] of Object.entries(
+            serverConfig.env
+        )) {
+            const value = process.env[processEnvVarName];
+            if (value === undefined) {
+                elizaLogger.warn(
+                    `MCP server env variable ${processEnvVarName} (mapped to ${envKey}) not found in process.env. Skipping.`
+                );
+                continue;
+            }
+            resolvedEnv[envKey] = value;
+        }
+        return resolvedEnv;
+    }
+
     private async initializeStdioClient(serverConfig: MCPServerConfig) {
+        const env = this.resolveStdioEnv(serverConfig);
+        const transportConfig: {
+            command: string;
+            args: string[];
+            env?: Record<string, string>;
+        } = {
+            command: serverConfig.command!,
+            args: serverConfig.args!,
+        };
+        if (Object.keys(env).length > 0) {
+            transportConfig.env = env;
+        }
         return await createMCPClient({
-            transport: new StdioMCPTransport({
-                command: serverConfig.command!,
-                args: serverConfig.args!,
-            }),
+            transport: new StdioMCPTransport(transportConfig),
             onUncaughtError(error) {
                 elizaLogger.error("MCP STDIO uncaught error:", error);
             },
