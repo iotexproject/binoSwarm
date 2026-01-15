@@ -257,4 +257,101 @@ describe("MCPManager", () => {
             toolA: { description: "A2" },
         });
     });
+
+    it("should resolve env variables from process.env and pass to stdio transport", async () => {
+        const originalEnv = process.env;
+        process.env = {
+            ...originalEnv,
+            TEST_API_KEY: "test-key-value",
+            TEST_SECRET: "test-secret-value",
+        };
+
+        const character = {
+            mcpServers: {
+                server1: {
+                    description: "Test server",
+                    command: "node",
+                    args: ["server1.js"],
+                    env: {
+                        API_KEY: "TEST_API_KEY",
+                        SECRET: "TEST_SECRET",
+                    },
+                },
+            },
+        } as unknown as Character;
+
+        await mcpManager.initialize(character);
+
+        expect(mockStdioMCPTransport).toHaveBeenCalledWith(
+            expect.objectContaining({
+                command: "node",
+                args: ["server1.js"],
+                env: {
+                    API_KEY: "test-key-value",
+                    SECRET: "test-secret-value",
+                },
+            })
+        );
+
+        process.env = originalEnv;
+    });
+
+    it("should skip missing env variables and log warning", async () => {
+        const originalEnv = process.env;
+        process.env = {
+            ...originalEnv,
+            EXISTING_VAR: "existing-value",
+        };
+
+        const character = {
+            mcpServers: {
+                server1: {
+                    description: "Test server",
+                    command: "node",
+                    args: ["server1.js"],
+                    env: {
+                        EXISTING: "EXISTING_VAR",
+                        MISSING: "MISSING_VAR",
+                    },
+                },
+            },
+        } as unknown as Character;
+
+        await mcpManager.initialize(character);
+
+        expect(mockStdioMCPTransport).toHaveBeenCalledWith(
+            expect.objectContaining({
+                command: "node",
+                args: ["server1.js"],
+                env: {
+                    EXISTING: "existing-value",
+                },
+            })
+        );
+
+        expect(mockElizaLogger.warn).toHaveBeenCalledWith(
+            "MCP server env variable MISSING_VAR (mapped to MISSING) not found in process.env. Skipping."
+        );
+
+        process.env = originalEnv;
+    });
+
+    it("should not pass env to transport when env config is empty", async () => {
+        const character = {
+            mcpServers: {
+                server1: {
+                    description: "Test server",
+                    command: "node",
+                    args: ["server1.js"],
+                },
+            },
+        } as unknown as Character;
+
+        await mcpManager.initialize(character);
+
+        expect(mockStdioMCPTransport).toHaveBeenCalledWith({
+            command: "node",
+            args: ["server1.js"],
+        });
+    });
 });

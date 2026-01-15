@@ -870,6 +870,7 @@ export interface MCPServerConfig {
     description: string;
     command?: string;
     args?: string[];
+    env?: Record<string, string>;
     url?: string;
 }
 
