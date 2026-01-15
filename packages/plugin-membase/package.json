@@ -1,6 +1,6 @@
 {
     "name": "@elizaos-plugins/plugin-membase",
-    "version": "0.2.0",
+    "version": "0.1.8",
     "type": "module",
     "main": "dist/index.js",
     "module": "dist/index.js",
