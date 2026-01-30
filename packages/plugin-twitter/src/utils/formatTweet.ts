@@ -40,11 +40,15 @@ function formatMedia(tweet: Tweet): string[] {
 
     if (hasPhotos) {
         const photoCount = tweet.photos.length;
-        lines.push(`${photoCount} photo${photoCount === 1 ? "" : "s"} attached`);
+        lines.push(
+            `${photoCount} photo${photoCount === 1 ? "" : "s"} attached`
+        );
     }
     if (hasVideos) {
         const videoCount = tweet.videos.length;
-        lines.push(`${videoCount} video${videoCount === 1 ? "" : "s"} attached`);
+        lines.push(
+            `${videoCount} video${videoCount === 1 ? "" : "s"} attached`
+        );
     }
     if (hasPhotos || hasVideos) {
         lines.push(EMPTY_LINE);
@@ -122,12 +126,15 @@ function getRelativeTime(timestamp?: number): string {
 export function formatTweet(tweet: Tweet): string {
     const lines: string[] = [];
 
-    // Header: Author info
-    lines.push(`${tweet.name} (@${tweet.username})`);
+    // Header: Author info with null safety
+    const name = tweet.name ?? "Unknown";
+    const username = tweet.username ?? "unknown";
+    lines.push(`${name} (@${username})`);
     lines.push(EMPTY_LINE);
 
-    // Tweet text
-    lines.push(tweet.text);
+    // Tweet text with null safety
+    const text = tweet.text ?? "";
+    lines.push(text);
     lines.push(EMPTY_LINE);
 
     // Engagement metrics
