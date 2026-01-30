@@ -1,16 +1,16 @@
 import type { Plugin } from "@elizaos/core";
+import { readTweetAction } from "./actions/readTweet";
+
+const PLUGIN_NAME = "twitter";
+const PLUGIN_DESCRIPTION = "Twitter plugin";
 
 export const twitterPlugin: Plugin = {
-    name: "twitter",
-    description: "Twitter plugin",
+    name: PLUGIN_NAME,
+    description: PLUGIN_DESCRIPTION,
     providers: [],
-    evaluators: [
-        // Add evaluators here
-    ],
-    services: [
-        // Add services here
-    ],
-    actions: [],
+    evaluators: [],
+    services: [],
+    actions: [readTweetAction],
 };
 
 export default twitterPlugin;

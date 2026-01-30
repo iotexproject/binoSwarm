@@ -36,9 +36,7 @@ function isTwitterApiError(
 /**
  * Type guard to validate tweet structure before formatting
  */
-function isValidTweet(
-    tweet: unknown
-): tweet is {
+function isValidTweet(tweet: unknown): tweet is {
     text?: string;
     name?: string;
     username?: string;
@@ -225,6 +223,7 @@ async function readTweetHandler(
 export const readTweetAction: Action = {
     name: "READ_TWEET",
     similes: [
+        "READ_TWEET",
         "READ_POST",
         "READ_TWEET_URL",
         "FETCH_TWEET",
