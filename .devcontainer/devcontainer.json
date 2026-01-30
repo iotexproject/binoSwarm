@@ -1,0 +1,46 @@
+{
+    "name": "BinoSwarm Dev",
+    "build": {
+        "dockerfile": "Dockerfile.dev",
+        "context": ".."
+    },
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "ms-vscode.vscode-typescript-next",
+                "vitest.explorer"
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "zsh",
+                "editor.formatOnSave": true,
+                "editor.defaultFormatter": "esbenp.prettier-vscode",
+                "typescript.tsdk": "node_modules/typescript/lib",
+                "eslint.workingDirectories": [
+                    "./agent",
+                    "./packages/*"
+                ]
+            }
+        }
+    },
+    "remoteUser": "node",
+    "forwardPorts": [
+        3000
+    ],
+    "portsAttributes": {
+        "3000": {
+            "label": "Agent Server",
+            "onAutoForward": "notify"
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": true,
+            "installOhMyZsh": true,
+            "upgradePackages": true,
+            "installSsl": true
+        }
+    }
+}
