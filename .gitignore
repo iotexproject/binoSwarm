@@ -76,3 +76,8 @@ scripts/tweets.json
 
 .tdd_archive
 packages/plugin-twitter/.tdd_context.md
+
+# Feature cycle context files
+.feature_context.md
+.tdd_context.md
+.tdd_archive/
