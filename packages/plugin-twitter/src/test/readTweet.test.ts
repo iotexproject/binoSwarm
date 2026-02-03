@@ -1,6 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { IAgentRuntime, Memory, State, HandlerCallback } from "@elizaos/core";
 
+// Mock @elizaos/core at module level to properly mock LLM functions
+vi.mock("@elizaos/core", async () => {
+    const actual = await vi.importActual("@elizaos/core");
+    return {
+        ...actual,
+        elizaLogger: {
+            log: vi.fn(),
+            error: vi.fn(),
+            info: vi.fn(),
+            debug: vi.fn(),
+        },
+        composeContext: vi.fn().mockReturnValue("mocked context"),
+        generateMessageResponse: vi.fn().mockResolvedValue({
+            text: "Mocked LLM response",
+        }),
+    };
+});
+
+// Mock the client module at module level
+vi.mock("../client", () => ({
+    createTwitterReadClient: vi.fn(),
+}));
+
 // Import the action handler
 import { readTweet } from "../actions/readTweet";
 
@@ -528,6 +551,447 @@ describe("AC8: comprehensive test coverage validation", () => {
         ];
         expectedDescribeBlocks.forEach((block) => {
             expect(typeof block).toBe("string");
+        });
+    });
+});
+
+describe("AC9: State management with updateRecentMessageState", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockTwitterClient: MockTwitterClient;
+    let mockState: State;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        mockState = {} as State;
+        vi.clearAllMocks();
+
+        // Setup mock Twitter client
+        mockTwitterClient = {
+            v2: {
+                getTweet: vi.fn(),
+            },
+        };
+        mockRuntime.clients = {
+            twitter: mockTwitterClient,
+        };
+
+        // Mock runtime methods
+        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
+        (mockRuntime as any).updateRecentMessageState = vi.fn().mockResolvedValue({
+            ...mockState,
+            updatedAt: Date.now(),
+        });
+    });
+
+    it("should call updateRecentMessageState when state exists and function is available", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock successful tweet response
+        mockTwitterClient.v2.getTweet.mockResolvedValue({
+            data: {
+                id: "1234567890",
+                text: "Test tweet",
+                author_id: "user123",
+            },
+        });
+
+        // Set updateRecentMessageState as a function
+        const updatedState = {
+            ...mockState,
+            recentMessages: ["message1", "message2"],
+        };
+        (mockRuntime as any).updateRecentMessageState = vi
+            .fn()
+            .mockResolvedValue(updatedState);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify updateRecentMessageState was called
+        expect(mockRuntime.updateRecentMessageState).toHaveBeenCalledWith(mockState);
+
+        // Verify callback was called with LLM response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should handle state with updateRecentMessageState returning updated state", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock successful tweet response
+        mockTwitterClient.v2.getTweet.mockResolvedValue({
+            data: {
+                id: "1234567890",
+                text: "Test tweet",
+                author_id: "user123",
+            },
+        });
+
+        // Create updated state
+        const updatedState = {
+            ...mockState,
+            tweetData: null,
+            recentMessages: ["msg1", "msg2"],
+        };
+
+        (mockRuntime as any).updateRecentMessageState = vi
+            .fn()
+            .mockResolvedValue(updatedState);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify the flow completes successfully
+        expect(mockRuntime.updateRecentMessageState).toHaveBeenCalled();
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith("1234567890");
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+});
+
+describe("AC10: Generic/unexpected error handling", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockTwitterClient: MockTwitterClient;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        vi.clearAllMocks();
+
+        // Setup mock Twitter client
+        mockTwitterClient = {
+            v2: {
+                getTweet: vi.fn(),
+            },
+        };
+        mockRuntime.clients = {
+            twitter: mockTwitterClient,
+        };
+    });
+
+    it("should handle API errors without code or status properties", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock Twitter API to return error without code/status
+        const apiError = new Error("Something went wrong");
+        delete (apiError as any).code;
+        delete (apiError as any).status;
+        mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "I couldn't read this tweet",
+        });
+    });
+
+    it("should handle plain object errors without code or status", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock Twitter API to return plain object error
+        const plainError = {
+            message: "Unknown error occurred",
+            data: { some: "info" },
+        };
+        delete (plainError as any).code;
+        delete (plainError as any).status;
+        mockTwitterClient.v2.getTweet.mockRejectedValue(plainError);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "I couldn't read this tweet",
+        });
+    });
+
+    it("should handle string errors from API", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock Twitter API to return string error
+        mockTwitterClient.v2.getTweet.mockRejectedValue("API request failed");
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "I couldn't read this tweet",
+        });
+    });
+
+    it("should handle unexpected errors in outer catch block", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock composeState to throw unexpected error
+        (mockRuntime as any).composeState = vi.fn().mockImplementation(() => {
+            throw new Error("Unexpected system failure");
+        });
+
+        await readTweet(mockRuntime, message, null, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "I couldn't read this tweet",
+        });
+    });
+
+    it("should handle errors without message property", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock error without message property
+        const errorWithoutMessage = { some: "property" };
+        delete (errorWithoutMessage as any).code;
+        delete (errorWithoutMessage as any).status;
+        delete (errorWithoutMessage as any).message;
+        mockTwitterClient.v2.getTweet.mockRejectedValue(errorWithoutMessage);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "I couldn't read this tweet",
+        });
+    });
+
+    it("should handle null errors", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock null error
+        mockTwitterClient.v2.getTweet.mockRejectedValue(null);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "I couldn't read this tweet",
+        });
+    });
+
+    it("should handle undefined errors", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock undefined error
+        mockTwitterClient.v2.getTweet.mockRejectedValue(undefined);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "I couldn't read this tweet",
+        });
+    });
+});
+
+describe("AC11: Lightweight read client creation path", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockState: State;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        mockState = {} as State;
+        vi.clearAllMocks();
+
+        // NO Twitter client in runtime - triggers lightweight client creation
+        mockRuntime.clients = {};
+
+        // Mock runtime methods
+        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
+    });
+
+    it("should create lightweight read client when twitter client not loaded", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock the createTwitterReadClient function
+        const mockReadClient = {
+            getTweet: vi.fn().mockResolvedValue({
+                data: {
+                    id: "1234567890",
+                    text: "Test tweet",
+                    author_id: "user123",
+                },
+            }),
+        };
+
+        // We need to mock the module
+        const { createTwitterReadClient } = await import("../client");
+        vi.mocked(createTwitterReadClient).mockResolvedValue(mockReadClient as any);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify createTwitterReadClient was called
+        expect(createTwitterReadClient).toHaveBeenCalledWith(mockRuntime);
+
+        // Verify callback was called with LLM response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should handle read client creation failure", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock the createTwitterReadClient function to return null (failure)
+        const { createTwitterReadClient } = await import("../client");
+        vi.mocked(createTwitterReadClient).mockResolvedValue(null as any);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify callback was called with error message
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "I couldn't read this tweet",
+        });
+    });
+
+    it("should use lightweight client to fetch tweet", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock the createTwitterReadClient function
+        const mockGetTweet = vi.fn().mockResolvedValue({
+            data: {
+                id: "1234567890",
+                text: "Test tweet content",
+            },
+        });
+
+        const mockReadClient = {
+            getTweet: mockGetTweet,
+        };
+
+        const { createTwitterReadClient } = await import("../client");
+        vi.mocked(createTwitterReadClient).mockResolvedValue(mockReadClient as any);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify the lightweight client's getTweet was called
+        expect(mockGetTweet).toHaveBeenCalledWith("1234567890");
+
+        // Verify callback was called with LLM response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+});
+
+describe("AC12: Tweet data validation", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockTwitterClient: MockTwitterClient;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        vi.clearAllMocks();
+
+        // Setup mock Twitter client
+        mockTwitterClient = {
+            v2: {
+                getTweet: vi.fn(),
+            },
+        };
+        mockRuntime.clients = {
+            twitter: mockTwitterClient,
+        };
+    });
+
+    it("should handle when tweetData is null", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock getTweet to return null (no data)
+        mockTwitterClient.v2.getTweet.mockResolvedValue(null);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "This tweet is not available",
+        });
+    });
+
+    it("should handle when tweetData is undefined", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock getTweet to return undefined
+        mockTwitterClient.v2.getTweet.mockResolvedValue(undefined);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "This tweet is not available",
+        });
+    });
+
+    it("should handle when tweetData is falsy (0)", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock getTweet to return 0 (falsy value)
+        mockTwitterClient.v2.getTweet.mockResolvedValue(0 as any);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "This tweet is not available",
+        });
+    });
+
+    it("should handle when tweetData is false", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock getTweet to return false (falsy value)
+        mockTwitterClient.v2.getTweet.mockResolvedValue(false as any);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "This tweet is not available",
+        });
+    });
+
+    it("should handle when tweetData is empty string", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock getTweet to return empty string (falsy value)
+        mockTwitterClient.v2.getTweet.mockResolvedValue("" as any);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "This tweet is not available",
         });
     });
 });

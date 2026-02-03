@@ -6,9 +6,12 @@ import {
     State,
     HandlerCallback,
     elizaLogger,
+    composeContext,
+    generateMessageResponse,
 } from "@elizaos/core";
 import { extractTweetId } from "../utils/extractTweetId";
-import { formatTweet } from "../utils/formatTweet";
+import { createTwitterReadClient } from "../client";
+import { tweetResponseTemplate } from "../template";
 
 const INVALID_URL_MESSAGE =
     "I couldn't read that URL. Please make sure it's a valid Twitter/X link.";
@@ -34,18 +37,6 @@ function isTwitterApiError(
 }
 
 /**
- * Type guard to validate tweet structure before formatting
- */
-function isValidTweet(tweet: unknown): tweet is {
-    text?: string;
-    name?: string;
-    username?: string;
-    [key: string]: unknown;
-} {
-    return typeof tweet === "object" && tweet !== null;
-}
-
-/**
  * Extracts the first Twitter/X URL from message text
  */
 function extractTwitterUrl(text: string): string | null {
@@ -57,9 +48,13 @@ function extractTwitterUrl(text: string): string | null {
 
 /**
  * READ_TWEET action handler function
- * Reads a tweet from a Twitter/X URL and returns formatted content
+ * Reads a tweet from a Twitter/X URL and uses LLM to generate a response
  *
- * This handler can be called as readTweet(runtime, message, state, options, callback)
+ * This handler follows the lightweight LLM-driven pattern:
+ * 1. Validates URL and extracts tweet ID
+ * 2. Fetches raw tweet data from Twitter API
+ * 3. Passes data to LLM via template context
+ * 4. LLM generates persona-aware, contextual response
  */
 async function readTweetHandler(
     runtime: IAgentRuntime,
@@ -69,6 +64,13 @@ async function readTweetHandler(
     callback?: HandlerCallback
 ): Promise<boolean> {
     try {
+        // Initialize state if needed
+        if (!state) {
+            state = (await runtime.composeState(message)) as State;
+        } else if (typeof runtime.updateRecentMessageState === "function") {
+            state = await runtime.updateRecentMessageState(state);
+        }
+
         // Extract Twitter URL from message text
         const twitterUrl = extractTwitterUrl(message.content.text);
 
@@ -94,27 +96,44 @@ async function readTweetHandler(
             return false;
         }
 
-        // Get Twitter client from runtime
-        const twitterClient = runtime.clients["twitter"] as unknown as {
+        // Try to get Twitter client from runtime first (for full client support)
+        let twitterClient = runtime.clients["twitter"] as unknown as {
             v2: {
                 getTweet: (tweetId: string) => Promise<any>;
             };
         };
 
+        // If Twitter client not loaded, create a lightweight read client
         if (!twitterClient || !twitterClient.v2) {
-            elizaLogger.error("Twitter client not available in runtime");
-            if (callback) {
-                callback({
-                    text: TWEET_READ_ERROR_MESSAGE,
-                });
+            elizaLogger.debug(
+                "Twitter client not loaded in runtime, creating lightweight read client"
+            );
+            const readClient = await createTwitterReadClient(runtime);
+
+            if (!readClient) {
+                elizaLogger.error(
+                    "Failed to create Twitter read client - TWITTER_BEARER_TOKEN may be missing"
+                );
+                if (callback) {
+                    callback({
+                        text: TWEET_READ_ERROR_MESSAGE,
+                    });
+                }
+                return false;
             }
-            return false;
+
+            // Wrap the read client to match the expected interface
+            twitterClient = {
+                v2: {
+                    getTweet: (tweetId: string) => readClient.getTweet(tweetId),
+                },
+            };
         }
 
-        // Fetch tweet
-        let tweet;
+        // Fetch tweet data
+        let tweetData;
         try {
-            tweet = await twitterClient.v2.getTweet(tweetId);
+            tweetData = await twitterClient.v2.getTweet(tweetId);
         } catch (error) {
             // Safely extract error code using type guard
             let errorCode: number | undefined;
@@ -163,7 +182,7 @@ async function readTweetHandler(
         }
 
         // Check if tweet was found
-        if (!tweet) {
+        if (!tweetData) {
             if (callback) {
                 callback({
                     text: TWEET_NOT_AVAILABLE_MESSAGE,
@@ -172,36 +191,23 @@ async function readTweetHandler(
             return false;
         }
 
-        // Validate tweet structure before formatting
-        if (!isValidTweet(tweet)) {
-            elizaLogger.error("Invalid tweet structure received from API");
-            if (callback) {
-                callback({
-                    text: TWEET_READ_ERROR_MESSAGE,
-                });
-            }
-            return false;
-        }
+        // Pass tweet data to LLM for processing
+        state.tweetData = JSON.stringify(tweetData, null, 2);
 
-        // Format tweet for display with defensive error handling
-        let formattedTweet: string;
-        try {
-            formattedTweet = formatTweet(tweet as any);
-        } catch (error) {
-            elizaLogger.error("Error formatting tweet:", error);
-            if (callback) {
-                callback({
-                    text: TWEET_READ_ERROR_MESSAGE,
-                });
-            }
-            return false;
-        }
+        // Generate LLM response
+        const context = composeContext({
+            state,
+            template: tweetResponseTemplate,
+        });
 
-        // Send formatted tweet as response
+        const response = await generateMessageResponse({
+            runtime,
+            context,
+            state,
+        });
+
         if (callback) {
-            callback({
-                text: formattedTweet,
-            });
+            callback({ ...response, inReplyTo: message.id });
         }
 
         return true;
@@ -218,7 +224,7 @@ async function readTweetHandler(
 
 /**
  * READ_TWEET action
- * Reads a tweet from a Twitter/X URL and returns formatted content
+ * Reads a tweet from a Twitter/X URL and uses LLM to generate a contextual response
  */
 export const readTweetAction: Action = {
     name: "READ_TWEET",
@@ -233,7 +239,7 @@ export const readTweetAction: Action = {
         "READ_STATUS",
     ],
     description:
-        "Reads a tweet from a Twitter/X URL and returns its content including text, author, metrics, and media information. Use this when the user provides a tweet URL or asks about a specific tweet.",
+        "Reads a tweet from a Twitter/X URL and provides a contextual analysis. Use this when the user provides a tweet URL or asks about a specific tweet. The action fetches the tweet data and generates a persona-aware response based on the user's question.",
     suppressInitialMessage: true,
     validate: async (_runtime: IAgentRuntime, _message: Memory) => {
         return true;
