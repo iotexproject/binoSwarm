@@ -48,6 +48,19 @@ function extractTwitterUrl(text: string): string | null {
 }
 
 /**
+ * Extract image URLs from tweet data
+ */
+function extractImageUrls(tweetData: any): string[] {
+    const photos = tweetData.data?.photos;
+
+    if (!photos || photos.length === 0) {
+        return [];
+    }
+
+    return photos.map((photo: any) => photo.url).filter((url: string) => url);
+}
+
+/**
  * READ_TWEET action handler function
  * Reads a tweet from a Twitter/X URL and uses LLM to generate a response
  *
@@ -192,8 +205,12 @@ async function readTweetHandler(
             return false;
         }
 
+        // Extract image URLs from tweet
+        const imageUrls = extractImageUrls(tweetData);
+
         // Pass tweet data to LLM for processing
         state.tweetData = JSON.stringify(tweetData, null, 2);
+        state.imageUrls = imageUrls;
 
         // Generate LLM response
         const context = composeContext({

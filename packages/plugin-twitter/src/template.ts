@@ -10,6 +10,13 @@ You are analyzing a tweet from Twitter/X. The raw API response data is provided 
 {{tweetData}}
 \`\`\`
 
+{{#imageUrls}}
+Images in this tweet:
+{{#each imageUrls}}
+- {{this}}
+{{/each}}
+{{/imageUrls}}
+
 # User's Request
 
 {{currentMessage}}

@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { IAgentRuntime, Memory, State, HandlerCallback } from "@elizaos/core";
+import type {
+    IAgentRuntime,
+    Memory,
+    State,
+    HandlerCallback,
+} from "@elizaos/core";
 
 // Mock @elizaos/core at module level to properly mock LLM functions
 vi.mock("@elizaos/core", async () => {
@@ -74,9 +79,17 @@ describe("READ_TWEET action - Error Handling", () => {
 
     describe("AC4: Invalid URL format", () => {
         it("should return user-friendly error when URL format is invalid - non-twitter URL", async () => {
-            const message = createMockMessage("Check out this post: https://facebook.com/post/123");
+            const message = createMockMessage(
+                "Check out this post: https://facebook.com/post/123"
+            );
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
@@ -86,7 +99,13 @@ describe("READ_TWEET action - Error Handling", () => {
         it("should return user-friendly error for malformed URL", async () => {
             const message = createMockMessage("not-a-valid-url");
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
@@ -96,7 +115,13 @@ describe("READ_TWEET action - Error Handling", () => {
         it("should return user-friendly error for URL without username", async () => {
             const message = createMockMessage("https://x.com/status/123");
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
@@ -106,7 +131,13 @@ describe("READ_TWEET action - Error Handling", () => {
         it("should return user-friendly error for URL without status path", async () => {
             const message = createMockMessage("https://x.com/user/tweets/123");
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
@@ -116,7 +147,13 @@ describe("READ_TWEET action - Error Handling", () => {
         it("should return user-friendly error for empty URL", async () => {
             const message = createMockMessage("");
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
@@ -126,7 +163,13 @@ describe("READ_TWEET action - Error Handling", () => {
         it("should return user-friendly error for URL with just domain", async () => {
             const message = createMockMessage("https://x.com");
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
@@ -136,7 +179,13 @@ describe("READ_TWEET action - Error Handling", () => {
         it("should return user-friendly error for URL with non-numeric tweet ID", async () => {
             const message = createMockMessage("https://x.com/user/status/abc");
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
@@ -169,7 +218,13 @@ describe("READ_TWEET action - Error Handling", () => {
             apiError.errors = [{ message: "No status found with that ID." }];
             mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "This tweet is not available",
@@ -184,10 +239,18 @@ describe("READ_TWEET action - Error Handling", () => {
             // Mock Twitter API to return 403 Forbidden
             const apiError = new Error("Forbidden") as any;
             apiError.code = 403;
-            apiError.errors = [{ message: "You are not permitted to view this tweet." }];
+            apiError.errors = [
+                { message: "You are not permitted to view this tweet." },
+            ];
             mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read this tweet",
@@ -205,7 +268,13 @@ describe("READ_TWEET action - Error Handling", () => {
             apiError.errors = [{ message: "User has been suspended." }];
             mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read this tweet",
@@ -223,7 +292,13 @@ describe("READ_TWEET action - Error Handling", () => {
             apiError.errors = [{ message: "No status found with that ID." }];
             mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "This tweet is not available",
@@ -240,7 +315,13 @@ describe("READ_TWEET action - Error Handling", () => {
             apiError.code = 500;
             mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "I couldn't read this tweet",
@@ -275,7 +356,13 @@ describe("READ_TWEET action - Error Handling", () => {
             };
             mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "Rate limit reached. Please try again later.",
@@ -295,7 +382,13 @@ describe("READ_TWEET action - Error Handling", () => {
             };
             mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "Rate limit reached. Please try again later.",
@@ -312,7 +405,13 @@ describe("READ_TWEET action - Error Handling", () => {
             apiError.code = 429;
             mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
 
-            await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+            await readTweet(
+                mockRuntime,
+                message,
+                {} as State,
+                {},
+                mockCallback
+            );
 
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "Rate limit reached. Please try again later.",
@@ -410,7 +509,9 @@ describe("AC7: readTweet action properties", () => {
         const mockMessage = createMockMessage("test message");
 
         // Mock getSetting to return a valid bearer token
-        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("test_bearer_token");
+        (mockRuntime.getSetting as any) = vi
+            .fn()
+            .mockReturnValue("test_bearer_token");
 
         const result = await readTweetAction.validate(mockRuntime, mockMessage);
         expect(result).toBe(true);
@@ -581,11 +682,15 @@ describe("AC9: State management with updateRecentMessageState", () => {
         };
 
         // Mock runtime methods
-        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
-        (mockRuntime as any).updateRecentMessageState = vi.fn().mockResolvedValue({
-            ...mockState,
-            updatedAt: Date.now(),
-        });
+        (mockRuntime as any).composeState = vi
+            .fn()
+            .mockResolvedValue(mockState);
+        (mockRuntime as any).updateRecentMessageState = vi
+            .fn()
+            .mockResolvedValue({
+                ...mockState,
+                updatedAt: Date.now(),
+            });
     });
 
     it("should call updateRecentMessageState when state exists and function is available", async () => {
@@ -614,7 +719,9 @@ describe("AC9: State management with updateRecentMessageState", () => {
         await readTweet(mockRuntime, message, mockState, {}, mockCallback);
 
         // Verify updateRecentMessageState was called
-        expect(mockRuntime.updateRecentMessageState).toHaveBeenCalledWith(mockState);
+        expect(mockRuntime.updateRecentMessageState).toHaveBeenCalledWith(
+            mockState
+        );
 
         // Verify callback was called with LLM response
         expect(mockCallback).toHaveBeenCalledWith({
@@ -652,7 +759,9 @@ describe("AC9: State management with updateRecentMessageState", () => {
 
         // Verify the flow completes successfully
         expect(mockRuntime.updateRecentMessageState).toHaveBeenCalled();
-        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith("1234567890");
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(
+            "1234567890"
+        );
         expect(mockCallback).toHaveBeenCalledWith({
             text: "Mocked LLM response",
             inReplyTo: message.id,
@@ -817,7 +926,9 @@ describe("AC11: Lightweight read client creation path", () => {
         mockRuntime.clients = {};
 
         // Mock runtime methods
-        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
+        (mockRuntime as any).composeState = vi
+            .fn()
+            .mockResolvedValue(mockState);
     });
 
     it("should create lightweight read client when twitter client not loaded", async () => {
@@ -838,7 +949,9 @@ describe("AC11: Lightweight read client creation path", () => {
 
         // We need to mock the module
         const { createTwitterReadClient } = await import("../client");
-        vi.mocked(createTwitterReadClient).mockResolvedValue(mockReadClient as any);
+        vi.mocked(createTwitterReadClient).mockResolvedValue(
+            mockReadClient as any
+        );
 
         await readTweet(mockRuntime, message, mockState, {}, mockCallback);
 
@@ -887,7 +1000,9 @@ describe("AC11: Lightweight read client creation path", () => {
         };
 
         const { createTwitterReadClient } = await import("../client");
-        vi.mocked(createTwitterReadClient).mockResolvedValue(mockReadClient as any);
+        vi.mocked(createTwitterReadClient).mockResolvedValue(
+            mockReadClient as any
+        );
 
         await readTweet(mockRuntime, message, mockState, {}, mockCallback);
 
@@ -1022,8 +1137,12 @@ describe("BugFix: generateMessageResponse parameter validation", () => {
         };
 
         // Mock runtime methods
-        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
-        (mockRuntime as any).updateRecentMessageState = vi.fn().mockResolvedValue(mockState);
+        (mockRuntime as any).composeState = vi
+            .fn()
+            .mockResolvedValue(mockState);
+        (mockRuntime as any).updateRecentMessageState = vi
+            .fn()
+            .mockResolvedValue(mockState);
     });
 
     it("should call generateMessageResponse with correct parameters - NOT state, but modelClass and tags", async () => {
@@ -1071,59 +1190,138 @@ describe("BugFix: generateMessageResponse parameter validation", () => {
     });
 });
 
-describe("Bearer Token Validation in validate function", () => {
+describe("AC1-AC6: Tweet Image Understanding", () => {
     let mockRuntime: IAgentRuntime;
-    let mockMessage: Memory;
+    let mockCallback: HandlerCallback;
+    let mockState: State;
 
     beforeEach(() => {
         mockRuntime = createMockRuntime();
-        mockMessage = createMockMessage("https://x.com/user/status/1234567890");
+        mockCallback = vi.fn();
+        mockState = {} as State;
         vi.clearAllMocks();
+
+        // Mock runtime methods
+        (mockRuntime as any).composeState = vi
+            .fn()
+            .mockResolvedValue(mockState);
+        // Don't mock updateRecentMessageState to avoid state reassignment
+        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("test_token");
     });
 
-    it("should return false when TWITTER_BEARER_TOKEN is missing from runtime settings", async () => {
-        // Mock getSetting to return undefined (bearer token not set)
-        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue(undefined);
+    describe("AC1: Extract image URLs from tweet data", () => {
+        it("should extract image URLs from tweet with photos and add to state", async () => {
+            const mockTwitterClient = {
+                v2: {
+                    getTweet: vi.fn().mockResolvedValue({
+                        data: {
+                            id: "1234567890",
+                            text: "Check out these photos!",
+                            photos: [
+                                {
+                                    id: "1",
+                                    url: "https://example.com/image1.jpg",
+                                },
+                                {
+                                    id: "2",
+                                    url: "https://example.com/image2.jpg",
+                                },
+                            ],
+                        },
+                    }),
+                },
+            };
 
-        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+            mockRuntime.clients = { twitter: mockTwitterClient };
 
-        expect(result).toBe(false);
-    });
+            const message = createMockMessage(
+                "https://x.com/user/status/1234567890"
+            );
 
-    it("should return false when TWITTER_BEARER_TOKEN is empty string", async () => {
-        // Mock getSetting to return empty string
-        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("");
+            // Use a non-empty state to avoid reassignment
+            const state = { test: "data" } as State;
 
-        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+            await readTweet(
+                mockRuntime,
+                message,
+                state,
+                {},
+                mockCallback
+            );
 
-        expect(result).toBe(false);
-    });
+            // Verify image URLs were extracted and added to state
+            expect(state.imageUrls).toEqual([
+                "https://example.com/image1.jpg",
+                "https://example.com/image2.jpg",
+            ]);
+            expect(mockCallback).toHaveBeenCalled();
+        });
 
-    it("should return false when TWITTER_BEARER_TOKEN is null", async () => {
-        // Mock getSetting to return null
-        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue(null);
+        it("should handle tweet with no photos", async () => {
+            const mockTwitterClient = {
+                v2: {
+                    getTweet: vi.fn().mockResolvedValue({
+                        data: {
+                            id: "1234567890",
+                            text: "Just a text tweet",
+                            photos: [],
+                        },
+                    }),
+                },
+            };
 
-        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+            mockRuntime.clients = { twitter: mockTwitterClient };
 
-        expect(result).toBe(false);
-    });
+            const message = createMockMessage(
+                "https://x.com/user/status/1234567890"
+            );
 
-    it("should return true when TWITTER_BEARER_TOKEN is present and non-empty", async () => {
-        // Mock getSetting to return a valid bearer token
-        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("valid_bearer_token_12345");
+            // Use a non-empty state to avoid reassignment
+            const state = { test: "data" } as State;
 
-        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+            await readTweet(
+                mockRuntime,
+                message,
+                state,
+                {},
+                mockCallback
+            );
 
-        expect(result).toBe(true);
-    });
+            expect(state.imageUrls).toEqual([]);
+            expect(mockCallback).toHaveBeenCalled();
+        });
 
-    it("should return false when TWITTER_BEARER_TOKEN contains whitespace only", async () => {
-        // Mock getSetting to return whitespace-only string
-        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("   ");
+        it("should handle tweet with undefined photos", async () => {
+            const mockTwitterClient = {
+                v2: {
+                    getTweet: vi.fn().mockResolvedValue({
+                        data: {
+                            id: "1234567890",
+                            text: "Tweet without photos property",
+                        },
+                    }),
+                },
+            };
 
-        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+            mockRuntime.clients = { twitter: mockTwitterClient };
 
-        // Whitespace-only should be treated as invalid
-        expect(result).toBe(false);
+            const message = createMockMessage(
+                "https://x.com/user/status/1234567890"
+            );
+
+            // Use a non-empty state to avoid reassignment
+            const state = { test: "data" } as State;
+
+            await readTweet(
+                mockRuntime,
+                message,
+                state,
+                {},
+                mockCallback
+            );
+
+            expect(state.imageUrls).toEqual([]);
+            expect(mockCallback).toHaveBeenCalled();
+        });
     });
 });
