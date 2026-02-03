@@ -995,3 +995,75 @@ describe("AC12: Tweet data validation", () => {
         });
     });
 });
+
+describe("BugFix: generateMessageResponse parameter validation", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockTwitterClient: MockTwitterClient;
+    let mockState: State;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        mockState = {} as State;
+        vi.clearAllMocks();
+
+        // Setup mock Twitter client
+        mockTwitterClient = {
+            v2: {
+                getTweet: vi.fn(),
+            },
+        };
+        mockRuntime.clients = {
+            twitter: mockTwitterClient,
+        };
+
+        // Mock runtime methods
+        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
+        (mockRuntime as any).updateRecentMessageState = vi.fn().mockResolvedValue(mockState);
+    });
+
+    it("should call generateMessageResponse with correct parameters - NOT state, but modelClass and tags", async () => {
+        const message = createMockMessage(
+            "https://x.com/user/status/1234567890"
+        );
+
+        // Mock successful tweet response
+        mockTwitterClient.v2.getTweet.mockResolvedValue({
+            data: {
+                id: "1234567890",
+                text: "Test tweet",
+                author_id: "user123",
+            },
+        });
+
+        // Import generateMessageResponse to spy on it
+        const { generateMessageResponse } = await import("@elizaos/core");
+        const mockGenerateMessageResponse = vi.mocked(generateMessageResponse);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify generateMessageResponse was called
+        expect(mockGenerateMessageResponse).toHaveBeenCalled();
+
+        // Get the actual call arguments
+        const callArgs = mockGenerateMessageResponse.mock.calls[0][0];
+
+        // CRITICAL ASSERTIONS: These will fail with current code
+        // 1. 'state' should NOT be in the parameters
+        expect(callArgs).not.toHaveProperty("state");
+
+        // 2. 'modelClass' SHOULD be in the parameters
+        expect(callArgs).toHaveProperty("modelClass");
+
+        // 3. 'tags' SHOULD be in the parameters
+        expect(callArgs).toHaveProperty("tags");
+
+        // 4. Verify modelClass is a valid ModelClass value
+        expect(callArgs.modelClass).toBeDefined();
+
+        // 5. Verify tags is an array containing "read-tweet"
+        expect(Array.isArray(callArgs.tags)).toBe(true);
+        expect(callArgs.tags).toContain("read-tweet");
+    });
+});

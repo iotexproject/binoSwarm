@@ -8,6 +8,7 @@ import {
     elizaLogger,
     composeContext,
     generateMessageResponse,
+    ModelClass,
 } from "@elizaos/core";
 import { extractTweetId } from "../utils/extractTweetId";
 import { createTwitterReadClient } from "../client";
@@ -203,7 +204,9 @@ async function readTweetHandler(
         const response = await generateMessageResponse({
             runtime,
             context,
-            state,
+            modelClass: ModelClass.LARGE,
+            tags: ["read-tweet"],
+            message: message,
         });
 
         if (callback) {
