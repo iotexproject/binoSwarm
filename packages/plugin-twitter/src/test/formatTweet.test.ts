@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { formatTweet } from "../utils/formatTweet";
-import type { Tweet } from "@elizaos/client-twitter/src/types";
+import type { Tweet } from "../types";
 
 describe("formatTweet", () => {
     beforeEach(() => {

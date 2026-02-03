@@ -1,4 +1,4 @@
-import type { Tweet } from "@elizaos/client-twitter/src/types";
+import type { Tweet } from "../types";
 
 const EMPTY_LINE = "";
 const METRIC_SEPARATOR = " • ";
