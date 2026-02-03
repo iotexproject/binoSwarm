@@ -5,7 +5,8 @@
     "type": "module",
     "types": "dist/index.d.ts",
     "dependencies": {
-        "@elizaos/core": "workspace:*"
+        "@elizaos/core": "workspace:*",
+        "twitter-api-v2": "^1.27.0"
     },
     "devDependencies": {
         "tsup": "^8.5.1"

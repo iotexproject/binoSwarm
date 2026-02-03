@@ -774,6 +774,9 @@ importers:
       '@elizaos/core':
         specifier: workspace:*
         version: link:../core
+      twitter-api-v2:
+        specifier: ^1.27.0
+        version: 1.28.0
     devDependencies:
       tsup:
         specifier: ^8.5.1
