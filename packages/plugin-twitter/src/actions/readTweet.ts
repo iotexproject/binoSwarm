@@ -9,6 +9,8 @@ import {
     composeContext,
     generateMessageResponse,
     ModelClass,
+    ServiceType,
+    type IImageDescriptionService,
 } from "@elizaos/core";
 import { extractTweetId } from "../utils/extractTweetId";
 import { createTwitterReadClient } from "../client";
@@ -58,6 +60,49 @@ function extractImageUrls(tweetData: any): string[] {
     }
 
     return photos.map((photo: any) => photo.url).filter((url: string) => url);
+}
+
+/**
+ * Describe images using the image description service
+ */
+async function describeImages(
+    runtime: IAgentRuntime,
+    imageUrls: string[]
+): Promise<Array<{ title: string; description: string }>> {
+    if (imageUrls.length === 0) {
+        return [];
+    }
+
+    const imageDescriptionService = runtime.getService<IImageDescriptionService>(
+        ServiceType.IMAGE_DESCRIPTION
+    );
+
+    if (!imageDescriptionService) {
+        elizaLogger.error(
+            "Image description service not available. Cannot describe tweet images."
+        );
+        return [];
+    }
+
+    try {
+        const descriptions = await Promise.all(
+            imageUrls.map(async (url) => {
+                try {
+                    return await imageDescriptionService.describeImage(url);
+                } catch (error) {
+                    elizaLogger.error(`Failed to describe image ${url}:`, error);
+                    return null;
+                }
+            })
+        );
+
+        return descriptions.filter(
+            (desc): desc is { title: string; description: string } => desc !== null
+        );
+    } catch (error) {
+        elizaLogger.error("Error processing tweet images:", error);
+        return [];
+    }
 }
 
 /**
@@ -208,9 +253,13 @@ async function readTweetHandler(
         // Extract image URLs from tweet
         const imageUrls = extractImageUrls(tweetData);
 
+        // Describe images using image description service
+        const imageDescriptions = await describeImages(runtime, imageUrls);
+
         // Pass tweet data to LLM for processing
         state.tweetData = JSON.stringify(tweetData, null, 2);
         state.imageUrls = imageUrls;
+        state.imageDescriptions = imageDescriptions;
 
         // Generate LLM response
         const context = composeContext({

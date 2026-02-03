@@ -1323,5 +1323,190 @@ describe("AC1-AC6: Tweet Image Understanding", () => {
             expect(state.imageUrls).toEqual([]);
             expect(mockCallback).toHaveBeenCalled();
         });
+
+        describe("AC2: Use image description service", () => {
+            it("should call image description service for each image", async () => {
+                const mockImageDescriptionService = {
+                    describeImage: vi.fn().mockResolvedValue({
+                        title: "Test Image",
+                        description: "A beautiful sunset",
+                    }),
+                };
+
+                mockRuntime.getService = vi.fn().mockReturnValue(mockImageDescriptionService);
+
+                const mockTwitterClient = {
+                    v2: {
+                        getTweet: vi.fn().mockResolvedValue({
+                            data: {
+                                id: "1234567890",
+                                text: "Check out this photo!",
+                                photos: [
+                                    { id: "1", url: "https://example.com/image1.jpg" },
+                                ],
+                            },
+                        }),
+                    },
+                };
+
+                mockRuntime.clients = { twitter: mockTwitterClient };
+                const state = { test: "data" } as State;
+                const message = createMockMessage("https://x.com/user/status/1234567890");
+
+                await readTweet(mockRuntime, message, state, {}, mockCallback);
+
+                expect(mockImageDescriptionService.describeImage).toHaveBeenCalledWith("https://example.com/image1.jpg");
+                expect(state.imageDescriptions).toEqual([
+                    { title: "Test Image", description: "A beautiful sunset" },
+                ]);
+                expect(mockCallback).toHaveBeenCalled();
+            });
+
+            it("should handle multiple images with description service", async () => {
+                const mockImageDescriptionService = {
+                    describeImage: vi.fn()
+                        .mockResolvedValueOnce({
+                            title: "Image 1",
+                            description: "First image",
+                        })
+                        .mockResolvedValueOnce({
+                            title: "Image 2",
+                            description: "Second image",
+                        }),
+                };
+
+                mockRuntime.getService = vi.fn().mockReturnValue(mockImageDescriptionService);
+
+                const mockTwitterClient = {
+                    v2: {
+                        getTweet: vi.fn().mockResolvedValue({
+                            data: {
+                                id: "1234567890",
+                                text: "Multiple photos!",
+                                photos: [
+                                    { id: "1", url: "https://example.com/image1.jpg" },
+                                    { id: "2", url: "https://example.com/image2.jpg" },
+                                ],
+                            },
+                        }),
+                    },
+                };
+
+                mockRuntime.clients = { twitter: mockTwitterClient };
+                const state = { test: "data" } as State;
+                const message = createMockMessage("https://x.com/user/status/1234567890");
+
+                await readTweet(mockRuntime, message, state, {}, mockCallback);
+
+                expect(mockImageDescriptionService.describeImage).toHaveBeenCalledTimes(2);
+                expect(state.imageDescriptions).toEqual([
+                    { title: "Image 1", description: "First image" },
+                    { title: "Image 2", description: "Second image" },
+                ]);
+                expect(mockCallback).toHaveBeenCalled();
+            });
+
+            it("should continue without image descriptions when service is unavailable (AC5)", async () => {
+                mockRuntime.getService = vi.fn().mockReturnValue(null);
+
+                const mockTwitterClient = {
+                    v2: {
+                        getTweet: vi.fn().mockResolvedValue({
+                            data: {
+                                id: "1234567890",
+                                text: "Tweet with images but no service",
+                                photos: [
+                                    { id: "1", url: "https://example.com/image1.jpg" },
+                                ],
+                            },
+                        }),
+                    },
+                };
+
+                mockRuntime.clients = { twitter: mockTwitterClient };
+                const state = { test: "data" } as State;
+                const message = createMockMessage("https://x.com/user/status/1234567890");
+
+                await readTweet(mockRuntime, message, state, {}, mockCallback);
+
+                // Handler should still succeed even without image description service
+                expect(state.imageDescriptions).toEqual([]);
+                expect(mockCallback).toHaveBeenCalled();
+            });
+
+            it("should continue with remaining images when one fails (AC6)", async () => {
+                const mockImageDescriptionService = {
+                    describeImage: vi.fn()
+                        .mockRejectedValueOnce(new Error("Network error"))
+                        .mockResolvedValueOnce({
+                            title: "Working Image",
+                            description: "This image works",
+                        }),
+                };
+
+                mockRuntime.getService = vi.fn().mockReturnValue(mockImageDescriptionService);
+
+                const mockTwitterClient = {
+                    v2: {
+                        getTweet: vi.fn().mockResolvedValue({
+                            data: {
+                                id: "1234567890",
+                                text: "Multiple images with one failure",
+                                photos: [
+                                    { id: "1", url: "https://example.com/image1.jpg" },
+                                    { id: "2", url: "https://example.com/image2.jpg" },
+                                ],
+                            },
+                        }),
+                    },
+                };
+
+                mockRuntime.clients = { twitter: mockTwitterClient };
+                const state = { test: "data" } as State;
+                const message = createMockMessage("https://x.com/user/status/1234567890");
+
+                await readTweet(mockRuntime, message, state, {}, mockCallback);
+
+                // Handler should succeed with remaining image descriptions
+                expect(state.imageDescriptions).toEqual([
+                    { title: "Working Image", description: "This image works" },
+                ]);
+                expect(mockCallback).toHaveBeenCalled();
+                expect(mockImageDescriptionService.describeImage).toHaveBeenCalledTimes(2);
+            });
+
+            it("should handle all image description failures gracefully (AC6)", async () => {
+                const mockImageDescriptionService = {
+                    describeImage: vi.fn().mockRejectedValue(new Error("All failed")),
+                };
+
+                mockRuntime.getService = vi.fn().mockReturnValue(mockImageDescriptionService);
+
+                const mockTwitterClient = {
+                    v2: {
+                        getTweet: vi.fn().mockResolvedValue({
+                            data: {
+                                id: "1234567890",
+                                text: "All images failed",
+                                photos: [
+                                    { id: "1", url: "https://example.com/image1.jpg" },
+                                    { id: "2", url: "https://example.com/image2.jpg" },
+                                ],
+                            },
+                        }),
+                    },
+                };
+
+                mockRuntime.clients = { twitter: mockTwitterClient };
+                const state = { test: "data" } as State;
+                const message = createMockMessage("https://x.com/user/status/1234567890");
+
+                await readTweet(mockRuntime, message, state, {}, mockCallback);
+
+                // Handler should succeed even without any image descriptions
+                expect(state.imageDescriptions).toEqual([]);
+                expect(mockCallback).toHaveBeenCalled();
+            });
+        });
     });
 });
