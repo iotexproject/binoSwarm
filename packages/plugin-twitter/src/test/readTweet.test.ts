@@ -409,6 +409,9 @@ describe("AC7: readTweet action properties", () => {
         const mockRuntime = createMockRuntime();
         const mockMessage = createMockMessage("test message");
 
+        // Mock getSetting to return a valid bearer token
+        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("test_bearer_token");
+
         const result = await readTweetAction.validate(mockRuntime, mockMessage);
         expect(result).toBe(true);
     });
@@ -1065,5 +1068,62 @@ describe("BugFix: generateMessageResponse parameter validation", () => {
         // 5. Verify tags is an array containing "read-tweet"
         expect(Array.isArray(callArgs.tags)).toBe(true);
         expect(callArgs.tags).toContain("read-tweet");
+    });
+});
+
+describe("Bearer Token Validation in validate function", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockMessage: Memory;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockMessage = createMockMessage("https://x.com/user/status/1234567890");
+        vi.clearAllMocks();
+    });
+
+    it("should return false when TWITTER_BEARER_TOKEN is missing from runtime settings", async () => {
+        // Mock getSetting to return undefined (bearer token not set)
+        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue(undefined);
+
+        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+
+        expect(result).toBe(false);
+    });
+
+    it("should return false when TWITTER_BEARER_TOKEN is empty string", async () => {
+        // Mock getSetting to return empty string
+        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("");
+
+        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+
+        expect(result).toBe(false);
+    });
+
+    it("should return false when TWITTER_BEARER_TOKEN is null", async () => {
+        // Mock getSetting to return null
+        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue(null);
+
+        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+
+        expect(result).toBe(false);
+    });
+
+    it("should return true when TWITTER_BEARER_TOKEN is present and non-empty", async () => {
+        // Mock getSetting to return a valid bearer token
+        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("valid_bearer_token_12345");
+
+        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+
+        expect(result).toBe(true);
+    });
+
+    it("should return false when TWITTER_BEARER_TOKEN contains whitespace only", async () => {
+        // Mock getSetting to return whitespace-only string
+        (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("   ");
+
+        const result = await readTweetAction.validate(mockRuntime, mockMessage);
+
+        // Whitespace-only should be treated as invalid
+        expect(result).toBe(false);
     });
 });

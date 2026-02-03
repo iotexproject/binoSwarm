@@ -244,8 +244,9 @@ export const readTweetAction: Action = {
     description:
         "Reads a tweet from a Twitter/X URL and provides a contextual analysis. Use this when the user provides a tweet URL or asks about a specific tweet. The action fetches the tweet data and generates a persona-aware response based on the user's question.",
     suppressInitialMessage: true,
-    validate: async (_runtime: IAgentRuntime, _message: Memory) => {
-        return true;
+    validate: async (runtime: IAgentRuntime, _message: Memory) => {
+        const bearerToken = runtime.getSetting("TWITTER_BEARER_TOKEN");
+        return Boolean(bearerToken && bearerToken.trim().length > 0);
     },
     examples: [
         [
