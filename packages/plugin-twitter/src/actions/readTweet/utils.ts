@@ -1,9 +1,6 @@
 import { extractTweetId } from "../../utils/extractTweetId";
-import type { HandlerCallback } from "@elizaos/core";
 import type { Tweet, TwitterApiResponse, Photo } from "./types";
 
-const INVALID_URL_MESSAGE =
-    "I couldn't read that URL. Please make sure it's a valid Twitter/X link.";
 const TWITTER_URL_PATTERN =
     /https?:\/\/(?:www\.)?(?:x\.com|twitter\.com|mobile\.(?:x\.com|twitter\.com))\/[^\s]+/i;
 
@@ -129,32 +126,23 @@ export function getTweetCacheKey(tweetId: string): string {
 
 /**
  * Validates Twitter URL and extracts tweet ID
- * Returns null if URL is invalid or tweet ID cannot be extracted
+ * Returns result object with success status
+ * Does NOT use callback - caller handles error response
  */
 export async function validateAndExtractTweetId(
-    messageText: string,
-    callback?: HandlerCallback
-): Promise<string | null> {
+    messageText: string
+): Promise<{ success: true; tweetId: string } | { success: false }> {
     const twitterUrl = extractTwitterUrl(messageText);
 
     if (!twitterUrl) {
-        if (callback) {
-            callback({
-                text: INVALID_URL_MESSAGE,
-            });
-        }
-        return null;
+        return { success: false };
     }
 
     try {
-        return extractTweetId(twitterUrl);
+        const tweetId = extractTweetId(twitterUrl);
+        return { success: true, tweetId };
     } catch {
-        if (callback) {
-            callback({
-                text: INVALID_URL_MESSAGE,
-            });
-        }
-        return null;
+        return { success: false };
     }
 }
 

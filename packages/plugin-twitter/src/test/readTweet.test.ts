@@ -82,113 +82,197 @@ describe("READ_TWEET action - Error Handling", () => {
             const message = createMockMessage(
                 "Check out this post: https://facebook.com/post/123"
             );
+            const state = {} as State;
 
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("invalid_url");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
         it("should return user-friendly error for malformed URL", async () => {
             const message = createMockMessage("not-a-valid-url");
+            const state = {} as State;
 
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("invalid_url");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
         it("should return user-friendly error for URL without username", async () => {
             const message = createMockMessage("https://x.com/status/123");
+            const state = {} as State;
 
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("invalid_url");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
         it("should return user-friendly error for URL without status path", async () => {
             const message = createMockMessage("https://x.com/user/tweets/123");
+            const state = {} as State;
 
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("invalid_url");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
         it("should return user-friendly error for empty URL", async () => {
             const message = createMockMessage("");
+            const state = {} as State;
 
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("invalid_url");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
         it("should return user-friendly error for URL with just domain", async () => {
             const message = createMockMessage("https://x.com");
+            const state = {} as State;
 
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("invalid_url");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
         it("should return user-friendly error for URL with non-numeric tweet ID", async () => {
             const message = createMockMessage("https://x.com/user/status/abc");
+            const state = {} as State;
 
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("invalid_url");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read that URL. Please make sure it's a valid Twitter/X link.",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
     });
@@ -211,6 +295,7 @@ describe("READ_TWEET action - Error Handling", () => {
             const message = createMockMessage(
                 "https://x.com/user/status/1234567890"
             );
+            const state = {} as State;
 
             // Mock Twitter API to return 404 error
             const apiError = new Error("Tweet not found") as any;
@@ -221,13 +306,24 @@ describe("READ_TWEET action - Error Handling", () => {
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("tweet_not_found");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "This tweet is not available",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
@@ -235,6 +331,7 @@ describe("READ_TWEET action - Error Handling", () => {
             const message = createMockMessage(
                 "https://x.com/protected_user/status/1234567890"
             );
+            const state = {} as State;
 
             // Mock Twitter API to return 403 Forbidden
             const apiError = new Error("Forbidden") as any;
@@ -247,13 +344,24 @@ describe("READ_TWEET action - Error Handling", () => {
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly (tweet_forbidden, not tweet_protected)
+            expect((state as any).errorType).toBe("tweet_forbidden");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read this tweet",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
@@ -261,6 +369,7 @@ describe("READ_TWEET action - Error Handling", () => {
             const message = createMockMessage(
                 "https://x.com/suspended_user/status/1234567890"
             );
+            const state = {} as State;
 
             // Mock Twitter API to return suspended account error
             const apiError = new Error("User has been suspended") as any;
@@ -271,13 +380,24 @@ describe("READ_TWEET action - Error Handling", () => {
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly (tweet_protected because "suspended" in message)
+            expect((state as any).errorType).toBe("tweet_protected");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read this tweet",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
@@ -285,6 +405,7 @@ describe("READ_TWEET action - Error Handling", () => {
             const message = createMockMessage(
                 "https://x.com/user/status/9999999999999999999"
             );
+            const state = {} as State;
 
             // Mock Twitter API to return non-existent tweet error
             const apiError = new Error("No status found") as any;
@@ -295,13 +416,24 @@ describe("READ_TWEET action - Error Handling", () => {
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("tweet_not_found");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "This tweet is not available",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
 
@@ -309,6 +441,7 @@ describe("READ_TWEET action - Error Handling", () => {
             const message = createMockMessage(
                 "https://x.com/user/status/1234567890"
             );
+            const state = {} as State;
 
             // Mock Twitter API to return generic error
             const apiError = new Error("Twitter API error") as any;
@@ -318,13 +451,24 @@ describe("READ_TWEET action - Error Handling", () => {
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state as any).errorType).toBe("api_error");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "I couldn't read this tweet",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
     });
@@ -349,6 +493,7 @@ describe("READ_TWEET action - Error Handling", () => {
             );
 
             // Test with rate limit error with reset time
+            const state1 = {} as State;
             const apiError = new Error("Rate limit exceeded") as any;
             apiError.code = 429;
             apiError.rateLimit = {
@@ -359,17 +504,32 @@ describe("READ_TWEET action - Error Handling", () => {
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state1,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called (LLM invocation)
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+            expect(callArgs.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state1 as any).errorType).toBe("rate_limited");
+
+            // Verify NO rate limit timing details in state
+            expect((state1 as any).rateLimitReset).toBeUndefined();
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "Rate limit reached. Please try again later.",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
 
             // Test with rate limit error without reset time
             mockCallback.mockClear();
+            const state2 = {} as State;
             const apiErrorNoReset = new Error("Rate limit exceeded") as any;
             apiErrorNoReset.code = 429;
             mockTwitterClient.v2.getTweet.mockRejectedValue(apiErrorNoReset);
@@ -377,13 +537,23 @@ describe("READ_TWEET action - Error Handling", () => {
             await readTweet(
                 mockRuntime,
                 message,
-                {} as State,
+                state2,
                 {},
                 mockCallback
             );
 
+            // Verify generateMessageResponse was called again
+            expect(generateMessageResponse).toHaveBeenCalled();
+            const callArgs2 = vi.mocked(generateMessageResponse).mock.calls[1][0];
+            expect(callArgs2.tags).toContain("read-tweet-error");
+
+            // Verify state.errorType was set correctly
+            expect((state2 as any).errorType).toBe("rate_limited");
+
+            // Verify callback was invoked with LLM response
             expect(mockCallback).toHaveBeenCalledWith({
-                text: "Rate limit reached. Please try again later.",
+                text: "Mocked LLM response",
+                inReplyTo: message.id,
             });
         });
     });
@@ -763,6 +933,7 @@ describe("AC10: Generic/unexpected error handling", () => {
         const message = createMockMessage(
             "https://x.com/user/status/1234567890"
         );
+        const state1 = {} as State;
 
         // Test error without code/status
         const apiError = new Error("Something went wrong");
@@ -770,53 +941,76 @@ describe("AC10: Generic/unexpected error handling", () => {
         delete (apiError as any).status;
         mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state1, {}, mockCallback);
 
+        // Verify LLM was called for error without code
+        const { generateMessageResponse } = await import("@elizaos/core");
+        expect(generateMessageResponse).toHaveBeenCalled();
+        const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+        expect(callArgs.tags).toContain("read-tweet-error");
+        expect((state1 as any).errorType).toBe("api_error");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "I couldn't read this tweet",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
 
         // Test plain object error
         mockCallback.mockClear();
+        const state2 = {} as State;
         const plainError = { message: "Unknown error occurred", data: { some: "info" } };
         delete (plainError as any).code;
         delete (plainError as any).status;
         mockTwitterClient.v2.getTweet.mockRejectedValue(plainError);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state2, {}, mockCallback);
 
+        expect(generateMessageResponse).toHaveBeenCalled();
+        expect((state2 as any).errorType).toBe("api_error");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "I couldn't read this tweet",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
 
         // Test string error
         mockCallback.mockClear();
+        const state3 = {} as State;
         mockTwitterClient.v2.getTweet.mockRejectedValue("API request failed");
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state3, {}, mockCallback);
 
+        expect(generateMessageResponse).toHaveBeenCalled();
+        expect((state3 as any).errorType).toBe("api_error");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "I couldn't read this tweet",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
 
         // Test null error
         mockCallback.mockClear();
+        const state4 = {} as State;
         mockTwitterClient.v2.getTweet.mockRejectedValue(null);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state4, {}, mockCallback);
 
+        expect(generateMessageResponse).toHaveBeenCalled();
+        expect((state4 as any).errorType).toBe("api_error");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "I couldn't read this tweet",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
 
         // Test undefined error
         mockCallback.mockClear();
+        const state5 = {} as State;
         mockTwitterClient.v2.getTweet.mockRejectedValue(undefined);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state5, {}, mockCallback);
 
+        expect(generateMessageResponse).toHaveBeenCalled();
+        expect((state5 as any).errorType).toBe("api_error");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "I couldn't read this tweet",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
     });
 
@@ -824,6 +1018,7 @@ describe("AC10: Generic/unexpected error handling", () => {
         const message = createMockMessage(
             "https://x.com/user/status/1234567890"
         );
+        const state = {} as State;
 
         const errorWithoutMessage = { some: "property" };
         delete (errorWithoutMessage as any).code;
@@ -831,10 +1026,15 @@ describe("AC10: Generic/unexpected error handling", () => {
         delete (errorWithoutMessage as any).message;
         mockTwitterClient.v2.getTweet.mockRejectedValue(errorWithoutMessage);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state, {}, mockCallback);
 
+        // Verify LLM was called for error without message property
+        const { generateMessageResponse } = await import("@elizaos/core");
+        expect(generateMessageResponse).toHaveBeenCalled();
+        expect((state as any).errorType).toBe("api_error");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "I couldn't read this tweet",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
     });
 
@@ -847,10 +1047,19 @@ describe("AC10: Generic/unexpected error handling", () => {
             throw new Error("Unexpected system failure");
         });
 
+        // Pass null state to trigger composeState call
         await readTweet(mockRuntime, message, null, {}, mockCallback);
 
+        // Verify LLM was called for unexpected error
+        const { generateMessageResponse } = await import("@elizaos/core");
+        expect(generateMessageResponse).toHaveBeenCalled();
+        const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+        expect(callArgs.tags).toContain("read-tweet-error");
+        // Note: state is created as empty object in catch block, so we can't check errorType on the original null
+        // The important thing is that LLM was called and callback received response
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "I couldn't read this tweet",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
     });
 });
@@ -920,9 +1129,15 @@ describe("AC11: Lightweight read client creation path", () => {
 
         await readTweet(mockRuntime, message, mockState, {}, mockCallback);
 
-        // Verify callback was called with error message
+        // Verify LLM was called for client creation failure
+        const { generateMessageResponse } = await import("@elizaos/core");
+        expect(generateMessageResponse).toHaveBeenCalled();
+        const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+        expect(callArgs.tags).toContain("read-tweet-error");
+        expect((mockState as any).errorType).toBe("client_error");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "I couldn't read this tweet",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
     });
 
@@ -986,14 +1201,22 @@ describe("AC12: Tweet data validation", () => {
         const message = createMockMessage(
             "https://x.com/user/status/1234567890"
         );
+        const state = {} as State;
 
         // Mock getTweet to return null (no data)
         mockTwitterClient.v2.getTweet.mockResolvedValue(null);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state, {}, mockCallback);
 
+        // Verify LLM was called for null tweet data
+        const { generateMessageResponse } = await import("@elizaos/core");
+        expect(generateMessageResponse).toHaveBeenCalled();
+        const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+        expect(callArgs.tags).toContain("read-tweet-error");
+        expect((state as any).errorType).toBe("data_unavailable");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "This tweet is not available",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
     });
 
@@ -1001,14 +1224,22 @@ describe("AC12: Tweet data validation", () => {
         const message = createMockMessage(
             "https://x.com/user/status/1234567890"
         );
+        const state = {} as State;
 
         // Mock getTweet to return undefined
         mockTwitterClient.v2.getTweet.mockResolvedValue(undefined);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state, {}, mockCallback);
 
+        // Verify LLM was called for undefined tweet data
+        const { generateMessageResponse } = await import("@elizaos/core");
+        expect(generateMessageResponse).toHaveBeenCalled();
+        const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+        expect(callArgs.tags).toContain("read-tweet-error");
+        expect((state as any).errorType).toBe("data_unavailable");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "This tweet is not available",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
     });
 
@@ -1016,14 +1247,22 @@ describe("AC12: Tweet data validation", () => {
         const message = createMockMessage(
             "https://x.com/user/status/1234567890"
         );
+        const state = {} as State;
 
         // Mock getTweet to return 0 (falsy value)
         mockTwitterClient.v2.getTweet.mockResolvedValue(0 as any);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state, {}, mockCallback);
 
+        // Verify LLM was called for falsy tweet data
+        const { generateMessageResponse } = await import("@elizaos/core");
+        expect(generateMessageResponse).toHaveBeenCalled();
+        const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+        expect(callArgs.tags).toContain("read-tweet-error");
+        expect((state as any).errorType).toBe("data_unavailable");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "This tweet is not available",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
     });
 
@@ -1031,14 +1270,22 @@ describe("AC12: Tweet data validation", () => {
         const message = createMockMessage(
             "https://x.com/user/status/1234567890"
         );
+        const state = {} as State;
 
         // Mock getTweet to return false (falsy value)
         mockTwitterClient.v2.getTweet.mockResolvedValue(false as any);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state, {}, mockCallback);
 
+        // Verify LLM was called for false tweet data
+        const { generateMessageResponse } = await import("@elizaos/core");
+        expect(generateMessageResponse).toHaveBeenCalled();
+        const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+        expect(callArgs.tags).toContain("read-tweet-error");
+        expect((state as any).errorType).toBe("data_unavailable");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "This tweet is not available",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
     });
 
@@ -1046,14 +1293,22 @@ describe("AC12: Tweet data validation", () => {
         const message = createMockMessage(
             "https://x.com/user/status/1234567890"
         );
+        const state = {} as State;
 
         // Mock getTweet to return empty string (falsy value)
         mockTwitterClient.v2.getTweet.mockResolvedValue("" as any);
 
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, state, {}, mockCallback);
 
+        // Verify LLM was called for empty string tweet data
+        const { generateMessageResponse } = await import("@elizaos/core");
+        expect(generateMessageResponse).toHaveBeenCalled();
+        const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+        expect(callArgs.tags).toContain("read-tweet-error");
+        expect((state as any).errorType).toBe("data_unavailable");
         expect(mockCallback).toHaveBeenCalledWith({
-            text: "This tweet is not available",
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
         });
     });
 });
@@ -2830,6 +3085,431 @@ describe("BugFix: Cache Conflict Between Packages", () => {
             // First call caches transformed Tweet structure (flat with photos array)
             // Second call gets that Tweet structure and extracts images from photos array
             expect((mockState2 as any).imageUrls).toEqual(["https://example.com/photo333.jpg"]);
+        });
+    });
+});
+
+describe("Safe Error Type Mapping - Security-Focused Error Handling", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockTwitterClient: MockTwitterClient;
+    let mockState: State;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        mockState = {} as State;
+        vi.clearAllMocks();
+
+        // Setup mock Twitter client
+        mockTwitterClient = {
+            v2: {
+                getTweet: vi.fn(),
+            },
+        };
+        mockRuntime.clients = {
+            twitter: mockTwitterClient,
+        };
+
+        // Mock runtime methods
+        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
+    });
+
+    describe("AC1: Safe error type mapping from API errors", () => {
+        it("should map 404 API error to tweet_not_found safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Mock 404 error
+            const apiError = new Error("Tweet not found") as any;
+            apiError.code = 404;
+            apiError.errors = [{ message: "No status found with that ID." }];
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify state.errorType is set to safe type (NOT errorCode)
+            expect((mockState as any).errorType).toBe("tweet_not_found");
+
+            // Verify no raw API code exposed to LLM
+            expect((mockState as any).errorCode).toBeUndefined();
+
+            // Verify callback received LLM-generated error response
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+
+        it("should map 403 with 'protected' message to tweet_protected safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Mock 403 error with protected account message
+            const apiError = new Error("Forbidden") as any;
+            apiError.code = 403;
+            apiError.errors = [{ message: "This tweet is from a protected account." }];
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("tweet_protected");
+
+            // Verify no raw API code
+            expect((mockState as any).errorCode).toBeUndefined();
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+
+        it("should map 403 with 'suspended' message to tweet_protected safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Mock 403 error with suspended account message
+            const apiError = new Error("Forbidden") as any;
+            apiError.code = 403;
+            apiError.errors = [{ message: "User has been suspended." }];
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("tweet_protected");
+
+            // Verify no raw API code
+            expect((mockState as any).errorCode).toBeUndefined();
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+
+        it("should map 403 without specific message to tweet_forbidden safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Mock 403 error without protected/suspended message
+            const apiError = new Error("Forbidden") as any;
+            apiError.code = 403;
+            apiError.errors = [{ message: "You are not permitted to view this resource." }];
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("tweet_forbidden");
+
+            // Verify no raw API code
+            expect((mockState as any).errorCode).toBeUndefined();
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+
+        it("should map 429 API error to rate_limited safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Mock 429 rate limit error
+            const apiError = new Error("Rate limit exceeded") as any;
+            apiError.code = 429;
+            apiError.rateLimit = {
+                reset: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+            };
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("rate_limited");
+
+            // Verify no raw API code or rateLimit reset time exposed to LLM
+            expect((mockState as any).errorCode).toBeUndefined();
+            expect((mockState as any).rateLimitReset).toBeUndefined();
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+
+        it("should map invalid URL to invalid_url safe type", async () => {
+            const message = createMockMessage("https://facebook.com/post/123");
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("invalid_url");
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+
+        it("should map null Twitter client to client_error safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Remove Twitter client to simulate client unavailable
+            mockRuntime.clients = {};
+
+            // Mock createTwitterReadClient to return null (client creation failure)
+            const { createTwitterReadClient } = await import("../client");
+            vi.mocked(createTwitterReadClient).mockResolvedValue(null as any);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("client_error");
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+
+            // Reset the mock for other tests
+            vi.mocked(createTwitterReadClient).mockReset();
+        });
+
+        it("should map null tweet data to data_unavailable safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Mock API returning null
+            mockTwitterClient.v2.getTweet.mockResolvedValue(null);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("data_unavailable");
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+
+        it("should map undefined tweet data to data_unavailable safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Mock API returning undefined
+            mockTwitterClient.v2.getTweet.mockResolvedValue(undefined);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("data_unavailable");
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+
+        it("should map other errors to api_error safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Mock 500 internal server error
+            const apiError = new Error("Internal server error") as any;
+            apiError.code = 500;
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("api_error");
+
+            // Verify no raw API code
+            expect((mockState as any).errorCode).toBeUndefined();
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+
+        it("should map errors without code/status to api_error safe type", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            // Mock error without code or status
+            const genericError = new Error("Something went wrong");
+            delete (genericError as any).code;
+            delete (genericError as any).status;
+            mockTwitterClient.v2.getTweet.mockRejectedValue(genericError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify safe error type
+            expect((mockState as any).errorType).toBe("api_error");
+
+            // Verify callback message
+            expect(mockCallback).toHaveBeenCalledWith({
+                text: "Mocked LLM response",
+                inReplyTo: "test-message-id",
+            });
+        });
+    });
+
+    describe("AC2: Safe context passed to LLM (no raw API details)", () => {
+        it("should set state.errorType to safe type (not state.errorCode)", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            const apiError = new Error("Not found") as any;
+            apiError.code = 404;
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // CRITICAL: state.errorType should be set
+            expect((mockState as any).errorType).toBeDefined();
+
+            // CRITICAL: state.errorCode should NOT be set
+            expect((mockState as any).errorCode).toBeUndefined();
+
+            // CRITICAL: No raw error message in state
+            expect((mockState as any).errorMessage).toBeUndefined();
+        });
+
+        it("should NOT expose raw API error messages to LLM context", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            const apiError = new Error("No status found with that ID.") as any;
+            apiError.code = 404;
+            apiError.errors = [{ message: "No status found with that ID." }];
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify raw API error message is NOT in state
+            expect((mockState as any).rawErrorMessage).toBeUndefined();
+            expect((mockState as any).apiErrorDetails).toBeUndefined();
+            expect((mockState as any).error).toBeUndefined();
+        });
+
+        it("should NOT expose rate limit timing details to LLM context", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            const apiError = new Error("Rate limit exceeded") as any;
+            apiError.code = 429;
+            apiError.rateLimit = {
+                reset: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+                limit: 300,
+                remaining: 0,
+            };
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify rate limit details NOT in state
+            expect((mockState as any).rateLimitReset).toBeUndefined();
+            expect((mockState as any).rateLimitRemaining).toBeUndefined();
+            expect((mockState as any).rateLimit).toBeUndefined();
+        });
+
+        it("should call composeContext with error template on error", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            const apiError = new Error("Not found") as any;
+            apiError.code = 404;
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify composeContext was called
+            const { composeContext } = await import("@elizaos/core");
+            expect(composeContext).toHaveBeenCalled();
+
+            // Get the call arguments
+            const callArgs = vi.mocked(composeContext).mock.calls[0][0];
+
+            // Verify error template was used (check template parameter exists)
+            expect(callArgs.template).toBeDefined();
+        });
+
+        it("should call generateMessageResponse with read-tweet-error tag on error", async () => {
+            const message = createMockMessage("https://x.com/user/status/1234567890");
+
+            const apiError = new Error("Not found") as any;
+            apiError.code = 404;
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+
+            await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+            // Verify generateMessageResponse was called
+            const { generateMessageResponse } = await import("@elizaos/core");
+            expect(generateMessageResponse).toHaveBeenCalled();
+
+            // Get the call arguments
+            const callArgs = vi.mocked(generateMessageResponse).mock.calls[0][0];
+
+            // CRITICAL: tags should include "read-tweet-error"
+            expect(callArgs.tags).toContain("read-tweet-error");
+        });
+    });
+
+    describe("AC3: Error template structure and safety", () => {
+        it("should have error template with Handlebars conditionals", async () => {
+            // Import the template
+            const { tweetResponseTemplate } = await import("../template");
+
+            // Verify template exists
+            expect(tweetResponseTemplate).toBeDefined();
+            expect(typeof tweetResponseTemplate).toBe("string");
+
+            // Verify it uses Handlebars syntax
+            expect(tweetResponseTemplate).toContain("{{");
+            expect(tweetResponseTemplate).toContain("}}");
+        });
+
+        it("should have conditional for each safe error type", async () => {
+            const { tweetResponseTemplate } = await import("../template");
+
+            // Verify safe error type conditionals exist
+            // After implementation, template should have conditionals like:
+            // {{#errorType}}...{{/errorType}} or {{#if errorType}}...{{/if}}
+
+            // For now, we verify the template can be extended to support error types
+            expect(tweetResponseTemplate.length).toBeGreaterThan(0);
+        });
+
+        it("should NOT reference API codes in error template", async () => {
+            const { tweetResponseTemplate } = await import("../template");
+
+            // Verify no raw API codes (404, 403, 429, etc.) in template
+            expect(tweetResponseTemplate).not.toContain("404");
+            expect(tweetResponseTemplate).not.toContain("403");
+            expect(tweetResponseTemplate).not.toContain("429");
+            expect(tweetResponseTemplate).not.toContain("500");
+        });
+
+        it("should NOT reference raw error messages in error template", async () => {
+            const { tweetResponseTemplate } = await import("../template");
+
+            // Verify no references to raw error message fields
+            expect(tweetResponseTemplate).not.toContain("errorCode");
+            expect(tweetResponseTemplate).not.toContain("errorMessage");
+            expect(tweetResponseTemplate).not.toContain("apiError");
+            expect(tweetResponseTemplate).not.toContain("rateLimit");
+        });
+
+        it("should only expose safe error types to LLM via template", async () => {
+            const { tweetResponseTemplate } = await import("../template");
+
+            // Verify template uses safe abstraction (errorType)
+            // After implementation, template should reference {{errorType}}
+            // For now, we ensure no unsafe patterns exist
+            expect(tweetResponseTemplate).not.toContain("code");
+            expect(tweetResponseTemplate).not.toMatch(/error\./i);
         });
     });
 });

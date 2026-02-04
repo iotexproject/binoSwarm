@@ -12,7 +12,7 @@ import {
     ServiceType,
     type IImageDescriptionService,
 } from "@elizaos/core";
-import { tweetResponseTemplate } from "../template";
+import { tweetResponseTemplate, tweetErrorResponseTemplate } from "../template";
 import type { Tweet } from "./readTweet/types";
 import {
     isTwitterApiError,
@@ -21,12 +21,113 @@ import {
     validateAndExtractTweetId,
     getTweetCacheKey,
     extractImageUrls,
+    extractTwitterUrl,
 } from "./readTweet/utils";
 import { getTwitterClient } from "./readTweet/clientUtils";
 
-const TWEET_NOT_AVAILABLE_MESSAGE = "This tweet is not available";
-const TWEET_READ_ERROR_MESSAGE = "I couldn't read this tweet";
-const RATE_LIMIT_MESSAGE = "Rate limit reached. Please try again later.";
+/**
+ * Safe error types that can be exposed to the LLM
+ * These types abstract away raw API error codes and messages
+ */
+const SAFE_ERROR_TYPES = {
+    INVALID_URL: "invalid_url",
+    TWEET_NOT_FOUND: "tweet_not_found",
+    TWEET_PROTECTED: "tweet_protected",
+    TWEET_FORBIDDEN: "tweet_forbidden",
+    RATE_LIMITED: "rate_limited",
+    CLIENT_ERROR: "client_error",
+    DATA_UNAVAILABLE: "data_unavailable",
+    API_ERROR: "api_error",
+} as const;
+
+type SafeErrorType = (typeof SAFE_ERROR_TYPES)[keyof typeof SAFE_ERROR_TYPES];
+
+/**
+ * Maps API errors to safe error types that can be exposed to the LLM
+ * This function ensures raw API codes and messages never reach the LLM
+ */
+function mapApiErrorToSafeType(
+    error: unknown,
+    _tweetUrl?: string
+): SafeErrorType {
+    // Check for Twitter API error with code/status
+    if (isTwitterApiError(error)) {
+        const errorCode = error.code ?? error.status;
+
+        // 404 → tweet_not_found
+        if (errorCode === 404) {
+            return SAFE_ERROR_TYPES.TWEET_NOT_FOUND;
+        }
+
+        // 403 with protected/suspended message → tweet_protected
+        if (errorCode === 403) {
+            const errorMessage =
+                (error as Record<string, unknown>).errors?.[0]?.message;
+            if (
+                typeof errorMessage === "string" &&
+                (errorMessage.toLowerCase().includes("protected") ||
+                    errorMessage.toLowerCase().includes("suspended"))
+            ) {
+                return SAFE_ERROR_TYPES.TWEET_PROTECTED;
+            }
+            // 403 without specific message → tweet_forbidden
+            return SAFE_ERROR_TYPES.TWEET_FORBIDDEN;
+        }
+
+        // 429 → rate_limited
+        if (errorCode === 429) {
+            return SAFE_ERROR_TYPES.RATE_LIMITED;
+        }
+    }
+
+    // For all other errors, default to api_error
+    return SAFE_ERROR_TYPES.API_ERROR;
+}
+
+/**
+ * Processes tweet errors using safe error types
+ * Sets state.errorType (safe type) and generates LLM response
+ * Never exposes raw API codes or messages to the LLM
+ */
+async function processTweetError(
+    runtime: IAgentRuntime,
+    message: Memory,
+    state: State,
+    safeErrorType: SafeErrorType,
+    tweetUrl: string | undefined,
+    callback?: HandlerCallback
+): Promise<boolean> {
+    // Set safe error type in state (NOT errorCode or raw error details)
+    (state as Record<string, unknown>).errorType = safeErrorType;
+    (state as Record<string, unknown>).userIntent = "read tweet";
+
+    // Optionally set tweetUrl if available (user-provided, safe)
+    if (tweetUrl) {
+        (state as Record<string, unknown>).tweetUrl = tweetUrl;
+    }
+
+    // Compose context with error template
+    const context = composeContext({
+        state,
+        template: tweetErrorResponseTemplate,
+        templatingEngine: "handlebars",
+    });
+
+    // Generate LLM response with read-tweet-error tag
+    const response = await generateMessageResponse({
+        runtime,
+        context,
+        modelClass: ModelClass.LARGE,
+        tags: ["read-tweet-error"],
+        message: message,
+    });
+
+    if (callback) {
+        callback({ ...response, inReplyTo: message.id });
+    }
+
+    return false; // Error cases always return false
+}
 
 /**
  * Caches tweet data with graceful error handling
@@ -48,42 +149,31 @@ async function cacheTweetData(
 
 /**
  * Handles Twitter API errors and returns appropriate user messages
+ * Maps API errors to safe error types and processes with LLM
  */
-function handleTwitterApiError(
+async function handleTwitterApiError(
+    runtime: IAgentRuntime,
+    message: Memory,
+    state: State,
     error: unknown,
+    tweetUrl: string | undefined,
     callback?: HandlerCallback
-): boolean {
-    let errorCode: number | undefined;
-    if (isTwitterApiError(error)) {
-        errorCode = error.code ?? error.status;
-    }
+): Promise<boolean> {
+    const safeErrorType = mapApiErrorToSafeType(error, tweetUrl);
 
-    if (errorCode === 429) {
-        if (callback) {
-            callback({ text: RATE_LIMIT_MESSAGE });
-        }
-        return false;
-    }
+    elizaLogger.error(
+        `Twitter API error (${safeErrorType}):`,
+        error
+    );
 
-    if (errorCode === 404) {
-        if (callback) {
-            callback({ text: TWEET_NOT_AVAILABLE_MESSAGE });
-        }
-        return false;
-    }
-
-    if (errorCode === 403) {
-        if (callback) {
-            callback({ text: TWEET_READ_ERROR_MESSAGE });
-        }
-        return false;
-    }
-
-    elizaLogger.error("Error fetching tweet:", error);
-    if (callback) {
-        callback({ text: TWEET_READ_ERROR_MESSAGE });
-    }
-    return false;
+    return processTweetError(
+        runtime,
+        message,
+        state,
+        safeErrorType,
+        tweetUrl,
+        callback
+    );
 }
 
 async function processTweetWithLLM(
@@ -192,14 +282,23 @@ async function readTweetHandler(
         }
 
         // Validate URL and extract tweet ID
-        const tweetId = await validateAndExtractTweetId(
-            message.content.text,
-            callback
+        const validationResult = await validateAndExtractTweetId(
+            message.content.text
         );
 
-        if (!tweetId) {
-            return false;
+        if (!validationResult.success) {
+            // Invalid URL - use safe error type
+            return processTweetError(
+                runtime,
+                message,
+                state,
+                SAFE_ERROR_TYPES.INVALID_URL,
+                undefined,
+                callback
+            );
         }
+
+        const tweetId = validationResult.tweetId;
 
         // AC1: Check cache first - return cached tweet without API call if available
         const cacheKey = getTweetCacheKey(tweetId);
@@ -232,26 +331,45 @@ async function readTweetHandler(
         const twitterClient = await getTwitterClient(runtime);
 
         if (!twitterClient) {
-            if (callback) {
-                callback({
-                    text: TWEET_READ_ERROR_MESSAGE,
-                });
-            }
-            return false;
+            // Twitter client unavailable - use safe error type
+            const tweetUrl = extractTwitterUrl(message.content.text);
+            return processTweetError(
+                runtime,
+                message,
+                state,
+                SAFE_ERROR_TYPES.CLIENT_ERROR,
+                tweetUrl ?? undefined,
+                callback
+            );
         }
 
         let tweetData;
         try {
             tweetData = await twitterClient.v2.getTweet(tweetId);
         } catch (error) {
-            return handleTwitterApiError(error, callback);
+            // API error - map to safe type and process with LLM
+            const tweetUrl = extractTwitterUrl(message.content.text);
+            return handleTwitterApiError(
+                runtime,
+                message,
+                state,
+                error,
+                tweetUrl ?? undefined,
+                callback
+            );
         }
 
         if (!tweetData) {
-            if (callback) {
-                callback({ text: TWEET_NOT_AVAILABLE_MESSAGE });
-            }
-            return false;
+            // Tweet data is null/undefined - use safe error type
+            const tweetUrl = extractTwitterUrl(message.content.text);
+            return processTweetError(
+                runtime,
+                message,
+                state,
+                SAFE_ERROR_TYPES.DATA_UNAVAILABLE,
+                tweetUrl ?? undefined,
+                callback
+            );
         }
 
         // Transform API response to Tweet structure
@@ -271,12 +389,17 @@ async function readTweetHandler(
         );
     } catch (error) {
         elizaLogger.error("Unexpected error in READ_TWEET handler:", error);
-        if (callback) {
-            callback({
-                text: TWEET_READ_ERROR_MESSAGE,
-            });
-        }
-        return false;
+        const tweetUrl = extractTwitterUrl(message.content.text);
+        // If state is null, create a minimal state object for error processing
+        const errorState = state || ({} as State);
+        return processTweetError(
+            runtime,
+            message,
+            errorState,
+            SAFE_ERROR_TYPES.API_ERROR,
+            tweetUrl ?? undefined,
+            callback
+        );
     }
 }
 
