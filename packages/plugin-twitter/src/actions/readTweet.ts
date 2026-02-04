@@ -51,15 +51,29 @@ function extractTwitterUrl(text: string): string | null {
 
 /**
  * Extract image URLs from tweet data
+ * Handles both raw Twitter API v2 responses and transformed data with photos array
  */
 function extractImageUrls(tweetData: any): string[] {
-    const photos = tweetData.data?.photos;
+    // First, try the new structure: raw Twitter API v2 response with includes.media
+    const mediaKeys = tweetData.data?.attachments?.media_keys;
+    const media = tweetData.includes?.media;
 
-    if (!photos || photos.length === 0) {
-        return [];
+    if (mediaKeys && media) {
+        return media
+            .filter((m: any) =>
+                mediaKeys.includes(m.media_key) && m.type === "photo"
+            )
+            .map((photo: any) => photo.url)
+            .filter((url: string) => url);
     }
 
-    return photos.map((photo: any) => photo.url).filter((url: string) => url);
+    // Fall back to old structure: direct photos array on data (for backwards compatibility)
+    const photos = tweetData.data?.photos;
+    if (photos && photos.length > 0) {
+        return photos.map((photo: any) => photo.url).filter((url: string) => url);
+    }
+
+    return [];
 }
 
 /**

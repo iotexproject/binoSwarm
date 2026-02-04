@@ -1209,6 +1209,208 @@ describe("AC1-AC6: Tweet Image Understanding", () => {
         (mockRuntime.getSetting as any) = vi.fn().mockReturnValue("test_token");
     });
 
+    describe("BugFix Regression: extractImageUrls from raw Twitter API v2 response", () => {
+        it("should extract image URLs from raw Twitter API v2 response with includes.media structure", async () => {
+            // This test demonstrates the bug: extractImageUrls() expects tweetData.data.photos
+            // but TwitterReadClient returns raw API responses with tweetData.includes.media structure
+            const mockTwitterClient = {
+                v2: {
+                    getTweet: vi.fn().mockResolvedValue({
+                        // Raw Twitter API v2 response structure
+                        data: {
+                            id: "1234567890",
+                            text: "Check out these photos!",
+                            attachments: {
+                                media_keys: ["media_key1", "media_key2"],
+                            },
+                            // NOTE: NO 'photos' array here - that's the bug!
+                        },
+                        includes: {
+                            media: [
+                                {
+                                    media_key: "media_key1",
+                                    type: "photo",
+                                    url: "https://example.com/image1.jpg",
+                                },
+                                {
+                                    media_key: "media_key2",
+                                    type: "photo",
+                                    url: "https://example.com/image2.jpg",
+                                },
+                            ],
+                        },
+                    }),
+                },
+            };
+
+            mockRuntime.clients = { twitter: mockTwitterClient };
+
+            const message = createMockMessage(
+                "https://x.com/user/status/1234567890"
+            );
+
+            // Use a non-empty state to avoid reassignment
+            const state = { test: "data" } as State;
+
+            await readTweet(
+                mockRuntime,
+                message,
+                state,
+                {},
+                mockCallback
+            );
+
+            // This assertion WILL FAIL with the current broken implementation
+            // because extractImageUrls() accesses tweetData.data.photos (undefined)
+            // instead of parsing tweetData.includes.media
+            expect(state.imageUrls).toEqual([
+                "https://example.com/image1.jpg",
+                "https://example.com/image2.jpg",
+            ]);
+            expect(mockCallback).toHaveBeenCalled();
+        });
+
+        it("should handle raw Twitter API v2 response with single photo", async () => {
+            const mockTwitterClient = {
+                v2: {
+                    getTweet: vi.fn().mockResolvedValue({
+                        data: {
+                            id: "1234567890",
+                            text: "A single photo!",
+                            attachments: {
+                                media_keys: ["media_key1"],
+                            },
+                        },
+                        includes: {
+                            media: [
+                                {
+                                    media_key: "media_key1",
+                                    type: "photo",
+                                    url: "https://example.com/single.jpg",
+                                },
+                            ],
+                        },
+                    }),
+                },
+            };
+
+            mockRuntime.clients = { twitter: mockTwitterClient };
+
+            const message = createMockMessage(
+                "https://x.com/user/status/1234567890"
+            );
+
+            const state = { test: "data" } as State;
+
+            await readTweet(
+                mockRuntime,
+                message,
+                state,
+                {},
+                mockCallback
+            );
+
+            // This assertion WILL FAIL with current broken implementation
+            expect(state.imageUrls).toEqual([
+                "https://example.com/single.jpg",
+            ]);
+        });
+
+        it("should handle raw Twitter API v2 response with mixed media types", async () => {
+            const mockTwitterClient = {
+                v2: {
+                    getTweet: vi.fn().mockResolvedValue({
+                        data: {
+                            id: "1234567890",
+                            text: "Mixed media!",
+                            attachments: {
+                                media_keys: ["media_key1", "media_key2", "media_key3"],
+                            },
+                        },
+                        includes: {
+                            media: [
+                                {
+                                    media_key: "media_key1",
+                                    type: "photo",
+                                    url: "https://example.com/photo1.jpg",
+                                },
+                                {
+                                    media_key: "media_key2",
+                                    type: "video",
+                                    // Videos don't have url field
+                                },
+                                {
+                                    media_key: "media_key3",
+                                    type: "photo",
+                                    url: "https://example.com/photo2.jpg",
+                                },
+                            ],
+                        },
+                    }),
+                },
+            };
+
+            mockRuntime.clients = { twitter: mockTwitterClient };
+
+            const message = createMockMessage(
+                "https://x.com/user/status/1234567890"
+            );
+
+            const state = { test: "data" } as State;
+
+            await readTweet(
+                mockRuntime,
+                message,
+                state,
+                {},
+                mockCallback
+            );
+
+            // Should only extract photo URLs, not videos
+            // This assertion WILL FAIL with current broken implementation
+            expect(state.imageUrls).toEqual([
+                "https://example.com/photo1.jpg",
+                "https://example.com/photo2.jpg",
+            ]);
+        });
+
+        it("should handle raw Twitter API v2 response with no media", async () => {
+            const mockTwitterClient = {
+                v2: {
+                    getTweet: vi.fn().mockResolvedValue({
+                        data: {
+                            id: "1234567890",
+                            text: "Just text, no media",
+                            // No attachments field
+                        },
+                        includes: {
+                            // No media array
+                        },
+                    }),
+                },
+            };
+
+            mockRuntime.clients = { twitter: mockTwitterClient };
+
+            const message = createMockMessage(
+                "https://x.com/user/status/1234567890"
+            );
+
+            const state = { test: "data" } as State;
+
+            await readTweet(
+                mockRuntime,
+                message,
+                state,
+                {},
+                mockCallback
+            );
+
+            // Should handle gracefully with empty array
+            expect(state.imageUrls).toEqual([]);
+        });
+    });
+
     describe("AC1: Extract image URLs from tweet data", () => {
         it("should extract image URLs from tweet with photos and add to state", async () => {
             const mockTwitterClient = {

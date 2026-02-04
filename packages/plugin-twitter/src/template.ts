@@ -10,12 +10,8 @@ You are analyzing a tweet from Twitter/X. The raw API response data is provided 
 {{tweetData}}
 \`\`\`
 
-{{#imageDescriptions}}
 Images in Tweet:
-{{#each imageDescriptions}}
-Image {{@index}}: {{JSON.stringify this}}
-{{/each}}
-{{/imageDescriptions}}
+{{imageDescriptions}}
 
 # User's Request
 
