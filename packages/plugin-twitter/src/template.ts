@@ -56,39 +56,17 @@ Tweet URL: {{tweetUrl}}
 
 # Instructions
 
-You encountered an error while trying to read a tweet. Provide a helpful, user-friendly response based on the error type:
+You encountered an error while trying to read a tweet. Error type: {{errorType}}
 
-{{#equal errorType "invalid_url"}}
-The URL provided is not a valid Twitter/X URL. Inform the user that they need to provide a valid Twitter/X link (e.g., https://x.com/username/status/1234567890).
-{{/equal}}
-
-{{#equal errorType "tweet_not_found"}}
-The tweet could not be found. It may have been deleted or the ID might be incorrect. Inform the user that the tweet is not available.
-{{/equal}}
-
-{{#equal errorType "tweet_protected"}}
-This tweet is from a protected or suspended account and cannot be viewed. Inform the user that they don't have permission to view this tweet.
-{{/equal}}
-
-{{#equal errorType "tweet_forbidden"}}
-Access to this tweet is forbidden. Inform the user that they don't have permission to view this tweet.
-{{/equal}}
-
-{{#equal errorType "rate_limited}}
-The rate limit for Twitter API requests has been reached. Inform the user that they should try again later.
-{{/equal}}
-
-{{#equal errorType "client_error"}}
-The Twitter client is not available. Inform the user that there's a technical issue and they should try again later.
-{{/equal}}
-
-{{#equal errorType "data_unavailable"}}
-The tweet data is not available. Inform the user that the tweet could not be loaded.
-{{/equal}}
-
-{{#equal errorType "api_error"}}
-An error occurred while trying to fetch the tweet. Inform the user that there was a technical issue and they should try again later.
-{{/equal}}
+Provide a helpful, user-friendly response based on this error type:
+- invalid_url: The URL is not a valid Twitter/X link
+- tweet_not_found: The tweet could not be found or was deleted
+- tweet_protected: The tweet is from a protected/suspended account
+- tweet_forbidden: Access to the tweet is forbidden
+- rate_limited: Rate limit reached, try again later
+- client_error: Twitter client unavailable
+- data_unavailable: Tweet data could not be loaded
+- api_error: Technical error occurred
 
 Maintain your character's voice and personality while being helpful and clear about the issue.
 `;
