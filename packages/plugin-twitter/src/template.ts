@@ -11,7 +11,13 @@ You are analyzing a tweet from Twitter/X. The raw API response data is provided 
 \`\`\`
 
 Images in Tweet:
-{{imageDescriptions}}
+{{#imageDescriptions}}
+- Image: {{title}}
+  Description: {{description}}
+{{/imageDescriptions}}
+{{^imageDescriptions}}
+No images in this tweet.
+{{/imageDescriptions}}
 
 # User's Request
 

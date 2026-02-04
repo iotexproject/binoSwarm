@@ -279,6 +279,7 @@ async function readTweetHandler(
         const context = composeContext({
             state,
             template: tweetResponseTemplate,
+            templatingEngine: "handlebars",
         });
 
         const response = await generateMessageResponse({
