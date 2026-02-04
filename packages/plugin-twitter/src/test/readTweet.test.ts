@@ -1190,6 +1190,926 @@ describe("BugFix: generateMessageResponse parameter validation", () => {
     });
 });
 
+describe("AC1: Cache hit returns cached tweet without API call", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockTwitterClient: MockTwitterClient;
+    let mockState: State;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        mockState = {} as State;
+        vi.clearAllMocks();
+
+        // Setup mock Twitter client
+        mockTwitterClient = {
+            v2: {
+                getTweet: vi.fn(),
+            },
+        };
+        mockRuntime.clients = {
+            twitter: mockTwitterClient,
+        };
+
+        // Mock runtime methods
+        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
+    });
+
+    it("should return cached tweet without making API call when cache hit", async () => {
+        const tweetId = "1234567890";
+        const cachedTweet = {
+            data: {
+                id: tweetId,
+                text: "Cached tweet content",
+                author_id: "user123",
+            },
+        };
+
+        // Mock cache manager to return cached tweet
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(cachedTweet),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cache manager.get was called with correct key
+        expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
+
+        // Verify Twitter API was NOT called (cache hit)
+        expect(mockTwitterClient.v2.getTweet).not.toHaveBeenCalled();
+
+        // Verify cache manager.set was NOT called (no need to set on cache hit)
+        expect(mockCacheManager.set).not.toHaveBeenCalled();
+
+        // Verify callback was called with LLM response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should use cached tweet data for LLM processing", async () => {
+        const tweetId = "1234567890";
+        const cachedTweet = {
+            data: {
+                id: tweetId,
+                text: "Another cached tweet",
+                author_id: "user456",
+            },
+        };
+
+        // Mock cache manager to return cached tweet
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(cachedTweet),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cached tweet data was passed to LLM
+        expect(mockState.tweetData).toBe(JSON.stringify(cachedTweet, null, 2));
+
+        // Verify API was NOT called
+        expect(mockTwitterClient.v2.getTweet).not.toHaveBeenCalled();
+    });
+
+    it("should call cache manager.get with correct key format", async () => {
+        const tweetId = "9876543210";
+        const cachedTweet = {
+            data: {
+                id: tweetId,
+                text: "Test tweet",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(cachedTweet),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify exact cache key format
+        expect(mockCacheManager.get).toHaveBeenCalledTimes(1);
+        expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
+    });
+
+    it("should not call cache manager.set on cache hit", async () => {
+        const tweetId = "1111111111";
+        const cachedTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet from cache",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(cachedTweet),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify set was never called on cache hit
+        expect(mockCacheManager.set).not.toHaveBeenCalled();
+    });
+
+    it("should not call Twitter client API methods on cache hit", async () => {
+        const tweetId = "2222222222";
+        const cachedTweet = {
+            data: {
+                id: tweetId,
+                text: "Cached",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(cachedTweet),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify no API calls were made
+        expect(mockTwitterClient.v2.getTweet).not.toHaveBeenCalled();
+    });
+});
+
+describe("AC2: Cache miss triggers API fetch and caches result", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockTwitterClient: MockTwitterClient;
+    let mockState: State;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        mockState = {} as State;
+        vi.clearAllMocks();
+
+        // Setup mock Twitter client
+        mockTwitterClient = {
+            v2: {
+                getTweet: vi.fn(),
+            },
+        };
+        mockRuntime.clients = {
+            twitter: mockTwitterClient,
+        };
+
+        // Mock runtime methods
+        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
+    });
+
+    it("should fetch tweet via Twitter API when cache miss", async () => {
+        const tweetId = "1234567890";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Fresh tweet from API",
+                author_id: "user123",
+            },
+        };
+
+        // Mock cache manager to return null (cache miss)
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        // Mock Twitter API to return tweet data
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cache manager.get was called with correct key
+        expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
+
+        // Verify Twitter API WAS called (cache miss triggers API call)
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+
+        // Verify callback was called with LLM response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should call cache manager.get that returns null on cache miss", async () => {
+        const tweetId = "9876543210";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "API tweet",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null), // Cache miss
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cache.get was called
+        expect(mockCacheManager.get).toHaveBeenCalledTimes(1);
+        expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
+
+        // Verify API was called due to cache miss
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+    });
+
+    it("should call Twitter client API methods on cache miss", async () => {
+        const tweetId = "5555555555";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet from API",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify API methods were called
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledTimes(1);
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+    });
+
+    it("should handle successful API response and continue normal flow on cache miss", async () => {
+        const tweetId = "3333333333";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Successful API tweet",
+                author_id: "user456",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify API was called
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+
+        // Verify tweet data was processed for LLM
+        expect(mockState.tweetData).toBe(JSON.stringify(apiTweet, null, 2));
+
+        // Verify callback was called with successful response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should call cache manager.set on cache miss to cache API response", async () => {
+        const tweetId = "4444444444";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet from API",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cache.get was called
+        expect(mockCacheManager.get).toHaveBeenCalled();
+
+        // Verify API was called on cache miss
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalled();
+
+        // AC3: Verify cache.set was called to cache the API response
+        expect(mockCacheManager.set).toHaveBeenCalledWith(
+            `twitter/tweets/${tweetId}`,
+            apiTweet
+        );
+    });
+});
+
+describe("AC3: Cache result after successful API fetch", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockTwitterClient: MockTwitterClient;
+    let mockState: State;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        mockState = {} as State;
+        vi.clearAllMocks();
+
+        // Setup mock Twitter client
+        mockTwitterClient = {
+            v2: {
+                getTweet: vi.fn(),
+            },
+        };
+        mockRuntime.clients = {
+            twitter: mockTwitterClient,
+        };
+
+        // Mock runtime methods
+        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
+    });
+
+    it("should call cache manager.set after successful API fetch", async () => {
+        const tweetId = "1234567890";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Fresh tweet from API",
+                author_id: "user123",
+            },
+        };
+
+        // Mock cache manager to return null (cache miss)
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        // Mock Twitter API to return tweet data
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cache manager.get was called
+        expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
+
+        // Verify Twitter API was called
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+
+        // CRITICAL: Verify cache manager.set was called with tweet data
+        expect(mockCacheManager.set).toHaveBeenCalledWith(
+            `twitter/tweets/${tweetId}`,
+            apiTweet
+        );
+
+        // Verify callback was called with LLM response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should cache with correct key format after API fetch", async () => {
+        const tweetId = "9876543210";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "API tweet",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify exact cache key format: twitter/tweets/${tweetId}
+        expect(mockCacheManager.set).toHaveBeenCalledWith(
+            `twitter/tweets/${tweetId}`,
+            apiTweet
+        );
+    });
+
+    it("should cache the tweet response data from API", async () => {
+        const tweetId = "5555555555";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet from API",
+                author_id: "user999",
+            },
+            includes: {
+                media: [
+                    {
+                        media_key: "media1",
+                        type: "photo",
+                        url: "https://example.com/image.jpg",
+                    },
+                ],
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify the full API response is cached (not just a subset)
+        expect(mockCacheManager.set).toHaveBeenCalledWith(
+            `twitter/tweets/${tweetId}`,
+            apiTweet
+        );
+
+        // Verify the cached data has the same structure
+        const setCall = mockCacheManager.set.mock.calls[0];
+        expect(setCall[1]).toEqual(apiTweet);
+        expect(setCall[1].data.id).toBe(tweetId);
+        expect(setCall[1].includes.media).toHaveLength(1);
+    });
+
+    it("should cache before LLM processing happens", async () => {
+        const tweetId = "3333333333";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Successful API tweet",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        // Track the order of calls
+        const callOrder: string[] = [];
+        mockCacheManager.get.mockImplementation(() => {
+            callOrder.push("cache-get");
+            return Promise.resolve(null);
+        });
+        mockCacheManager.set.mockImplementation(() => {
+            callOrder.push("cache-set");
+            return Promise.resolve();
+        });
+        mockTwitterClient.v2.getTweet.mockImplementation(() => {
+            callOrder.push("api-fetch");
+            return Promise.resolve(apiTweet);
+        });
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify order: cache-get -> api-fetch -> cache-set -> llm-callback
+        expect(callOrder).toEqual([
+            "cache-get",    // Check cache first
+            "api-fetch",    // Cache miss, fetch from API
+            "cache-set",    // Cache the result
+            // LLM processing happens after caching
+        ]);
+    });
+
+    it("should not fail when cache manager.set throws an error", async () => {
+        const tweetId = "7777777777";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet with cache failure",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn().mockRejectedValue(new Error("Cache storage failed")),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        // Handler should still succeed even if caching fails
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cache.set was attempted
+        expect(mockCacheManager.set).toHaveBeenCalled();
+
+        // Verify API was called
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+
+        // Verify callback was still called with successful response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should call cache manager.set without TTL parameter", async () => {
+        const tweetId = "8888888888";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet for TTL test",
+            },
+        };
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cache.set was called with only 2 parameters (key, value), not 3 (no TTL)
+        expect(mockCacheManager.set).toHaveBeenCalledTimes(1);
+        expect(mockCacheManager.set).toHaveBeenCalledWith(
+            `twitter/tweets/${tweetId}`,
+            apiTweet
+        );
+
+        // Verify no third parameter (TTL) was passed
+        const setCallArgs = mockCacheManager.set.mock.calls[0];
+        expect(setCallArgs).toHaveLength(2);
+        expect(setCallArgs[2]).toBeUndefined();
+    });
+
+    it("should cache after lightweight client API fetch", async () => {
+        const tweetId = "9999999999";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet from lightweight client",
+            },
+        };
+
+        // No Twitter client in runtime - triggers lightweight client creation
+        mockRuntime.clients = {};
+
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        // Mock the createTwitterReadClient function
+        const mockGetTweet = vi.fn().mockResolvedValue(apiTweet);
+        const mockReadClient = {
+            getTweet: mockGetTweet,
+        };
+
+        const { createTwitterReadClient } = await import("../client");
+        vi.mocked(createTwitterReadClient).mockResolvedValue(
+            mockReadClient as any
+        );
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify lightweight client was created and used
+        expect(createTwitterReadClient).toHaveBeenCalledWith(mockRuntime);
+        expect(mockGetTweet).toHaveBeenCalledWith(tweetId);
+
+        // Verify result was cached even when using lightweight client
+        expect(mockCacheManager.set).toHaveBeenCalledWith(
+            `twitter/tweets/${tweetId}`,
+            apiTweet
+        );
+
+        // Verify callback succeeded
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+});
+
+describe("AC4: Graceful degradation when cache unavailable", () => {
+    let mockRuntime: IAgentRuntime;
+    let mockCallback: HandlerCallback;
+    let mockTwitterClient: MockTwitterClient;
+    let mockState: State;
+
+    beforeEach(() => {
+        mockRuntime = createMockRuntime();
+        mockCallback = vi.fn();
+        mockState = {} as State;
+        vi.clearAllMocks();
+
+        // Setup mock Twitter client
+        mockTwitterClient = {
+            v2: {
+                getTweet: vi.fn(),
+            },
+        };
+        mockRuntime.clients = {
+            twitter: mockTwitterClient,
+        };
+
+        // Mock runtime methods
+        (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
+    });
+
+    it("should work when cacheManager is undefined", async () => {
+        const tweetId = "1234567890";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet from API with no cache",
+                author_id: "user123",
+            },
+        };
+
+        // Explicitly set cacheManager to undefined
+        (mockRuntime as any).cacheManager = undefined;
+
+        // Mock Twitter API to return tweet data
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        // Handler should succeed even without cache manager
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify API was called (no cache means fallback to API)
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+
+        // Verify callback was called with successful response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should work when cacheManager is null", async () => {
+        const tweetId = "9876543210";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet with null cache manager",
+                author_id: "user456",
+            },
+        };
+
+        // Explicitly set cacheManager to null
+        (mockRuntime as any).cacheManager = null;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        // Handler should succeed even with null cache manager
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify API was called
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+
+        // Verify callback succeeded
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should work when cacheManager.get throws an error", async () => {
+        const tweetId = "5555555555";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet after cache get error",
+            },
+        };
+
+        // Mock cache manager that throws on get
+        const mockCacheManager = {
+            get: vi.fn().mockRejectedValue(new Error("Cache connection failed")),
+            set: vi.fn(),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        // Handler should gracefully handle cache.get error and fall back to API
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cache.get was attempted
+        expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
+
+        // Verify API was called as fallback
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+
+        // Verify callback succeeded despite cache error
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should work when cacheManager.set throws an error", async () => {
+        const tweetId = "7777777777";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet after cache set error",
+            },
+        };
+
+        // Mock cache manager that throws on set
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null), // Cache miss
+            set: vi.fn().mockRejectedValue(new Error("Cache storage failed")),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        // Handler should gracefully handle cache.set error and still succeed
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify cache.get was called
+        expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
+
+        // Verify API was called
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+
+        // Verify cache.set was attempted (it will throw)
+        expect(mockCacheManager.set).toHaveBeenCalled();
+
+        // CRITICAL: Verify callback still succeeded despite cache.set error
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+
+    it("should make API calls when cache unavailable", async () => {
+        const tweetId = "1111111111";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet from API with unavailable cache",
+            },
+        };
+
+        // No cache manager
+        (mockRuntime as any).cacheManager = undefined;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify API was called (no cache fallback)
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledTimes(1);
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
+    });
+
+    it("should provide successful responses when cache unavailable", async () => {
+        const tweetId = "2222222222";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Successful tweet without cache",
+                author_id: "user789",
+            },
+        };
+
+        // Cache manager that throws on both get and set
+        const mockCacheManager = {
+            get: vi.fn().mockRejectedValue(new Error("Cache completely down")),
+            set: vi.fn().mockRejectedValue(new Error("Cache completely down")),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        // Handler should return successful response despite total cache failure
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify user receives successful response
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+
+        // Verify handler returns true (success)
+        const result = await readTweet(
+            mockRuntime,
+            message,
+            mockState,
+            {},
+            mockCallback
+        );
+        expect(result).toBe(true);
+    });
+
+    it("should log error when cache.set fails but continue processing", async () => {
+        const tweetId = "3333333333";
+        const apiTweet = {
+            data: {
+                id: tweetId,
+                text: "Tweet with cache error logging",
+            },
+        };
+
+        // Spy on elizaLogger.error
+        const { elizaLogger } = await import("@elizaos/core");
+        const mockLoggerError = vi.mocked(elizaLogger.error);
+
+        // Mock cache manager that throws on set
+        const mockCacheManager = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn().mockRejectedValue(new Error("Cache write failed")),
+        };
+        (mockRuntime as any).cacheManager = mockCacheManager;
+
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+
+        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+
+        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
+
+        // Verify error was logged
+        expect(mockLoggerError).toHaveBeenCalledWith(
+            "Failed to cache tweet:",
+            expect.any(Error)
+        );
+
+        // Verify processing continued successfully
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "Mocked LLM response",
+            inReplyTo: message.id,
+        });
+    });
+});
+
 describe("AC1-AC6: Tweet Image Understanding", () => {
     let mockRuntime: IAgentRuntime;
     let mockCallback: HandlerCallback;
