@@ -1,49 +1,59 @@
-# BinoSwarm Development Guide
+# Repository Guidelines
 
-Monorepo using pnpm workspaces with `@elizaos/core` framework and plugin architecture.
+## Project Structure & Module Organization
 
-## Build & Test
-
-- Build all: `pnpm build`
-- Test all: `pnpm test`
-- Test single package: `cd packages/<name> && pnpm test`
-- Lint: `pnpm lint`
-- Clean: `pnpm clean`
-
-## Project Layout
+Monorepo using pnpm workspaces with `@elizaos/core` framework.
 
 ```
 packages/
-├── core/              # Core framework (@elizaos/core)
-├── plugin-twitter/    # Twitter/X plugin
-└── plugin-depin/      # DePIN integration
+├── core/                 # Core framework (@elizaos/core)
+├── client-*/            # Platform clients (discord, telegram, twitter)
+├── plugin-*/            # Feature plugins (bootstrap, depin, evm, twitter, etc.)
+├── adapter-*/           # Database adapters (postgres, redis)
+└── client-direct/       # Direct client implementation
 ```
 
-- Core in `packages/core/src/` - Action interfaces, runtime, providers
-- Plugins in `packages/plugin-*/src/` - Feature-specific integrations
-- Tests co-located with source: `src/**/*.test.ts`
+- Source code in `packages/*/src/`
+- Tests co-located: `packages/*/test/` or `packages/*/src/test/`
+- Plugin actions in `packages/plugin-*/src/actions/`
 
-## Architecture
+## Build, Test, and Development Commands
 
-### Plugin Pattern
+- **Build all**: `pnpm build`
+- **Test all**: `pnpm test`
+- **Test single package**: `cd packages/<name> && pnpm test`
+- **Lint**: `pnpm lint`
+- **Clean**: `pnpm clean`
 
-```typescript
-export const pluginName: Plugin = {
-    name: "plugin-name",
-    description: "...",
-    providers: [],
-    evaluators: [],
-    services: [],
-    actions: [action1, action2, ...],
-};
-```
+## Coding Style & Naming Conventions
+
+- **TypeScript**: Strict mode, single quotes, trailing commas, 2-space indent
+- **Files**: `camelCase.ts` for utilities, `PascalCase.ts` for components/classes
+- **Action naming**: `UPPER_SNAKE_CASE` for action names
+- **Linting**: ESLint with TypeScript rules
+
+## Testing Guidelines
+
+- **Framework**: Vitest (discovers `**/*.test.ts` and `**/*.spec.ts`)
+- **Coverage**: Aim for >90% coverage on new code
+- **Test structure**: Given/When/Then pattern, descriptive test names
+- **Mocking**: Mock exact client structures (e.g., Twitter client's `v2` property)
+
+## Commit & Pull Request Guidelines
+
+- **Branch from**: `main` using `feat/feature-name` or `bugfix/bug-name`
+- **Commit format**: Conventional commits (`feat:`, `fix:`, `refactor:`, `test:`, `chore:`, `docs:`)
+- **Force pushes**: Use `--force-with-lease` on feature branches only
+- **PR requirements**: All tests pass, lint clean, build succeeds
+
+## Critical Patterns
 
 ### Action Interface
 
 ```typescript
 export const actionName: Action = {
     name: "ACTION_NAME",
-    similes: ["ACTION_NAME", "ALIAS1", "ALIAS2"], // MUST include name as first element
+    similes: ["ACTION_NAME", "ALIAS1", "ALIAS2"], // MUST include name first
     description: "Clear description for LLM",
     suppressInitialMessage: true,
     validate: async (runtime, message) => true,
@@ -55,43 +65,15 @@ export const actionName: Action = {
 };
 ```
 
+### Handler Returns
+
+Handlers return `Promise<boolean>`, not `Promise<void>`. Test callbacks, not promise rejections.
+
 ### Runtime Clients
 
+Client structures vary - check actual implementation before accessing:
 ```typescript
 const client = runtime.clients["serviceName"];
+// Example: Twitter client has nested v2 property
+await (client as { v2: { getTweet: ... } }).v2.getTweet(id);
 ```
-
-**Critical**: Client structures vary - check actual implementation. E.g., Twitter client has nested `v2` property.
-
-## Conventions
-
-- **TypeScript**: strict mode, single quotes, trailing commas, 2-space indent
-- **Testing**: Vitest, co-located tests, mock exact client structure
-- **Type guards**: Required for external data validation
-- **Error handling**: Never throw from handlers - use callbacks, return boolean
-
-## Git Workflow
-
-- Branch from `main`: `feat/feature-name` or `bugfix/bug-name`
-- Conventional commits: `feat:`, `fix:`, `refactor:`, `test:`, `chore:`, `docs:`
-- Force pushes: `--force-with-lease` on feature branches only
-
-## Gotchas
-
-- **Handler return**: `Promise<boolean>`, not `Promise<void>` - test callbacks, not promise rejections
-- **Monorepo**: Use `pnpm`, work from package directory for testing
-- **Vitest**: Discovers `**/*.test.ts` and `**/*.spec.ts` automatically
-
-## Security
-
-- API keys in `.env` at repo root only
-- Never commit `.env`, cookies, auth tokens
-- Log sensitive data at error level only
-
-## PR Checklist
-
-- All tests pass (`pnpm test`)
-- Lint passes (`pnpm lint`)
-- Build succeeds (`pnpm build`)
-- Tests added for new features
-- Conventional commit message
