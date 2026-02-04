@@ -343,38 +343,12 @@ describe("READ_TWEET action - Error Handling", () => {
             };
         });
 
-        it("should return informative message about rate limits (429)", async () => {
+        it("should handle rate limit errors (429) with and without reset time", async () => {
             const message = createMockMessage(
                 "https://x.com/user/status/1234567890"
             );
 
-            // Mock Twitter API to return rate limit error
-            const apiError = new Error("Rate limit exceeded") as any;
-            apiError.code = 429;
-            apiError.rateLimit = {
-                reset: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutes from now
-            };
-            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
-
-            await readTweet(
-                mockRuntime,
-                message,
-                {} as State,
-                {},
-                mockCallback
-            );
-
-            expect(mockCallback).toHaveBeenCalledWith({
-                text: "Rate limit reached. Please try again later.",
-            });
-        });
-
-        it("should suggest user try again later when rate limited", async () => {
-            const message = createMockMessage(
-                "https://x.com/user/status/1234567890"
-            );
-
-            // Mock Twitter API to return rate limit error
+            // Test with rate limit error with reset time
             const apiError = new Error("Rate limit exceeded") as any;
             apiError.code = 429;
             apiError.rateLimit = {
@@ -393,17 +367,12 @@ describe("READ_TWEET action - Error Handling", () => {
             expect(mockCallback).toHaveBeenCalledWith({
                 text: "Rate limit reached. Please try again later.",
             });
-        });
 
-        it("should handle rate limit errors without reset time information", async () => {
-            const message = createMockMessage(
-                "https://x.com/user/status/1234567890"
-            );
-
-            // Mock Twitter API to return rate limit error without reset time
-            const apiError = new Error("Rate limit exceeded") as any;
-            apiError.code = 429;
-            mockTwitterClient.v2.getTweet.mockRejectedValue(apiError);
+            // Test with rate limit error without reset time
+            mockCallback.mockClear();
+            const apiErrorNoReset = new Error("Rate limit exceeded") as any;
+            apiErrorNoReset.code = 429;
+            mockTwitterClient.v2.getTweet.mockRejectedValue(apiErrorNoReset);
 
             await readTweet(
                 mockRuntime,
@@ -790,12 +759,12 @@ describe("AC10: Generic/unexpected error handling", () => {
         };
     });
 
-    it("should handle API errors without code or status properties", async () => {
+    it("should handle various error types from API (string, object, null, undefined)", async () => {
         const message = createMockMessage(
             "https://x.com/user/status/1234567890"
         );
 
-        // Mock Twitter API to return error without code/status
+        // Test error without code/status
         const apiError = new Error("Something went wrong");
         delete (apiError as any).code;
         delete (apiError as any).status;
@@ -806,18 +775,10 @@ describe("AC10: Generic/unexpected error handling", () => {
         expect(mockCallback).toHaveBeenCalledWith({
             text: "I couldn't read this tweet",
         });
-    });
 
-    it("should handle plain object errors without code or status", async () => {
-        const message = createMockMessage(
-            "https://x.com/user/status/1234567890"
-        );
-
-        // Mock Twitter API to return plain object error
-        const plainError = {
-            message: "Unknown error occurred",
-            data: { some: "info" },
-        };
+        // Test plain object error
+        mockCallback.mockClear();
+        const plainError = { message: "Unknown error occurred", data: { some: "info" } };
         delete (plainError as any).code;
         delete (plainError as any).status;
         mockTwitterClient.v2.getTweet.mockRejectedValue(plainError);
@@ -827,14 +788,9 @@ describe("AC10: Generic/unexpected error handling", () => {
         expect(mockCallback).toHaveBeenCalledWith({
             text: "I couldn't read this tweet",
         });
-    });
 
-    it("should handle string errors from API", async () => {
-        const message = createMockMessage(
-            "https://x.com/user/status/1234567890"
-        );
-
-        // Mock Twitter API to return string error
+        // Test string error
+        mockCallback.mockClear();
         mockTwitterClient.v2.getTweet.mockRejectedValue("API request failed");
 
         await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
@@ -842,19 +798,22 @@ describe("AC10: Generic/unexpected error handling", () => {
         expect(mockCallback).toHaveBeenCalledWith({
             text: "I couldn't read this tweet",
         });
-    });
 
-    it("should handle unexpected errors in outer catch block", async () => {
-        const message = createMockMessage(
-            "https://x.com/user/status/1234567890"
-        );
+        // Test null error
+        mockCallback.mockClear();
+        mockTwitterClient.v2.getTweet.mockRejectedValue(null);
 
-        // Mock composeState to throw unexpected error
-        (mockRuntime as any).composeState = vi.fn().mockImplementation(() => {
-            throw new Error("Unexpected system failure");
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+
+        expect(mockCallback).toHaveBeenCalledWith({
+            text: "I couldn't read this tweet",
         });
 
-        await readTweet(mockRuntime, message, null, {}, mockCallback);
+        // Test undefined error
+        mockCallback.mockClear();
+        mockTwitterClient.v2.getTweet.mockRejectedValue(undefined);
+
+        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
 
         expect(mockCallback).toHaveBeenCalledWith({
             text: "I couldn't read this tweet",
@@ -866,7 +825,6 @@ describe("AC10: Generic/unexpected error handling", () => {
             "https://x.com/user/status/1234567890"
         );
 
-        // Mock error without message property
         const errorWithoutMessage = { some: "property" };
         delete (errorWithoutMessage as any).code;
         delete (errorWithoutMessage as any).status;
@@ -880,30 +838,16 @@ describe("AC10: Generic/unexpected error handling", () => {
         });
     });
 
-    it("should handle null errors", async () => {
+    it("should handle unexpected errors in outer catch block", async () => {
         const message = createMockMessage(
             "https://x.com/user/status/1234567890"
         );
 
-        // Mock null error
-        mockTwitterClient.v2.getTweet.mockRejectedValue(null);
-
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
-
-        expect(mockCallback).toHaveBeenCalledWith({
-            text: "I couldn't read this tweet",
+        (mockRuntime as any).composeState = vi.fn().mockImplementation(() => {
+            throw new Error("Unexpected system failure");
         });
-    });
 
-    it("should handle undefined errors", async () => {
-        const message = createMockMessage(
-            "https://x.com/user/status/1234567890"
-        );
-
-        // Mock undefined error
-        mockTwitterClient.v2.getTweet.mockRejectedValue(undefined);
-
-        await readTweet(mockRuntime, message, {} as State, {}, mockCallback);
+        await readTweet(mockRuntime, message, null, {}, mockCallback);
 
         expect(mockCallback).toHaveBeenCalledWith({
             text: "I couldn't read this tweet",
@@ -1245,15 +1189,13 @@ describe("AC1: Cache hit returns cached tweet without API call", () => {
 
         // Verify cache manager.set was NOT called (no need to set on cache hit)
         expect(mockCacheManager.set).not.toHaveBeenCalled();
-
-        // Verify callback was called with LLM response
         expect(mockCallback).toHaveBeenCalledWith({
             text: "Mocked LLM response",
             inReplyTo: message.id,
         });
     });
 
-    it("should use cached tweet data for LLM processing", async () => {
+    it("should use cached tweet data for LLM processing with correct key format", async () => {
         const tweetId = "1234567890";
         const cachedTweet = {
             data: {
@@ -1263,7 +1205,6 @@ describe("AC1: Cache hit returns cached tweet without API call", () => {
             },
         };
 
-        // Mock cache manager to return cached tweet
         const mockCacheManager = {
             get: vi.fn().mockResolvedValue(cachedTweet),
             set: vi.fn(),
@@ -1274,85 +1215,20 @@ describe("AC1: Cache hit returns cached tweet without API call", () => {
 
         await readTweet(mockRuntime, message, mockState, {}, mockCallback);
 
-        // After fix: Verify transformed Tweet data was passed to LLM (not raw cached data)
+        // Verify correct cache key format
+        expect(mockCacheManager.get).toHaveBeenCalledTimes(1);
+        expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
+
+        // Verify transformed Tweet data was passed to LLM
         expect(mockState.tweetData).toBeDefined();
         const parsedTweet = JSON.parse(mockState.tweetData as string);
         expect(parsedTweet).toHaveProperty("id", tweetId);
         expect(parsedTweet).toHaveProperty("text", "Another cached tweet");
-        expect(parsedTweet).toHaveProperty("photos"); // Tweet structure has photos array
+        expect(parsedTweet).toHaveProperty("photos");
 
-        // Verify API was NOT called
+        // Verify API was NOT called and cache.set was NOT called
         expect(mockTwitterClient.v2.getTweet).not.toHaveBeenCalled();
-    });
-
-    it("should call cache manager.get with correct key format", async () => {
-        const tweetId = "9876543210";
-        const cachedTweet = {
-            data: {
-                id: tweetId,
-                text: "Test tweet",
-            },
-        };
-
-        const mockCacheManager = {
-            get: vi.fn().mockResolvedValue(cachedTweet),
-            set: vi.fn(),
-        };
-        (mockRuntime as any).cacheManager = mockCacheManager;
-
-        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
-
-        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
-
-        // Verify exact cache key format
-        expect(mockCacheManager.get).toHaveBeenCalledTimes(1);
-        expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
-    });
-
-    it("should not call cache manager.set on cache hit", async () => {
-        const tweetId = "1111111111";
-        const cachedTweet = {
-            data: {
-                id: tweetId,
-                text: "Tweet from cache",
-            },
-        };
-
-        const mockCacheManager = {
-            get: vi.fn().mockResolvedValue(cachedTweet),
-            set: vi.fn(),
-        };
-        (mockRuntime as any).cacheManager = mockCacheManager;
-
-        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
-
-        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
-
-        // Verify set was never called on cache hit
         expect(mockCacheManager.set).not.toHaveBeenCalled();
-    });
-
-    it("should not call Twitter client API methods on cache hit", async () => {
-        const tweetId = "2222222222";
-        const cachedTweet = {
-            data: {
-                id: tweetId,
-                text: "Cached",
-            },
-        };
-
-        const mockCacheManager = {
-            get: vi.fn().mockResolvedValue(cachedTweet),
-            set: vi.fn(),
-        };
-        (mockRuntime as any).cacheManager = mockCacheManager;
-
-        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
-
-        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
-
-        // Verify no API calls were made
-        expect(mockTwitterClient.v2.getTweet).not.toHaveBeenCalled();
     });
 });
 
@@ -1904,64 +1780,52 @@ describe("AC4: Graceful degradation when cache unavailable", () => {
         (mockRuntime as any).composeState = vi.fn().mockResolvedValue(mockState);
     });
 
-    it("should work when cacheManager is undefined", async () => {
-        const tweetId = "1234567890";
-        const apiTweet = {
+    it("should work when cacheManager is undefined or null", async () => {
+        // Test with undefined cacheManager
+        const tweetId1 = "1234567890";
+        const apiTweet1 = {
             data: {
-                id: tweetId,
+                id: tweetId1,
                 text: "Tweet from API with no cache",
                 author_id: "user123",
             },
         };
 
-        // Explicitly set cacheManager to undefined
         (mockRuntime as any).cacheManager = undefined;
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet1);
 
-        // Mock Twitter API to return tweet data
-        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+        const message1 = createMockMessage(`https://x.com/user/status/${tweetId1}`);
 
-        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+        await readTweet(mockRuntime, message1, mockState, {}, mockCallback);
 
-        // Handler should succeed even without cache manager
-        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
-
-        // Verify API was called (no cache means fallback to API)
-        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
-
-        // Verify callback was called with successful response
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId1);
         expect(mockCallback).toHaveBeenCalledWith({
             text: "Mocked LLM response",
-            inReplyTo: message.id,
+            inReplyTo: message1.id,
         });
-    });
 
-    it("should work when cacheManager is null", async () => {
-        const tweetId = "9876543210";
-        const apiTweet = {
+        // Test with null cacheManager
+        const tweetId2 = "9876543210";
+        const apiTweet2 = {
             data: {
-                id: tweetId,
+                id: tweetId2,
                 text: "Tweet with null cache manager",
                 author_id: "user456",
             },
         };
 
-        // Explicitly set cacheManager to null
+        mockCallback.mockClear();
         (mockRuntime as any).cacheManager = null;
+        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet2);
 
-        mockTwitterClient.v2.getTweet.mockResolvedValue(apiTweet);
+        const message2 = createMockMessage(`https://x.com/user/status/${tweetId2}`);
 
-        const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
+        await readTweet(mockRuntime, message2, mockState, {}, mockCallback);
 
-        // Handler should succeed even with null cache manager
-        await readTweet(mockRuntime, message, mockState, {}, mockCallback);
-
-        // Verify API was called
-        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
-
-        // Verify callback succeeded
+        expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId2);
         expect(mockCallback).toHaveBeenCalledWith({
             text: "Mocked LLM response",
-            inReplyTo: message.id,
+            inReplyTo: message2.id,
         });
     });
 
@@ -1974,7 +1838,6 @@ describe("AC4: Graceful degradation when cache unavailable", () => {
             },
         };
 
-        // Mock cache manager that throws on get
         const mockCacheManager = {
             get: vi.fn().mockRejectedValue(new Error("Cache connection failed")),
             set: vi.fn(),
@@ -1985,16 +1848,10 @@ describe("AC4: Graceful degradation when cache unavailable", () => {
 
         const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
 
-        // Handler should gracefully handle cache.get error and fall back to API
         await readTweet(mockRuntime, message, mockState, {}, mockCallback);
 
-        // Verify cache.get was attempted
         expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
-
-        // Verify API was called as fallback
         expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
-
-        // Verify callback succeeded despite cache error
         expect(mockCallback).toHaveBeenCalledWith({
             text: "Mocked LLM response",
             inReplyTo: message.id,
@@ -2010,9 +1867,8 @@ describe("AC4: Graceful degradation when cache unavailable", () => {
             },
         };
 
-        // Mock cache manager that throws on set
         const mockCacheManager = {
-            get: vi.fn().mockResolvedValue(null), // Cache miss
+            get: vi.fn().mockResolvedValue(null),
             set: vi.fn().mockRejectedValue(new Error("Cache storage failed")),
         };
         (mockRuntime as any).cacheManager = mockCacheManager;
@@ -2021,19 +1877,11 @@ describe("AC4: Graceful degradation when cache unavailable", () => {
 
         const message = createMockMessage(`https://x.com/user/status/${tweetId}`);
 
-        // Handler should gracefully handle cache.set error and still succeed
         await readTweet(mockRuntime, message, mockState, {}, mockCallback);
 
-        // Verify cache.get was called
         expect(mockCacheManager.get).toHaveBeenCalledWith(`twitter/tweets/${tweetId}`);
-
-        // Verify API was called
         expect(mockTwitterClient.v2.getTweet).toHaveBeenCalledWith(tweetId);
-
-        // Verify cache.set was attempted (it will throw)
         expect(mockCacheManager.set).toHaveBeenCalled();
-
-        // CRITICAL: Verify callback still succeeded despite cache.set error
         expect(mockCallback).toHaveBeenCalledWith({
             text: "Mocked LLM response",
             inReplyTo: message.id,
